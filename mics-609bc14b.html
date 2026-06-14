@@ -54,9 +54,8 @@
   body.t-rl .step:nth-child(4n):not(.on){border-color:#d98426;}    /* 拍内3 */
   body.t-rl .step:nth-child(4n+1):not(.on){border-color:#ffb24d;}  /* 拍内4: 明オレンジ */
   /* skin切替：右上角の最上位に小さく配置（行を増やさない） */
-  .top{position:relative;}
-  .transport{padding-right:84px;}            /* 右上角をskin用に空ける */
-  #skinbar{position:absolute;top:0;right:0;z-index:5;display:flex;align-items:center;gap:5px;}
+  /* skin切替：トランスポート行の右端にインライン配置 */
+  .transport #skinbar{display:flex;align-items:center;gap:5px;margin-left:8px;}
   #skinbar::before{content:"SKIN";font-size:8px;letter-spacing:.18em;color:var(--dim);}
   #skinbar .seg button{padding:4px 7px;font-size:9px;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -397,10 +396,8 @@
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
     .seg button{padding:5px 10px;font-size:10px;}
-    /* SKINはロゴ右の空きスペース（右上角）に固定＝専用行を消す */
-    .transport{padding-right:74px;}
-    #skinbar{top:2px;}
-    #skinbar::before{display:none;}        /* スマホは"SKIN"ラベル省略 */
+    /* スマホは"SKIN"ラベル省略してコンパクトに（トランスポート行に同居） */
+    #skinbar::before{display:none;}
     #skinbar .seg button{padding:5px 8px;font-size:10px;}
     /* MASTERはMIX画面の時だけ（PADS/SEQでは隠して場所を空ける） */
     .master-bar{display:none;}
@@ -500,12 +497,12 @@
         </select>
         <span class="val" id="swingVal"></span>
       </div>
-    </div>
-    <div id="skinbar">
-      <div class="seg" id="themeSeg">
-        <button data-th="ak" class="on">AK</button>
-        <button data-th="sp">SP</button>
-        <button data-th="rl">TR</button>
+      <div id="skinbar">
+        <div class="seg" id="themeSeg">
+          <button data-th="ak" class="on">AK</button>
+          <button data-th="sp">SP</button>
+          <button data-th="rl">TR</button>
+        </div>
       </div>
     </div>
   </div>
