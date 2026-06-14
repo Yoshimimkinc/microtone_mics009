@@ -1933,19 +1933,26 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
   e.target.value="";   // 同じファイルを選び直してもchangeが発火するようリセット
   if(!f)return;
   if(AC.state!=="running") await AC.resume();
-  // iCloud等でまだ実体が無い/ダウンロード未完了だとサイズ0になることがある
-  if(!f.size){ sampNameEl.textContent="ファイルが空です（iCloudのDL未完了かも）"; return; }
-  sampNameEl.textContent="読込中… ("+(f.size/1048576).toFixed(1)+"MB)";
+  // 診断ログ（実機で何が起きたか確定させるため画面に出す）
+  const dbg=["type="+(f.type||"?"), (f.size/1048576).toFixed(2)+"MB"];
+  const show=m=>{ sampNameEl.textContent=m; };
+  show("読込中… "+dbg.join(" "));
   try{
+    if(!f.size) throw new Error("size=0 (iCloud DL未完了かも)");
     const arr = await f.arrayBuffer();
-    if(!arr || !arr.byteLength) throw new Error("データを読めません（DL未完了？）");
-    let buf = await decodeAudio(arr);
-    // iOS等はdecodeAudioDataが動画から無音だけ返すことがある→実時間再生で録音抽出
+    dbg.push("buf="+(arr?arr.byteLength:0)+"B");
+    if(!arr || !arr.byteLength) throw new Error("arrayBuffer空: "+dbg.join(" "));
+    let buf=null, decErr="";
+    try{ buf = await decodeAudio(arr); }
+    catch(de){ decErr=de.message||String(de); }
+    dbg.push(buf?("decode="+buf.length+"smp/"+buf.duration.toFixed(1)+"s/silent="+isSilent(buf)):("decodeNG:"+decErr));
+    // decode失敗 or 無音 → 実時間再生で録音抽出にフォールバック
     if(isSilent(buf)){
-      sampNameEl.textContent="音声を抽出中…（動画の長さぶん待ってね）";
-      buf = await extractViaPlayback(f);
+      show("音声抽出中…(動画の長さぶん待つ) "+dbg.join(" "));
+      try{ buf = await extractViaPlayback(f); dbg.push("play="+(buf?buf.length+"smp/silent="+isSilent(buf):"null")); }
+      catch(pe){ dbg.push("playNG:"+(pe.message||pe)); buf=null; }
     }
-    if(isSilent(buf)) throw new Error("音声を抽出できません（非対応の動画形式かも）");
+    if(isSilent(buf)) throw new Error("抽出不可 "+dbg.join(" "));
     pushUndo();
     tracks[selected].rawBuffer = buf;
     tracks[selected].buffer = makeLofi(buf);
@@ -1953,12 +1960,13 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     tracks[selected].loop=false; tracks[selected].loopStart=0;
     PADS[selected].type="sample";
     tracks[selected].name = f.name.slice(0,10);
-    sampNameEl.textContent=f.name;
+    show("OK: "+f.name);
     padsEl.children[selected].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
     if(typeof drawWave==="function") drawWave();
     drawPadWave(selected);
   }catch(err){
-    sampNameEl.textContent="読込失敗: "+err.message;
+    show("✕ "+(err.message||err));
+    try{ alert("取り込み診断:\n"+(err.message||err)); }catch(_){}
   }
 });
 
