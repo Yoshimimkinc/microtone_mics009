@@ -336,9 +336,30 @@
     .wave-wrap{height:60px;}
     .knob.mini{min-width:60px;}
   }
+
+  /* 起動スプラッシュ（TAP TO START → 全画面） */
+  #splash{
+    position:fixed;inset:0;z-index:9999;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    background:radial-gradient(1200px 600px at 50% 32%,#1d2127 0%,var(--bg) 72%);
+    -webkit-tap-highlight-color:transparent;user-select:none;
+  }
+  #splash .s-logo{font-size:clamp(34px,9vw,52px);letter-spacing:.01em;color:var(--ink);font-weight:600;}
+  #splash .s-logo b{color:var(--amber);font-weight:800;}
+  #splash .s-model{font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;}
+  #splash .s-prompt{margin-top:34px;font-size:13px;letter-spacing:.34em;color:var(--teal);
+    text-transform:uppercase;animation:spblink 1.4s ease-in-out infinite;}
+  @keyframes spblink{0%,100%{opacity:.35}50%{opacity:1}}
+  #splash.hide{opacity:0;pointer-events:none;transition:opacity .35s ease;}
 </style>
 </head>
 <body>
+<!-- 起動スプラッシュ：最初のタップで全画面＋音声起動（アプリ風の没入） -->
+<div id="splash">
+  <div class="s-logo">micro<b>tone</b></div>
+  <div class="s-model">MICS009</div>
+  <div class="s-prompt">▶ TAP TO START</div>
+</div>
 <div class="unit">
   <div class="top">
     <div class="brand">
@@ -1882,20 +1903,24 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
   }
 });
 
-// ---------- フルスクリーン化（最初の操作でアドレスバーを隠す） ----------
+// ---------- スプラッシュ → 最初のタップで全画面＋音声起動 ----------
+// （ブラウザ仕様上、全画面化には必ず1回のユーザー操作が必要。
+//   起動画面を全面に出すことで、その最初のタップで全画面に入る）
 (function(){
   let done=false;
-  function goFullscreen(){
+  const splash=document.getElementById("splash");
+  function start(){
     if(done) return; done=true;
     const el=document.documentElement;
     const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
     if(req){ try{ req.call(el); }catch(e){} }
-    window.removeEventListener("pointerdown",goFullscreen);
-    window.removeEventListener("keydown",goFullscreen);
+    try{ if(typeof AC!=="undefined" && AC.state!=="running") AC.resume(); }catch(e){}
+    if(splash){ splash.classList.add("hide"); setTimeout(()=>splash.remove(),400); }
+    window.removeEventListener("pointerdown",start);
+    window.removeEventListener("keydown",start);
   }
-  // ブラウザ仕様上、自動ではなく「最初のユーザー操作」が必要
-  window.addEventListener("pointerdown",goFullscreen);
-  window.addEventListener("keydown",goFullscreen);
+  window.addEventListener("pointerdown",start);
+  window.addEventListener("keydown",start);
 })();
 </script>
 </body>
