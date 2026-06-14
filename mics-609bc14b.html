@@ -425,13 +425,16 @@
     #viewPads>.pads{order:2;max-width:100%;}
     #viewPads>.msbar{order:3;flex-wrap:wrap;}
     #viewPads>.padTransport{order:4;margin:0;}
-    /* パッドは4×2バンク（8パッド大きく・1-8/9-16切替） */
-    .pads{grid-template-columns:repeat(4,1fr)!important;max-width:100%!important;gap:9px;}
-    .pads .pad{aspect-ratio:1!important;order:0!important;padding:8px!important;}
-    .pads[data-bank="0"] .pad:nth-child(n+9){display:none;}
-    .pads[data-bank="1"] .pad:nth-child(-n+8){display:none;}
+    /* パッドは4×4で全16個を一度に表示（ヘッダを詰めた分の高さを活用） */
+    .pads{grid-template-columns:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
+    .pads .pad{aspect-ratio:1!important;padding:7px!important;}
+    /* MPC配列：ドラム(1-8)を下段、サンプル(9-16)を上段に（cols8/4×4どちらでも） */
+    .pads .pad:nth-child(-n+4){order:4!important;}
+    .pads .pad:nth-child(n+5):nth-child(-n+8){order:3!important;}
+    .pads .pad:nth-child(n+9):nth-child(-n+12){order:2!important;}
+    .pads .pad:nth-child(n+13){order:1!important;}
     #layoutSeg{display:none!important;}
-    #bankSeg{display:flex!important;}
+    #bankSeg{display:none!important;}
     /* Koala風ミニマル：詳細ツマミ(フィルター/Choke/Cutoff/Reso)はスマホでは隠す */
     .strip-ctrls .adv{display:none!important;}
     /* 自然な高さで詰める（パッドは正方形・伸ばさない＝はみ出さない）。長ければ普通に縦スクロール */
@@ -918,16 +921,61 @@ function barHasContent(p,b){ for(let i=0;i<PADS.length;i++){ const a=tracks[i].p
 function patHasContent(p){ for(let b=0;b<4;b++) if(barHasContent(p,b)) return true; return false; }
 function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) last=b; return last+1; }
 
-// ===== UNDO（パターン編集を1手ずつ戻す） =====
+// ===== UNDO（パターン編集＋各種操作を1手ずつ戻す） =====
 const undoStack=[];
-function snapshotPatterns(){ return tracks.map(t=>t.patterns.map(p=>p.map(b=>b.slice()))); }
-function pushUndo(){ undoStack.push(snapshotPatterns()); if(undoStack.length>60) undoStack.shift(); }
-function doUndo(){
-  const s=undoStack.pop(); if(!s) return;
-  tracks.forEach((t,i)=>{ t.patterns=s[i]; });
-  if(typeof paintSteps==="function") paintSteps();
-  if(typeof paintPatBar==="function") paintPatBar();
+function snapshotState(){
+  const km=document.getElementById("kMaster");
+  return {
+    bpm:(typeof bpmVal!=="undefined"?bpmVal:100),
+    swing:(typeof swingPct!=="undefined"?swingPct:50),
+    compOn:(typeof compOn!=="undefined"?compOn:true),
+    compThreshold:(typeof compThreshold!=="undefined"?compThreshold:-12),
+    compDrive:(typeof compDrive!=="undefined"?compDrive:1.5),
+    masterVol:(km?+km.value:0),
+    editPat, editBar, selected,
+    tracks: tracks.map((t,i)=>({
+      vol:t.vol,tune:t.tune,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,
+      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,
+      mute:t.mute,solo:t.solo,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
+      type:PADS[i].type,voice:PADS[i].voice,
+      patterns:t.patterns.map(p=>p.map(b=>b.slice())),
+    })),
+  };
 }
+function restoreState(s){
+  if(typeof bpmVal!=="undefined") bpmVal=s.bpm;
+  if(typeof swingPct!=="undefined") swingPct=s.swing;
+  if(typeof compOn!=="undefined") compOn=s.compOn;
+  if(typeof compThreshold!=="undefined") compThreshold=s.compThreshold;
+  if(typeof compDrive!=="undefined") compDrive=s.compDrive;
+  editPat=s.editPat; editBar=s.editBar;
+  tracks.forEach((t,i)=>{
+    const x=s.tracks[i];
+    t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
+    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;
+    t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
+    PADS[i].type=x.type;PADS[i].voice=x.voice;
+    t.patterns=x.patterns;
+    const nm=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
+    if(nm) nm.textContent=(t.name||PADS[i].name).slice(0,8).toUpperCase();
+  });
+  const $=id=>document.getElementById(id);
+  if($("bpm")){ $("bpm").value=s.bpm; $("bpmRead").textContent=s.bpm.toFixed(1); }
+  if($("swing")) $("swing").value=s.swing;
+  if($("compToggle")) $("compToggle").classList.toggle("on",s.compOn);
+  if($("kComp")){ $("kComp").value=s.compThreshold; $("vComp").textContent=s.compThreshold; }
+  if($("kDrive")){ $("kDrive").value=Math.round(s.compDrive*10); $("vDrive").textContent=s.compDrive.toFixed(1); }
+  if(typeof setCompBypass==="function") setCompBypass(s.compOn);
+  if(typeof saturator!=="undefined" && typeof makeSatCurve==="function") saturator.curve=makeSatCurve(s.compDrive);
+  if($("kMaster") && typeof masterGain!=="undefined"){ $("kMaster").value=s.masterVol; masterGain.gain.value=Math.pow(10,s.masterVol/20); $("vMaster").textContent=s.masterVol+" dB"; }
+  if(typeof selectPad==="function") selectPad(s.selected);   // editor同期＋盤面再描画
+  if(typeof paintPadStates==="function") paintPadStates();
+  if(typeof paintMixer==="function") paintMixer();
+  if(typeof paintPatBar==="function") paintPatBar();
+  if(typeof drawAllPadWaves==="function") drawAllPadWaves();
+}
+function pushUndo(){ undoStack.push(snapshotState()); if(undoStack.length>40) undoStack.shift(); }
+function doUndo(){ const s=undoStack.pop(); if(!s) return; restoreState(s); }
 
 // ===== 音階モード（モノ・ベース打ち込み） =====
 const SCALES={ maj:[0,2,4,5,7,9,11], min:[0,2,3,5,7,8,10], pent:[0,3,5,7,10] };  // chroは半音=idx
@@ -1308,6 +1356,7 @@ function paintPadStates(){
   }
 }
 function copyPadSound(src,dst){
+  pushUndo();
   const s=tracks[src],d=tracks[dst];
   // バッファは参照共有（AudioBufferは再生で変化しないため安全）
   d.buffer=s.buffer; d.rawBuffer=s.rawBuffer;
@@ -1549,15 +1598,19 @@ function nearest(nx){
 }
 waveWrap.addEventListener("pointerdown",e=>{
   if(!tracks[selected].buffer)return;
+  pushUndo();   // start/end/loop調整前の状態を記録
   dragH=nearest(xToNorm(e.clientX));
   waveWrap.setPointerCapture(e.pointerId);
   applyDrag(e.clientX);
 });
 waveWrap.addEventListener("pointermove",e=>{ if(dragH)applyDrag(e.clientX); });
 waveWrap.addEventListener("pointerup",()=>{
+  if(!dragH)return;
   // startを離したらアタック（立ち上がり）へ常にスナップ
   if(dragH==="start") snapStartToOnset();
   dragH=null;
+  // スタート/ストップ（およびループ点）が確定した瞬間にパッド内波形を再描画
+  drawPadWave(selected);
 });
 
 // 立ち上がり検出：startの近傍で「最初に音量が急増する点」へ吸着（食い込み防止）
@@ -1598,6 +1651,7 @@ function applyDrag(clientX){
 // loop toggle
 const loopToggle=document.getElementById("loopToggle");
 loopToggle.addEventListener("click",()=>{
+  pushUndo();
   const t=tracks[selected];t.loop=!t.loop;
   loopToggle.classList.toggle("on",t.loop);
   if(t.loop && t.loopStart<t.start) t.loopStart=t.start;
@@ -1607,6 +1661,7 @@ loopToggle.addEventListener("click",()=>{
 const filtSeg=document.getElementById("filtSeg");
 filtSeg.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
+  pushUndo();
   const f=b.dataset.f, t=tracks[selected];
   t.filter=f;
   // ONにした瞬間に効きが分かるよう、Cutoffが開きっぱなし(無効値)なら実用値へ
@@ -1617,10 +1672,13 @@ filtSeg.addEventListener("click",e=>{
 });
 // choke group
 const chokeSel=document.getElementById("chokeSel");
-chokeSel.addEventListener("change",()=>{ tracks[selected].choke=+chokeSel.value; });
+chokeSel.addEventListener("change",()=>{ pushUndo(); tracks[selected].choke=+chokeSel.value; });
 // knobs
 function bindKnob(id,valId,fmt,apply){
   const k=document.getElementById(id),v=document.getElementById(valId);
+  // ドラッグ開始時に1回だけ状態を記録（連続inputで履歴が埋まらないように）
+  k.addEventListener("pointerdown",()=>pushUndo());
+  k.addEventListener("keydown",e=>{ if(/Arrow|Page|Home|End/.test(e.key)) pushUndo(); });
   k.addEventListener("input",()=>{apply(+k.value);v.textContent=fmt(+k.value);});
 }
 bindKnob("kTune","vTune",x=>x+" st",x=>tracks[selected].tune=x);
@@ -1799,8 +1857,10 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // tempo / swing / vol
 const bpm=document.getElementById("bpm"),bpmRead=document.getElementById("bpmRead");
+bpm.addEventListener("pointerdown",()=>pushUndo());
 bpm.addEventListener("input",()=>{bpmVal=+bpm.value;bpmRead.textContent=bpmVal.toFixed(1);});
 const swing=document.getElementById("swing"),swingVal=document.getElementById("swingVal");
+swing.addEventListener("pointerdown",()=>pushUndo());
 swing.addEventListener("change",()=>{
   swingPct=+swing.value;
   const eff=effectiveSwing();
@@ -1842,6 +1902,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
   try{
     const arr = await f.arrayBuffer();
     const buf = await AC.decodeAudioData(arr);
+    pushUndo();
     tracks[selected].rawBuffer = buf;
     tracks[selected].buffer = makeLofi(buf);
     tracks[selected].start=0; tracks[selected].end=1;
@@ -1951,7 +2012,7 @@ const barSeg=document.getElementById("barSeg");
 
 // 音階モード：SCALE選択／← DRUMS で復帰
 const kScale=document.getElementById("kScale");
-kScale.addEventListener("change",()=>{ tracks[selected].scale=kScale.value; refreshSeqMode(); });
+kScale.addEventListener("change",()=>{ pushUndo(); tracks[selected].scale=kScale.value; refreshSeqMode(); });
 document.getElementById("meloExit").addEventListener("click",()=>{
   let d=0; for(let i=0;i<PADS.length;i++){ if(!isMelodic(i)){ d=i; break; } }  // 最初の非音階パッドへ
   selectPad(d);
@@ -2024,15 +2085,15 @@ PADS.forEach((p,i)=>{
   const msDiv=document.createElement("div"); msDiv.className="ch-ms";
   const mBtn=document.createElement("button"); mBtn.textContent="M";
   const sBtn=document.createElement("button"); sBtn.textContent="S";
-  mBtn.addEventListener("click",()=>{ tracks[i].mute=!tracks[i].mute; paintMixer(); paintPadStates(); });
-  sBtn.addEventListener("click",()=>{ tracks[i].solo=!tracks[i].solo; paintMixer(); paintPadStates(); });
+  mBtn.addEventListener("click",()=>{ pushUndo(); tracks[i].mute=!tracks[i].mute; paintMixer(); paintPadStates(); });
+  sBtn.addEventListener("click",()=>{ pushUndo(); tracks[i].solo=!tracks[i].solo; paintMixer(); paintPadStates(); });
   msDiv.appendChild(mBtn); msDiv.appendChild(sBtn);
   const nm=document.createElement("div"); nm.className="ch-name"; nm.textContent=p.name;
   ch.appendChild(num); ch.appendChild(wrap); ch.appendChild(val); ch.appendChild(msDiv); ch.appendChild(nm);
   fader.addEventListener("input",()=>{
     tracks[i].vol=+fader.value; val.textContent=fader.value;
   });
-  fader.addEventListener("pointerdown",()=>fader.focus());
+  fader.addEventListener("pointerdown",()=>{ pushUndo(); fader.focus(); });
   mixerEl.appendChild(ch);
   chEls.push({fader,val,el:ch,nm,vu,mBtn,sBtn});
 });
@@ -2086,6 +2147,7 @@ function syncMixLayout(){
 syncMixLayout();
 
 // マスターボリューム
+document.getElementById("kMaster").addEventListener("pointerdown",()=>pushUndo());
 document.getElementById("kMaster").addEventListener("input",function(){
   masterGain.gain.value=Math.pow(10,this.value/20);
   document.getElementById("vMaster").textContent=this.value+" dB";
@@ -2094,10 +2156,12 @@ document.getElementById("kMaster").addEventListener("input",function(){
 // コンプ/ドライブ（MIX画面に移動）
 const compToggle=document.getElementById("compToggle");
 compToggle.addEventListener("click",()=>{
+  pushUndo();
   const on=!compOn;
   compToggle.classList.toggle("on",on);
   setCompBypass(on);
 });
+document.getElementById("kComp").addEventListener("pointerdown",()=>pushUndo());
 document.getElementById("kComp").addEventListener("input",function(){
   compThreshold=+this.value;
   document.getElementById("vComp").textContent=this.value;
@@ -2105,6 +2169,7 @@ document.getElementById("kComp").addEventListener("input",function(){
   compMakeup = 1 + Math.abs(compThreshold)/30*0.8;
   if(compOn) makeupGain.gain.value=compMakeup;
 });
+document.getElementById("kDrive").addEventListener("pointerdown",()=>pushUndo());
 document.getElementById("kDrive").addEventListener("input",function(){
   compDrive=+this.value/10;
   document.getElementById("vDrive").textContent=compDrive.toFixed(1);
@@ -2194,6 +2259,7 @@ async function finalizeRec(){
       // webm等でdecodeAudioData失敗時、AudioContext.decodeAudioDataのPromise版を試す
       buf=await new Promise((res,rej)=>AC.decodeAudioData(arr,res,rej));
     }
+    pushUndo();
     tracks[selected].rawBuffer=buf;
     tracks[selected].buffer=makeLofi(buf);
     tracks[selected].start=0;tracks[selected].end=1;
