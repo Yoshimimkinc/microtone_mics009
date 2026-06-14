@@ -29,21 +29,35 @@
     --pad:#2b3038;
     --pad-face:#343b44;
   }
-  /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL） ===== */
-  /* Akai MPC風：漆黒 + AKAI RED + 緑LCD */
-  body.t-ak{--bg:#0a0b0d;--panel:#141518;--panel2:#1d1f23;--edge:#040405;--line:#2b2e34;
-    --ink:#ece9e2;--dim:#797e86;--amber:#e0222c;--amber-dim:#5a141a;--teal:#5fe08a;--pad:#1c1e23;--pad-face:#262a30;}
-  /* E-mu SP-1200風：暖色ヴィンテージ + 青LCD */
-  body.t-sp{--bg:#171410;--panel:#2a251c;--panel2:#352f24;--edge:#0d0b08;--line:#473f30;
+  /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL）。背景はどれも黒 ===== */
+  /* Akai MPC3000風：黒地 + 暖色グレー本体 + 緑の蛍光LCD + Akaiレッド + クリーム文字 */
+  body.t-ak{--bg:#0c0d0e;--panel:#27251f;--panel2:#322f27;--edge:#040404;--line:#48433a;
+    --ink:#ece6d6;--dim:#8c8676;--amber:#d6442f;--amber-dim:#5c1c14;--teal:#4cd06a;--pad:#201e1a;--pad-face:#2b2924;}
+  /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
+  body.t-sp{--bg:#100e0a;--panel:#2a251c;--panel2:#352f24;--edge:#0b0907;--line:#473f30;
     --ink:#ece1c8;--dim:#9a8f78;--amber:#e8b54a;--amber-dim:#6e5320;--teal:#52b9d6;--pad:#2e2820;--pad-face:#3b3428;}
-  /* Roland TR-808風：チャコール + オレンジ + 黄アクセント */
-  body.t-rl{--bg:#25282c;--panel:#2f3338;--panel2:#3a3f45;--edge:#141619;--line:#474d56;
-    --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#363b42;--pad-face:#424852;}
+  /* Roland TR-808風：黒地 + チャコール本体 + オレンジ/黄アクセント */
+  body.t-rl{--bg:#0e0f11;--panel:#2c2f34;--panel2:#373c43;--edge:#121316;--line:#474d56;
+    --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#33373d;--pad-face:#3e444c;}
+  /* TR-808の象徴：16ステップを4色グループに（赤/橙/黄/白）。常時うっすら色付き＋点灯で鮮やか */
+  body.t-rl .row .step:nth-child(-n+5){border-color:rgba(255,59,48,.45);}
+  body.t-rl .row .step:nth-child(n+6):nth-child(-n+9){border-color:rgba(255,138,43,.45);}
+  body.t-rl .row .step:nth-child(n+10):nth-child(-n+13){border-color:rgba(255,207,51,.45);}
+  body.t-rl .row .step:nth-child(n+14){border-color:rgba(240,236,224,.5);}
+  body.t-rl .row .step:nth-child(-n+5).on:not(.acc){background:#ff3b30;border-color:#ff8079;box-shadow:0 0 8px rgba(255,59,48,.5);}
+  body.t-rl .row .step:nth-child(n+6):nth-child(-n+9).on:not(.acc){background:#ff8a2b;border-color:#ffba80;box-shadow:0 0 8px rgba(255,138,43,.5);}
+  body.t-rl .row .step:nth-child(n+10):nth-child(-n+13).on:not(.acc){background:#ffcf33;border-color:#ffe588;box-shadow:0 0 8px rgba(255,207,51,.5);}
+  body.t-rl .row .step:nth-child(n+14).on:not(.acc){background:#f0ece0;border-color:#fff;box-shadow:0 0 8px rgba(240,236,224,.5);}
+  /* skin切替：右上角の最上位に小さく配置（行を増やさない） */
+  .top{position:relative;}
+  .transport{padding-right:84px;}            /* 右上角をskin用に空ける */
+  #skinbar{position:absolute;top:0;right:0;z-index:5;display:flex;align-items:center;gap:5px;}
+  #skinbar::before{content:"SKIN";font-size:8px;letter-spacing:.18em;color:var(--dim);}
+  #skinbar .seg button{padding:4px 7px;font-size:9px;}
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;overflow-x:hidden;}
   body{
-    background:
-      radial-gradient(1200px 600px at 50% -10%, #1d2127 0%, var(--bg) 60%);
+    background:#000;  /* アプリ外側（周りの余白）は常に黒 */
     color:var(--ink);
     font-family:"DIN Alternate","Bahnschrift","Arial Narrow",system-ui,sans-serif;
     letter-spacing:.04em;
@@ -60,10 +74,10 @@
     padding:20px 22px 24px;
   }
   /* 全画面：背景を敷き、中身を上下中央に（はみ出す時は上から＝クリップしない） */
-  html:fullscreen{background:var(--bg);}
+  html:fullscreen{background:#000;}
   html:fullscreen body{display:flex;flex-direction:column;min-height:100vh;}
   html:fullscreen .unit{margin-top:auto;margin-bottom:auto;}
-  html:-webkit-full-screen{background:var(--bg);}
+  html:-webkit-full-screen{background:#000;}
   html:-webkit-full-screen body{display:flex;flex-direction:column;min-height:100vh;}
   html:-webkit-full-screen .unit{margin-top:auto;margin-bottom:auto;}
   /* header / silkscreen */
@@ -337,6 +351,9 @@
     .knob.mini{min-width:70px;max-width:120px;}
     .pads{max-width:100%;}
     .seg button{padding:5px 10px;font-size:10px;}
+    /* 狭い画面ではskinを通常配置にして重なり回避 */
+    .transport{padding-right:0;}
+    #skinbar{position:static;margin-left:auto;}
     /* 狭い画面ではスプリットを解除して縦積みに */
     #viewPads.split.active{display:block;}
     #viewPads.split .strip{margin-bottom:16px;}
@@ -406,12 +423,12 @@
         </select>
         <span class="val" id="swingVal"></span>
       </div>
-      <div class="ctrl">Skin
-        <div class="seg" id="themeSeg">
-          <button data-th="ak" class="on">AK</button>
-          <button data-th="sp">SP</button>
-          <button data-th="rl">RL</button>
-        </div>
+    </div>
+    <div id="skinbar">
+      <div class="seg" id="themeSeg">
+        <button data-th="ak" class="on">AK</button>
+        <button data-th="sp">SP</button>
+        <button data-th="rl">RL</button>
       </div>
     </div>
   </div>
