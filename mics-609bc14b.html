@@ -91,6 +91,33 @@
   .pads:not(.cols8) .pad:nth-child(n+5):nth-child(-n+8){order:3;}
   .pads:not(.cols8) .pad:nth-child(n+9):nth-child(-n+12){order:2;}
   .pads:not(.cols8) .pad:nth-child(n+13){order:1;}
+
+  /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
+  #viewPads.split{
+    display:grid;
+    grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
+    grid-template-rows:auto auto 1fr;
+    grid-template-areas:
+      "pads strip"
+      "pads msbar"
+      "pads transport";
+    gap:14px 20px;
+    align-items:start;
+  }
+  #viewPads.split .strip{grid-area:strip;margin-bottom:0;}
+  #viewPads.split .msbar{grid-area:msbar;margin:0;}
+  #viewPads.split .pads{grid-area:pads;max-width:none;align-self:start;}
+  #viewPads.split .padTransport{grid-area:transport;align-self:end;display:flex;justify-content:flex-end;}
+  .padTransport{display:none;}
+  .padTransport .big-play{
+    width:100%;padding:18px 20px;font-size:15px;font-weight:700;letter-spacing:.18em;
+    border-radius:10px;border:1px solid var(--edge);cursor:pointer;text-transform:uppercase;
+    background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    box-shadow:0 4px 10px rgba(0,0,0,.4);transition:.08s;
+  }
+  .padTransport .big-play:active{transform:translateY(1px);}
+  .padTransport .big-play.on{background:linear-gradient(180deg,#5a2230,#3a1620);color:var(--red);border-color:var(--red);}
+
   .pad{
     position:relative;border-radius:9px;cursor:pointer;
     background:linear-gradient(180deg,var(--pad-face),var(--pad));
@@ -293,6 +320,11 @@
     .knob.mini{min-width:70px;max-width:120px;}
     .pads{max-width:100%;}
     .seg button{padding:5px 10px;font-size:10px;}
+    /* 狭い画面ではスプリットを解除して縦積みに */
+    #viewPads.split{display:block;}
+    #viewPads.split .strip{margin-bottom:16px;}
+    #viewPads.split .msbar{margin:14px 0;}
+    #viewPads.split .padTransport{margin-top:12px;}
   }
   @media(max-width:400px){
     body{padding:4px;}
@@ -424,6 +456,11 @@
 
       <!-- 16 pads (主役) -->
       <div class="pads cols8" id="pads"></div>
+
+      <!-- start/stop (S2400風・4×4スプリット時に右下表示) -->
+      <div class="padTransport" id="padTransport">
+        <button class="big-play" id="padPlay">▶ START</button>
+      </div>
 
       <!-- hidden legacy vol sync -->
       <input type="range" id="vol" min="-30" max="6" step="1" value="-4" style="display:none;">
@@ -1083,6 +1120,8 @@ const layoutSeg=document.getElementById("layoutSeg");
 layoutSeg.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   padsEl.classList.toggle("cols8", b.dataset.c==="8");
+  // 4×4のときだけS2400風スプリットに（右に波形/操作、右下にStart/Stop）
+  document.getElementById("viewPads").classList.toggle("split", b.dataset.c==="4");
   [...layoutSeg.children].forEach(x=>x.classList.toggle("on",x===b));
   if(typeof syncMixLayout==="function") syncMixLayout();
 });
@@ -1349,6 +1388,9 @@ playBtn.addEventListener("click",async()=>{
   playing=!playing;
   playBtn.classList.toggle("on",playing);
   playBtn.textContent=playing?"Stop":"Play";
+  // S2400風の右下START/STOPも同期
+  const pp=document.getElementById("padPlay");
+  if(pp){pp.classList.toggle("on",playing);pp.textContent=playing?"■ STOP":"▶ START";}
   if(playing){
     stepIdx=0; playStep=0; drawQueue.length=0; chainPos=0;
     barStartTime=AC.currentTime+0.05;
@@ -1359,6 +1401,7 @@ playBtn.addEventListener("click",async()=>{
     drawQueue.length=0; playStep=0; paintSteps();
   }
 });
+document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
 recBtn.addEventListener("click",()=>{recording=!recording;recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"Rec ●":"Rec";});
 document.getElementById("clear").addEventListener("click",()=>{getPattern(selected).fill(0);paintSteps();});
