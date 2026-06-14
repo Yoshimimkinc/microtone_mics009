@@ -55,6 +55,7 @@
   body.t-rl .step:nth-child(4n+1):not(.on){border-color:#ffb24d;}  /* 拍内4: 明オレンジ */
   /* skin切替：右上角の最上位に小さく配置（行を増やさない） */
   /* ケバブメニュー & モーダル（DADS dialog風） */
+  .tempo-row{display:contents;}   /* PCはインライン（透過） */
   .kebab{font-size:18px;line-height:1;padding:6px 11px;margin-left:auto;}
   .modal-backdrop{position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.55);
     display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -394,6 +395,10 @@
     .transport .ctrl{font-size:9px;}
     #bpm{max-width:84px;}
     .modebar-row{margin:8px 0 8px;gap:12px;}
+    /* TEMPO/SWINGは2行目に（スライダーを広く） */
+    .tempo-row{display:flex;flex-basis:100%;width:100%;order:2;gap:12px;align-items:center;margin-top:4px;}
+    .tempo-row .ctrl:first-child{flex:1;}
+    .tempo-row #bpm{flex:1;max-width:none;}
     /* Koala風：モードタブを全幅・均等に */
     .modebar-row .modebar{flex:1;width:100%;}
     .modebar .modebtn{flex:1;justify-content:center;padding-left:4px;padding-right:4px;letter-spacing:.12em;}
@@ -495,6 +500,7 @@
       <button class="t play" id="play">Play</button>
       <button class="t rec" id="rec">Rec</button>
       <button class="t" id="tap">Tap</button>
+      <div class="tempo-row">
       <div class="ctrl">Tempo
         <input type="range" id="bpm" min="60" max="180" step="0.5" value="100">
         <div class="readout" id="bpmRead">100.0</div>
@@ -509,6 +515,7 @@
           <option value="71">71%</option>
         </select>
         <span class="val" id="swingVal"></span>
+      </div>
       </div>
       <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog">⋮</button>
     </div>
