@@ -180,6 +180,7 @@
   .pat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
   .patbtn.on{background:var(--amber);color:#2a1405;}
+  .patbtn.playing{box-shadow:0 0 0 2px var(--teal);}  /* 現在再生中のパターンを外枠で */
   .pat-indicator{font-size:14px;font-weight:700;color:var(--teal);
     min-width:24px;text-align:center;padding:4px 8px;
     border:1px solid var(--teal);border-radius:5px;font-variant-numeric:tabular-nums;}
@@ -601,7 +602,6 @@
             <button data-len="3">3</button>
             <button data-len="4">4</button>
           </div>
-          <span class="pat-indicator" id="patPlay">A</span>
         </div>
         <div class="ctrl" style="font-size:10px;">行名クリックで試聴 · Shift+クリックでアクセント</div>
       </div>
@@ -1518,6 +1518,7 @@ playBtn.addEventListener("click",async()=>{
   } else {
     clearInterval(schedTimer); schedTimer=null;
     drawQueue.length=0; playStep=0; paintSteps();
+    clearPatIndicator();   // 停止したら再生中の外枠を消す
   }
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
@@ -1659,7 +1660,6 @@ setTimeout(lockViewHeight, 400);
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
 const chainSeg=document.getElementById("chainSeg");
-const patPlayEl=document.getElementById("patPlay");
 
 // パターン選択（編集対象）
 patSeg.addEventListener("click",e=>{
@@ -1674,9 +1674,12 @@ chainSeg.addEventListener("click",e=>{
   chainLen=+b.dataset.len;
   [...chainSeg.children].forEach(x=>x.classList.toggle("on",x===b));
 });
-// 再生中パターン表示更新
+// 再生中パターンは A/B/C/D ボタンの外枠で表示
 function updatePatIndicator(p){
-  patPlayEl.textContent=PAT_NAMES[p];
+  [...patSeg.children].forEach((b,j)=>b.classList.toggle("playing", j===p));
+}
+function clearPatIndicator(){
+  [...patSeg.children].forEach(b=>b.classList.remove("playing"));
 }
 
 // ---------- MIX view ----------
