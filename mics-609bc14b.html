@@ -209,8 +209,8 @@
     border:1px solid var(--teal);border-radius:5px;font-variant-numeric:tabular-nums;}
   /* MIX view - PADSと同じグリッド配置 */
   .mix-section{margin-bottom:24px;}
-  .mixer{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;}
-  .mixer.mix4{grid-template-columns:repeat(4,1fr);}
+  .mixer{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;}
+  .mixer.mix4{grid-template-columns:repeat(4,minmax(0,1fr));}
   /* MIXも行反転（PADSと一致） */
   .mixer:not(.mix4) .ch:nth-child(-n+8){order:2;}
   .mixer:not(.mix4) .ch:nth-child(n+9){order:1;}
@@ -308,7 +308,7 @@
   .view{display:none;}
   .view.active{display:block;}
   #viewSeq.active{overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:column;}
-  #viewMix.active{overflow-x:auto;overflow-y:auto;scrollbar-gutter:stable;}
+  #viewMix.active{overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;}
   /* mute / solo hold bar */
   .msbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
   .msbtn{
@@ -439,7 +439,7 @@
     .strip-ctrls .adv{display:none!important;}
     /* 自然な高さで詰める（パッドは正方形・伸ばさない＝はみ出さない）。長ければ普通に縦スクロール */
     #viewSeq.active{overflow-x:hidden;display:block;}
-    #viewMix.active{overflow-x:auto;display:block;}
+    #viewMix.active{overflow-x:hidden;display:block;}
     /* SEQヘッダの行数削減：ヒント省略・ラベル省略でPATTERN/BAR/DUPを1行に */
     .seq-hint{display:none;}
     .seq-head{gap:6px;margin-bottom:8px;}
