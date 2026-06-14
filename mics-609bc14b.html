@@ -245,7 +245,8 @@
     border-radius:4px;background:#1a1e23;border:1px solid var(--line);
     cursor:pointer;transition:.08s;position:relative;min-height:0;
   }
-  .step:nth-child(4n+2){border-left:2px solid #3a4149;}
+  /* 拍アタマ（1/5/9/13列）を明るくして縦ガイドに＝拍が見やすい */
+  .step:nth-child(4n+2){border-left:2px solid #4a525c;background:#2a313a;}
   .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
   .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
