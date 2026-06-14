@@ -65,3 +65,13 @@
 - No horizontal overflow (scrollbar-gutter stable)
 - Media queries for 600px and 400px breakpoints
 - SEQ/MIX horizontally scrollable on narrow screens
+
+### Video import (mobile)
+- LOAD accepts video files; audio extracted via decodeAudioData
+- iOS fallback: tap "▶ extract" to play the video and capture its audio in real time
+- Target pad is locked at the moment ▶ is pressed (selecting another pad mid-extraction no longer redirects it)
+
+## Backlog / 今後の課題
+- 範囲指定取り込み（動画/音声の任意区間だけを抽出して取り込む）。
+  現状は実時間再生で全長を取り込むため、長い素材は待ち時間と末尾トリムが必要。
+  抽出前に「何秒〜何秒」を指定できるUIを検討する。
