@@ -401,8 +401,15 @@
     .pads[data-bank="1"] .pad:nth-child(-n+8){display:none;}
     #layoutSeg{display:none!important;}
     #bankSeg{display:flex!important;}
-    /* SEQ: 横スクロールやめて画面幅に収め、正方形やめてタップしやすい高さに */
-    #viewSeq.active{overflow-x:hidden;display:block;}
+    /* 画面いっぱいに使う：パッドを下まで伸ばして余白を無くす */
+    .unit{min-height:calc(100dvh - 16px);display:flex;flex-direction:column;}
+    .body{display:flex;flex-direction:column;flex:1;min-height:0;}
+    #viewPads.active{flex:1;}
+    #viewPads>.pads{flex:1;min-height:0;grid-auto-rows:1fr;}
+    .pads .pad{aspect-ratio:auto!important;min-height:64px;}
+    /* SEQ/MIX：本体エリアいっぱい＋中身が高ければ縦スクロール */
+    #viewSeq.active{overflow-x:hidden;overflow-y:auto;flex:1;min-height:0;}
+    #viewMix.active{overflow-x:hidden;overflow-y:auto;flex:1;min-height:0;}
     .colnums,.grid{min-width:0;}
     .grid{flex:none;height:auto;}
     .row{flex:0 0 auto;}
