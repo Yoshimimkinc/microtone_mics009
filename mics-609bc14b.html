@@ -1435,10 +1435,13 @@ function effectiveSwing(){
 
 // SP的微細ドリフト（タイミング揺れ）
 // 実機はDAC/トリガーの遅延で±0.5ms程度のジッターがあったとされる
-const DRIFT_MS = 0.4;     // ±0.4ms（控えめ）
+const DRIFT_MS = 1.0;     // ±1ms（SP的な揺れ・やや増し）
 function driftSec(){
   return (Math.random()*2-1) * DRIFT_MS/1000;
 }
+// グルーヴ: 2拍/4拍のレイドバック ＋ 同時発音スタッガー（若い番号から先に、数msずつ後ろへ）
+const LAIDBACK_SEC = 0.012;   // 2拍4拍を後ろに（約12ms）
+const STAGGER_SEC  = 0.0025;  // 同時発音を1音ごとに後ろへ（約2.5ms）
 
 const LOOKAHEAD = 0.025;    // sec, how far ahead we schedule
 const INTERVAL = 25;        // ms timer
@@ -1448,11 +1451,13 @@ let barStartTime = 0;       // 現在のループの開始時刻（tick導出の
 
 function scheduleStep(stepNo, when){
   const hits=[];
+  let n=0;  // 同時発音のスタッガー順（若い番号＝Kick→Snare…から先に発音）
   for(let i=0;i<PADS.length;i++){
     const v=getPlayPattern(i)[stepNo];
-    if(v>0){
-      playVoice(i, when, v===2, true);
-      if(audible(i)) hits.push({pad:i, acc:v===2});
+    if(v>0 && audible(i)){
+      playVoice(i, when + n*STAGGER_SEC, v===2, true);
+      hits.push({pad:i, acc:v===2});
+      n++;
     }
   }
   drawQueue.push({step:stepNo, time:when, hits, pat:chainPos});
@@ -1462,7 +1467,9 @@ function scheduleStep(stepNo, when){
 function stepTimeClean(stepNo){
   const baseTick = stepNo * TICKS_PER_16TH;
   const swTicks = (stepNo%2===1) ? swingDelayTicks() : 0;
-  return barStartTime + (baseTick + swTicks) * tickDur();
+  let t = barStartTime + (baseTick + swTicks) * tickDur();
+  if(stepNo % 8 === 4) t += LAIDBACK_SEC;   // 2拍・4拍を少し後ろへ＝バックビートのレイドバック
+  return t;
 }
 
 function scheduler(){
