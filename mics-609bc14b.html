@@ -385,6 +385,12 @@
     .modebar-row{margin:8px 0 8px;gap:12px;}
     .modebtn{padding:6px 13px;font-size:10px;}
     .msbtn{padding:6px 9px;font-size:10px;}
+    /* DADS：タッチターゲット確保（要所は44px目安、稀用ボタンは詰めつつ最低限） */
+    .modebtn{min-height:44px;}
+    #patSeg button,#barSeg button,#bankSeg button,#layoutSeg button{min-height:40px;}
+    button.t,.msbtn,.loadbtn{min-height:34px;}
+    .toggle{min-height:34px;}
+    .seg button{min-height:34px;}
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
     .strip{padding:9px;}
     .wave-wrap{height:58px;}
@@ -1153,6 +1159,8 @@ PADS.forEach((p,i)=>{
   d.className="pad"+(i===selected?" sel":"");
   d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div>`;
   d.dataset.i=i;
+  d.setAttribute("role","button");
+  d.setAttribute("aria-label", p.name+" pad");
   d.addEventListener("pointerdown",async()=>{
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     if(AC.state!=="running")await AC.resume();
@@ -1166,7 +1174,7 @@ function flashPad(i){
 }
 function selectPad(i){
   selected=i;
-  [...padsEl.children].forEach((el,idx)=>el.classList.toggle("sel",idx===i));
+  [...padsEl.children].forEach((el,idx)=>{ el.classList.toggle("sel",idx===i); el.setAttribute("aria-current", idx===i?"true":"false"); });
   document.getElementById("trackName").textContent=String(i+1).padStart(2,"0")+" "+PADS[i].name;
   document.getElementById("vol").value=tracks[i].vol;
   document.getElementById("volVal").textContent=tracks[i].vol;
@@ -1827,7 +1835,7 @@ loadPresets().then(async ()=>{
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeMix")];
 function switchView(viewId){
-  modeBtns.forEach(b=>b.classList.toggle("on",b.dataset.view===viewId));
+  modeBtns.forEach(b=>{ const on=b.dataset.view===viewId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
   document.body.classList.toggle("mix-on", viewId==="viewMix");   // スマホ：MASTERをMIX時のみ表示
   if(viewId==="viewPads"){ drawWave(); drawAllPadWaves(); }
