@@ -646,7 +646,7 @@ const PADS = [
   {name:"CLAP", type:"synth", voice:"clap"},
   {name:"RIM",  type:"synth", voice:"rim"},
   {name:"TOM",  type:"synth", voice:"tom"},
-  {name:"PERC", type:"synth", voice:"perc"},
+  {name:"SINBASS", type:"synth", voice:"sinbass"},
   {name:"PAD 9", type:"empty"},
   {name:"PAD 10",type:"empty"},
   {name:"PAD 11",type:"empty"},
@@ -1070,6 +1070,14 @@ async function renderPreset(voice){
     const g2=off.createGain();g2.gain.value=0.18;o2.connect(g2);g2.connect(out);
     env(o,.001,.24,.6).connect(out);
     o.start(now);o2.start(now);o.stop(now+.32);o2.stop(now+.06);
+  } else if(voice==="sinbass"){
+    // サイン波ベース（C2≈65Hz基準）。音階モードでベースラインを打てる
+    const o=off.createOscillator();o.type="sine";
+    o.frequency.setValueAtTime(98,now);o.frequency.exponentialRampToValueAtTime(65.4,now+.05);  // 頭だけ少し上から落として太さを出す
+    const sub=off.createOscillator();sub.type="sine";sub.frequency.value=65.4;  // サブを薄く重ねる
+    const sg=off.createGain();sg.gain.value=0.3;sub.connect(sg);sg.connect(out);
+    env(o,.004,.5,.98).connect(out);
+    o.start(now);sub.start(now);o.stop(now+.6);sub.stop(now+.6);
   }
   const rendered = await off.startRendering();
   return rendered;
@@ -1723,7 +1731,7 @@ const DEFAULT_PROJECT = {
     {type:'synth', voice:'clap',  name:'CLAP',  patterns:[[0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0]]},
     {type:'synth', voice:'rim',   name:'RIM',   patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
     {type:'synth', voice:'tom',   name:'TOM',   patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
-    {type:'synth', voice:'perc',  name:'PERC',  patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
+    {type:'synth', voice:'sinbass', name:'SINBASS', scale:'chro', patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
   ]
 };
 loadPresets().then(async ()=>{
