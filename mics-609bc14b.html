@@ -231,19 +231,19 @@
   .colnums{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;margin-bottom:5px;min-width:500px;}
   .colnums .cn{font-size:9px;color:var(--dim);text-align:center;font-variant-numeric:tabular-nums;}
   .colnums .cn:nth-child(4n+2){color:var(--ink);}
-  .grid{display:flex;flex-direction:column;gap:4px;min-width:500px;}
-  .row{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;align-items:center;}
+  .grid{display:flex;flex-direction:column;gap:3px;min-width:500px;height:300px;}
+  .row{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;align-items:stretch;flex:1 1 0;min-height:0;}
   .row .rn{
     font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.02em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
-    padding:3px 6px;border:1px solid transparent;border-radius:4px;
+    padding:2px 6px;border:1px solid transparent;border-radius:4px;align-self:center;
   }
   .row .rn:hover{border-color:var(--line);}
   .row.sel .rn{color:var(--teal);border-color:var(--teal);}
   .row .rn b{color:var(--ink);}
   .step{
-    height:22px;border-radius:4px;background:#1a1e23;border:1px solid var(--line);
-    cursor:pointer;transition:.08s;position:relative;
+    border-radius:4px;background:#1a1e23;border:1px solid var(--line);
+    cursor:pointer;transition:.08s;position:relative;min-height:0;
   }
   .step:nth-child(4n+2){border-left:2px solid #3a4149;}
   .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
@@ -375,6 +375,8 @@
     /* SEQ: 横スクロールやめて画面幅に収め、正方形やめてタップしやすい高さに */
     #viewSeq.active{overflow-x:hidden;}
     .colnums,.grid{min-width:0;}
+    .grid{height:auto;}
+    .row{flex:0 0 auto;}
     .colnums,.row{grid-template-columns:32px repeat(16,1fr);gap:2px;}
     .step{height:30px;}
     .row .rn{font-size:8px;padding:2px 3px;}
