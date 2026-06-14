@@ -617,7 +617,6 @@
           </div>
         </div>
         <div class="melo-banner" id="meloBanner" style="display:none;">
-          <span id="meloLabel">♪</span>
           <button class="t" id="meloExit">← DRUMS</button>
         </div>
         <div class="ctrl" style="font-size:10px;">行名クリックで試聴 · Shift+クリックでアクセント</div>
@@ -868,10 +867,7 @@ function paintMelodic(){
 function refreshSeqMode(){
   melodicMode=isMelodic(selected);
   const banner=document.getElementById("meloBanner");
-  if(banner){
-    banner.style.display=melodicMode?"":"none";
-    if(melodicMode) document.getElementById("meloLabel").textContent="♪ "+(tracks[selected].name||PADS[selected].name)+" · "+tracks[selected].scale.toUpperCase();
-  }
+  if(banner) banner.style.display=melodicMode?"":"none";
   if(!melodicMode) setDrumRowLabels();
   paintSteps();
 }
