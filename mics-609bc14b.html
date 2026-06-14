@@ -2,7 +2,16 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- 検索エンジン除外（URLを知る人だけアクセス） -->
+<meta name="robots" content="noindex, nofollow">
+<!-- アプリ化（ホーム画面に追加でアドレスバーを完全に隠す） -->
+<meta name="theme-color" content="#121417">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="microtone">
+<link rel="manifest" href="manifest.json">
 <title>microtone - MICS009 beta v0.1</title>
 <style>
   :root{
@@ -1829,6 +1838,22 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
     alert("Load失敗: "+err.message);
   }
 });
+
+// ---------- フルスクリーン化（最初の操作でアドレスバーを隠す） ----------
+(function(){
+  let done=false;
+  function goFullscreen(){
+    if(done) return; done=true;
+    const el=document.documentElement;
+    const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
+    if(req){ try{ req.call(el); }catch(e){} }
+    window.removeEventListener("pointerdown",goFullscreen);
+    window.removeEventListener("keydown",goFullscreen);
+  }
+  // ブラウザ仕様上、自動ではなく「最初のユーザー操作」が必要
+  window.addEventListener("pointerdown",goFullscreen);
+  window.addEventListener("keydown",goFullscreen);
+})();
 </script>
 </body>
 </html>
