@@ -18,8 +18,8 @@ Built for live jam sessions — no install, just open and play.
 
 ## How to Use
 
-Open `index.html` in a browser (Chrome recommended).  
-Or visit: **https://yoshimimkinc.github.io/microtone_mics009/**
+Open `mics-609bc14b.html` in a browser (Chrome recommended).  
+Or visit (unlisted): **https://yoshimimkinc.github.io/microtone_mics009/mics-609bc14b.html**
 
 ### Quick Start
 
