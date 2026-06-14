@@ -168,8 +168,9 @@
     user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent;
   }
   .pad:active{transform:translateY(2px);}
-  .pad .n{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;}
-  .pad .nm{font-size:12px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;align-self:flex-start;}
+  .pad>.pad-wave{position:absolute;inset:0;width:100%;height:100%;opacity:.3;pointer-events:none;border-radius:9px;}
+  .pad .n{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;position:relative;z-index:1;}
+  .pad .nm{font-size:12px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;align-self:flex-start;position:relative;z-index:1;}
   .pad.sel{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
   .pad.hit{background:linear-gradient(180deg,var(--amber),#c25e22);
     box-shadow:0 0 18px rgba(255,138,61,.55);}
@@ -1050,7 +1051,7 @@ const padsEl = document.getElementById("pads");
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad"+(i===selected?" sel":"");
-  d.innerHTML=`<div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div>`;
   d.dataset.i=i;
   d.addEventListener("pointerdown",async()=>{
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
@@ -1149,6 +1150,7 @@ function copyPadSound(src,dst){
   // SEQ画面の行名も更新
   const rn=grid.children[dst].querySelector(".rn");
   if(rn) rn.innerHTML=`<b>${String(dst+1).padStart(2,"0")}</b> ${nm}`;
+  drawPadWave(dst);
 }
 
 // 次のアタックを検出（チョッピー用）：大きめのヒットだけを拾う
@@ -1243,6 +1245,7 @@ layoutSeg.addEventListener("click",e=>{
   [...layoutSeg.children].forEach(x=>x.classList.toggle("on",x===b));
   if(typeof syncMixLayout==="function") syncMixLayout();
   if(typeof lockViewHeight==="function") lockViewHeight();
+  if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
 
 // ---------- sample editor ----------
@@ -1251,6 +1254,34 @@ const waveWrap = document.getElementById("waveWrap");
 const wctx = waveCv.getContext("2d");
 const hStart=document.getElementById("hStart"), hEnd=document.getElementById("hEnd"), hLoop=document.getElementById("hLoop");
 const shadeL=document.getElementById("shadeL"), shadeR=document.getElementById("shadeR");
+
+// Koala風：各パッドに小さな波形を描く
+function drawPadWave(i){
+  const pad=padsEl.children[i]; if(!pad) return;
+  const cv=pad.querySelector(".pad-wave"); if(!cv) return;
+  const w=pad.clientWidth, h=pad.clientHeight;
+  if(!w||!h) return;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=w*dpr; cv.height=h*dpr;
+  const ctx=cv.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  const buf=tracks[i].buffer; if(!buf) return;
+  const data=buf.getChannelData(0);
+  const s=Math.floor((tracks[i].start||0)*data.length);
+  const e=Math.floor((tracks[i].end??1)*data.length);
+  const len=Math.max(1,e-s), bin=Math.max(1,Math.floor(len/w));
+  const mid=h/2;
+  ctx.strokeStyle=(getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8");
+  ctx.lineWidth=1; ctx.beginPath();
+  for(let x=0;x<w;x++){
+    let mn=1,mx=-1; const o=s+x*bin;
+    for(let k=0;k<bin;k++){ const v=data[o+k]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
+    ctx.moveTo(x+0.5, mid - mx*mid*0.92);
+    ctx.lineTo(x+0.5, mid - mn*mid*0.92);
+  }
+  ctx.stroke();
+}
+function drawAllPadWaves(){ for(let i=0;i<PADS.length;i++) drawPadWave(i); }
 
 function drawWave(){
   const t=tracks[selected];
@@ -1422,7 +1453,7 @@ function syncEditor(){
   [...filtSeg.children].forEach(x=>x.classList.toggle("on",x.dataset.f===t.filter));
   drawWave();
 }
-window.addEventListener("resize",()=>{ if(document.getElementById("viewPads").classList.contains("active")) drawWave(); });
+window.addEventListener("resize",()=>{ if(document.getElementById("viewPads").classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
 
 // ---------- transport (self-scheduling, lookahead) ----------
 let bpmVal = 100;
@@ -1592,6 +1623,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     document.getElementById("sampName").textContent=f.name;
     padsEl.children[selected].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
     if(typeof drawWave==="function") drawWave();
+    drawPadWave(selected);
   }catch(err){
     document.getElementById("sampName").textContent="読込失敗: "+err.message;
   }
@@ -1636,7 +1668,7 @@ const DEFAULT_PROJECT = {
 loadPresets().then(async ()=>{
   try{ await applyProject(DEFAULT_PROJECT); }catch(e){ console.warn("default project:", e); }
   document.getElementById("sampName").textContent="presets ready";
-  drawWave();
+  drawWave(); drawAllPadWaves();
 });
 
 // ---------- mode switch ----------
@@ -1644,7 +1676,7 @@ const modeBtns=[document.getElementById("modePads"),document.getElementById("mod
 function switchView(viewId){
   modeBtns.forEach(b=>b.classList.toggle("on",b.dataset.view===viewId));
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
-  if(viewId==="viewPads") drawWave();
+  if(viewId==="viewPads"){ drawWave(); drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
   if(viewId==="viewMix") paintMixer();
   lockViewHeight();
@@ -1910,6 +1942,7 @@ async function finalizeRec(){
     const nm="REC "+String(selected+1).padStart(2,"0");
     padsEl.children[selected].querySelector(".nm").textContent=nm;
     document.getElementById("sampName").textContent="Sampled! ("+((blob.size/1024)|0)+"KB)";
+    drawPadWave(selected);
     if(typeof syncEditor==="function") syncEditor();
   }catch(e){
     document.getElementById("sampName").textContent="デコード失敗: "+e.message;
@@ -2060,7 +2093,7 @@ async function applyProject(proj){
       if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${t.name}`;
     }
     editPat=0; editBar=0;
-    selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar();
+    selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves();
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
@@ -2078,6 +2111,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
   function apply(th){
     document.body.classList.remove("t-ak","t-sp","t-rl");
     document.body.classList.add("t-"+th);
+    if(typeof drawAllPadWaves==="function") drawAllPadWaves();
     [...seg.children].forEach(b=>b.classList.toggle("on",b.dataset.th===th));
     try{ localStorage.setItem(KEY,th); }catch(e){}
   }
