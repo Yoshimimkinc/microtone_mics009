@@ -1220,6 +1220,7 @@ layoutSeg.addEventListener("click",e=>{
   document.getElementById("viewPads").classList.toggle("split", b.dataset.c==="4");
   [...layoutSeg.children].forEach(x=>x.classList.toggle("on",x===b));
   if(typeof syncMixLayout==="function") syncMixLayout();
+  if(typeof lockViewHeight==="function") lockViewHeight();
 });
 
 // ---------- sample editor ----------
@@ -1594,8 +1595,27 @@ function switchView(viewId){
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
   if(viewId==="viewPads") drawWave();
   if(viewId==="viewMix") paintMixer();
+  lockViewHeight();
 }
 modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
+
+// ---------- 切替で高さが変わらないよう、PADSの高さに統一（PC） ----------
+let refViewH = 0;
+function lockViewHeight(){
+  const body=document.querySelector(".body");
+  const vp=document.getElementById("viewPads"), vs=document.getElementById("viewSeq"), grid=document.getElementById("grid");
+  if(!body||!grid) return;
+  if(window.innerWidth<=600){ body.style.minHeight=""; grid.style.height=""; return; } // スマホは固定しない
+  if(vp.classList.contains("active")) refViewH = vp.offsetHeight;   // PADSを基準に測る
+  if(refViewH) body.style.minHeight = refViewH+"px";                // どのビューも基準高さを維持＝縮まない
+  if(refViewH && vs.classList.contains("active")){                  // SEQはグリッドを縮めて基準内に収める＝伸びない
+    const other = vs.offsetHeight - grid.offsetHeight;
+    grid.style.height = Math.max(140, refViewH - other) + "px";
+  }
+}
+window.addEventListener("resize", lockViewHeight);
+window.addEventListener("load", lockViewHeight);
+setTimeout(lockViewHeight, 400);
 
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
