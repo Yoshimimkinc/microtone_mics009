@@ -744,6 +744,45 @@ async function decodeAudio(arr){
   try{ return await AC.decodeAudioData(arr.slice(0)); }
   catch(e){ return await new Promise((res,rej)=>AC.decodeAudioData(arr.slice(0),res,rej)); }
 }
+// バッファが実質無音か判定（iOSのdecodeAudioDataが動画から無音だけ返すケースの検出用）
+function isSilent(buf){
+  if(!buf || !buf.length) return true;
+  const d=buf.getChannelData(0);
+  const stride=Math.max(1,Math.floor(d.length/4000));   // 間引いて高速チェック
+  for(let i=0;i<d.length;i+=stride){ if(Math.abs(d[i])>0.0009) return false; }
+  return true;
+}
+// iOS等でdecodeAudioDataが動画の音声を取り出せない場合の保険：
+// 動画を実時間再生しながらWeb Audioで録音→その音声をデコードして抽出する。
+function extractViaPlayback(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file);
+    const cleanup=()=>{ try{URL.revokeObjectURL(url);}catch(_){}};
+    const v=document.createElement("video");
+    v.src=url; v.playsInline=true; v.preload="auto"; v.muted=true;
+    v.onerror=()=>{ cleanup(); reject(new Error("動画を再生できません")); };
+    v.onloadedmetadata=()=>{
+      let src,dest,rec;
+      try{
+        src=AC.createMediaElementSource(v);
+        dest=AC.createMediaStreamDestination();
+        src.connect(dest);                 // スピーカーには出さず録音先のみへ
+        rec=new MediaRecorder(dest.stream);
+      }catch(err){ cleanup(); reject(err); return; }
+      const chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
+      rec.onstop=async()=>{
+        cleanup();
+        try{ resolve(await decodeAudio(await new Blob(chunks).arrayBuffer())); }
+        catch(err){ reject(err); }
+      };
+      v.onended=()=>{ try{ if(rec.state!=="inactive") rec.stop(); }catch(_){} };
+      try{ rec.start(); }catch(err){ cleanup(); reject(err); return; }
+      v.play().then(()=>{ v.muted=false; })   // 再生開始後にミュート解除（グラフへ音声を流す）
+        .catch(()=>{ try{rec.stop();}catch(_){} cleanup(); reject(new Error("再生できません（一度画面をタップしてから試して）")); });
+    };
+  });
+}
 const masterGain = AC.createGain();
 masterGain.gain.value = 0.9;
 
@@ -1900,8 +1939,13 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
   try{
     const arr = await f.arrayBuffer();
     if(!arr || !arr.byteLength) throw new Error("データを読めません（DL未完了？）");
-    const buf = await decodeAudio(arr);
-    if(!buf || !buf.length) throw new Error("音声を抽出できません（非対応の動画形式かも）");
+    let buf = await decodeAudio(arr);
+    // iOS等はdecodeAudioDataが動画から無音だけ返すことがある→実時間再生で録音抽出
+    if(isSilent(buf)){
+      sampNameEl.textContent="音声を抽出中…（動画の長さぶん待ってね）";
+      buf = await extractViaPlayback(f);
+    }
+    if(isSilent(buf)) throw new Error("音声を抽出できません（非対応の動画形式かも）");
     pushUndo();
     tracks[selected].rawBuffer = buf;
     tracks[selected].buffer = makeLofi(buf);
