@@ -62,7 +62,7 @@
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;overflow-x:hidden;}
   /* スマホ：ダブルタップ拡大/文字自動拡大/長押しメニューを抑止 */
-  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable;}
   button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t{touch-action:manipulation;}
   body{-webkit-touch-callout:none;}
   body{
@@ -83,10 +83,10 @@
     padding:20px 22px 24px;
   }
   /* 全画面：背景を敷き、中身を上下中央に（はみ出す時は上から＝クリップしない） */
-  html:fullscreen{background:#000;overflow-y:auto;}
+  html:fullscreen{background:#000;overflow-y:auto;scrollbar-gutter:auto;}
   html:fullscreen body{display:flex;flex-direction:column;min-height:100vh;}
   html:fullscreen .unit{margin-top:auto;margin-bottom:auto;}
-  html:-webkit-full-screen{background:#000;overflow-y:auto;}
+  html:-webkit-full-screen{background:#000;overflow-y:auto;scrollbar-gutter:auto;}
   html:-webkit-full-screen body{display:flex;flex-direction:column;min-height:100vh;}
   html:-webkit-full-screen .unit{margin-top:auto;margin-bottom:auto;}
   /* header / silkscreen */
@@ -242,10 +242,10 @@
     cursor:pointer;transition:.08s;position:relative;min-height:0;
   }
   /* 全モード共通：16ステップを4グループの灰色グラデで可視化（OFFガイド。ONはテーマ色） */
-  .step:not(.on){background:#15171b;}                                   /* 1-4: 黒 */
-  .step:nth-child(n+6):nth-child(-n+9):not(.on){background:#2f353d;}    /* 5-8: 灰 */
-  .step:nth-child(n+10):nth-child(-n+13):not(.on){background:#49515b;}  /* 9-12: 少し明るい灰 */
-  .step:nth-child(n+14):not(.on){background:#69717c;}                   /* 13-16: 明るい灰 */
+  .step:not(.on){background:#1c2027;}                                   /* 1-4: 暗 */
+  .step:nth-child(n+6):nth-child(-n+9):not(.on){background:#383f49;}    /* 5-8: やや明 */
+  .step:nth-child(n+10):nth-child(-n+13):not(.on){background:#545e6a;}  /* 9-12: 明 */
+  .step:nth-child(n+14):not(.on){background:#707b88;}                   /* 13-16: 明るい灰 */
   .step:nth-child(4n+2){border-left:2px solid #4a525c;}                 /* 4つ割りの区切り線 */
   .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
@@ -275,7 +275,7 @@
   .view{display:none;}
   .view.active{display:block;}
   #viewSeq.active{overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:column;}
-  #viewMix.active{overflow-x:auto;overflow-y:auto;}
+  #viewMix.active{overflow-x:auto;overflow-y:auto;scrollbar-gutter:stable;}
   /* mute / solo hold bar */
   .msbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
   .msbtn{
