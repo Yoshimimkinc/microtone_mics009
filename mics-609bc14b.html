@@ -1132,6 +1132,7 @@ async function loadPresets(){
 
 // ---------- UI build ----------
 const padsEl = document.getElementById("pads");
+const mixerEl = document.getElementById("mixer");   // 早期宣言でsyncMixLayout等のTDZを回避
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad"+(i===selected?" sel":"");
@@ -1895,7 +1896,7 @@ function paintPatBar(){
 }
 
 // ---------- MIX view ----------
-const mixerEl=document.getElementById("mixer");
+// mixerEl は早期宣言済み（TDZ回避）
 const chEls=[];  // {fader, val, el, nm, vu, mBtn, sBtn}
 const vuLevels=new Float32Array(PADS.length);   // 0..1 各chのVU値
 let masterVuLevel=0;
