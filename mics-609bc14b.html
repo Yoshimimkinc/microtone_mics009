@@ -1726,16 +1726,17 @@ function vuHit(padIdx, accent){
 const masterVuEl=document.getElementById("masterVu");
 function vuLoop(){
   const mixActive=document.getElementById("viewMix").classList.contains("active");
-  if(mixActive){
+  if(mixActive){   // chフェーダーのVUは隠れてる時は更新不要
     for(let i=0;i<PADS.length;i++){
       const h=Math.round(vuLevels[i]*100);
       chEls[i].vu.style.height=h+"%";
       chEls[i].vu.classList.toggle("peak",vuLevels[i]>0.85);
     }
-    const mw=Math.round(masterVuLevel*100);
-    masterVuEl.style.width=mw+"%";
-    masterVuEl.classList.toggle("peak",masterVuLevel>0.85);
   }
+  // マスターVUは常時表示なので常に更新
+  const mw=Math.round(masterVuLevel*100);
+  masterVuEl.style.width=mw+"%";
+  masterVuEl.classList.toggle("peak",masterVuLevel>0.85);
   // ディケイ
   for(let i=0;i<PADS.length;i++) vuLevels[i]*=0.88;
   masterVuLevel*=0.92;
