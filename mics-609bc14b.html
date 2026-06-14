@@ -803,6 +803,7 @@ const tracks = PADS.map((p,i)=>({
   patterns:Array.from({length:4},()=>Array.from({length:4},()=>new Array(STEPS).fill(0))),
   vol:-4,            // dB
   scale:"off",       // 音階モード: off / chro / maj / min / pent
+  loopPlaying:false, // ループ系のトグル状態（ON/OFF交互）
   buffer:null,       // AudioBuffer (12bit-processed; preset or loaded sample)
   rawBuffer:null,    // 加工前バッファ（再12bit化や設定変更時の元）
   tune:0,            // semitones
@@ -850,7 +851,6 @@ function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) l
 const SCALES={ maj:[0,2,4,5,7,9,11], min:[0,2,3,5,7,8,10], pent:[0,3,5,7,10] };  // chroは半音=idx
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let melodicMode=false;   // 選択中パッドが音階モードか（SEQ盤面の表示を切替）
-let previewPitch=null;   // SEQ音階プレビューで今鳴らしてる音程（再クリックで止める判定用）
 function isMelodic(i){ return !!(tracks[i] && tracks[i].scale && tracks[i].scale!=="off"); }
 function scaleSemi(sc, idx){ if(sc==="chro"||!SCALES[sc]) return idx; const a=SCALES[sc]; return Math.floor(idx/a.length)*12 + a[idx%a.length]; }
 function noteLabel(sc, idx){ const s=scaleSemi(sc,idx); return NOTE_NAMES[((s%12)+12)%12]+Math.floor(s/12); }
@@ -1012,9 +1012,10 @@ function playVoice(i, when, accent, fromSeq, noteSemi){
 function trigger(i, time, accent=false){
   if(AC.state!=="running") AC.resume();
   const t=tracks[i];
-  // ループ中のパッドは、もう一度叩くと止まる（手叩きのみ・トグル）
-  if(time==null && t.loop && t.activeVoices && t.activeVoices.length>0){
-    stopVoices(t, AC.currentTime); flashPad(i); return;
+  // ループ系は手叩きでトグル（ON→OFF→ON…）。発音中のトリガで止める＝短いノートも作れる
+  if(time==null && t.loop){
+    if(t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; flashPad(i); return; }
+    t.loopPlaying=true;
   }
   const when = (time!=null) ? time : AC.currentTime;
   playVoice(i, when, accent, false);
@@ -1167,12 +1168,8 @@ PADS.forEach((p,i)=>{
     if(AC.state!=="running")await AC.resume();
     if(melodicMode){
       const pitchIdx=(PADS.length-1)-i, sel=selected, t=tracks[sel];
-      if(t.loop && t.activeVoices && t.activeVoices.length>0 && previewPitch===pitchIdx){
-        stopVoices(t, AC.currentTime); previewPitch=null;   // 同じ音を再クリック＝止まる
-      } else {
-        playVoice(sel, AC.currentTime, false, false, scaleSemi(t.scale, pitchIdx));
-        previewPitch=pitchIdx;   // 違う音ならモノで鳴り替え（再クリックで止まる）
-      }
+      if(t.loop && t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; }   // 発音中の再トリガ＝止まる
+      else { playVoice(sel, AC.currentTime, false, false, scaleSemi(t.scale, pitchIdx)); if(t.loop) t.loopPlaying=true; }
     }
     else { trigger(i); selectPad(i); }
   });
@@ -1593,10 +1590,16 @@ function scheduleStep(stepNo, when){
   for(let i=0;i<PADS.length;i++){
     const v=getPlayPattern(i)[stepNo];
     if(v>0 && audible(i)){
-      if(isMelodic(i)) playVoice(i, when + n*stg, false, true, scaleSemi(tracks[i].scale, v-1));  // v=音程(1〜)
-      else playVoice(i, when + n*stg, v===2, true);
-      hits.push({pad:i, acc:isMelodic(i)?false:v===2});
-      n++;
+      const t=tracks[i];
+      if(t.loop){
+        // ループ系はシーケンス上でトグル：トリガが来るたびに ON→OFF→ON…（負荷もかからない）
+        if(t.loopPlaying){ stopVoices(t, when); t.loopPlaying=false; }
+        else { playVoice(i, when + n*stg, false, true, isMelodic(i)?scaleSemi(t.scale, v-1):0); t.loopPlaying=true; hits.push({pad:i, acc:false}); n++; }
+      } else {
+        if(isMelodic(i)) playVoice(i, when + n*stg, false, true, scaleSemi(t.scale, v-1));
+        else playVoice(i, when + n*stg, v===2, true);
+        hits.push({pad:i, acc:isMelodic(i)?false:v===2}); n++;
+      }
     }
   }
   drawQueue.push({step:stepNo, time:when, hits, pat:playPat, bar:playBar});
@@ -1652,6 +1655,7 @@ playBtn.addEventListener("click",async()=>{
   if(playing){
     stepIdx=0; playStep=0; drawQueue.length=0;
     playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
+    tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
     barStartTime=AC.currentTime+0.05;
     schedTimer=setInterval(scheduler, INTERVAL);
     requestAnimationFrame(drawLoop);
@@ -1659,7 +1663,7 @@ playBtn.addEventListener("click",async()=>{
     clearInterval(schedTimer); schedTimer=null;
     drawQueue.length=0; playStep=0; paintSteps();
     clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
-    tracks.forEach(t=>stopVoices(t, AC.currentTime));   // ループ音を鳴らしっぱなしにしない
+    tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
   }
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
