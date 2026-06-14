@@ -394,6 +394,10 @@
   #splash .s-logo{font-size:clamp(34px,9vw,52px);letter-spacing:.01em;color:var(--ink);font-weight:600;}
   #splash .s-logo b{color:var(--amber);font-weight:800;}
   #splash .s-model{font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;}
+  #splash .s-ver{font-size:10px;letter-spacing:.2em;color:var(--dim);margin-top:3px;}
+  #splash .s-update{margin-top:16px;font-size:11px;letter-spacing:.12em;color:#fff;
+    background:var(--amber);border:none;border-radius:6px;padding:9px 15px;cursor:pointer;
+    text-transform:uppercase;animation:spblink 1.2s ease-in-out infinite;}
   #splash .s-prompt{margin-top:34px;font-size:13px;letter-spacing:.34em;color:var(--teal);
     text-transform:uppercase;animation:spblink 1.4s ease-in-out infinite;}
   @keyframes spblink{0%,100%{opacity:.35}50%{opacity:1}}
@@ -405,6 +409,8 @@
 <div id="splash">
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
+  <button class="s-update" id="splashUpdate" style="display:none">● NEW VERSION</button>
+  <div class="s-ver" id="splashVer">v0.1.0</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1975,6 +1981,24 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
   seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) apply(b.dataset.th); });
   let saved="ak"; try{ saved=localStorage.getItem(KEY)||"ak"; }catch(e){}
   apply(saved);
+})();
+
+// ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
+const APP_VERSION = "0.1.0";
+(function(){
+  const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
+  if(verEl) verEl.textContent="v"+APP_VERSION;
+  // 更新ボタンのタップはスプラッシュ起動に伝播させず、リロードで最新取得
+  if(upEl) upEl.addEventListener("pointerdown",e=>{ e.stopPropagation(); location.reload(); });
+  // 同じ場所のversion.jsonを取得して比較（ローカルfile://やオフライン時は黙って無視）
+  fetch("version.json?ts="+Date.now(),{cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(d=>{
+      if(d && d.version && d.version!==APP_VERSION && upEl){
+        upEl.textContent="● NEW v"+d.version+" — TAP TO UPDATE";
+        upEl.style.display="";
+      }
+    }).catch(()=>{});
 })();
 
 // ---------- スプラッシュ → 最初のタップで全画面＋音声起動 ----------
