@@ -60,6 +60,9 @@
   #skinbar::before{content:"SKIN";font-size:8px;letter-spacing:.18em;color:var(--dim);}
   #skinbar .seg button{padding:4px 7px;font-size:9px;}
   *{box-sizing:border-box;margin:0;padding:0;}
+  /* DADS準拠：キーボードフォーカスを明確に可視化（マウス操作時は出さない）。色はテーマのアクセント */
+  :focus-visible{ outline:3px solid var(--teal)!important; outline-offset:2px; border-radius:3px; }
+  :focus:not(:focus-visible){ outline:none; }
   html,body{height:100%;overflow-x:hidden;}
   /* スマホ：ダブルタップ拡大/文字自動拡大/長押しメニューを抑止 */
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable;}
