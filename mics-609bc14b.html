@@ -223,6 +223,14 @@
   .master-section{border-top:1px solid var(--line);padding-top:18px;}
   .master-ctrls{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;}
   .master-ctrls .knob{flex:1 1 120px;max-width:180px;}
+  /* MASTER OUTPUT をモード切替ボタンの横に常設（横並び・コンパクト） */
+  .modebar-row{display:flex;align-items:center;gap:20px;margin:16px 0 20px;flex-wrap:wrap;}
+  .modebar-row .modebar{margin:0;}
+  .master-bar{flex:1 1 380px;min-width:260px;display:flex;align-items:center;gap:14px;
+    border-left:1px solid var(--line);padding-left:16px;}
+  .master-bar .master-vu-wrap{flex:0 0 70px;width:70px;margin-top:0;}
+  .master-bar .master-ctrls{flex:1;gap:14px;align-items:center;margin:0;}
+  .master-bar .master-ctrls .knob{flex:1 1 70px;max-width:150px;}
   .track-name{font-size:13px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;}
   .colnums{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;margin-bottom:5px;min-width:500px;}
   .colnums .cn{font-size:9px;color:var(--dim);text-align:center;font-variant-numeric:tabular-nums;}
@@ -369,6 +377,8 @@
     /* 狭い画面ではskinを通常配置にして重なり回避 */
     .transport{padding-right:0;}
     #skinbar{position:static;margin-left:auto;}
+    /* masterは下に回して全幅 */
+    .master-bar{border-left:none;padding-left:0;flex-basis:100%;}
     /* 狭い画面ではスプリットを解除して縦積みに */
     #viewPads.split.active{display:block;}
     #viewPads.split .strip{margin-bottom:16px;}
@@ -463,10 +473,24 @@
     </div>
   </div>
 
-  <div class="modebar">
-    <button class="modebtn on" id="modePads" data-view="viewPads"><span class="led"></span>Pads</button>
-    <button class="modebtn" id="modeSeq" data-view="viewSeq"><span class="led"></span>Seq</button>
-    <button class="modebtn" id="modeMix" data-view="viewMix"><span class="led"></span>Mix</button>
+  <div class="modebar-row">
+    <div class="modebar">
+      <button class="modebtn on" id="modePads" data-view="viewPads"><span class="led"></span>Pads</button>
+      <button class="modebtn" id="modeSeq" data-view="viewSeq"><span class="led"></span>Seq</button>
+      <button class="modebtn" id="modeMix" data-view="viewMix"><span class="led"></span>Mix</button>
+    </div>
+    <div class="master-bar" id="masterBar">
+      <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
+      <div class="master-ctrls">
+        <div class="knob"><label>Master <span class="v" id="vMaster">0 dB</span></label>
+          <input type="range" id="kMaster" min="-30" max="6" step="1" value="0"></div>
+        <label class="toggle on" id="compToggle"><span class="sw"></span><span>COMP</span></label>
+        <div class="knob"><label>Threshold <span class="v" id="vComp">-12</span></label>
+          <input type="range" id="kComp" min="-30" max="0" step="1" value="-12"></div>
+        <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
+          <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
+      </div>
+    </div>
   </div>
 
   <div class="body">
@@ -590,19 +614,6 @@
       <div class="mix-section">
         <div class="label">Channel levels</div>
         <div class="mixer" id="mixer"></div>
-      </div>
-      <div class="mix-section master-section">
-        <div class="label">Master output</div>
-        <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
-        <div class="master-ctrls">
-          <div class="knob"><label>Master <span class="v" id="vMaster">0 dB</span></label>
-            <input type="range" id="kMaster" min="-30" max="6" step="1" value="0"></div>
-          <label class="toggle on" id="compToggle"><span class="sw"></span><span>COMP</span></label>
-          <div class="knob"><label>Threshold <span class="v" id="vComp">-12</span></label>
-            <input type="range" id="kComp" min="-30" max="0" step="1" value="-12"></div>
-          <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
-            <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
-        </div>
       </div>
     </div>
   </div>
