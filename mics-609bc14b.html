@@ -29,6 +29,16 @@
     --pad:#2b3038;
     --pad-face:#343b44;
   }
+  /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL） ===== */
+  /* Akai MPC風：漆黒 + AKAI RED + 緑LCD */
+  body.t-ak{--bg:#0a0b0d;--panel:#141518;--panel2:#1d1f23;--edge:#040405;--line:#2b2e34;
+    --ink:#ece9e2;--dim:#797e86;--amber:#e0222c;--amber-dim:#5a141a;--teal:#5fe08a;--pad:#1c1e23;--pad-face:#262a30;}
+  /* E-mu SP-1200風：暖色ヴィンテージ + 青LCD */
+  body.t-sp{--bg:#171410;--panel:#2a251c;--panel2:#352f24;--edge:#0d0b08;--line:#473f30;
+    --ink:#ece1c8;--dim:#9a8f78;--amber:#e8b54a;--amber-dim:#6e5320;--teal:#52b9d6;--pad:#2e2820;--pad-face:#3b3428;}
+  /* Roland TR-808風：チャコール + オレンジ + 黄アクセント */
+  body.t-rl{--bg:#25282c;--panel:#2f3338;--panel2:#3a3f45;--edge:#141619;--line:#474d56;
+    --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#363b42;--pad-face:#424852;}
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;overflow-x:hidden;}
   body{
@@ -395,6 +405,13 @@
           <option value="71">71%</option>
         </select>
         <span class="val" id="swingVal"></span>
+      </div>
+      <div class="ctrl">Skin
+        <div class="seg" id="themeSeg">
+          <button data-th="ak" class="on">AK</button>
+          <button data-th="sp">SP</button>
+          <button data-th="rl">RL</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1909,6 +1926,20 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
     alert("Load失敗: "+err.message);
   }
 });
+
+// ---------- skin（AK / SP / RL）テーマ切替・選択を記憶 ----------
+(function(){
+  const seg=document.getElementById("themeSeg"), KEY="mics-skin";
+  function apply(th){
+    document.body.classList.remove("t-ak","t-sp","t-rl");
+    document.body.classList.add("t-"+th);
+    [...seg.children].forEach(b=>b.classList.toggle("on",b.dataset.th===th));
+    try{ localStorage.setItem(KEY,th); }catch(e){}
+  }
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) apply(b.dataset.th); });
+  let saved="ak"; try{ saved=localStorage.getItem(KEY)||"ak"; }catch(e){}
+  apply(saved);
+})();
 
 // ---------- スプラッシュ → 最初のタップで全画面＋音声起動 ----------
 // （ブラウザ仕様上、全画面化には必ず1回のユーザー操作が必要。
