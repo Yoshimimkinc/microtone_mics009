@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <!-- 検索エンジン除外（URLを知る人だけアクセス） -->
 <meta name="robots" content="noindex, nofollow">
 <!-- アプリ化（ホーム画面に追加でアドレスバーを完全に隠す） -->
@@ -65,6 +65,10 @@
   #skinbar .seg button{padding:4px 7px;font-size:9px;}
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;overflow-x:hidden;}
+  /* スマホ：ダブルタップ拡大/文字自動拡大/長押しメニューを抑止 */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t{touch-action:manipulation;}
+  body{-webkit-touch-callout:none;}
   body{
     background:#000;  /* アプリ外側（周りの余白）は常に黒 */
     color:var(--ink);
@@ -83,10 +87,10 @@
     padding:20px 22px 24px;
   }
   /* 全画面：背景を敷き、中身を上下中央に（はみ出す時は上から＝クリップしない） */
-  html:fullscreen{background:#000;}
+  html:fullscreen{background:#000;overflow-y:auto;}
   html:fullscreen body{display:flex;flex-direction:column;min-height:100vh;}
   html:fullscreen .unit{margin-top:auto;margin-bottom:auto;}
-  html:-webkit-full-screen{background:#000;}
+  html:-webkit-full-screen{background:#000;overflow-y:auto;}
   html:-webkit-full-screen body{display:flex;flex-direction:column;min-height:100vh;}
   html:-webkit-full-screen .unit{margin-top:auto;margin-bottom:auto;}
   /* header / silkscreen */
@@ -679,8 +683,14 @@ hissNode.buffer = hissBuf; hissNode.loop = true;
 const hissHp = AC.createBiquadFilter();
 hissHp.type = "highpass"; hissHp.frequency.value = 4000;
 const hissGain = AC.createGain();
-hissGain.gain.value = 0.0008;  // 約-62dB（静寂時にかすかに感じる程度）
-hissNode.connect(hissHp); hissHp.connect(hissGain);
+// スマホは小型スピーカーが高域を強調＆音量も小さめでヒスが目立つため大幅に下げる
+const isMobileHiss = (window.matchMedia && matchMedia("(pointer:coarse)").matches)
+                     || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||"");
+hissGain.gain.value = isMobileHiss ? 0.0002 : 0.0006;
+// 耳障りな最上部を少し丸める（特にスマホで効く）
+const hissLp = AC.createBiquadFilter();
+hissLp.type = "lowpass"; hissLp.frequency.value = 8500;
+hissNode.connect(hissHp); hissHp.connect(hissLp); hissLp.connect(hissGain);
 hissGain.connect(AC.destination);
 hissNode.start();
 
