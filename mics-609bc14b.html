@@ -1632,6 +1632,7 @@ function switchView(viewId){
   modeBtns.forEach(b=>b.classList.toggle("on",b.dataset.view===viewId));
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
   if(viewId==="viewPads") drawWave();
+  if(viewId==="viewSeq") paintSteps();
   if(viewId==="viewMix") paintMixer();
   lockViewHeight();
 }
