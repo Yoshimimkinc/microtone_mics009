@@ -1944,13 +1944,13 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     if(!arr || !arr.byteLength) throw new Error("arrayBuffer空: "+dbg.join(" "));
     let buf=null, decErr="";
     try{ buf = await decodeAudio(arr); }
-    catch(de){ decErr=de.message||String(de); }
+    catch(de){ decErr=(de&&de.message)?de.message:String(de); }   // iOSはnullでrejectすることがある
     dbg.push(buf?("decode="+buf.length+"smp/"+buf.duration.toFixed(1)+"s/silent="+isSilent(buf)):("decodeNG:"+decErr));
     // decode失敗 or 無音 → 実時間再生で録音抽出にフォールバック
     if(isSilent(buf)){
       show("音声抽出中…(動画の長さぶん待つ) "+dbg.join(" "));
       try{ buf = await extractViaPlayback(f); dbg.push("play="+(buf?buf.length+"smp/silent="+isSilent(buf):"null")); }
-      catch(pe){ dbg.push("playNG:"+(pe.message||pe)); buf=null; }
+      catch(pe){ dbg.push("playNG:"+((pe&&pe.message)?pe.message:String(pe))); buf=null; }
     }
     if(isSilent(buf)) throw new Error("抽出不可 "+dbg.join(" "));
     pushUndo();
@@ -1965,8 +1965,9 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     if(typeof drawWave==="function") drawWave();
     drawPadWave(selected);
   }catch(err){
-    show("✕ "+(err.message||err));
-    try{ alert("取り込み診断:\n"+(err.message||err)); }catch(_){}
+    const m=(err&&err.message)?err.message:String(err);
+    show("✕ "+m);
+    try{ alert("取り込み診断:\n"+m); }catch(_){}
   }
 });
 
