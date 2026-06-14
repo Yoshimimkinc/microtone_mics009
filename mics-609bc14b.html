@@ -1010,6 +1010,11 @@ function playVoice(i, when, accent, fromSeq, noteSemi){
 // ---------- trigger (UI/seq 共通入口) ----------
 function trigger(i, time, accent=false){
   if(AC.state!=="running") AC.resume();
+  const t=tracks[i];
+  // ループ中のパッドは、もう一度叩くと止まる（手叩きのみ・トグル）
+  if(time==null && t.loop && t.activeVoices && t.activeVoices.length>0){
+    stopVoices(t, AC.currentTime); flashPad(i); return;
+  }
   const when = (time!=null) ? time : AC.currentTime;
   playVoice(i, when, accent, false);
   flashPad(i);
@@ -1159,7 +1164,7 @@ PADS.forEach((p,i)=>{
   rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${p.name}`;
   rn.addEventListener("click",async()=>{
     if(AC.state!=="running")await AC.resume();
-    if(melodicMode){ const pitchIdx=(PADS.length-1)-i; playVoice(selected, AC.currentTime, false, false, scaleSemi(tracks[selected].scale, pitchIdx)); }  // 音階モードは音程プレビュー
+    if(melodicMode){ const pitchIdx=(PADS.length-1)-i, sel=selected; playVoice(sel, AC.currentTime, false, false, scaleSemi(tracks[sel].scale, pitchIdx)); if(tracks[sel].loop) setTimeout(()=>stopVoices(tracks[sel], AC.currentTime), 800); }  // 音程プレビュー（ループはドローンさせない）
     else { trigger(i); selectPad(i); }
   });
   row.appendChild(rn);
@@ -1645,6 +1650,7 @@ playBtn.addEventListener("click",async()=>{
     clearInterval(schedTimer); schedTimer=null;
     drawQueue.length=0; playStep=0; paintSteps();
     clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
+    tracks.forEach(t=>stopVoices(t, AC.currentTime));   // ループ音を鳴らしっぱなしにしない
   }
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
