@@ -335,9 +335,9 @@
   .pad.soloed::after{content:"S";position:absolute;top:7px;right:9px;font-size:11px;color:var(--teal);font-weight:700;}
   /* Koala-style waveform strip */
   .strip{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:12px 14px;margin-bottom:16px;}
-  .strip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .strip-head .who{font-size:14px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;}
-  .strip-actions{display:flex;align-items:center;gap:10px;}
+  .strip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;min-width:0;}
+  .strip-head .who{font-size:14px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;}
+  .strip-actions{display:flex;align-items:center;gap:10px;min-width:0;}
   .loadbtn{color:var(--teal);cursor:pointer;font-size:11px;letter-spacing:.14em;
     border:1px solid var(--line);padding:5px 12px;border-radius:5px;}
   .loadbtn:hover{border-color:var(--teal);}
@@ -580,7 +580,7 @@
         <div class="strip-head">
           <div class="who" id="edWho">01 KICK</div>
           <div class="strip-actions">
-            <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;"></span>
+            <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"></span>
             <span class="loadbtn" id="loadBtn">LOAD</span>
             <span class="loadbtn" id="sampleBtn" style="color:var(--red);">● SAMPLE</span>
             <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
@@ -737,6 +737,11 @@ const CODEMAP = ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7",
 // チョークグループで前のボイスを止める。プリセット音は起動時にオフラインレンダリングして焼き込む。
 
 const AC = new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"});
+// 音声デコード：Promise版で失敗したら旧コールバック版で再試行（iOSのmp4/mov・webm等の互換対策）
+async function decodeAudio(arr){
+  try{ return await AC.decodeAudioData(arr); }
+  catch(e){ return await new Promise((res,rej)=>AC.decodeAudioData(arr,res,rej)); }
+}
 const masterGain = AC.createGain();
 masterGain.gain.value = 0.9;
 
@@ -1246,6 +1251,9 @@ async function loadPresets(){
 // ---------- UI build ----------
 const padsEl = document.getElementById("pads");
 const mixerEl = document.getElementById("mixer");   // 早期宣言でsyncMixLayout等のTDZを回避
+const sampNameEl = document.getElementById("sampName");   // ステータス表示（多用するためキャッシュ）
+const viewPadsEl = document.getElementById("viewPads");
+const viewMixEl  = document.getElementById("viewMix");     // vuLoop（毎フレーム）で参照するためキャッシュ
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad"+(i===selected?" sel":"");
@@ -1458,7 +1466,7 @@ layoutSeg.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   padsEl.classList.toggle("cols8", b.dataset.c==="8");
   // 4×4のときだけS2400風スプリットに（右に波形/操作、右下にStart/Stop）
-  document.getElementById("viewPads").classList.toggle("split", b.dataset.c==="4");
+  viewPadsEl.classList.toggle("split", b.dataset.c==="4");
   [...layoutSeg.children].forEach(x=>x.classList.toggle("on",x===b));
   if(typeof syncMixLayout==="function") syncMixLayout();
   if(typeof lockViewHeight==="function") lockViewHeight();
@@ -1685,7 +1693,7 @@ function syncEditor(){
   const ks=document.getElementById("kScale"); if(ks) ks.value=t.scale||"off";
   drawWave();
 }
-window.addEventListener("resize",()=>{ if(document.getElementById("viewPads").classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
+window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
 
 // ---------- transport (self-scheduling, lookahead) ----------
 let bpmVal = 100;
@@ -1884,15 +1892,10 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
   e.target.value="";   // 同じファイルを選び直してもchangeが発火するようリセット
   if(!f)return;
   if(AC.state!=="running") await AC.resume();
-  document.getElementById("sampName").textContent="読込中…";
+  sampNameEl.textContent="読込中…";
   try{
     const arr = await f.arrayBuffer();
-    let buf;
-    try{ buf = await AC.decodeAudioData(arr); }
-    catch(decErr){
-      // 一部ブラウザ（特にiOS）はPromise版でmp4/movの音声復号に失敗するためコールバック版を試す
-      buf = await new Promise((res,rej)=>AC.decodeAudioData(arr,res,rej));
-    }
+    const buf = await decodeAudio(arr);
     pushUndo();
     tracks[selected].rawBuffer = buf;
     tracks[selected].buffer = makeLofi(buf);
@@ -1900,12 +1903,12 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     tracks[selected].loop=false; tracks[selected].loopStart=0;
     PADS[selected].type="sample";
     tracks[selected].name = f.name.slice(0,10);
-    document.getElementById("sampName").textContent=f.name;
+    sampNameEl.textContent=f.name;
     padsEl.children[selected].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
     if(typeof drawWave==="function") drawWave();
     drawPadWave(selected);
   }catch(err){
-    document.getElementById("sampName").textContent="読込失敗: "+err.message;
+    sampNameEl.textContent="読込失敗: "+err.message;
   }
 });
 
@@ -1962,7 +1965,7 @@ const DEFAULT_PROJECT = {
 };
 loadPresets().then(async ()=>{
   try{ await applyProject(DEFAULT_PROJECT); }catch(e){ console.warn("default project:", e); }
-  document.getElementById("sampName").textContent="presets ready";
+  sampNameEl.textContent="presets ready";
   drawWave(); drawAllPadWaves();
 });
 
@@ -1983,7 +1986,7 @@ modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
 let refViewH = 0;
 function lockViewHeight(){
   const body=document.querySelector(".body");
-  const vp=document.getElementById("viewPads"), vm=document.getElementById("viewMix");
+  const vp=viewPadsEl, vm=viewMixEl;
   if(!body||!vp) return;
   if(window.innerWidth<=600){ body.style.minHeight=""; if(vm) vm.style.maxHeight=""; return; } // スマホは固定しない
   if(vp.classList.contains("active")){ body.style.minHeight=""; refViewH=vp.offsetHeight; }     // PADSの自然高さを基準に測る
@@ -2099,7 +2102,7 @@ function vuHit(padIdx, accent){
 // --- VUアニメーションループ ---
 const masterVuEl=document.getElementById("masterVu");
 function vuLoop(){
-  const mixActive=document.getElementById("viewMix").classList.contains("active");
+  const mixActive=viewMixEl.classList.contains("active");
   if(mixActive){   // chフェーダーのVUは隠れてる時は更新不要
     for(let i=0;i<PADS.length;i++){
       const h=Math.round(vuLevels[i]*100);
@@ -2184,12 +2187,12 @@ document.getElementById("recTab").addEventListener("click",async()=>{
   try{
     recStream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});
   }catch(e){
-    document.getElementById("sampName").textContent="Tab Audio取得失敗";
+    sampNameEl.textContent="Tab Audio取得失敗";
     recOverlay.classList.remove("show"); return;
   }
   // 音声トラックがあるか確認
   if(recStream.getAudioTracks().length===0){
-    document.getElementById("sampName").textContent="音声トラックなし（タブ音声を共有にチェック）";
+    sampNameEl.textContent="音声トラックなし（タブ音声を共有にチェック）";
     recStream.getTracks().forEach(t=>t.stop()); recStream=null;
     recOverlay.classList.remove("show"); return;
   }
@@ -2202,7 +2205,7 @@ document.getElementById("recTab").addEventListener("click",async()=>{
 document.getElementById("recMic").addEventListener("click",async()=>{
   try{ recStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
   catch(e){
-    document.getElementById("sampName").textContent="Mic取得失敗";
+    sampNameEl.textContent="Mic取得失敗";
     recOverlay.classList.remove("show"); return;
   }
   startRec();
@@ -2214,13 +2217,13 @@ function startRec(){
     // mimeTypeはブラウザに任せる（指定すると非対応で落ちる）
     recorder=new MediaRecorder(recStream);
   }catch(e){
-    document.getElementById("sampName").textContent="MediaRecorder非対応: "+e.message;
+    sampNameEl.textContent="MediaRecorder非対応: "+e.message;
     stopRec(true); return;
   }
   recorder.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
   recorder.onstop=async()=>{ await finalizeRec(); };
   try{ recorder.start(); }catch(e){
-    document.getElementById("sampName").textContent="録音開始失敗: "+e.message;
+    sampNameEl.textContent="録音開始失敗: "+e.message;
     stopRec(true); return;
   }
   recTimerId=setInterval(()=>{
@@ -2238,18 +2241,13 @@ function stopRec(cancel){
 }
 async function finalizeRec(){
   if(recChunks.length===0){
-    document.getElementById("sampName").textContent="録音データなし";
+    sampNameEl.textContent="録音データなし";
     recorder=null;recChunks=[]; return;
   }
   const blob=new Blob(recChunks);
   try{
     const arr=await blob.arrayBuffer();
-    let buf;
-    try{ buf=await AC.decodeAudioData(arr); }
-    catch(decErr){
-      // webm等でdecodeAudioData失敗時、AudioContext.decodeAudioDataのPromise版を試す
-      buf=await new Promise((res,rej)=>AC.decodeAudioData(arr,res,rej));
-    }
+    const buf=await decodeAudio(arr);
     pushUndo();
     tracks[selected].rawBuffer=buf;
     tracks[selected].buffer=makeLofi(buf);
@@ -2259,11 +2257,11 @@ async function finalizeRec(){
     tracks[selected].name="REC";
     const nm="REC "+String(selected+1).padStart(2,"0");
     padsEl.children[selected].querySelector(".nm").textContent=nm;
-    document.getElementById("sampName").textContent="Sampled! ("+((blob.size/1024)|0)+"KB)";
+    sampNameEl.textContent="Sampled! ("+((blob.size/1024)|0)+"KB)";
     drawPadWave(selected);
     if(typeof syncEditor==="function") syncEditor();
   }catch(e){
-    document.getElementById("sampName").textContent="デコード失敗: "+e.message;
+    sampNameEl.textContent="デコード失敗: "+e.message;
   }
   recorder=null;recChunks=[];
 }
@@ -2346,7 +2344,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
   const a=document.createElement("a");
   a.href=url; a.download="mics009-project.mics"; a.click();
   URL.revokeObjectURL(url);
-  document.getElementById("sampName").textContent="Saved!";
+  sampNameEl.textContent="Saved!";
 });
 
 // LOAD
@@ -2402,7 +2400,7 @@ async function applyProject(proj){
       if(pt.audio){
         const wav=b64ToUint8(pt.audio);
         const ab=wav.buffer.slice(wav.byteOffset,wav.byteOffset+wav.byteLength);
-        const decoded=await AC.decodeAudioData(ab);
+        const decoded=await decodeAudio(ab);
         t.rawBuffer=decoded;
         t.buffer=makeLofi(decoded);
       }
@@ -2419,7 +2417,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
     const proj=JSON.parse(await f.text());
     if(!proj.version||!proj.tracks) throw new Error("Invalid project file");
     await applyProject(proj);
-    document.getElementById("sampName").textContent="Loaded: "+f.name;
+    sampNameEl.textContent="Loaded: "+f.name;
   }catch(err){ alert("Load失敗: "+err.message); }
 });
 
