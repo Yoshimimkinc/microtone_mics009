@@ -31,8 +31,14 @@
   }
   /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL）。背景はどれも黒 ===== */
   /* Akai MPC3000風：黒地 + 暖色グレー本体 + 緑の蛍光LCD + Akaiレッド + クリーム文字 */
-  body.t-ak{--bg:#0c0d0e;--panel:#27251f;--panel2:#322f27;--edge:#040404;--line:#48433a;
-    --ink:#ece6d6;--dim:#8c8676;--amber:#d6442f;--amber-dim:#5c1c14;--teal:#4cd06a;--pad:#201e1a;--pad-face:#2b2924;}
+  body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;
+    --ink:#2b2720;--dim:#6e695c;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;}
+  /* AK=MPC3000は明色（クリーム本体・グレーボタン）。暗いインセットだけ明色化し、波形はLCDとして暗いまま残す */
+  body.t-ak .unit{background:#d2ccba;}
+  body.t-ak #splash{background:#d6d0c0;}
+  body.t-ak .modebar,body.t-ak .hint kbd{background:#c2bdac;}
+  body.t-ak .ch-ms button{background:#c2bdac;color:#4a463b;}
+  body.t-ak .modebtn .led{background:#9a958a;box-shadow:0 0 0 1px #8f8a7c inset;}
   /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
   body.t-sp{--bg:#100e0a;--panel:#2a251c;--panel2:#352f24;--edge:#0b0907;--line:#473f30;
     --ink:#ece1c8;--dim:#9a8f78;--amber:#e8b54a;--amber-dim:#6e5320;--teal:#52b9d6;--pad:#2e2820;--pad-face:#3b3428;}
