@@ -377,22 +377,23 @@
     button.t{padding:7px 10px;font-size:11px;}
     .modebtn{padding:8px 16px;font-size:11px;}
     .msbtn{padding:6px 10px;font-size:10px;}
-    .strip{padding:10px 10px;}
-    .wave-wrap{height:72px;}
-    .strip-ctrls{gap:10px;}
-    .knob.mini{min-width:70px;max-width:120px;}
-    .pads{max-width:100%;}
+    /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
+    .strip{padding:9px;}
+    .wave-wrap{height:58px;}
+    .strip-ctrls{gap:8px;}
+    .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
     .seg button{padding:5px 10px;font-size:10px;}
-    /* 狭い画面ではskinを通常配置にして重なり回避 */
     .transport{padding-right:0;}
     #skinbar{position:static;margin-left:auto;}
-    /* masterは下に回して全幅 */
-    .master-bar{border-left:none;padding-left:0;flex-basis:100%;}
-    /* 狭い画面ではスプリットを解除して縦積みに */
-    #viewPads.split.active{display:block;}
-    #viewPads.split .strip{margin-bottom:16px;}
-    #viewPads.split .msbar{margin:14px 0;}
-    #viewPads.split .padTransport{margin-top:12px;}
+    /* MASTERはMIX画面の時だけ（PADS/SEQでは隠して場所を空ける） */
+    .master-bar{display:none;}
+    body.mix-on .master-bar{display:flex;border-left:none;padding-left:0;flex-basis:100%;}
+    /* PADS：パッドを上に大きく、編集エリアは下にコンパクト */
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:12px;}
+    #viewPads>.pads{order:1;max-width:100%;}
+    #viewPads>.msbar{order:2;flex-wrap:wrap;}
+    #viewPads>.strip{order:3;margin:0;}
+    #viewPads>.padTransport{order:4;margin:0;}
     /* SEQ: 横スクロールやめて画面幅に収め、正方形やめてタップしやすい高さに */
     #viewSeq.active{overflow-x:hidden;display:block;}
     .colnums,.grid{min-width:0;}
@@ -1791,6 +1792,7 @@ const modeBtns=[document.getElementById("modePads"),document.getElementById("mod
 function switchView(viewId){
   modeBtns.forEach(b=>b.classList.toggle("on",b.dataset.view===viewId));
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
+  document.body.classList.toggle("mix-on", viewId==="viewMix");   // スマホ：MASTERをMIX時のみ表示
   if(viewId==="viewPads"){ drawWave(); drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
   if(viewId==="viewMix") paintMixer();
