@@ -178,6 +178,8 @@
 
   /* sequencer — 16-row grid */
   .seq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;}
+  .melo-banner{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--teal);letter-spacing:.06em;}
+  .melo-banner .t{padding:5px 10px;font-size:10px;}
   .pat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
   .patbtn{position:relative;}
@@ -555,6 +557,11 @@
           </div>
           <div class="knob mini"><label>Pitch <span class="v" id="vTune">0</span></label>
             <input type="range" id="kTune" min="-12" max="12" step="1" value="0"></div>
+          <div class="knob mini"><label>Scale</label>
+            <select class="t" id="kScale" style="padding:5px 7px;">
+              <option value="off">OFF</option><option value="chro">CHRO</option>
+              <option value="maj">MAJ</option><option value="min">MIN</option><option value="pent">PENT</option>
+            </select></div>
           <div class="knob mini"><label>Cutoff <span class="v" id="vCut">12.0k</span></label>
             <input type="range" id="kCut" min="200" max="18000" step="50" value="12000"></div>
           <div class="knob mini"><label>Reso <span class="v" id="vRes">0.7</span></label>
@@ -608,6 +615,10 @@
             <button class="patbtn" data-b="2">3</button>
             <button class="patbtn" data-b="3">4</button>
           </div>
+        </div>
+        <div class="melo-banner" id="meloBanner" style="display:none;">
+          <span id="meloLabel">♪</span>
+          <button class="t" id="meloExit">← DRUMS</button>
         </div>
         <div class="ctrl" style="font-size:10px;">行名クリックで試聴 · Shift+クリックでアクセント</div>
       </div>
@@ -788,6 +799,7 @@ const tracks = PADS.map((p,i)=>({
   // patterns[パターン0-3(A-D)][小節0-3(1-4)][ステップ0-15]
   patterns:Array.from({length:4},()=>Array.from({length:4},()=>new Array(STEPS).fill(0))),
   vol:-4,            // dB
+  scale:"off",       // 音階モード: off / chro / maj / min / pent
   buffer:null,       // AudioBuffer (12bit-processed; preset or loaded sample)
   rawBuffer:null,    // 加工前バッファ（再12bit化や設定変更時の元）
   tune:0,            // semitones
@@ -830,6 +842,39 @@ function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][pla
 function barHasContent(p,b){ for(let i=0;i<PADS.length;i++){ const a=tracks[i].patterns[p][b]; for(let s=0;s<STEPS;s++) if(a[s]>0) return true; } return false; }
 function patHasContent(p){ for(let b=0;b<4;b++) if(barHasContent(p,b)) return true; return false; }
 function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) last=b; return last+1; }
+
+// ===== 音階モード（モノ・ベース打ち込み） =====
+const SCALES={ maj:[0,2,4,5,7,9,11], min:[0,2,3,5,7,8,10], pent:[0,3,5,7,10] };  // chroは半音=idx
+const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+let melodicMode=false;   // 選択中パッドが音階モードか（SEQ盤面の表示を切替）
+function isMelodic(i){ return !!(tracks[i] && tracks[i].scale && tracks[i].scale!=="off"); }
+function scaleSemi(sc, idx){ if(sc==="chro"||!SCALES[sc]) return idx; const a=SCALES[sc]; return Math.floor(idx/a.length)*12 + a[idx%a.length]; }
+function noteLabel(sc, idx){ const s=scaleSemi(sc,idx); return NOTE_NAMES[((s%12)+12)%12]+Math.floor(s/12); }
+function setDrumRowLabels(){ for(let i=0;i<PADS.length;i++){ const rn=grid.children[i]&&grid.children[i].querySelector(".rn"); if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${tracks[i].name||PADS[i].name}`; } }
+function paintMelodic(){
+  const pat=getPattern(selected);
+  for(let r=0;r<PADS.length;r++){
+    const pitchIdx=(PADS.length-1)-r;   // 下の行ほど低い音
+    if(rowEls[r]) rowEls[r].forEach((el,s)=>{
+      el.classList.toggle("on", pat[s]===pitchIdx+1);
+      el.classList.remove("acc");
+      el.classList.toggle("cursor", playing && editPat===displayPat && editBar===displayBar && s===playStep);
+    });
+    const rn=grid.children[r]&&grid.children[r].querySelector(".rn");
+    if(rn) rn.textContent=noteLabel(tracks[selected].scale, pitchIdx);
+  }
+  [...grid.children].forEach(row=>row.classList.remove("sel"));
+}
+function refreshSeqMode(){
+  melodicMode=isMelodic(selected);
+  const banner=document.getElementById("meloBanner");
+  if(banner){
+    banner.style.display=melodicMode?"":"none";
+    if(melodicMode) document.getElementById("meloLabel").textContent="♪ "+(tracks[selected].name||PADS[selected].name)+" · "+tracks[selected].scale.toUpperCase();
+  }
+  if(!melodicMode) setDrumRowLabels();
+  paintSteps();
+}
 
 function dbToGain(db){ return Math.pow(10, db/20); }
 
@@ -888,7 +933,7 @@ function audible(i){
 }
 
 // 1ヒット発音
-function playVoice(i, when, accent, fromSeq){
+function playVoice(i, when, accent, fromSeq, noteSemi){
   const t = tracks[i];
   if(!t.buffer) return;
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
@@ -904,7 +949,7 @@ function playVoice(i, when, accent, fromSeq){
 
   const src = AC.createBufferSource();
   src.buffer = t.buffer;
-  src.playbackRate.value = Math.pow(2, t.tune/12);
+  src.playbackRate.value = Math.pow(2, (t.tune + (noteSemi||0))/12);
 
   // フィルター（off時は挟まない）
   let head = src;
@@ -1070,7 +1115,7 @@ function selectPad(i){
   document.getElementById("trackName").textContent=String(i+1).padStart(2,"0")+" "+PADS[i].name;
   document.getElementById("vol").value=tracks[i].vol;
   document.getElementById("volVal").textContent=tracks[i].vol;
-  paintSteps();
+  refreshSeqMode();
   if(typeof syncEditor==="function") syncEditor();
 }
 
@@ -1092,16 +1137,26 @@ PADS.forEach((p,i)=>{
   const rn=document.createElement("div");
   rn.className="rn";
   rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${p.name}`;
-  rn.addEventListener("click",async()=>{if(AC.state!=="running")await AC.resume();trigger(i);selectPad(i);});
+  rn.addEventListener("click",async()=>{
+    if(AC.state!=="running")await AC.resume();
+    if(melodicMode){ const pitchIdx=(PADS.length-1)-i; playVoice(selected, AC.currentTime, false, false, scaleSemi(tracks[selected].scale, pitchIdx)); }  // 音階モードは音程プレビュー
+    else { trigger(i); selectPad(i); }
+  });
   row.appendChild(rn);
 
   const cells=[];
   for(let s=0;s<STEPS;s++){
     const st=document.createElement("div");st.className="step";st.dataset.s=s;
     st.addEventListener("click",(e)=>{
-      const cur=getPattern(i)[s];
-      if(e.shiftKey){ getPattern(i)[s]=cur===2?0:2; }
-      else { getPattern(i)[s]=cur?0:1; }
+      if(melodicMode){
+        const pitchIdx=(PADS.length-1)-i;                       // 行→音程
+        const cur=getPattern(selected)[s];
+        getPattern(selected)[s]=(cur===pitchIdx+1)?0:pitchIdx+1; // モノ：その列の音程をセット/解除
+      } else {
+        const cur=getPattern(i)[s];
+        if(e.shiftKey){ getPattern(i)[s]=cur===2?0:2; }
+        else { getPattern(i)[s]=cur?0:1; }
+      }
       paintSteps(); paintPatBar();   // 中身ドット・小節長を更新
     });
     row.appendChild(st);cells.push(st);
@@ -1111,6 +1166,7 @@ PADS.forEach((p,i)=>{
 });
 
 function paintSteps(){
+  if(melodicMode){ paintMelodic(); return; }
   for(let i=0;i<PADS.length;i++){
     const pat=getPattern(i);
     rowEls[i].forEach((el,s)=>{
@@ -1451,6 +1507,7 @@ function syncEditor(){
   loopToggle.classList.toggle("on",t.loop);
   chokeSel.value=Math.min(8,t.choke||0);
   [...filtSeg.children].forEach(x=>x.classList.toggle("on",x.dataset.f===t.filter));
+  const ks=document.getElementById("kScale"); if(ks) ks.value=t.scale||"off";
   drawWave();
 }
 window.addEventListener("resize",()=>{ if(document.getElementById("viewPads").classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
@@ -1497,8 +1554,9 @@ function scheduleStep(stepNo, when){
   for(let i=0;i<PADS.length;i++){
     const v=getPlayPattern(i)[stepNo];
     if(v>0 && audible(i)){
-      playVoice(i, when + n*stg, v===2, true);
-      hits.push({pad:i, acc:v===2});
+      if(isMelodic(i)) playVoice(i, when + n*stg, false, true, scaleSemi(tracks[i].scale, v-1));  // v=音程(1〜)
+      else playVoice(i, when + n*stg, v===2, true);
+      hits.push({pad:i, acc:isMelodic(i)?false:v===2});
       n++;
     }
   }
@@ -1704,6 +1762,14 @@ setTimeout(lockViewHeight, 400);
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
 const barSeg=document.getElementById("barSeg");
+
+// 音階モード：SCALE選択／← DRUMS で復帰
+const kScale=document.getElementById("kScale");
+kScale.addEventListener("change",()=>{ tracks[selected].scale=kScale.value; refreshSeqMode(); });
+document.getElementById("meloExit").addEventListener("click",()=>{
+  let d=0; for(let i=0;i<PADS.length;i++){ if(!isMelodic(i)){ d=i; break; } }  // 最初の非音階パッドへ
+  selectPad(d);
+});
 
 // パターン選択：編集対象を移す＋再生中なら次の小節アタマで切替を予約
 patSeg.addEventListener("click",e=>{
@@ -2010,7 +2076,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
         name:t.name,
         type:PADS[i].type,
         voice:PADS[i].voice||null,
-        vol:t.vol, tune:t.tune,
+        vol:t.vol, tune:t.tune, scale:t.scale,
         start: crop?crop.start:t.start,
         end: crop?crop.end:t.end,
         loop:t.loop,
@@ -2065,7 +2131,7 @@ async function applyProject(proj){
       t.name=pt.name||PADS[i].name;
       PADS[i].type=pt.type||"empty";
       PADS[i].voice=pt.voice||null;
-      t.vol=pt.vol??-4; t.tune=pt.tune??0;
+      t.vol=pt.vol??-4; t.tune=pt.tune??0; t.scale=pt.scale??"off";
       t.start=pt.start??0; t.end=pt.end??1;
       t.loop=pt.loop??false; t.loopStart=pt.loopStart??0;
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
