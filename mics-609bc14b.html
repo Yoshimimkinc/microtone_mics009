@@ -500,6 +500,7 @@
       <button class="t play" id="play">Play</button>
       <button class="t rec" id="rec">Rec</button>
       <button class="t" id="tap">Tap</button>
+      <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩ Undo</button>
       <div class="tempo-row">
       <div class="ctrl">Tempo
         <input type="range" id="bpm" min="60" max="180" step="0.5" value="100">
@@ -917,6 +918,17 @@ function barHasContent(p,b){ for(let i=0;i<PADS.length;i++){ const a=tracks[i].p
 function patHasContent(p){ for(let b=0;b<4;b++) if(barHasContent(p,b)) return true; return false; }
 function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) last=b; return last+1; }
 
+// ===== UNDO（パターン編集を1手ずつ戻す） =====
+const undoStack=[];
+function snapshotPatterns(){ return tracks.map(t=>t.patterns.map(p=>p.map(b=>b.slice()))); }
+function pushUndo(){ undoStack.push(snapshotPatterns()); if(undoStack.length>60) undoStack.shift(); }
+function doUndo(){
+  const s=undoStack.pop(); if(!s) return;
+  tracks.forEach((t,i)=>{ t.patterns=s[i]; });
+  if(typeof paintSteps==="function") paintSteps();
+  if(typeof paintPatBar==="function") paintPatBar();
+}
+
 // ===== 音階モード（モノ・ベース打ち込み） =====
 const SCALES={ maj:[0,2,4,5,7,9,11], min:[0,2,3,5,7,8,10], pent:[0,3,5,7,10] };  // chroは半音=idx
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -1252,6 +1264,7 @@ PADS.forEach((p,i)=>{
   for(let s=0;s<STEPS;s++){
     const st=document.createElement("div");st.className="step";st.dataset.s=s;
     st.addEventListener("click",(e)=>{
+      pushUndo();   // 1手ずつ戻せるよう編集前に記録
       if(melodicMode){
         const pitchIdx=(PADS.length-1)-i;                       // 行→音程
         const cur=getPattern(selected)[s];
@@ -1751,7 +1764,8 @@ playBtn.addEventListener("click",async()=>{
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
-recBtn.addEventListener("click",()=>{recording=!recording;recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"Rec ●":"Rec";});
+recBtn.addEventListener("click",()=>{recording=!recording; if(recording) pushUndo(); recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"Rec ●":"Rec";});
+document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // ---------- メニュー（ケバブ→モーダル） DADS dialog 準拠 ----------
 (function(){
@@ -1846,6 +1860,8 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
 // keyboard
 window.addEventListener("keydown",async(e)=>{
   if(e.repeat)return;
+  // Ctrl/Cmd+Z：元に戻す
+  if((e.ctrlKey||e.metaKey) && (e.key==="z"||e.key==="Z")){ e.preventDefault(); doUndo(); return; }
   // TAB：PADS→SEQ→MIX を順送り（Shift+TABで逆）
   if(e.key==="Tab"){
     e.preventDefault();
@@ -1958,6 +1974,7 @@ barSeg.addEventListener("click",e=>{
 // DUP►：今の小節を次の小節に複写して伸ばす（全トラック）
 document.getElementById("dupBar").addEventListener("click",()=>{
   if(editBar>=3) return;   // 最大4小節
+  pushUndo();
   const dst=editBar+1;
   for(let i=0;i<PADS.length;i++) tracks[i].patterns[editPat][dst]=tracks[i].patterns[editPat][editBar].slice();
   editBar=dst;             // 複写先の小節を編集対象に
