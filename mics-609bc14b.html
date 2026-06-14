@@ -406,7 +406,7 @@
     .msbtn{padding:6px 9px;font-size:10px;}
     /* DADS：タッチターゲット確保（要所は44px目安、稀用ボタンは詰めつつ最低限） */
     .modebtn{min-height:44px;}
-    #patSeg button,#barSeg button,#bankSeg button,#layoutSeg button{min-height:40px;}
+    #patSeg button,#barSeg button,#layoutSeg button{min-height:40px;}
     button.t,.msbtn,.loadbtn{min-height:34px;}
     .toggle{min-height:34px;}
     .seg button{min-height:34px;}
@@ -434,7 +434,6 @@
     .pads .pad:nth-child(n+9):nth-child(-n+12){order:2!important;}
     .pads .pad:nth-child(n+13){order:1!important;}
     #layoutSeg{display:none!important;}
-    #bankSeg{display:none!important;}
     /* Koala風ミニマル：詳細ツマミ(フィルター/Choke/Cutoff/Reso)はスマホでは隠す */
     .strip-ctrls .adv{display:none!important;}
     /* 自然な高さで詰める（パッドは正方形・伸ばさない＝はみ出さない）。長ければ普通に縦スクロール */
@@ -584,7 +583,7 @@
             <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;"></span>
             <span class="loadbtn" id="loadBtn">LOAD</span>
             <span class="loadbtn" id="sampleBtn" style="color:var(--red);">● SAMPLE</span>
-            <input type="file" id="samp" accept="audio/*" style="display:none;">
+            <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
         <div class="wave-wrap" id="waveWrap">
@@ -651,10 +650,6 @@
         <div class="seg" id="layoutSeg" style="margin-left:auto;">
           <button data-c="8" class="on">8×2</button>
           <button data-c="4">4×4</button>
-        </div>
-        <div class="seg" id="bankSeg" style="display:none;margin-left:auto;">
-          <button data-bank="0" class="on">1-8</button>
-          <button data-bank="1">9-16</button>
         </div>
       </div>
 
@@ -1470,16 +1465,6 @@ layoutSeg.addEventListener("click",e=>{
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
 
-// 狭い画面は4×2＋バンク切替（1-8 / 9-16）。表示はCSSのmedia query側で制御
-const bankSeg=document.getElementById("bankSeg");
-padsEl.dataset.bank="0";
-bankSeg.addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  padsEl.dataset.bank=b.dataset.bank;
-  [...bankSeg.children].forEach(x=>x.classList.toggle("on",x===b));
-  if(typeof drawAllPadWaves==="function") drawAllPadWaves();
-});
-
 // ---------- sample editor ----------
 const waveCv = document.getElementById("wave");
 const waveWrap = document.getElementById("waveWrap");
@@ -1899,9 +1884,15 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
   e.target.value="";   // 同じファイルを選び直してもchangeが発火するようリセット
   if(!f)return;
   if(AC.state!=="running") await AC.resume();
+  document.getElementById("sampName").textContent="読込中…";
   try{
     const arr = await f.arrayBuffer();
-    const buf = await AC.decodeAudioData(arr);
+    let buf;
+    try{ buf = await AC.decodeAudioData(arr); }
+    catch(decErr){
+      // 一部ブラウザ（特にiOS）はPromise版でmp4/movの音声復号に失敗するためコールバック版を試す
+      buf = await new Promise((res,rej)=>AC.decodeAudioData(arr,res,rej));
+    }
     pushUndo();
     tracks[selected].rawBuffer = buf;
     tracks[selected].buffer = makeLofi(buf);
