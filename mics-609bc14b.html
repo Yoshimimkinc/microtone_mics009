@@ -850,6 +850,7 @@ function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) l
 const SCALES={ maj:[0,2,4,5,7,9,11], min:[0,2,3,5,7,8,10], pent:[0,3,5,7,10] };  // chroは半音=idx
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let melodicMode=false;   // 選択中パッドが音階モードか（SEQ盤面の表示を切替）
+let previewPitch=null;   // SEQ音階プレビューで今鳴らしてる音程（再クリックで止める判定用）
 function isMelodic(i){ return !!(tracks[i] && tracks[i].scale && tracks[i].scale!=="off"); }
 function scaleSemi(sc, idx){ if(sc==="chro"||!SCALES[sc]) return idx; const a=SCALES[sc]; return Math.floor(idx/a.length)*12 + a[idx%a.length]; }
 function noteLabel(sc, idx){ const s=scaleSemi(sc,idx); return NOTE_NAMES[((s%12)+12)%12]+Math.floor(s/12); }
@@ -1164,7 +1165,15 @@ PADS.forEach((p,i)=>{
   rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${p.name}`;
   rn.addEventListener("click",async()=>{
     if(AC.state!=="running")await AC.resume();
-    if(melodicMode){ const pitchIdx=(PADS.length-1)-i, sel=selected; playVoice(sel, AC.currentTime, false, false, scaleSemi(tracks[sel].scale, pitchIdx)); if(tracks[sel].loop) setTimeout(()=>stopVoices(tracks[sel], AC.currentTime), 800); }  // 音程プレビュー（ループはドローンさせない）
+    if(melodicMode){
+      const pitchIdx=(PADS.length-1)-i, sel=selected, t=tracks[sel];
+      if(t.loop && t.activeVoices && t.activeVoices.length>0 && previewPitch===pitchIdx){
+        stopVoices(t, AC.currentTime); previewPitch=null;   // 同じ音を再クリック＝止まる
+      } else {
+        playVoice(sel, AC.currentTime, false, false, scaleSemi(t.scale, pitchIdx));
+        previewPitch=pitchIdx;   // 違う音ならモノで鳴り替え（再クリックで止まる）
+      }
+    }
     else { trigger(i); selectPad(i); }
   });
   row.appendChild(rn);
