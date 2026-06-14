@@ -130,11 +130,6 @@
   .pads:not(.cols8) .pad:nth-child(n+5):nth-child(-n+8){order:3;}
   .pads:not(.cols8) .pad:nth-child(n+9):nth-child(-n+12){order:2;}
   .pads:not(.cols8) .pad:nth-child(n+13){order:1;}
-  /* スマホ：4×2バンク（8パッドだけ大きく表示、1-8 / 9-16 を切替） */
-  .pads.padbank{grid-template-columns:repeat(4,1fr);max-width:100%;gap:9px;}
-  .pads.padbank .pad{aspect-ratio:1;order:0 !important;}
-  .pads.padbank[data-bank="0"] .pad:nth-child(n+9){display:none;}
-  .pads.padbank[data-bank="1"] .pad:nth-child(-n+8){display:none;}
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
   /* .active も必須にして、SEQ/MIX表示中にPADSが残らないようにする */
@@ -393,12 +388,19 @@
     /* MASTERはMIX画面の時だけ（PADS/SEQでは隠して場所を空ける） */
     .master-bar{display:none;}
     body.mix-on .master-bar{display:flex;border-left:none;padding-left:0;flex-basis:100%;}
-    /* PADS：パッドを上に大きく、編集エリアは下にコンパクト */
-    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:12px;}
-    #viewPads>.pads{order:1;max-width:100%;}
-    #viewPads>.msbar{order:2;flex-wrap:wrap;}
-    #viewPads>.strip{order:3;margin:0;}
+    /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド */
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:10px;}
+    #viewPads>.strip{order:1;margin:0;}
+    #viewPads>.pads{order:2;max-width:100%;}
+    #viewPads>.msbar{order:3;flex-wrap:wrap;}
     #viewPads>.padTransport{order:4;margin:0;}
+    /* パッドは4×2バンク（8パッド大きく・1-8/9-16切替） */
+    .pads{grid-template-columns:repeat(4,1fr)!important;max-width:100%!important;gap:9px;}
+    .pads .pad{aspect-ratio:1!important;order:0!important;padding:8px!important;}
+    .pads[data-bank="0"] .pad:nth-child(n+9){display:none;}
+    .pads[data-bank="1"] .pad:nth-child(-n+8){display:none;}
+    #layoutSeg{display:none!important;}
+    #bankSeg{display:flex!important;}
     /* SEQ: 横スクロールやめて画面幅に収め、正方形やめてタップしやすい高さに */
     #viewSeq.active{overflow-x:hidden;display:block;}
     .colnums,.grid{min-width:0;}
@@ -1345,23 +1347,15 @@ layoutSeg.addEventListener("click",e=>{
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
 
-// スマホ（タッチ端末）は4×2＋バンク切替（1-8 / 9-16）
+// 狭い画面は4×2＋バンク切替（1-8 / 9-16）。表示はCSSのmedia query側で制御
 const bankSeg=document.getElementById("bankSeg");
+padsEl.dataset.bank="0";
 bankSeg.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   padsEl.dataset.bank=b.dataset.bank;
   [...bankSeg.children].forEach(x=>x.classList.toggle("on",x===b));
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
-if(window.matchMedia && matchMedia("(pointer:coarse)").matches){
-  padsEl.classList.remove("cols8");
-  padsEl.classList.add("padbank");
-  padsEl.dataset.bank="0";
-  document.getElementById("viewPads").classList.remove("split");
-  layoutSeg.style.display="none";
-  bankSeg.style.display="";
-  if(typeof syncMixLayout==="function") syncMixLayout();
-}
 
 // ---------- sample editor ----------
 const waveCv = document.getElementById("wave");
