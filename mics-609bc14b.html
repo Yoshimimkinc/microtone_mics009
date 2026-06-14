@@ -78,7 +78,9 @@
   html,body{height:100%;overflow-x:hidden;}
   /* スマホ：ダブルタップ拡大/文字自動拡大/長押しメニューを抑止 */
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable;}
-  button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t{touch-action:manipulation;}
+  /* アプリ全体でダブルタップ拡大を無効化（ピンチ・スクロールは維持） */
+  body{touch-action:manipulation;}
+  button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t,.pad{touch-action:manipulation;}
   body{-webkit-touch-callout:none;}
   body{
     background:#000;  /* アプリ外側（周りの余白）は常に黒 */
