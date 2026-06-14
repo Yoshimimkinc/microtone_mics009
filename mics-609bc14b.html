@@ -1491,8 +1491,13 @@ loopToggle.addEventListener("click",()=>{
 const filtSeg=document.getElementById("filtSeg");
 filtSeg.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
-  tracks[selected].filter=b.dataset.f;
+  const f=b.dataset.f, t=tracks[selected];
+  t.filter=f;
+  // ONにした瞬間に効きが分かるよう、Cutoffが開きっぱなし(無効値)なら実用値へ
+  if(f==="lp" && t.cutoff>=10000) t.cutoff=3000;
+  if(f==="hp" && t.cutoff>=10000) t.cutoff=700;
   [...filtSeg.children].forEach(x=>x.classList.toggle("on",x===b));
+  if(typeof syncEditor==="function") syncEditor();   // Cutoffノブ表示も更新
 });
 // choke group
 const chokeSel=document.getElementById("chokeSel");
