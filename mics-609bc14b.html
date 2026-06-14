@@ -39,9 +39,6 @@
   body.t-ak .modebar,body.t-ak .hint kbd{background:#c2bdac;}
   body.t-ak .ch-ms button{background:#c2bdac;color:#4a463b;}
   body.t-ak .modebtn .led{background:#9a958a;box-shadow:0 0 0 1px #8f8a7c inset;}
-  /* AKはクリーム本体なのでSEQも暗黒→グレーに。拍アタマ(1/5/9/13)は更に明るいグレーで見やすく。ON(赤)は維持 */
-  body.t-ak .step:not(.on){background:#8d8a80;border-color:#74716a;}
-  body.t-ak .step:nth-child(4n+2):not(.on){background:#a6a39a;border-color:#807d74;}
   /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
   body.t-sp{--bg:#14151a;--panel:#5f6368;--panel2:#4d5156;--edge:#26282c;--line:#42464c;
     --ink:#f0f2f4;--dim:#aab0b6;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;}
@@ -51,11 +48,7 @@
   /* Roland TR-808風：黒地 + チャコール本体 + オレンジ/黄アクセント */
   body.t-rl{--bg:#0e0f11;--panel:#2c2f34;--panel2:#373c43;--edge:#121316;--line:#474d56;
     --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#33373d;--pad-face:#3e444c;}
-  /* TR-808の象徴：16ステップを4色グループに（赤/橙/黄/白）。常時うっすら色付き＋点灯で鮮やか */
-  body.t-rl .row .step:nth-child(-n+5){border-color:rgba(255,59,48,.45);}
-  body.t-rl .row .step:nth-child(n+6):nth-child(-n+9){border-color:rgba(255,138,43,.45);}
-  body.t-rl .row .step:nth-child(n+10):nth-child(-n+13){border-color:rgba(255,207,51,.45);}
-  body.t-rl .row .step:nth-child(n+14){border-color:rgba(240,236,224,.5);}
+  /* TR-808の象徴：打ち込んだ(ON)ステップを4色グループに（赤/橙/黄/白）。OFFは全モード共通の灰色ガイド */
   body.t-rl .row .step:nth-child(-n+5).on:not(.acc){background:#ff3b30;border-color:#ff8079;box-shadow:0 0 8px rgba(255,59,48,.5);}
   body.t-rl .row .step:nth-child(n+6):nth-child(-n+9).on:not(.acc){background:#ff8a2b;border-color:#ffba80;box-shadow:0 0 8px rgba(255,138,43,.5);}
   body.t-rl .row .step:nth-child(n+10):nth-child(-n+13).on:not(.acc){background:#ffcf33;border-color:#ffe588;box-shadow:0 0 8px rgba(255,207,51,.5);}
@@ -248,8 +241,12 @@
     border-radius:4px;background:#1a1e23;border:1px solid var(--line);
     cursor:pointer;transition:.08s;position:relative;min-height:0;
   }
-  /* 拍アタマ（1/5/9/13列）を明るくして縦ガイドに＝拍が見やすい */
-  .step:nth-child(4n+2){border-left:2px solid #5a636e;background:#39434f;}
+  /* 全モード共通：16ステップを4グループの灰色グラデで可視化（OFFガイド。ONはテーマ色） */
+  .step:not(.on){background:#15171b;}                                   /* 1-4: 黒 */
+  .step:nth-child(n+6):nth-child(-n+9):not(.on){background:#2f353d;}    /* 5-8: 灰 */
+  .step:nth-child(n+10):nth-child(-n+13):not(.on){background:#49515b;}  /* 9-12: 少し明るい灰 */
+  .step:nth-child(n+14):not(.on){background:#69717c;}                   /* 13-16: 明るい灰 */
+  .step:nth-child(4n+2){border-left:2px solid #4a525c;}                 /* 4つ割りの区切り線 */
   .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
   .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
@@ -278,7 +275,7 @@
   .view{display:none;}
   .view.active{display:block;}
   #viewSeq.active{overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:column;}
-  #viewMix.active{overflow-x:auto;overflow-y:hidden;}
+  #viewMix.active{overflow-x:auto;overflow-y:auto;}
   /* mute / solo hold bar */
   .msbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
   .msbtn{
@@ -1607,12 +1604,15 @@ modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
 let refViewH = 0;
 function lockViewHeight(){
   const body=document.querySelector(".body");
-  const vp=document.getElementById("viewPads"), vs=document.getElementById("viewSeq"), grid=document.getElementById("grid");
-  if(!body||!grid) return;
-  if(window.innerWidth<=600){ body.style.minHeight=""; return; }    // スマホは固定しない
-  if(vp.classList.contains("active")) refViewH = vp.offsetHeight;   // PADSを基準に測る
-  if(refViewH) body.style.minHeight = refViewH+"px";                // どのビューも基準高さを維持＝高さ一定
-  // SEQのグリッドはCSSのflexで余白を自動充填（gridを伸ばす）ので個別計算は不要
+  const vp=document.getElementById("viewPads"), vm=document.getElementById("viewMix");
+  if(!body||!vp) return;
+  if(window.innerWidth<=600){ body.style.minHeight=""; if(vm) vm.style.maxHeight=""; return; } // スマホは固定しない
+  if(vp.classList.contains("active")){ body.style.minHeight=""; refViewH=vp.offsetHeight; }     // PADSの自然高さを基準に測る
+  if(refViewH){
+    body.style.minHeight = refViewH+"px";        // どのビューも縮まない＝高さ一定
+    if(vm) vm.style.maxHeight = refViewH+"px";    // MIXは伸びない（超過分は内部スクロール）
+  }
+  // SEQのグリッドはCSSのflexで余白を自動充填するので個別計算は不要
 }
 window.addEventListener("resize", lockViewHeight);
 window.addEventListener("load", lockViewHeight);
