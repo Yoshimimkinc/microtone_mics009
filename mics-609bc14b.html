@@ -415,15 +415,11 @@
     .pads[data-bank="1"] .pad:nth-child(-n+8){display:none;}
     #layoutSeg{display:none!important;}
     #bankSeg{display:flex!important;}
-    /* 画面いっぱいに使う：パッドを下まで伸ばして余白を無くす */
-    .unit{min-height:calc(100dvh - 16px);display:flex;flex-direction:column;}
-    .body{display:flex;flex-direction:column;flex:1;min-height:0;}
-    #viewPads.active{flex:1;}
-    #viewPads>.pads{flex:1;min-height:0;grid-auto-rows:1fr;}
-    .pads .pad{aspect-ratio:auto!important;min-height:64px;}
-    /* SEQ/MIX：本体エリアいっぱい＋中身が高ければ縦スクロール */
-    #viewSeq.active{overflow-x:hidden;overflow-y:auto;flex:1;min-height:0;}
-    #viewMix.active{overflow-x:hidden;overflow-y:auto;flex:1;min-height:0;}
+    /* Koala風ミニマル：詳細ツマミ(フィルター/Choke/Cutoff/Reso)はスマホでは隠す */
+    .strip-ctrls .adv{display:none!important;}
+    /* 自然な高さで詰める（パッドは正方形・伸ばさない＝はみ出さない）。長ければ普通に縦スクロール */
+    #viewSeq.active{overflow-x:hidden;display:block;}
+    #viewMix.active{overflow-x:auto;display:block;}
     .colnums,.grid{min-width:0;}
     .grid{flex:none;height:auto;}
     .row{flex:0 0 auto;}
@@ -571,12 +567,12 @@
         <!-- compact controls row -->
         <div class="strip-ctrls">
           <label class="toggle" id="loopToggle"><span class="sw"></span><span>Loop</span></label>
-          <div class="seg" id="filtSeg">
+          <div class="seg adv" id="filtSeg">
             <button data-f="off" class="on">OFF</button>
             <button data-f="lp">LP</button>
             <button data-f="hp">HP</button>
           </div>
-          <div class="ctrl" style="gap:5px;">Choke
+          <div class="ctrl adv" style="gap:5px;">Choke
             <select class="t" id="chokeSel" style="padding:5px 7px;">
               <option value="0">OFF</option>
               <option value="1">1</option><option value="2">2</option>
@@ -592,9 +588,9 @@
               <option value="off">OFF</option><option value="chro">CHRO</option>
               <option value="maj">MAJ</option><option value="min">MIN</option><option value="pent">PENT</option>
             </select></div>
-          <div class="knob mini"><label>Cutoff <span class="v" id="vCut">12.0k</span></label>
+          <div class="knob mini adv"><label>Cutoff <span class="v" id="vCut">12.0k</span></label>
             <input type="range" id="kCut" min="200" max="18000" step="50" value="12000"></div>
-          <div class="knob mini"><label>Reso <span class="v" id="vRes">0.7</span></label>
+          <div class="knob mini adv"><label>Reso <span class="v" id="vRes">0.7</span></label>
             <input type="range" id="kRes" min="0.1" max="14" step="0.1" value="0.7"></div>
           <div class="knob mini"><label>Level <span class="v" id="vLvl">-4</span></label>
             <input type="range" id="kLvl" min="-30" max="6" step="1" value="-4"></div>
