@@ -93,7 +93,8 @@
   .pads:not(.cols8) .pad:nth-child(n+13){order:1;}
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
-  #viewPads.split{
+  /* .active も必須にして、SEQ/MIX表示中にPADSが残らないようにする */
+  #viewPads.split.active{
     display:grid;
     grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
     grid-template-rows:auto auto 1fr;
@@ -321,7 +322,7 @@
     .pads{max-width:100%;}
     .seg button{padding:5px 10px;font-size:10px;}
     /* 狭い画面ではスプリットを解除して縦積みに */
-    #viewPads.split{display:block;}
+    #viewPads.split.active{display:block;}
     #viewPads.split .strip{margin-bottom:16px;}
     #viewPads.split .msbar{margin:14px 0;}
     #viewPads.split .padTransport{margin-top:12px;}
@@ -937,15 +938,15 @@ async function renderPreset(voice){
 }
 
 async function loadPresets(){
-  for(let i=0;i<PADS.length;i++){
-    if(PADS[i].type==="synth"){
-      try{
-        const raw = await renderPreset(PADS[i].voice);
-        tracks[i].rawBuffer = raw;
-        tracks[i].buffer = makeLofi(raw);   // 12bit/レート低下を焼き込む
-      }catch(e){console.warn("preset fail",i,e);}
-    }
-  }
+  // 順次awaitせず全プリセットを並列生成→ブート高速化
+  await Promise.all(PADS.map(async (p,i)=>{
+    if(p.type!=="synth") return;
+    try{
+      const raw = await renderPreset(p.voice);
+      tracks[i].rawBuffer = raw;
+      tracks[i].buffer = makeLofi(raw);   // 12bit/レート低下を焼き込む
+    }catch(e){console.warn("preset fail",i,e);}
+  }));
 }
 
 // ---------- UI build ----------
@@ -1914,7 +1915,14 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
     const el=document.documentElement;
     const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
     if(req){ try{ req.call(el); }catch(e){} }
-    try{ if(typeof AC!=="undefined" && AC.state!=="running") AC.resume(); }catch(e){}
+    try{
+      if(typeof AC!=="undefined"){
+        if(AC.state!=="running") AC.resume();
+        // 音声スレッドを先に起こす（無音1フレーム）→最初の発音の遅延を削減
+        const b=AC.createBuffer(1,1,AC.sampleRate);
+        const s=AC.createBufferSource(); s.buffer=b; s.connect(AC.destination); s.start(0);
+      }
+    }catch(e){}
     if(splash){ splash.classList.add("hide"); setTimeout(()=>splash.remove(),400); }
     window.removeEventListener("pointerdown",start);
     window.removeEventListener("keydown",start);
