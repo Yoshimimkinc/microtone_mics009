@@ -1075,13 +1075,12 @@ async function renderPreset(voice){
     env(o,.001,.24,.6).connect(out);
     o.start(now);o2.start(now);o.stop(now+.32);o2.stop(now+.06);
   } else if(voice==="sinbass"){
-    // サイン波ベース（C2≈65Hz基準）。音階モードでベースラインを打てる
-    const o=off.createOscillator();o.type="sine";
-    o.frequency.setValueAtTime(98,now);o.frequency.exponentialRampToValueAtTime(65.4,now+.05);  // 頭だけ少し上から落として太さを出す
-    const sub=off.createOscillator();sub.type="sine";sub.frequency.value=65.4;  // サブを薄く重ねる
-    const sg=off.createGain();sg.gain.value=0.3;sub.connect(sg);sg.connect(out);
-    env(o,.004,.5,.98).connect(out);
-    o.start(now);sub.start(now);o.stop(now+.6);sub.stop(now+.6);
+    // サイン波ベース（C2≈65.4Hz・一定振幅）。整数周期でループすればシームレス（プツらない）
+    const o=off.createOscillator();o.type="sine";o.frequency.value=65.4;
+    const o2=off.createOscillator();o2.type="sine";o2.frequency.value=130.8;  // 2倍音で少し太く
+    const g=off.createGain();g.gain.value=0.82;o.connect(g);g.connect(out);
+    const g2=off.createGain();g2.gain.value=0.16;o2.connect(g2);g2.connect(out);
+    o.start(now);o2.start(now);o.stop(now+.5);o2.stop(now+.5);
   }
   const rendered = await off.startRendering();
   return rendered;
@@ -1102,6 +1101,12 @@ async function loadPresets(){
       tracks[i].rawBuffer = raw;
       tracks[i].buffer = makeLofi(raw);   // 12bit/レート低下を焼き込む
       tracks[i].end = contentEnd(tracks[i].buffer);   // 無音を切ってENDを実音長に
+      if(p.voice==="sinbass"){   // 最初からループON＋整数周期のループ点でプツらせない
+        const dur=tracks[i].buffer.duration, per=1/65.4;
+        tracks[i].loop=true; tracks[i].start=0;
+        tracks[i].loopStart=Math.min(0.9,(8*per)/dur);
+        tracks[i].end=Math.min(1,(24*per)/dur);
+      }
     }catch(e){console.warn("preset fail",i,e);}
   }));
 }
@@ -1710,6 +1715,14 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
 // keyboard
 window.addEventListener("keydown",async(e)=>{
   if(e.repeat)return;
+  // TAB：PADS→SEQ→MIX を順送り（Shift+TABで逆）
+  if(e.key==="Tab"){
+    e.preventDefault();
+    const order=["viewPads","viewSeq","viewMix"];
+    let cur=order.findIndex(v=>document.getElementById(v).classList.contains("active")); if(cur<0)cur=0;
+    switchView(order[(cur+(e.shiftKey?-1:1)+order.length)%order.length]);
+    return;
+  }
   // スライダーやセレクトにフォーカス中はパッドキーを無効化（キーボード操作を優先）
   const ae=document.activeElement;
   if(ae&&(ae.tagName==="INPUT"||ae.tagName==="SELECT")) return;
@@ -2166,7 +2179,7 @@ async function applyProject(proj){
       PADS[i].voice=pt.voice||null;
       t.vol=pt.vol??-4; t.tune=pt.tune??0; t.scale=pt.scale??"off";
       t.start=pt.start??t.start??0; t.end=pt.end??t.end??1;   // 未指定はプリセットの自動トリム値を保持
-      t.loop=pt.loop??false; t.loopStart=pt.loopStart??0;
+      t.loop=pt.loop??t.loop??false; t.loopStart=pt.loopStart??t.loopStart??0;   // 未指定はプリセット既定を保持
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
       t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
       // パターン読込（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
