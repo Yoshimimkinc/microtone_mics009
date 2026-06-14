@@ -1605,7 +1605,23 @@ selectPad(0);
 paintPadStates();
 
 // 起動時：プリセット音をオフライン生成して各パッドに焼き込む
-loadPresets().then(()=>{
+// 起動時に最初から入っているデフォルトパターン（音は組み込みプリセットを使うのでaudioは持たない＝軽量）
+const DEFAULT_PROJECT = {
+  version:1, bpm:100, swing:67, chainLen:1,
+  comp:{on:true, threshold:-12, drive:1.5}, masterVol:0,
+  tracks:[
+    {type:'synth', voice:'kick',  name:'KICK',  patterns:[[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1]]},
+    {type:'synth', voice:'snare', name:'SNARE', patterns:[[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0]]},
+    {type:'synth', voice:'hat',   name:'HAT', choke:1, patterns:[[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0]]},
+    {type:'synth', voice:'ohat',  name:'OHAT', choke:1, patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
+    {type:'synth', voice:'clap',  name:'CLAP',  patterns:[[0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0]]},
+    {type:'synth', voice:'rim',   name:'RIM',   patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
+    {type:'synth', voice:'tom',   name:'TOM',   patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
+    {type:'synth', voice:'perc',  name:'PERC',  patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
+  ]
+};
+loadPresets().then(async ()=>{
+  try{ await applyProject(DEFAULT_PROJECT); }catch(e){ console.warn("default project:", e); }
   document.getElementById("sampName").textContent="presets ready";
   drawWave();
 });
@@ -1956,12 +1972,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
 document.getElementById("loadProjBtn").addEventListener("click",()=>{
   document.getElementById("projFile").click();
 });
-document.getElementById("projFile").addEventListener("change",async(e)=>{
-  const f=e.target.files[0]; e.target.value=""; if(!f)return;
-  try{
-    const json=await f.text();
-    const proj=JSON.parse(json);
-    if(!proj.version||!proj.tracks) throw new Error("Invalid project file");
+async function applyProject(proj){
     // restore globals
     bpmVal=proj.bpm||100;
     document.getElementById("bpm").value=bpmVal;
@@ -2014,10 +2025,15 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
     editPat=0;
     [...document.getElementById("patSeg").children].forEach((b,j)=>b.classList.toggle("on",j===0));
     selectPad(0); paintPadStates(); paintSteps(); paintMixer();
+}
+document.getElementById("projFile").addEventListener("change",async(e)=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f)return;
+  try{
+    const proj=JSON.parse(await f.text());
+    if(!proj.version||!proj.tracks) throw new Error("Invalid project file");
+    await applyProject(proj);
     document.getElementById("sampName").textContent="Loaded: "+f.name;
-  }catch(err){
-    alert("Load失敗: "+err.message);
-  }
+  }catch(err){ alert("Load失敗: "+err.message); }
 });
 
 // ---------- skin（AK / SP / RL）テーマ切替・選択を記憶 ----------
