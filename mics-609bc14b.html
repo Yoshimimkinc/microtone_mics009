@@ -388,10 +388,18 @@
   /* responsive */
   @media(max-width:600px){
     body{padding:6px;}
+    /* === スマホはアプリ全体を画面の高さに収める（PADSは縦スクロールさせない） === */
+    html,body{height:100%;}
+    body,html:fullscreen body,html:-webkit-full-screen body{
+      display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden;}
+    html:fullscreen,html:-webkit-full-screen{overflow:hidden;}
+    .unit{flex:1;min-height:0;display:flex;flex-direction:column;}
+    html:fullscreen .unit,html:-webkit-full-screen .unit{margin:0;}
+    .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:0;}
     .unit{padding:8px 10px 10px;border-radius:10px;}
     .brand .logo{font-size:18px;}
     .brand .model{display:none;}
-    .top{padding-bottom:8px;margin-bottom:8px;gap:7px;}
+    .top{padding-bottom:8px;margin-bottom:8px;gap:7px;flex:0 0 auto;}
     button.t{padding:6px 8px;font-size:10px;min-width:0;}
     .transport{gap:6px;}
     .transport .ctrl{font-size:9px;}
@@ -421,15 +429,15 @@
     /* MASTERはMIX画面の時だけ（PADS/SEQでは隠して場所を空ける） */
     .master-bar{display:none;}
     body.mix-on .master-bar{display:flex;border-left:none;padding-left:0;flex-basis:100%;}
-    /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド */
-    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:10px;}
-    #viewPads>.strip{order:1;margin:0;}
-    #viewPads>.pads{order:2;max-width:100%;}
-    #viewPads>.msbar{order:3;flex-wrap:wrap;}
-    #viewPads>.padTransport{order:4;margin:0;}
-    /* パッドは4×4で全16個を一度に表示（ヘッダを詰めた分の高さを活用） */
-    .pads{grid-template-columns:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
-    .pads .pad{aspect-ratio:1!important;padding:7px!important;}
+    /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden;}
+    #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
+    #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:0;}
+    #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;}
+    #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
+    /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
+    .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
+    .pads .pad{aspect-ratio:auto!important;min-height:0!important;padding:6px!important;}
     /* MPC配列：ドラム(1-8)を下段、サンプル(9-16)を上段に（cols8/4×4どちらでも） */
     .pads .pad:nth-child(-n+4){order:4!important;}
     .pads .pad:nth-child(n+5):nth-child(-n+8){order:3!important;}
@@ -438,9 +446,9 @@
     #layoutSeg{display:none!important;}
     /* Koala風ミニマル：詳細ツマミ(フィルター/Choke/Cutoff/Reso)はスマホでは隠す */
     .strip-ctrls .adv{display:none!important;}
-    /* 自然な高さで詰める（パッドは正方形・伸ばさない＝はみ出さない）。長ければ普通に縦スクロール */
-    #viewSeq.active{overflow-x:hidden;display:block;}
-    #viewMix.active{overflow-x:hidden;display:block;}
+    /* SEQ/MIXは固定高さの中で内部縦スクロール（PADSは収める方針と両立） */
+    #viewSeq.active{overflow-x:hidden;overflow-y:auto;display:block;height:100%;}
+    #viewMix.active{overflow-x:hidden;overflow-y:auto;display:block;height:100%;}
     /* SEQヘッダの行数削減：ヒント省略・ラベル省略でPATTERN/BAR/DUPを1行に */
     .seq-hint{display:none;}
     .seq-head{gap:6px;margin-bottom:8px;}
