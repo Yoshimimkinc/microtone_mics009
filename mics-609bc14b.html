@@ -179,8 +179,12 @@
   .seq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;}
   .pat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
+  .patbtn{position:relative;}
   .patbtn.on{background:var(--amber);color:#2a1405;}
-  .patbtn.playing{box-shadow:0 0 0 2px var(--teal);position:relative;z-index:2;}  /* 現在再生中のパターンを外枠で・最前面 */
+  .patbtn.playing{box-shadow:0 0 0 2px var(--teal);position:relative;z-index:2;}  /* 現在再生中を外枠で・最前面 */
+  .patbtn.queued{box-shadow:0 0 0 2px var(--teal);z-index:2;animation:spblink .8s ease-in-out infinite;}  /* 予約中＝点滅 */
+  .patbtn.has::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:.85;}  /* 中身ありドット */
+  .patbtn.dim{opacity:.4;}  /* ループ外の小節は薄く */
   .pat-indicator{font-size:14px;font-weight:700;color:var(--teal);
     min-width:24px;text-align:center;padding:4px 8px;
     border:1px solid var(--teal);border-radius:5px;font-variant-numeric:tabular-nums;}
@@ -589,18 +593,19 @@
     <div class="view" id="viewSeq">
       <div class="seq-head">
         <div class="pat-bar">
+          <span class="patlabel">PATTERN</span>
           <div class="seg" id="patSeg">
             <button class="patbtn on" data-p="0">A</button>
             <button class="patbtn" data-p="1">B</button>
             <button class="patbtn" data-p="2">C</button>
             <button class="patbtn" data-p="3">D</button>
           </div>
-          <span class="patlabel">CHAIN</span>
-          <div class="seg" id="chainSeg">
-            <button data-len="1" class="on">1</button>
-            <button data-len="2">2</button>
-            <button data-len="3">3</button>
-            <button data-len="4">4</button>
+          <span class="patlabel">BAR</span>
+          <div class="seg" id="barSeg">
+            <button class="patbtn on" data-b="0">1</button>
+            <button class="patbtn" data-b="1">2</button>
+            <button class="patbtn" data-b="2">3</button>
+            <button class="patbtn" data-b="3">4</button>
           </div>
         </div>
         <div class="ctrl" style="font-size:10px;">行名クリックで試聴 · Shift+クリックでアクセント</div>
@@ -779,13 +784,8 @@ let compMakeup = 1.2;
 
 // --- per-pad state ---
 const tracks = PADS.map((p,i)=>({
-  pattern:new Array(STEPS).fill(0),  // 後方互換用（editPatで切替）
-  patterns:[
-    new Array(STEPS).fill(0),
-    new Array(STEPS).fill(0),
-    new Array(STEPS).fill(0),
-    new Array(STEPS).fill(0),
-  ],
+  // patterns[パターン0-3(A-D)][小節0-3(1-4)][ステップ0-15]
+  patterns:Array.from({length:4},()=>Array.from({length:4},()=>new Array(STEPS).fill(0))),
   vol:-4,            // dB
   buffer:null,       // AudioBuffer (12bit-processed; preset or loaded sample)
   rawBuffer:null,    // 加工前バッファ（再12bit化や設定変更時の元）
@@ -813,15 +813,22 @@ let stepIdx = 0;
 let playStep = 0;
 let recording = false;
 let editPat = 0;       // 編集中パターン 0-3 (A-D)
-let chainLen = 1;      // チェイン長 1-4
-let chainPos = 0;      // 再生中チェイン位置（スケジューラ用）
+let editBar = 0;       // 編集中の小節 0-3 (1-4)
+let playPat = 0;       // 再生中パターン（スケジューラ用）
+let playBar = 0;       // 再生中の小節（スケジューラ用）
+let queuedPat = null;  // 予約中パターン（次の小節アタマで切替）
 let displayPat = 0;    // 表示中の再生パターン（drawLoop用）
+let displayBar = 0;    // 表示中の再生小節（drawLoop用）
 const PAT_NAMES = ["A","B","C","D"];
 
-// 編集中パターンへのアクセサ
-function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat]; }
-// 再生中パターンへのアクセサ
-function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[chainPos]; }
+// 編集中（パターン×小節）へのアクセサ
+function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar]; }
+// 再生中（パターン×小節）へのアクセサ
+function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][playBar]; }
+// 小節に音があるか／パターンの長さ（書いた分・最低1小節）
+function barHasContent(p,b){ for(let i=0;i<PADS.length;i++){ const a=tracks[i].patterns[p][b]; for(let s=0;s<STEPS;s++) if(a[s]>0) return true; } return false; }
+function patHasContent(p){ for(let b=0;b<4;b++) if(barHasContent(p,b)) return true; return false; }
+function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) last=b; return last+1; }
 
 function dbToGain(db){ return Math.pow(10, db/20); }
 
@@ -1092,7 +1099,7 @@ PADS.forEach((p,i)=>{
       const cur=getPattern(i)[s];
       if(e.shiftKey){ getPattern(i)[s]=cur===2?0:2; }
       else { getPattern(i)[s]=cur?0:1; }
-      paintSteps();
+      paintSteps(); paintPatBar();   // 中身ドット・小節長を更新
     });
     row.appendChild(st);cells.push(st);
   }
@@ -1106,7 +1113,7 @@ function paintSteps(){
     rowEls[i].forEach((el,s)=>{
       el.classList.toggle("on",pat[s]>0);
       el.classList.toggle("acc",pat[s]===2);
-      el.classList.toggle("cursor",playing && editPat===displayPat && s===playStep);
+      el.classList.toggle("cursor",playing && editPat===displayPat && editBar===displayBar && s===playStep);
     });
   }
   [...grid.children].forEach((row,i)=>row.classList.toggle("sel",i===selected));
@@ -1462,7 +1469,7 @@ function scheduleStep(stepNo, when){
       n++;
     }
   }
-  drawQueue.push({step:stepNo, time:when, hits, pat:chainPos});
+  drawQueue.push({step:stepNo, time:when, hits, pat:playPat, bar:playBar});
 }
 
 // ステップの絶対時刻をtickから導出（加算累積しない = ドリフトしない）
@@ -1483,7 +1490,9 @@ function scheduler(){
     if(stepIdx >= STEPS){
       stepIdx = 0;
       barStartTime += STEPS * TICKS_PER_16TH * tickDur();
-      chainPos = (chainPos + 1) % chainLen;   // 次のパターンへ（チェイン長でループ）
+      // 小節アタマ：予約があれば次パターンへ切替、無ければ同パターン内の次小節（書いた分でループ）
+      if(queuedPat !== null){ playPat = queuedPat; playBar = 0; queuedPat = null; }
+      else { playBar++; if(playBar >= patLength(playPat)) playBar = 0; }
     }
   }
 }
@@ -1494,7 +1503,7 @@ function drawLoop(){
     const ev=drawQueue.shift();
     cur=ev.step;
     if(ev.hits) ev.hits.forEach(h=>{flashPad(h.pad);if(typeof vuHit==="function")vuHit(h.pad,h.acc);});
-    if(ev.pat!==undefined){ displayPat=ev.pat; updatePatIndicator(ev.pat); }
+    if(ev.pat!==undefined){ displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
   }
   if(cur!==null){ playStep=cur; paintSteps(); }
   updatePlayCursor(now);
@@ -1511,20 +1520,21 @@ playBtn.addEventListener("click",async()=>{
   const pp=document.getElementById("padPlay");
   if(pp){pp.classList.toggle("on",playing);pp.textContent=playing?"■ STOP":"▶ START";}
   if(playing){
-    stepIdx=0; playStep=0; drawQueue.length=0; chainPos=0;
+    stepIdx=0; playStep=0; drawQueue.length=0;
+    playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
     barStartTime=AC.currentTime+0.05;
     schedTimer=setInterval(scheduler, INTERVAL);
     requestAnimationFrame(drawLoop);
   } else {
     clearInterval(schedTimer); schedTimer=null;
     drawQueue.length=0; playStep=0; paintSteps();
-    clearPatIndicator();   // 停止したら再生中の外枠を消す
+    clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
   }
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
 recBtn.addEventListener("click",()=>{recording=!recording;recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"Rec ●":"Rec";});
-document.getElementById("clear").addEventListener("click",()=>{getPattern(selected).fill(0);paintSteps();});
+document.getElementById("clear").addEventListener("click",()=>{getPattern(selected).fill(0);paintSteps();paintPatBar();});
 
 // tempo / swing / vol
 const bpm=document.getElementById("bpm"),bpmRead=document.getElementById("bpmRead");
@@ -1608,7 +1618,7 @@ paintPadStates();
 // 起動時：プリセット音をオフライン生成して各パッドに焼き込む
 // 起動時に最初から入っているデフォルトパターン（音は組み込みプリセットを使うのでaudioは持たない＝軽量）
 const DEFAULT_PROJECT = {
-  version:1, bpm:100, swing:67, chainLen:1,
+  version:2, bpm:100, swing:67,
   comp:{on:true, threshold:-12, drive:1.5}, masterVol:0,
   tracks:[
     {type:'synth', voice:'kick',  name:'KICK',  patterns:[[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1]]},
@@ -1659,27 +1669,41 @@ setTimeout(lockViewHeight, 400);
 
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
-const chainSeg=document.getElementById("chainSeg");
+const barSeg=document.getElementById("barSeg");
 
-// パターン選択（編集対象）
+// パターン選択：編集対象を移す＋再生中なら次の小節アタマで切替を予約
 patSeg.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
-  editPat=+b.dataset.p;
-  [...patSeg.children].forEach(x=>x.classList.toggle("on",x===b));
-  paintSteps();
+  const p=+b.dataset.p;
+  editPat=p;
+  if(playing) queuedPat = (p===displayPat) ? null : p;  // 今のを再タップ＝予約キャンセル
+  paintSteps(); paintPatBar();
 });
-// チェイン長
-chainSeg.addEventListener("click",e=>{
+// 小節選択（編集対象の小節）
+barSeg.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
-  chainLen=+b.dataset.len;
-  [...chainSeg.children].forEach(x=>x.classList.toggle("on",x===b));
+  editBar=+b.dataset.b;
+  paintSteps(); paintPatBar();
 });
-// 再生中パターンは A/B/C/D ボタンの外枠で表示
+// 再生中＝外枠 / 予約中＝点滅 / 中身あり＝ドット
 function updatePatIndicator(p){
-  [...patSeg.children].forEach((b,j)=>b.classList.toggle("playing", j===p));
+  [...patSeg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); });
 }
-function clearPatIndicator(){
-  [...patSeg.children].forEach(b=>b.classList.remove("playing"));
+function clearPatIndicator(){ [...patSeg.children].forEach(b=>b.classList.remove("playing","queued")); }
+function updateBarIndicator(bar){ [...barSeg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar)); }
+function clearBarIndicator(){ [...barSeg.children].forEach(b=>b.classList.remove("playing")); }
+// 編集状態・中身ドット・予約点滅・ループ外小節をまとめて反映
+function paintPatBar(){
+  [...patSeg.children].forEach((b,j)=>{
+    b.classList.toggle("on", j===editPat);
+    b.classList.toggle("has", patHasContent(j));
+    b.classList.toggle("queued", playing && queuedPat===j);
+  });
+  [...barSeg.children].forEach((b,j)=>{
+    b.classList.toggle("on", j===editBar);
+    b.classList.toggle("has", barHasContent(editPat,j));
+    b.classList.toggle("dim", j>=patLength(editPat) && !barHasContent(editPat,j));
+  });
 }
 
 // ---------- MIX view ----------
@@ -1940,10 +1964,9 @@ function b64ToUint8(b64){
 // SAVE
 document.getElementById("saveBtn").addEventListener("click",()=>{
   const proj={
-    version:1,
+    version:2,
     bpm:bpmVal,
     swing:swingPct,
-    chainLen,
     comp:{on:compOn, threshold:compThreshold, drive:compDrive},
     masterVol:+document.getElementById("kMaster").value,
     tracks:tracks.map((t,i)=>{
@@ -1984,8 +2007,6 @@ async function applyProject(proj){
     document.getElementById("bpmRead").textContent=bpmVal.toFixed(1);
     swingPct=proj.swing||50;
     document.getElementById("swing").value=swingPct;
-    chainLen=proj.chainLen||1;
-    [...document.getElementById("chainSeg").children].forEach(b=>b.classList.toggle("on",+b.dataset.len===chainLen));
     // comp
     if(proj.comp){
       compThreshold=proj.comp.threshold; compDrive=proj.comp.drive;
@@ -2014,7 +2035,16 @@ async function applyProject(proj){
       t.loop=pt.loop??false; t.loopStart=pt.loopStart??0;
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
       t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
-      if(pt.patterns) for(let p=0;p<4;p++) t.patterns[p]=pt.patterns[p]||new Array(STEPS).fill(0);
+      // パターン読込（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
+      if(pt.patterns) for(let p=0;p<4;p++){
+        for(let bar=0;bar<4;bar++) t.patterns[p][bar]=new Array(STEPS).fill(0);
+        const pat=pt.patterns[p];
+        if(Array.isArray(pat)){
+          if(typeof pat[0]==="number"){ t.patterns[p][0]=pat.slice(0,STEPS); }                 // 旧: 1小節
+          else for(let bar=0;bar<4&&bar<pat.length;bar++) if(Array.isArray(pat[bar])) t.patterns[p][bar]=pat[bar].slice(0,STEPS);
+        }
+        for(let bar=0;bar<4;bar++) while(t.patterns[p][bar].length<STEPS) t.patterns[p][bar].push(0);
+      }
       // audio
       if(pt.audio){
         const wav=b64ToUint8(pt.audio);
@@ -2027,9 +2057,8 @@ async function applyProject(proj){
       const rn=grid.children[i]?.querySelector(".rn");
       if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${t.name}`;
     }
-    editPat=0;
-    [...document.getElementById("patSeg").children].forEach((b,j)=>b.classList.toggle("on",j===0));
-    selectPad(0); paintPadStates(); paintSteps(); paintMixer();
+    editPat=0; editBar=0;
+    selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar();
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
