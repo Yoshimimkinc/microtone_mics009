@@ -54,10 +54,22 @@
   body.t-rl .step:nth-child(4n):not(.on){border-color:#d98426;}    /* 拍内3 */
   body.t-rl .step:nth-child(4n+1):not(.on){border-color:#ffb24d;}  /* 拍内4: 明オレンジ */
   /* skin切替：右上角の最上位に小さく配置（行を増やさない） */
-  /* skin切替：トランスポート行の右端にインライン配置 */
-  .transport #skinbar{display:flex;align-items:center;gap:5px;margin-left:8px;}
-  #skinbar::before{content:"SKIN";font-size:8px;letter-spacing:.18em;color:var(--dim);}
-  #skinbar .seg button{padding:4px 7px;font-size:9px;}
+  /* ケバブメニュー & モーダル（DADS dialog風） */
+  .kebab{font-size:18px;line-height:1;padding:6px 11px;margin-left:auto;}
+  .modal-backdrop{position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.55);
+    display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal{background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+    border-radius:14px;padding:18px 20px 20px;width:min(360px,92vw);
+    box-shadow:0 24px 70px rgba(0,0,0,.6);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
+    font-size:11px;letter-spacing:.26em;color:var(--dim);}
+  .modal-head .t{padding:6px 10px;font-size:13px;}
+  .modal-sec{margin-bottom:16px;}
+  .modal-sec:last-child{margin-bottom:0;}
+  .modal-label{font-size:10px;color:var(--dim);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;}
+  .modal-btns{display:flex;gap:8px;flex-wrap:wrap;}
+  .modal .master-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  .modal .master-ctrls .knob{flex:1 1 90px;}
   *{box-sizing:border-box;margin:0;padding:0;}
   /* DADS準拠：キーボードフォーカスを明確に可視化（マウス操作時は出さない）。色はテーマのアクセント */
   :focus-visible{ outline:3px solid var(--teal)!important; outline-offset:2px; border-radius:3px; }
@@ -399,9 +411,6 @@
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
     .seg button{padding:5px 10px;font-size:10px;}
-    /* スマホは"SKIN"ラベル省略してコンパクトに（トランスポート行に同居） */
-    #skinbar::before{display:none;}
-    #skinbar .seg button{padding:5px 8px;font-size:10px;}
     /* MASTERはMIX画面の時だけ（PADS/SEQでは隠して場所を空ける） */
     .master-bar{display:none;}
     body.mix-on .master-bar{display:flex;border-left:none;padding-left:0;flex-basis:100%;}
@@ -485,10 +494,6 @@
     <div class="transport">
       <button class="t play" id="play">Play</button>
       <button class="t rec" id="rec">Rec</button>
-      <button class="t" id="clear">Clear trk</button>
-      <button class="t" id="saveBtn">Save</button>
-      <button class="t" id="loadProjBtn">Load</button>
-      <input type="file" id="projFile" accept=".mics,.json" style="display:none;">
       <button class="t" id="tap">Tap</button>
       <div class="ctrl">Tempo
         <input type="range" id="bpm" min="60" max="180" step="0.5" value="100">
@@ -505,11 +510,37 @@
         </select>
         <span class="val" id="swingVal"></span>
       </div>
-      <div id="skinbar">
-        <div class="seg" id="themeSeg">
-          <button data-th="ak" class="on">AK</button>
-          <button data-th="sp">SP</button>
-          <button data-th="rl">TR</button>
+      <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog">⋮</button>
+    </div>
+    <!-- メニュー（SKIN / プロジェクト操作） -->
+    <div class="modal-backdrop" id="menuModal" style="display:none;">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+        <div class="modal-head"><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
+        <div class="modal-sec">
+          <div class="modal-label">Skin</div>
+          <div class="seg" id="themeSeg">
+            <button data-th="ak" class="on">AK</button>
+            <button data-th="sp">SP</button>
+            <button data-th="rl">TR</button>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Master / Comp</div>
+          <div class="master-ctrls">
+            <label class="toggle on" id="compToggle"><span class="sw"></span><span>COMP</span></label>
+            <div class="knob"><label>Threshold <span class="v" id="vComp">-12</span></label>
+              <input type="range" id="kComp" min="-30" max="0" step="1" value="-12"></div>
+            <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
+              <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Project</div>
+          <div class="modal-btns">
+            <button class="t" id="saveBtn">Save</button>
+            <button class="t" id="loadProjBtn">Load</button>
+            <input type="file" id="projFile" accept=".mics,.json" style="display:none;">
+          </div>
         </div>
       </div>
     </div>
@@ -526,11 +557,6 @@
       <div class="master-ctrls">
         <div class="knob"><label>Master <span class="v" id="vMaster">0 dB</span></label>
           <input type="range" id="kMaster" min="-30" max="6" step="1" value="0"></div>
-        <label class="toggle on" id="compToggle"><span class="sw"></span><span>COMP</span></label>
-        <div class="knob"><label>Threshold <span class="v" id="vComp">-12</span></label>
-          <input type="range" id="kComp" min="-30" max="0" step="1" value="-12"></div>
-        <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
-          <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
       </div>
     </div>
   </div>
@@ -1719,7 +1745,36 @@ playBtn.addEventListener("click",async()=>{
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
 recBtn.addEventListener("click",()=>{recording=!recording;recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"Rec ●":"Rec";});
-document.getElementById("clear").addEventListener("click",()=>{getPattern(selected).fill(0);paintSteps();paintPatBar();});
+
+// ---------- メニュー（ケバブ→モーダル） DADS dialog 準拠 ----------
+(function(){
+  const modal=document.getElementById("menuModal"), btn=document.getElementById("menuBtn"), closeBtn=document.getElementById("menuClose");
+  let lastFocus=null;
+  function open(){
+    lastFocus=document.activeElement;
+    modal.style.display="flex";
+    closeBtn.focus();                       // フォーカスをダイアログ内へ
+    document.addEventListener("keydown",onKey);
+  }
+  function close(){
+    modal.style.display="none";
+    document.removeEventListener("keydown",onKey);
+    if(lastFocus&&lastFocus.focus) lastFocus.focus();   // フォーカス復帰
+  }
+  function onKey(e){
+    if(e.key==="Escape"){ close(); return; }
+    if(e.key==="Tab"){    // 簡易フォーカストラップ
+      const f=modal.querySelectorAll('button,select,input,[tabindex]:not([tabindex="-1"])');
+      if(!f.length) return;
+      const first=f[0], last=f[f.length-1];
+      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+    }
+  }
+  btn.addEventListener("click",open);
+  closeBtn.addEventListener("click",close);
+  modal.addEventListener("click",e=>{ if(e.target===modal) close(); });   // 背景クリックで閉じる
+})();
 
 // tempo / swing / vol
 const bpm=document.getElementById("bpm"),bpmRead=document.getElementById("bpmRead");
