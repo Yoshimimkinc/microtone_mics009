@@ -423,6 +423,11 @@
     /* 自然な高さで詰める（パッドは正方形・伸ばさない＝はみ出さない）。長ければ普通に縦スクロール */
     #viewSeq.active{overflow-x:hidden;display:block;}
     #viewMix.active{overflow-x:auto;display:block;}
+    /* SEQヘッダの行数削減：ヒント省略・ラベル省略でPATTERN/BAR/DUPを1行に */
+    .seq-hint{display:none;}
+    .seq-head{gap:6px;margin-bottom:8px;}
+    .pat-bar{gap:6px;}
+    .pat-bar .patlabel{display:none;}
     .colnums,.grid{min-width:0;}
     .grid{flex:none;height:auto;}
     .row{flex:0 0 auto;}
@@ -653,7 +658,7 @@
         <div class="melo-banner" id="meloBanner" style="display:none;">
           <button class="t" id="meloExit">← DRUMS</button>
         </div>
-        <div class="ctrl" style="font-size:10px;">行名クリックで試聴 · Shift+クリックでアクセント</div>
+        <div class="ctrl seq-hint" style="font-size:10px;">行名クリックで試聴 · Shift+クリックでアクセント</div>
       </div>
       <div class="colnums" id="colnums"></div>
       <div class="grid playcol" id="grid"></div>
