@@ -607,6 +607,12 @@
               </div>
             </div>
           </div>
+          <div class="rec-overlay" id="extractOverlay">
+            <div class="rec-panel" style="flex-direction:column;gap:8px;">
+              <button class="t" id="extractGo" style="background:var(--red);color:#fff;padding:10px 16px;">▶ 動画から音声を抽出</button>
+              <span id="extractMsg" style="font-size:10px;color:var(--dim);">タップで再生して音を取り込みます</span>
+            </div>
+          </div>
         </div>
         <!-- compact controls row -->
         <div class="strip-ctrls">
@@ -753,33 +759,52 @@ function isSilent(buf){
   return true;
 }
 // iOS等でdecodeAudioDataが動画の音声を取り出せない場合の保険：
-// 動画を実時間再生しながらWeb Audioで録音→その音声をデコードして抽出する。
+// 動画を「タップで」実時間再生しながらWeb Audioで録音→その音声をデコードして抽出する。
+// （iOSはユーザー操作内でしかplay()できないため、専用ボタンのタップを再生のトリガにする）
 function extractViaPlayback(file){
   return new Promise((resolve,reject)=>{
+    const overlay=document.getElementById("extractOverlay");
+    const goBtn=document.getElementById("extractGo");
+    const msg=document.getElementById("extractMsg");
     const url=URL.createObjectURL(file);
-    const cleanup=()=>{ try{URL.revokeObjectURL(url);}catch(_){}};
     const v=document.createElement("video");
-    v.src=url; v.playsInline=true; v.preload="auto"; v.muted=true;
-    v.onerror=()=>{ cleanup(); reject(new Error("動画を再生できません")); };
-    v.onloadedmetadata=()=>{
-      let src,dest,rec;
+    v.src=url; v.playsInline=true; v.preload="auto";
+    let done=false, watchdog=null;
+    const finish=(fn,arg)=>{
+      if(done) return; done=true;
+      clearTimeout(watchdog);
+      overlay.classList.remove("show"); goBtn.onclick=null; goBtn.disabled=false;
+      try{URL.revokeObjectURL(url);}catch(_){}
+      fn(arg);
+    };
+    v.onerror=()=>finish(reject,new Error("動画を再生できません"));
+    overlay.classList.add("show");
+    goBtn.disabled=false;
+    msg.textContent="タップで再生して音を取り込みます";
+    goBtn.onclick=async ()=>{
+      goBtn.disabled=true;
+      let dest,rec;
       try{
-        src=AC.createMediaElementSource(v);
+        const src=AC.createMediaElementSource(v);
         dest=AC.createMediaStreamDestination();
         src.connect(dest);                 // スピーカーには出さず録音先のみへ
         rec=new MediaRecorder(dest.stream);
-      }catch(err){ cleanup(); reject(err); return; }
+      }catch(err){ finish(reject,err); return; }
       const chunks=[];
       rec.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
       rec.onstop=async()=>{
-        cleanup();
-        try{ resolve(await decodeAudio(await new Blob(chunks).arrayBuffer())); }
-        catch(err){ reject(err); }
+        try{ finish(resolve, await decodeAudio(await new Blob(chunks).arrayBuffer())); }
+        catch(err){ finish(reject,err); }
       };
-      v.onended=()=>{ try{ if(rec.state!=="inactive") rec.stop(); }catch(_){} };
-      try{ rec.start(); }catch(err){ cleanup(); reject(err); return; }
-      v.play().then(()=>{ v.muted=false; })   // 再生開始後にミュート解除（グラフへ音声を流す）
-        .catch(()=>{ try{rec.stop();}catch(_){} cleanup(); reject(new Error("再生できません（一度画面をタップしてから試して）")); });
+      const stop=()=>{ try{ if(rec.state!=="inactive") rec.stop(); }catch(_){} };
+      v.onended=stop;
+      v.ontimeupdate=()=>{ if(v.duration) msg.textContent="抽出中 "+v.currentTime.toFixed(1)+"/"+v.duration.toFixed(1)+"s"; };
+      try{ rec.start(); }catch(err){ finish(reject,err); return; }
+      try{ await v.play(); }
+      catch(err){ stop(); finish(reject,new Error("再生不可:"+((err&&err.message)?err.message:err))); return; }
+      // ウォッチドッグ：尺+3秒で強制停止（onendedが来なくても固まらない）
+      const dur=(isFinite(v.duration)&&v.duration>0)?v.duration:30;
+      watchdog=setTimeout(stop,(dur+3)*1000);
     };
   });
 }
@@ -1948,7 +1973,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     dbg.push(buf?("decode="+buf.length+"smp/"+buf.duration.toFixed(1)+"s/silent="+isSilent(buf)):("decodeNG:"+decErr));
     // decode失敗 or 無音 → 実時間再生で録音抽出にフォールバック
     if(isSilent(buf)){
-      show("音声抽出中…(動画の長さぶん待つ) "+dbg.join(" "));
+      show("▶ 抽出ボタンをタップ（動画の長さぶん再生されます）");
       try{ buf = await extractViaPlayback(f); dbg.push("play="+(buf?buf.length+"smp/silent="+isSilent(buf):"null")); }
       catch(pe){ dbg.push("playNG:"+((pe&&pe.message)?pe.message:String(pe))); buf=null; }
     }
@@ -2233,6 +2258,8 @@ document.getElementById("kDrive").addEventListener("input",function(){
 const recOverlay=document.getElementById("recOverlay");
 recOverlay.addEventListener("pointerdown",e=>e.stopPropagation());
 recOverlay.addEventListener("click",e=>e.stopPropagation());
+const extractOverlayEl=document.getElementById("extractOverlay");
+extractOverlayEl.addEventListener("pointerdown",e=>e.stopPropagation());
 const recChoose=document.getElementById("recChoose");
 const recActiveEl=document.getElementById("recActive");
 let recStream=null, recorder=null, recChunks=[], recStartMs=0, recTimerId=null;
