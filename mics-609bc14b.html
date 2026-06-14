@@ -738,9 +738,11 @@ const CODEMAP = ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7",
 
 const AC = new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"});
 // 音声デコード：Promise版で失敗したら旧コールバック版で再試行（iOSのmp4/mov・webm等の互換対策）
+// 注意: decodeAudioData は渡した ArrayBuffer を detach（中身を空に）する。
+// そのため各試行に必ずコピー(slice)を渡し、フォールバックが空データを受け取らないようにする。
 async function decodeAudio(arr){
-  try{ return await AC.decodeAudioData(arr); }
-  catch(e){ return await new Promise((res,rej)=>AC.decodeAudioData(arr,res,rej)); }
+  try{ return await AC.decodeAudioData(arr.slice(0)); }
+  catch(e){ return await new Promise((res,rej)=>AC.decodeAudioData(arr.slice(0),res,rej)); }
 }
 const masterGain = AC.createGain();
 masterGain.gain.value = 0.9;
@@ -1892,10 +1894,14 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
   e.target.value="";   // 同じファイルを選び直してもchangeが発火するようリセット
   if(!f)return;
   if(AC.state!=="running") await AC.resume();
-  sampNameEl.textContent="読込中…";
+  // iCloud等でまだ実体が無い/ダウンロード未完了だとサイズ0になることがある
+  if(!f.size){ sampNameEl.textContent="ファイルが空です（iCloudのDL未完了かも）"; return; }
+  sampNameEl.textContent="読込中… ("+(f.size/1048576).toFixed(1)+"MB)";
   try{
     const arr = await f.arrayBuffer();
+    if(!arr || !arr.byteLength) throw new Error("データを読めません（DL未完了？）");
     const buf = await decodeAudio(arr);
+    if(!buf || !buf.length) throw new Error("音声を抽出できません（非対応の動画形式かも）");
     pushUndo();
     tracks[selected].rawBuffer = buf;
     tracks[selected].buffer = makeLofi(buf);
