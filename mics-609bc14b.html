@@ -231,7 +231,7 @@
   .colnums{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;margin-bottom:5px;min-width:500px;}
   .colnums .cn{font-size:9px;color:var(--dim);text-align:center;font-variant-numeric:tabular-nums;}
   .colnums .cn:nth-child(4n+2){color:var(--ink);}
-  .grid{display:flex;flex-direction:column;gap:3px;min-width:500px;height:300px;}
+  .grid{display:flex;flex-direction:column;gap:3px;min-width:500px;flex:1 1 auto;min-height:0;}
   .row{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;align-items:stretch;flex:1 1 0;min-height:0;}
   .row .rn{
     font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.02em;
@@ -274,7 +274,7 @@
   .modebtn.on .led{background:var(--amber);box-shadow:0 0 8px var(--amber);}
   .view{display:none;}
   .view.active{display:block;}
-  #viewSeq.active{overflow-x:auto;overflow-y:hidden;}
+  #viewSeq.active{overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:column;}
   #viewMix.active{overflow-x:auto;overflow-y:hidden;}
   /* mute / solo hold bar */
   .msbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
@@ -374,9 +374,9 @@
     #viewPads.split .msbar{margin:14px 0;}
     #viewPads.split .padTransport{margin-top:12px;}
     /* SEQ: 横スクロールやめて画面幅に収め、正方形やめてタップしやすい高さに */
-    #viewSeq.active{overflow-x:hidden;}
+    #viewSeq.active{overflow-x:hidden;display:block;}
     .colnums,.grid{min-width:0;}
-    .grid{height:auto;}
+    .grid{flex:none;height:auto;}
     .row{flex:0 0 auto;}
     .colnums,.row{grid-template-columns:32px repeat(16,1fr);gap:2px;}
     .step{height:30px;}
@@ -1606,13 +1606,10 @@ function lockViewHeight(){
   const body=document.querySelector(".body");
   const vp=document.getElementById("viewPads"), vs=document.getElementById("viewSeq"), grid=document.getElementById("grid");
   if(!body||!grid) return;
-  if(window.innerWidth<=600){ body.style.minHeight=""; grid.style.height=""; return; } // スマホは固定しない
+  if(window.innerWidth<=600){ body.style.minHeight=""; return; }    // スマホは固定しない
   if(vp.classList.contains("active")) refViewH = vp.offsetHeight;   // PADSを基準に測る
-  if(refViewH) body.style.minHeight = refViewH+"px";                // どのビューも基準高さを維持＝縮まない
-  if(refViewH && vs.classList.contains("active")){                  // SEQはグリッドを縮めて基準内に収める＝伸びない
-    const other = vs.offsetHeight - grid.offsetHeight;
-    grid.style.height = Math.max(140, refViewH - other) + "px";
-  }
+  if(refViewH) body.style.minHeight = refViewH+"px";                // どのビューも基準高さを維持＝高さ一定
+  // SEQのグリッドはCSSのflexで余白を自動充填（gridを伸ばす）ので個別計算は不要
 }
 window.addEventListener("resize", lockViewHeight);
 window.addEventListener("load", lockViewHeight);
