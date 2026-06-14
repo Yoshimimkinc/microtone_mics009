@@ -1021,11 +1021,13 @@ async function renderPreset(voice){
     o.frequency.setValueAtTime(220,now);o.frequency.exponentialRampToValueAtTime(90,now+.2);
     env(o,.001,.3,.9).connect(out);o.start(now);o.stop(now+.4);
   } else if(voice==="perc"){
-    const o=off.createOscillator();o.type="square";o.frequency.value=300;
-    const o2=off.createOscillator();o2.type="square";o2.frequency.value=470;
-    const bp=off.createBiquadFilter();bp.type="bandpass";bp.frequency.value=900;bp.Q.value=3;
-    o.connect(bp);o2.connect(bp);env(bp,.001,.25,.5).connect(out);
-    o.start(now);o2.start(now);o.stop(now+.3);o2.stop(now+.3);
+    // サイン波ベースの音階パーカッション（コンガ/トム的・チューンしやすい）
+    const o=off.createOscillator();o.type="sine";
+    o.frequency.setValueAtTime(520,now);o.frequency.exponentialRampToValueAtTime(190,now+.12);
+    const o2=off.createOscillator();o2.type="sine";o2.frequency.value=780;  // 倍音を薄く
+    const g2=off.createGain();g2.gain.value=0.18;o2.connect(g2);g2.connect(out);
+    env(o,.001,.24,.6).connect(out);
+    o.start(now);o2.start(now);o.stop(now+.32);o2.stop(now+.06);
   }
   const rendered = await off.startRendering();
   return rendered;
