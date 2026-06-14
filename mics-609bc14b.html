@@ -370,13 +370,18 @@
 
   /* responsive */
   @media(max-width:600px){
-    body{padding:8px;}
-    .unit{padding:14px 12px 16px;border-radius:10px;}
-    .brand .logo{font-size:22px;}
-    .brand .model{font-size:9px;padding:2px 5px;}
-    button.t{padding:7px 10px;font-size:11px;}
-    .modebtn{padding:8px 16px;font-size:11px;}
-    .msbtn{padding:6px 10px;font-size:10px;}
+    body{padding:6px;}
+    .unit{padding:8px 10px 10px;border-radius:10px;}
+    .brand .logo{font-size:18px;}
+    .brand .model{display:none;}
+    .top{padding-bottom:8px;margin-bottom:8px;gap:7px;}
+    button.t{padding:6px 8px;font-size:10px;min-width:0;}
+    .transport{gap:6px;}
+    .transport .ctrl{font-size:9px;}
+    #bpm{max-width:84px;}
+    .modebar-row{margin:8px 0 8px;gap:12px;}
+    .modebtn{padding:6px 13px;font-size:10px;}
+    .msbtn{padding:6px 9px;font-size:10px;}
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
     .strip{padding:9px;}
     .wave-wrap{height:58px;}
@@ -2310,7 +2315,7 @@ const APP_VERSION = "0.1.0";
     if(done) return; done=true;
     const el=document.documentElement;
     const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
-    if(req){ try{ req.call(el); }catch(e){} }
+    if(req){ try{ const p=req.call(el); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }  // 全画面が拒否されてもエラーにしない
     try{
       if(typeof AC!=="undefined"){
         if(AC.state!=="running") AC.resume();
