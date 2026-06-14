@@ -1079,6 +1079,12 @@ async function renderPreset(voice){
   return rendered;
 }
 
+// バッファの実際の鳴ってる終端（無音手前）を 0..1 で返す
+function contentEnd(buf){
+  const d=buf.getChannelData(0), n=d.length, thr=0.004;
+  let last=0; for(let k=n-1;k>=0;k--){ if(Math.abs(d[k])>thr){ last=k; break; } }
+  return Math.max(0.05, Math.min(1, last/n + 0.03));   // 少し余白
+}
 async function loadPresets(){
   // 順次awaitせず全プリセットを並列生成→ブート高速化
   await Promise.all(PADS.map(async (p,i)=>{
@@ -1087,6 +1093,7 @@ async function loadPresets(){
       const raw = await renderPreset(p.voice);
       tracks[i].rawBuffer = raw;
       tracks[i].buffer = makeLofi(raw);   // 12bit/レート低下を焼き込む
+      tracks[i].end = contentEnd(tracks[i].buffer);   // 無音を切ってENDを実音長に
     }catch(e){console.warn("preset fail",i,e);}
   }));
 }
@@ -2132,7 +2139,7 @@ async function applyProject(proj){
       PADS[i].type=pt.type||"empty";
       PADS[i].voice=pt.voice||null;
       t.vol=pt.vol??-4; t.tune=pt.tune??0; t.scale=pt.scale??"off";
-      t.start=pt.start??0; t.end=pt.end??1;
+      t.start=pt.start??t.start??0; t.end=pt.end??t.end??1;   // 未指定はプリセットの自動トリム値を保持
       t.loop=pt.loop??false; t.loopStart=pt.loopStart??0;
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
       t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
