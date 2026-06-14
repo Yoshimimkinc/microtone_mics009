@@ -130,6 +130,11 @@
   .pads:not(.cols8) .pad:nth-child(n+5):nth-child(-n+8){order:3;}
   .pads:not(.cols8) .pad:nth-child(n+9):nth-child(-n+12){order:2;}
   .pads:not(.cols8) .pad:nth-child(n+13){order:1;}
+  /* スマホ：4×2バンク（8パッドだけ大きく表示、1-8 / 9-16 を切替） */
+  .pads.padbank{grid-template-columns:repeat(4,1fr);max-width:100%;gap:9px;}
+  .pads.padbank .pad{aspect-ratio:1;order:0 !important;}
+  .pads.padbank[data-bank="0"] .pad:nth-child(n+9){display:none;}
+  .pads.padbank[data-bank="1"] .pad:nth-child(-n+8){display:none;}
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
   /* .active も必須にして、SEQ/MIX表示中にPADSが残らないようにする */
@@ -582,6 +587,10 @@
         <div class="seg" id="layoutSeg" style="margin-left:auto;">
           <button data-c="8" class="on">8×2</button>
           <button data-c="4">4×4</button>
+        </div>
+        <div class="seg" id="bankSeg" style="display:none;margin-left:auto;">
+          <button data-bank="0" class="on">1-8</button>
+          <button data-bank="1">9-16</button>
         </div>
       </div>
 
@@ -1335,6 +1344,24 @@ layoutSeg.addEventListener("click",e=>{
   if(typeof lockViewHeight==="function") lockViewHeight();
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
+
+// スマホ（タッチ端末）は4×2＋バンク切替（1-8 / 9-16）
+const bankSeg=document.getElementById("bankSeg");
+bankSeg.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  padsEl.dataset.bank=b.dataset.bank;
+  [...bankSeg.children].forEach(x=>x.classList.toggle("on",x===b));
+  if(typeof drawAllPadWaves==="function") drawAllPadWaves();
+});
+if(window.matchMedia && matchMedia("(pointer:coarse)").matches){
+  padsEl.classList.remove("cols8");
+  padsEl.classList.add("padbank");
+  padsEl.dataset.bank="0";
+  document.getElementById("viewPads").classList.remove("split");
+  layoutSeg.style.display="none";
+  bankSeg.style.display="";
+  if(typeof syncMixLayout==="function") syncMixLayout();
+}
 
 // ---------- sample editor ----------
 const waveCv = document.getElementById("wave");
