@@ -785,6 +785,7 @@ function extractViaPlayback(file){
     msg.textContent="タップで再生して音を取り込みます";
     goBtn.onclick=async ()=>{
       goBtn.disabled=true;
+      const target=selected;   // ▶を押した瞬間のパッドに書き込み先を確定
       let dest,rec;
       try{
         const src=AC.createMediaElementSource(v);
@@ -795,7 +796,7 @@ function extractViaPlayback(file){
       const chunks=[];
       rec.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
       rec.onstop=async()=>{
-        try{ finish(resolve, await decodeAudio(await new Blob(chunks).arrayBuffer())); }
+        try{ finish(resolve, {buf: await decodeAudio(await new Blob(chunks).arrayBuffer()), target}); }
         catch(err){ finish(reject,err); }
       };
       const stop=()=>{ try{ if(rec.state!=="inactive") rec.stop(); }catch(_){} };
@@ -1970,27 +1971,30 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     dbg.push("buf="+(arr?arr.byteLength:0)+"B");
     if(!arr || !arr.byteLength) throw new Error("arrayBuffer空: "+dbg.join(" "));
     let buf=null, decErr="";
+    let target=selected;   // 通常デコード（即時）はLOAD時のパッドに確定
     try{ buf = await decodeAudio(arr); }
     catch(de){ decErr=(de&&de.message)?de.message:String(de); }   // iOSはnullでrejectすることがある
     dbg.push(buf?("decode="+buf.length+"smp/"+buf.duration.toFixed(1)+"s/silent="+isSilent(buf)):("decodeNG:"+decErr));
     // decode失敗 or 無音 → 実時間再生で録音抽出にフォールバック
     if(isSilent(buf)){
       show("▶ 抽出ボタンをタップ（動画の長さぶん再生されます）");
-      try{ buf = await extractViaPlayback(f); dbg.push("play="+(buf?buf.length+"smp/silent="+isSilent(buf):"null")); }
+      try{ const r = await extractViaPlayback(f); buf=r.buf; target=r.target;   // ▶押下時のパッドに確定
+           dbg.push("play="+(buf?buf.length+"smp/silent="+isSilent(buf):"null")); }
       catch(pe){ dbg.push("playNG:"+((pe&&pe.message)?pe.message:String(pe))); buf=null; }
     }
     if(isSilent(buf)) throw new Error("抽出不可 "+dbg.join(" "));
     pushUndo();
-    tracks[selected].rawBuffer = buf;
-    tracks[selected].buffer = makeLofi(buf);
-    tracks[selected].start=0; tracks[selected].end=1;
-    tracks[selected].loop=false; tracks[selected].loopStart=0;
-    PADS[selected].type="sample";
-    tracks[selected].name = f.name.slice(0,10);
+    tracks[target].rawBuffer = buf;
+    tracks[target].buffer = makeLofi(buf);
+    tracks[target].start=0; tracks[target].end=1;
+    tracks[target].loop=false; tracks[target].loopStart=0;
+    PADS[target].type="sample";
+    tracks[target].name = f.name.slice(0,10);
     show("OK: "+f.name);
-    padsEl.children[selected].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
+    padsEl.children[target].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
+    selectPad(target);   // 取り込み先パッドへフォーカスを移す（抽出中に別パッドを触っていても結果が見える）
     if(typeof drawWave==="function") drawWave();
-    drawPadWave(selected);
+    drawPadWave(target);
   }catch(err){
     const m=(err&&err.message)?err.message:String(err);
     show("✕ "+m);
