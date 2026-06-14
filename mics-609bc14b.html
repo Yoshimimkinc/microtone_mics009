@@ -397,8 +397,11 @@
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
     .seg button{padding:5px 10px;font-size:10px;}
-    .transport{padding-right:0;}
-    #skinbar{position:static;margin-left:auto;}
+    /* SKINはロゴ右の空きスペース（右上角）に固定＝専用行を消す */
+    .transport{padding-right:74px;}
+    #skinbar{top:2px;}
+    #skinbar::before{display:none;}        /* スマホは"SKIN"ラベル省略 */
+    #skinbar .seg button{padding:5px 8px;font-size:10px;}
     /* MASTERはMIX画面の時だけ（PADS/SEQでは隠して場所を空ける） */
     .master-bar{display:none;}
     body.mix-on .master-bar{display:flex;border-left:none;padding-left:0;flex-basis:100%;}
