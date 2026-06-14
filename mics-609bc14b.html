@@ -31,7 +31,6 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;overflow-x:hidden;}
-  html{scrollbar-gutter:stable;}
   body{
     background:
       radial-gradient(1200px 600px at 50% -10%, #1d2127 0%, var(--bg) 60%);
@@ -43,13 +42,20 @@
     -webkit-font-smoothing:antialiased;
   }
   .unit{
-    max-width:1080px;margin:0 auto;overflow:hidden;
+    width:100%;max-width:1080px;margin:0 auto;overflow:hidden;
     background:linear-gradient(180deg,var(--panel) 0%, #161a1f 100%);
     border:1px solid var(--edge);
     border-radius:14px;
     box-shadow:0 1px 0 #3a4047 inset, 0 24px 60px rgba(0,0,0,.55);
     padding:20px 22px 24px;
   }
+  /* 全画面：背景を敷き、中身を上下中央に（はみ出す時は上から＝クリップしない） */
+  html:fullscreen{background:var(--bg);}
+  html:fullscreen body{display:flex;flex-direction:column;min-height:100vh;}
+  html:fullscreen .unit{margin-top:auto;margin-bottom:auto;}
+  html:-webkit-full-screen{background:var(--bg);}
+  html:-webkit-full-screen body{display:flex;flex-direction:column;min-height:100vh;}
+  html:-webkit-full-screen .unit{margin-top:auto;margin-bottom:auto;}
   /* header / silkscreen */
   .top{display:flex;align-items:flex-end;justify-content:space-between;
     border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px;flex-wrap:wrap;gap:14px;}
