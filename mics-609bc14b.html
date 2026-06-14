@@ -39,6 +39,9 @@
   body.t-ak .modebar,body.t-ak .hint kbd{background:#c2bdac;}
   body.t-ak .ch-ms button{background:#c2bdac;color:#4a463b;}
   body.t-ak .modebtn .led{background:#9a958a;box-shadow:0 0 0 1px #8f8a7c inset;}
+  /* AKはクリーム本体なのでSEQも暗黒→グレーに。拍アタマ(1/5/9/13)は更に明るいグレーで見やすく。ON(赤)は維持 */
+  body.t-ak .step:not(.on){background:#8d8a80;border-color:#74716a;}
+  body.t-ak .step:nth-child(4n+2):not(.on){background:#a6a39a;border-color:#807d74;}
   /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
   body.t-sp{--bg:#14151a;--panel:#5f6368;--panel2:#4d5156;--edge:#26282c;--line:#42464c;
     --ink:#f0f2f4;--dim:#aab0b6;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;}
@@ -246,7 +249,7 @@
     cursor:pointer;transition:.08s;position:relative;min-height:0;
   }
   /* 拍アタマ（1/5/9/13列）を明るくして縦ガイドに＝拍が見やすい */
-  .step:nth-child(4n+2){border-left:2px solid #4a525c;background:#2a313a;}
+  .step:nth-child(4n+2){border-left:2px solid #5a636e;background:#39434f;}
   .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
   .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
