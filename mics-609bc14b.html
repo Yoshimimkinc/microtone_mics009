@@ -242,11 +242,12 @@
     cursor:pointer;transition:.08s;position:relative;min-height:0;
   }
   /* 全モード共通：16ステップを4グループの灰色グラデで可視化（OFFガイド。ONはテーマ色） */
-  .step:not(.on){background:#353a42;}                                   /* 1-4: 暗 */
-  .step:nth-child(n+6):nth-child(-n+9):not(.on){background:#5c636d;}    /* 5-8: やや明 */
-  .step:nth-child(n+10):nth-child(-n+13):not(.on){background:#838a95;}  /* 9-12: 明 */
-  .step:nth-child(n+14):not(.on){background:#aab1bc;}                   /* 13-16: 明るい灰 */
-  .step:nth-child(4n+2){border-left:2px solid #4a525c;}                 /* 4つ割りの区切り線 */
+  /* 全モード共通：各拍(4ステップ)の中で暗→明のグラデを繰り返す＝拍内の位置が分かる（OFFガイド。ONはテーマ色） */
+  .step:nth-child(4n+2):not(.on){background:#353a42;}  /* 拍内1 (1,5,9,13): 暗 */
+  .step:nth-child(4n+3):not(.on){background:#5c636d;}  /* 拍内2 (2,6,10,14) */
+  .step:nth-child(4n):not(.on){background:#838a95;}    /* 拍内3 (3,7,11,15) */
+  .step:nth-child(4n+1):not(.on){background:#aab1bc;}  /* 拍内4 (4,8,12,16): 明 */
+  .step:nth-child(4n+2){border-left:2px solid #4a525c;}  /* 拍の区切り線 */
   .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
   .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
