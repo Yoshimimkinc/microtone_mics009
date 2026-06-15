@@ -252,6 +252,17 @@
     letter-spacing:.06em;cursor:pointer;background:#1a1e23;color:var(--dim);transition:.1s;}
   .ch-ms button.m-on{background:var(--red);color:#fff;}
   .ch-ms button.s-on{background:var(--teal);color:#06201d;}
+  /* グループM/S（4ch×4を一括）。2列=左右、上=サンプル/下=ドラムの2×2 */
+  .grp-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:540px;}
+  .grp{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--panel2);border:1px solid var(--edge);border-radius:8px;padding:8px 10px;}
+  .grp-name{font-size:11px;color:var(--ink);letter-spacing:.06em;font-variant-numeric:tabular-nums;}
+  .grp-ms{display:flex;gap:6px;}
+  .grp-ms button{border:none;border-radius:5px;padding:6px 12px;font:inherit;font-size:11px;font-weight:700;
+    background:var(--pad);color:var(--dim);cursor:pointer;min-height:34px;}
+  .grp-ms button.m-on{background:var(--red);color:#fff;}
+  .grp-ms button.s-on{background:var(--teal);color:#06201d;}
+  .grp-ms button.part{outline:2px solid var(--amber);outline-offset:-2px;}
   /* master VU */
   .master-vu-wrap{position:relative;width:100%;height:16px;background:#0d1013;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px;}
   .master-vu-bar{height:100%;width:0;border-radius:3px;
@@ -752,6 +763,10 @@
 
     <!-- MIX view -->
     <div class="view" id="viewMix">
+      <div class="mix-section">
+        <div class="label">Groups (4ch まとめてミュート/ソロ)</div>
+        <div class="grp-row" id="grpRow"></div>
+      </div>
       <div class="mix-section">
         <div class="label">Channel levels</div>
         <div class="mixer" id="mixer"></div>
@@ -2319,6 +2334,37 @@ PADS.forEach((p,i)=>{
   chEls.push({fader,val,el:ch,nm,vu,mBtn,sBtn});
 });
 
+// --- グループ M/S（4ch×4を一括ミュート/ソロ）。配置はミキサーと同じ空間（上=サンプル/下=ドラム） ---
+const MIX_GROUPS=[
+  {name:"SMP 9-12",  idx:[8,9,10,11]},
+  {name:"SMP 13-16", idx:[12,13,14,15]},
+  {name:"DR 1-4",    idx:[0,1,2,3]},
+  {name:"DR 5-8",    idx:[4,5,6,7]},
+];
+const grpEls=[];
+const grpRow=document.getElementById("grpRow");
+MIX_GROUPS.forEach(g=>{
+  const cell=document.createElement("div"); cell.className="grp";
+  const nm=document.createElement("div"); nm.className="grp-name"; nm.textContent=g.name;
+  const ms=document.createElement("div"); ms.className="grp-ms";
+  const m=document.createElement("button"); m.textContent="M"; m.setAttribute("aria-label",g.name+" mute");
+  const s=document.createElement("button"); s.textContent="S"; s.setAttribute("aria-label",g.name+" solo");
+  m.addEventListener("click",()=>{ pushUndo(); const on=!g.idx.every(i=>tracks[i].mute); g.idx.forEach(i=>tracks[i].mute=on); paintMixer(); paintPadStates(); });
+  s.addEventListener("click",()=>{ pushUndo(); const on=!g.idx.every(i=>tracks[i].solo); g.idx.forEach(i=>tracks[i].solo=on); paintMixer(); paintPadStates(); });
+  ms.appendChild(m); ms.appendChild(s);
+  cell.appendChild(nm); cell.appendChild(ms);
+  grpRow.appendChild(cell);
+  grpEls.push({m,s,idx:g.idx});
+});
+function paintGroups(){
+  grpEls.forEach(g=>{
+    const allM=g.idx.every(i=>tracks[i].mute), someM=g.idx.some(i=>tracks[i].mute);
+    const allS=g.idx.every(i=>tracks[i].solo), someS=g.idx.some(i=>tracks[i].solo);
+    g.m.classList.toggle("m-on",allM); g.m.classList.toggle("part",someM&&!allM);
+    g.s.classList.toggle("s-on",allS); g.s.classList.toggle("part",someS&&!allS);
+  });
+}
+
 // --- VUトリガー：発音時にレベルを設定 ---
 function vuHit(padIdx, accent){
   const g=dbToGain(tracks[padIdx].vol + (accent?5:0));
@@ -2359,6 +2405,7 @@ function paintMixer(){
     c.sBtn.classList.toggle("s-on",tracks[i].solo);
     c.nm.textContent=tracks[i].name||PADS[i].name;
   }
+  if(typeof paintGroups==="function") paintGroups();
 }
 
 // MIXレイアウトをPADSと連動
