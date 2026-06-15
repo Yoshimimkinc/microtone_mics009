@@ -139,11 +139,14 @@
   #rec{min-width:96px;}   /* ●Rec/■Step で幅が変わらないよう固定 */
   /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
   /* ビュー切替ドット（既定=PCでは非表示。スマホのmedia queryで表示） */
-  .viewdots{display:none;align-items:center;gap:8px;}
-  .viewdots .vdot{width:9px;height:9px;border-radius:50%;background:var(--line);border:none;padding:0;cursor:pointer;transition:width .15s,background .15s;}
-  .viewdots .vdot.on{background:var(--teal);width:22px;border-radius:5px;}
-  .viewdots .vdot-label{font-size:11px;letter-spacing:.14em;color:var(--ink);font-weight:700;}
-  .viewdots .vdot-hint{font-size:10px;letter-spacing:.04em;color:var(--dim);margin-left:auto;}
+  /* 画面モード：●PADS 〇SEQ 〇MIX を画面幅いっぱいに均等表示してスワイプを促す */
+  .viewdots{display:none;align-items:stretch;gap:0;}
+  .viewdots .vdot{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:7px;
+    background:none;border:none;padding:8px 4px;cursor:pointer;
+    font-size:11px;letter-spacing:.12em;font-weight:700;color:var(--dim);transition:color .15s;}
+  .viewdots .vdot .vd-dot{width:9px;height:9px;border-radius:50%;background:var(--line);transition:.15s;}
+  .viewdots .vdot.on{color:var(--ink);}
+  .viewdots .vdot.on .vd-dot{background:var(--teal);box-shadow:0 0 8px rgba(61,214,196,.6);}
   /* STEP中は並び順を1..16の順送りに（:nth-child(n)で詳細度を上げ、MPC配列のorderルールに確実に勝つ） */
   body.step-on .pads .pad:nth-child(n){order:0!important;}
   body.step-on .pads .pad .nm{display:none;}
@@ -436,6 +439,9 @@
   .msbtn.chop.armed .d{background:#1d0a3a;}
   .msbtn.edit.armed{background:#5b9dff;color:#06183a;border-color:#5b9dff;box-shadow:0 0 16px rgba(91,157,255,.5);}
   .msbtn.edit.armed .d{background:#06183a;}
+  /* MUTE/SOLOはPADSバーから撤去（M/SはMIX画面に集約）。残るCOPY/CHOPPY/EDITは同幅で揃える */
+  #holdMute,#holdSolo{display:none!important;}
+  .msbar .msbtn{justify-content:center;min-width:104px;}
   /* EDIT mode：対象選択を促すパッドのほのかな点滅枠 */
   body.edit-arm .pads .pad{cursor:pointer;}
   body.edit-arm .pads .pad::after{content:"";position:absolute;inset:0;border:1px dashed rgba(91,157,255,.55);border-radius:9px;pointer-events:none;}
@@ -610,6 +616,16 @@
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:0;}
     #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;}
+    /* スマホ：COPY/CHOPPY/EDITは行幅を均等に分けてフィル */
+    #viewPads>.msbar .msbtn{flex:1 1 0;min-width:0;padding-left:6px;padding-right:6px;}
+    /* スマホ：strip-headを1行に収める（トラック名は省略、LOAD/SMPLは折返さない） */
+    .strip-head{gap:6px;}
+    .who-wrap{flex:1 1 auto;min-width:0;}
+    .strip-head .who{overflow:hidden;text-overflow:ellipsis;min-width:0;}
+    .strip-actions{flex:0 0 auto;gap:6px;}
+    .strip-actions .loadbtn{padding:5px 8px;font-size:10px;white-space:nowrap;}
+    .strip-head .stepnav{padding:6px 7px;}
+    #sampName{max-width:70px;}
     /* スマホのPADS画面ではMUTE/SOLOは非表示（M/SはMIX画面に集約。COPY/CHOPPYは残す） */
     #holdMute,#holdSolo{display:none!important;}
     #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
@@ -841,11 +857,9 @@
     </div>
     <!-- スマホ専用：3モードはスワイプ切替＋このドットで現在地表示（タップでも切替可）。タブを省いてスペース確保 -->
     <div class="viewdots" id="viewDots">
-      <button class="vdot on" data-view="viewPads" aria-label="Pads"></button>
-      <button class="vdot" data-view="viewSeq" aria-label="Seq"></button>
-      <button class="vdot" data-view="viewMix" aria-label="Mix"></button>
-      <span class="vdot-label" id="viewDotsLabel">PADS</span>
-      <span class="vdot-hint">‹ swipe ›</span>
+      <button class="vdot on" data-view="viewPads" aria-label="Pads"><span class="vd-dot"></span>PADS</button>
+      <button class="vdot" data-view="viewSeq" aria-label="Seq"><span class="vd-dot"></span>SEQ</button>
+      <button class="vdot" data-view="viewMix" aria-label="Mix"><span class="vd-dot"></span>MIX</button>
     </div>
     <div class="master-bar" id="masterBar">
       <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
@@ -871,7 +885,7 @@
           <div class="strip-actions">
             <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"></span>
             <span class="loadbtn" id="loadBtn">LOAD</span>
-            <span class="loadbtn" id="sampleBtn" style="color:var(--red);">● SAMPLE</span>
+            <span class="loadbtn" id="sampleBtn" style="color:var(--red);">● SMPL</span>
             <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
@@ -2801,11 +2815,9 @@ function switchView(viewId){
   if(viewId==="viewPads"){ drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
   if(viewId==="viewMix") paintMixer();
-  // スマホのドット/ラベル同期
+  // スマホのモードドット同期（●PADS 〇SEQ 〇MIX）
   const dots=document.getElementById("viewDots");
   if(dots){ dots.querySelectorAll(".vdot").forEach(d=>d.classList.toggle("on",d.dataset.view===viewId)); }
-  const lbl=document.getElementById("viewDotsLabel");
-  if(lbl) lbl.textContent={viewPads:"PADS",viewSeq:"SEQ",viewMix:"MIX"}[viewId]||"";
   lockViewHeight();
 }
 modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
