@@ -124,6 +124,40 @@
   button.t.play.on{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 14px rgba(61,214,196,.4);}
   button.t#tap.on{background:var(--amber);color:#2a1405;border-color:var(--amber);}
   button.t.rec.on{background:var(--red);color:#2a0808;border-color:var(--red);}
+  button.t.step.on{background:var(--amber);color:#2a1405;border-color:var(--amber);box-shadow:0 0 14px rgba(255,138,61,.4);}
+  /* STEP（Digitakt式）：ノブ行と同じ枠にPAT/BARを重ねる＝切替で高さが動かない */
+  .gridctrls{display:none;position:absolute;inset:0;align-items:center;gap:8px;flex-wrap:wrap;
+    background:var(--panel);padding-top:2px;}
+  .gridctrls .patlabel{font-size:10px;color:var(--dim);letter-spacing:.12em;}
+  .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-left:auto;}
+  body.step-on #viewPads .strip-ctrls{position:relative;}
+  /* GRID中：ノブ類は不可視にして高さだけ維持、PAT/BARを重ねて表示 */
+  body.step-on #viewPads .strip-ctrls>:not(.gridctrls){visibility:hidden;}
+  body.step-on #viewPads .gridctrls{display:flex;}
+  /* トラック切替◀▶：edWho両脇に常時表示（出し入れで高さ/位置が動かない） */
+  .who-wrap{display:flex;align-items:center;gap:8px;min-width:0;}
+  .stepnav{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;min-width:0;}
+  .strip-head .who{flex:0 0 130px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #rec{min-width:96px;}   /* ●Rec/■Step で幅が変わらないよう固定 */
+  /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
+  body.step-on .pads .pad{order:0!important;}
+  body.step-on .pads .pad .nm{display:none;}
+  body.step-on .pads .pad>.pad-wave{display:none;}
+  body.step-on .pads .pad::before{display:none;}
+  body.step-on .pad .stepn{display:block;}
+  .pad .stepn{display:none;position:absolute;inset:0;z-index:1;
+    align-items:center;justify-content:center;font-size:18px;font-weight:700;
+    color:var(--dim);font-variant-numeric:tabular-nums;}
+  body.step-on .pad .stepn{display:flex;}
+  /* 拍頭（1,5,9,13）を少し明るく */
+  body.step-on .pad.beathead{background:linear-gradient(180deg,#3b424b,#2f353d);}
+  /* ステップON */
+  body.step-on .pad.stepon{background:linear-gradient(180deg,var(--amber),#c25e22);box-shadow:0 0 14px rgba(255,138,61,.5);}
+  body.step-on .pad.stepon .stepn{color:#2a1405;}
+  body.step-on .pad.stepacc{background:linear-gradient(180deg,#ffd08a,var(--amber));}
+  /* 再生中の現在ステップ */
+  body.step-on .pad.stepcur{outline:5px solid var(--teal);outline-offset:-5px;
+    box-shadow:0 0 18px rgba(61,214,196,.85), inset 0 0 14px rgba(61,214,196,.5);z-index:2;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
     border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
   .ctrl{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;flex-shrink:1;min-width:0;}
@@ -614,6 +648,14 @@
           </div>
         </div>
         <div class="modal-sec">
+          <div class="modal-label">Rec Mode</div>
+          <div class="seg" id="recModeSeg">
+            <button data-rm="real">REAL</button>
+            <button data-rm="grid" class="on">GRID</button>
+          </div>
+          <div style="font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:.02em;">REAL=リアルタイム録音 / GRID=16PADでステップ入力（Digitakt式）</div>
+        </div>
+        <div class="modal-sec">
           <div class="modal-label">Master / Comp</div>
           <div class="master-ctrls">
             <label class="toggle on" id="compToggle"><span class="sw"></span><span>COMP</span></label>
@@ -657,7 +699,11 @@
       <!-- waveform strip -->
       <div class="strip">
         <div class="strip-head">
-          <div class="who" id="edWho">01 KICK</div>
+          <div class="who-wrap">
+            <button class="t stepnav" id="stepPrev" aria-label="前のトラック">◀</button>
+            <div class="who" id="edWho">01 KICK</div>
+            <button class="t stepnav" id="stepNext" aria-label="次のトラック">▶</button>
+          </div>
           <div class="strip-actions">
             <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"></span>
             <span class="loadbtn" id="loadBtn">LOAD</span>
@@ -723,6 +769,25 @@
             <input type="range" id="kRes" min="0.1" max="14" step="0.1" value="0.7"></div>
           <div class="knob mini"><label>Level <span class="v" id="vLvl">-4</span></label>
             <input type="range" id="kLvl" min="-30" max="6" step="1" value="-4"></div>
+          <!-- GRID（Digitakt式）：PAT/BAR選択。ノブ行と同じ枠に重ねて高さ不変（GRID中のみ表示） -->
+          <div class="gridctrls" id="gridCtrls">
+            <span class="patlabel">PAT</span>
+            <div class="seg" id="gPatSeg">
+              <button class="patbtn on" data-p="0">A</button>
+              <button class="patbtn" data-p="1">B</button>
+              <button class="patbtn" data-p="2">C</button>
+              <button class="patbtn" data-p="3">D</button>
+            </div>
+            <span class="patlabel">BAR</span>
+            <div class="seg" id="gBarSeg">
+              <button class="patbtn on" data-b="0">1</button>
+              <button class="patbtn" data-b="1">2</button>
+              <button class="patbtn" data-b="2">3</button>
+              <button class="patbtn" data-b="3">4</button>
+            </div>
+            <button class="t dupbar" id="gDupBar" title="今の小節を次の小節に複写して伸ばす">DUP►</button>
+            <span class="stepbar-hint">PADでON/OFF</span>
+          </div>
         </div>
       </div>
 
@@ -1130,6 +1195,8 @@ let playStep = 0;
 let recording = false;
 let editPat = 0;       // 編集中パターン 0-3 (A-D)
 let editBar = 0;       // 編集中の小節 0-3 (1-4)
+let recMode = "grid";  // "real"=リアルタイム録音 / "grid"=16PADステップ入力（Digitakt式）。既定=grid
+let stepMode = false;  // GRIDステップ入力モードの状態
 let playPat = 0;       // 再生中パターン（スケジューラ用）
 let playBar = 0;       // 再生中の小節（スケジューラ用）
 let queuedPat = null;  // 予約中パターン（次の小節アタマで切替）
@@ -1504,11 +1571,12 @@ function applyPadCategory(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="stepn">${i+1}</div>`;
   d.dataset.i=i;
   d.setAttribute("role","button");
   d.setAttribute("aria-label", p.name+" pad");
-  d.addEventListener("pointerdown",async()=>{
+  d.addEventListener("pointerdown",async(e)=>{
+    if(stepMode){ toggleStepAt(i, e.shiftKey); return; }   // GRID入力：PAD i = ステップ i のON/OFF
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     if(AC.state!=="running")await AC.resume();
     trigger(i);selectPad(i);
@@ -1528,6 +1596,7 @@ function selectPad(i){
   document.getElementById("volVal").textContent=tracks[i].vol;
   refreshSeqMode();
   if(typeof syncEditor==="function") syncEditor();
+  if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
 }
 
 // column numbers (1..16)
@@ -1582,6 +1651,7 @@ PADS.forEach((p,i)=>{
 });
 
 function paintSteps(){
+  if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID中はPADのステップ表示も更新（再生ヘッド追従）
   if(melodicMode){ paintMelodic(); return; }
   for(let i=0;i<PADS.length;i++){
     const pat=getPattern(i);
@@ -2133,7 +2203,55 @@ playBtn.addEventListener("click",async()=>{
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
-recBtn.addEventListener("click",()=>{recording=!recording; if(recording) pushUndo(); recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"■ Rec":"● Rec";});
+recBtn.addEventListener("click",()=>{
+  if(recMode==="grid"){ setStepMode(!stepMode); return; }   // GRID：Recでステップ入力ON/OFF
+  recording=!recording; if(recording) pushUndo(); recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"■ Rec":"● Rec";
+});
+
+// ===== GRID（Digitakt式）ステップ入力 =====
+function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
+function paintStepPads(){
+  if(!stepMode) return;
+  const pat=getPattern(selected);
+  for(let s=0;s<PADS.length;s++){
+    const el=padsEl.children[s]; const v=pat[s]||0;
+    el.classList.toggle("stepon", v>0);
+    el.classList.toggle("stepacc", v===2);
+    el.classList.toggle("beathead", s%4===0);
+    el.classList.toggle("stepcur", playing && editPat===displayPat && editBar===displayBar && s===playStep);
+  }
+}
+function clearStepPadClasses(){
+  for(let s=0;s<PADS.length;s++){ padsEl.children[s].classList.remove("stepon","stepacc","beathead","stepcur"); }
+}
+function toggleStepAt(s, accent){
+  pushUndo();
+  const pat=getPattern(selected); const cur=pat[s]||0;
+  if(accent) pat[s]=cur===2?0:2; else pat[s]=cur?0:1;
+  paintStepPads(); if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
+}
+function setStepMode(on){
+  stepMode=on;
+  document.body.classList.toggle("step-on",on);
+  recBtn.classList.toggle("on",on);
+  recBtn.textContent = on ? "■ Step" : "● Rec";
+  if(on){
+    if(!viewPadsEl.classList.contains("active") && typeof switchView==="function") switchView("viewPads");
+    paintStepPads();
+  } else { clearStepPadClasses(); }
+}
+function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); paintStepPads(); }
+document.getElementById("stepPrev").addEventListener("click",()=>stepShift(-1));
+document.getElementById("stepNext").addEventListener("click",()=>stepShift(1));
+(function(){
+  const seg=document.getElementById("recModeSeg"); if(!seg) return;
+  seg.addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    recMode=b.dataset.rm;
+    [...seg.children].forEach(x=>x.classList.toggle("on",x===b));
+    if(recMode!=="grid" && stepMode) setStepMode(false);   // REALに戻したらGRID解除
+  });
+})();
 document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // ---------- メニュー（ケバブ→モーダル） DADS dialog 準拠 ----------
@@ -2354,48 +2472,50 @@ document.getElementById("meloExit").addEventListener("click",()=>{
   selectPad(d);
 });
 
-// パターン選択：編集対象を移す＋再生中なら次の小節アタマで切替を予約
-patSeg.addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  const p=+b.dataset.p;
+// パターン/小節選択：SEQとGRIDで共有
+function setEditPat(p){
   editPat=p;
   if(playing) queuedPat = (p===displayPat) ? null : p;  // 今のを再タップ＝予約キャンセル
   paintSteps(); paintPatBar();
-});
-// 小節選択（編集対象の小節）
-barSeg.addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  editBar=+b.dataset.b;
-  paintSteps(); paintPatBar();
-});
-// DUP►：今の小節を次の小節に複写して伸ばす（全トラック）
-document.getElementById("dupBar").addEventListener("click",()=>{
+}
+function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); }
+function dupBarNext(){
   if(editBar>=3) return;   // 最大4小節
   pushUndo();
   const dst=editBar+1;
   for(let i=0;i<PADS.length;i++) tracks[i].patterns[editPat][dst]=tracks[i].patterns[editPat][editBar].slice();
   editBar=dst;             // 複写先の小節を編集対象に
   paintSteps(); paintPatBar();
+}
+const gPatSeg=document.getElementById("gPatSeg");
+const gBarSeg=document.getElementById("gBarSeg");
+[[patSeg,"p",setEditPat],[gPatSeg,"p",setEditPat]].forEach(([seg,k,fn])=>{
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; fn(+b.dataset[k]); });
 });
+[[barSeg,"b",setEditBar],[gBarSeg,"b",setEditBar]].forEach(([seg,k,fn])=>{
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; fn(+b.dataset[k]); });
+});
+document.getElementById("dupBar").addEventListener("click",dupBarNext);
+document.getElementById("gDupBar").addEventListener("click",dupBarNext);
 // 再生中＝外枠 / 予約中＝点滅 / 中身あり＝ドット
 function updatePatIndicator(p){
-  [...patSeg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); });
+  [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
 }
-function clearPatIndicator(){ [...patSeg.children].forEach(b=>b.classList.remove("playing","queued")); }
-function updateBarIndicator(bar){ [...barSeg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar)); }
-function clearBarIndicator(){ [...barSeg.children].forEach(b=>b.classList.remove("playing")); }
+function clearPatIndicator(){ [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); }
+function updateBarIndicator(bar){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); }
+function clearBarIndicator(){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); }
 // 編集状態・中身ドット・予約点滅・ループ外小節をまとめて反映
 function paintPatBar(){
-  [...patSeg.children].forEach((b,j)=>{
+  [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
     b.classList.toggle("on", j===editPat);
     b.classList.toggle("has", patHasContent(j));
     b.classList.toggle("queued", playing && queuedPat===j);
-  });
-  [...barSeg.children].forEach((b,j)=>{
+  }));
+  [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
     b.classList.toggle("on", j===editBar);
     b.classList.toggle("has", barHasContent(editPat,j));
     b.classList.toggle("dim", j>=patLength(editPat) && !barHasContent(editPat,j));
-  });
+  }));
 }
 
 // ---------- MIX view ----------
