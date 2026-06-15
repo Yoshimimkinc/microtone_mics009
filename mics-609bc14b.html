@@ -128,9 +128,10 @@
   /* STEP（Digitakt式）：ステップバー＋PADをステップ表示 */
   .stepbar{display:none;align-items:center;gap:10px;margin-bottom:12px;}
   body.step-on .stepbar{display:flex;}
-  .stepbar .t{padding:8px 12px;min-width:0;}
-  .stepbar-name{font-size:14px;color:var(--amber);letter-spacing:.08em;font-variant-numeric:tabular-nums;min-width:120px;text-align:center;}
-  .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-left:auto;}
+  .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;}
+  /* トラック切替◀▶：上のedWho両脇。GRID(step)中のみ表示 */
+  .stepnav{display:none;padding:6px 10px;min-width:0;}
+  body.step-on .stepnav{display:inline-flex;}
   /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
   body.step-on .pads .pad{order:0!important;}
   body.step-on .pads .pad .nm{display:none;}
@@ -642,8 +643,8 @@
         <div class="modal-sec">
           <div class="modal-label">Rec Mode</div>
           <div class="seg" id="recModeSeg">
-            <button data-rm="real" class="on">REAL</button>
-            <button data-rm="grid">GRID</button>
+            <button data-rm="real">REAL</button>
+            <button data-rm="grid" class="on">GRID</button>
           </div>
           <div style="font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:.02em;">REAL=リアルタイム録音 / GRID=16PADでステップ入力（Digitakt式）</div>
         </div>
@@ -691,7 +692,9 @@
       <!-- waveform strip -->
       <div class="strip">
         <div class="strip-head">
+          <button class="t stepnav" id="stepPrev" aria-label="前のトラック">◀</button>
           <div class="who" id="edWho">01 KICK</div>
+          <button class="t stepnav" id="stepNext" aria-label="次のトラック">▶</button>
           <div class="strip-actions">
             <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"></span>
             <span class="loadbtn" id="loadBtn">LOAD</span>
@@ -772,12 +775,9 @@
         </div>
       </div>
 
-      <!-- STEP（Digitakt式）：対象トラック表示＋切替。STEP中のみ表示 -->
+      <!-- STEP（Digitakt式）：操作ヒント。STEP中のみ表示。トラック切替は上の◀ edWho ▶ -->
       <div class="stepbar" id="stepBar">
-        <button class="t" id="stepPrev" aria-label="前のトラック">◀</button>
-        <div class="stepbar-name" id="stepName">01 KICK</div>
-        <button class="t" id="stepNext" aria-label="次のトラック">▶</button>
-        <span class="stepbar-hint">PADでステップON/OFF（Shiftでアクセント）</span>
+        <span class="stepbar-hint">GRID: PADでステップON/OFF（Shiftでアクセント）／トラックは上の ◀ ▶</span>
       </div>
       <!-- 16 pads (主役) -->
       <div class="pads cols8" id="pads"></div>
@@ -1168,7 +1168,7 @@ let playStep = 0;
 let recording = false;
 let editPat = 0;       // 編集中パターン 0-3 (A-D)
 let editBar = 0;       // 編集中の小節 0-3 (1-4)
-let recMode = "real";  // "real"=リアルタイム録音 / "grid"=16PADステップ入力（Digitakt式）
+let recMode = "grid";  // "real"=リアルタイム録音 / "grid"=16PADステップ入力（Digitakt式）。既定=grid
 let stepMode = false;  // GRIDステップ入力モードの状態
 let playPat = 0;       // 再生中パターン（スケジューラ用）
 let playBar = 0;       // 再生中の小節（スケジューラ用）
@@ -2193,7 +2193,6 @@ function paintStepPads(){
     el.classList.toggle("beathead", s%4===0);
     el.classList.toggle("stepcur", playing && editPat===displayPat && editBar===displayBar && s===playStep);
   }
-  const sn=document.getElementById("stepName"); if(sn) sn.textContent=stepTrackName();
 }
 function clearStepPadClasses(){
   for(let s=0;s<PADS.length;s++){ padsEl.children[s].classList.remove("stepon","stepacc","beathead","stepcur"); }
