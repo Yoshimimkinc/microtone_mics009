@@ -138,6 +138,12 @@
   .strip-head .who{flex:0 0 130px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #rec{min-width:96px;}   /* ●Rec/■Step で幅が変わらないよう固定 */
   /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
+  /* ビュー切替ドット（既定=PCでは非表示。スマホのmedia queryで表示） */
+  .viewdots{display:none;align-items:center;gap:8px;}
+  .viewdots .vdot{width:9px;height:9px;border-radius:50%;background:var(--line);border:none;padding:0;cursor:pointer;transition:width .15s,background .15s;}
+  .viewdots .vdot.on{background:var(--teal);width:22px;border-radius:5px;}
+  .viewdots .vdot-label{font-size:11px;letter-spacing:.14em;color:var(--ink);font-weight:700;}
+  .viewdots .vdot-hint{font-size:10px;letter-spacing:.04em;color:var(--dim);margin-left:auto;}
   body.step-on .pads .pad{order:0!important;}
   body.step-on .pads .pad .nm{display:none;}
   body.step-on .pads .pad>.pad-wave{display:none;}
@@ -570,9 +576,11 @@
     .pads .pad:nth-child(n+9):nth-child(-n+12){order:2!important;}
     .pads .pad:nth-child(n+13){order:1!important;}
     #layoutSeg{display:none!important;}
+    /* === スマホ：3モードはタブを廃止し、スワイプ＋ドットで切替（スペース確保） === */
+    .modebar-row .modebar{display:none;}
+    .viewdots{display:flex;}
+    .modebar-row{margin:4px 0 8px;}
     /* === スマホ STEPモードの崩れ対策 === */
-    /* GRID REC中はビューがPADS固定 → PADS/SEQ/MIXタブを隠す（スマホのみ。PCはそのまま） */
-    body.step-on .modebar-row{display:none;}
     /* 案2: ノブ行の固定高さを解除し、p-lock行は折り返さず横スクロール1行に */
     .strip-ctrls{min-height:0;}
     body.step-on #viewPads .gridctrls{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;gap:6px;}
@@ -719,6 +727,14 @@
       <button class="modebtn on" id="modePads" data-view="viewPads"><span class="led"></span>Pads</button>
       <button class="modebtn" id="modeSeq" data-view="viewSeq"><span class="led"></span>Seq</button>
       <button class="modebtn" id="modeMix" data-view="viewMix"><span class="led"></span>Mix</button>
+    </div>
+    <!-- スマホ専用：3モードはスワイプ切替＋このドットで現在地表示（タップでも切替可）。タブを省いてスペース確保 -->
+    <div class="viewdots" id="viewDots">
+      <button class="vdot on" data-view="viewPads" aria-label="Pads"></button>
+      <button class="vdot" data-view="viewSeq" aria-label="Seq"></button>
+      <button class="vdot" data-view="viewMix" aria-label="Mix"></button>
+      <span class="vdot-label" id="viewDotsLabel">PADS</span>
+      <span class="vdot-hint">‹ swipe ›</span>
     </div>
     <div class="master-bar" id="masterBar">
       <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
@@ -1670,9 +1686,10 @@ PADS.forEach((p,i)=>{
     trigger(i);selectPad(i);
   });
   d.addEventListener("pointermove",(e)=>{
-    if(!stepMode || !stepDrag || stepDrag.pad!==i || !activeLock) return;
+    if(!stepMode || !stepDrag || stepDrag.pad!==i) return;
     const dx=e.clientX-stepDrag.x0;
-    if(!stepDrag.moved && Math.abs(dx)>4){ stepDrag.moved=true; }
+    if(!stepDrag.moved && Math.abs(dx)>6){ stepDrag.moved=true; }  // 動いたらタップ扱いしない（スワイプ誤爆防止）
+    if(!activeLock) return;   // パラメータ未選択時は値記録なし（スワイプはビュー切替に回す）
     if(stepDrag.moved){
       if(!stepDrag.undone){ pushUndo(); stepDrag.undone=true; }
       const spec=PLOCKS[activeLock];
@@ -2587,9 +2604,36 @@ function switchView(viewId){
   if(viewId==="viewPads"){ drawWave(); drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
   if(viewId==="viewMix") paintMixer();
+  // スマホのドット/ラベル同期
+  const dots=document.getElementById("viewDots");
+  if(dots){ dots.querySelectorAll(".vdot").forEach(d=>d.classList.toggle("on",d.dataset.view===viewId)); }
+  const lbl=document.getElementById("viewDotsLabel");
+  if(lbl) lbl.textContent={viewPads:"PADS",viewSeq:"SEQ",viewMix:"MIX"}[viewId]||"";
   lockViewHeight();
 }
 modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
+document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("click",()=>switchView(d.dataset.view)));
+
+// スマホ：左右スワイプで PADS/SEQ/MIX を切替（p-lock記録中やスライダー上は無効）
+(function(){
+  const order=["viewPads","viewSeq","viewMix"];
+  let sx=0,sy=0,st=0,sEl=null,tracking=false;
+  const curView=()=>order.find(id=>{const el=document.getElementById(id);return el&&el.classList.contains("active");})||"viewPads";
+  addEventListener("touchstart",(e)=>{
+    if(innerWidth>600||e.touches.length!==1){ tracking=false; return; }
+    const t=e.touches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); sEl=e.target; tracking=true;
+  },{passive:true});
+  addEventListener("touchend",(e)=>{
+    if(!tracking){ return; } tracking=false;
+    if(innerWidth>600||activeLock) return;                    // p-lock記録中は横ドラッグ＝値入力なので無効
+    if(sEl&&sEl.closest&&sEl.closest("input,select,.fader")) return; // スライダー類は除外
+    const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy, dt=Date.now()-st;
+    if(dt>700||Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.5) return; // 明確な横スワイプのみ
+    let idx=order.indexOf(curView())+(dx<0?1:-1);
+    if(idx<0||idx>=order.length) return;                      // 端では何もしない
+    switchView(order[idx]);
+  },{passive:true});
+})();
 
 // ---------- 切替で高さが変わらないよう、PADSの高さに統一（PC） ----------
 let refViewH = 0;
