@@ -1087,7 +1087,7 @@ tapeDelay.connect(delaySend);
 tapeDelay.connect(reverbSend);
 
 // FX量(0..1)とON/OFF
-let fxDelayAmt=0, fxReverbAmt=0, fxDelayOn=true, fxReverbOn=true;
+let fxDelayAmt=0, fxReverbAmt=0, fxDelayOn=false, fxReverbOn=false;   // FXはデフォルトOFF（ONボタンで有効化）
 function applyFx(){
   delaySend.gain.value  = fxDelayOn  ? fxDelayAmt  : 0;
   reverbSend.gain.value = fxReverbOn ? fxReverbAmt : 0;
@@ -2499,7 +2499,7 @@ const fxRow=document.getElementById("fxRow");
 makeMixPad({
   container:fxRow, title:"TAPE DELAY", sub:"RE-101風・3連/テンポ追従", accent:"61,214,196",
   min:0, max:100, step:1, reset:0,
-  get:()=>Math.round(fxDelayAmt*100), set:v=>{ fxDelayAmt=v/100; applyFx(); },
+  get:()=>Math.round(fxDelayAmt*100), set:v=>{ fxDelayAmt=v/100; if(v>0) fxDelayOn=true; applyFx(); },
   fmt:v=>v+'<span class="u">%</span>', dim:()=>!fxDelayOn,
   buttons:[{label:"ON",cls:"on",onClick:()=>{ fxDelayOn=!fxDelayOn; applyFx(); },
     state:bt=>{ bt.classList.toggle("s-on",fxDelayOn); bt.textContent=fxDelayOn?"ON":"OFF"; }}],
@@ -2507,7 +2507,7 @@ makeMixPad({
 makeMixPad({
   container:fxRow, title:"REVERB", sub:"HALL（ホール系）", accent:"255,138,61",
   min:0, max:100, step:1, reset:0,
-  get:()=>Math.round(fxReverbAmt*100), set:v=>{ fxReverbAmt=v/100; applyFx(); },
+  get:()=>Math.round(fxReverbAmt*100), set:v=>{ fxReverbAmt=v/100; if(v>0) fxReverbOn=true; applyFx(); },
   fmt:v=>v+'<span class="u">%</span>', dim:()=>!fxReverbOn,
   buttons:[{label:"ON",cls:"on",onClick:()=>{ fxReverbOn=!fxReverbOn; applyFx(); },
     state:bt=>{ bt.classList.toggle("s-on",fxReverbOn); bt.textContent=fxReverbOn?"ON":"OFF"; }}],
