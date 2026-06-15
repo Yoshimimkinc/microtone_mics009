@@ -126,9 +126,12 @@
   button.t.rec.on{background:var(--red);color:#2a0808;border-color:var(--red);}
   button.t.step.on{background:var(--amber);color:#2a1405;border-color:var(--amber);box-shadow:0 0 14px rgba(255,138,61,.4);}
   /* STEP（Digitakt式）：ステップバー＋PADをステップ表示 */
-  .stepbar{display:none;align-items:center;gap:10px;margin-bottom:12px;}
+  .stepbar{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
   body.step-on .stepbar{display:flex;}
-  .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;}
+  .stepbar .patlabel{font-size:10px;color:var(--dim);letter-spacing:.12em;}
+  .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-left:auto;}
+  /* GRID中：PITCH/LEVEL等のノブ行を隠してPAD高さを確保（小節指定はステップバーへ） */
+  body.step-on #viewPads .strip-ctrls{display:none;}
   /* トラック切替◀▶：上のedWho両脇。GRID(step)中のみ表示 */
   .stepnav{display:none;padding:6px 10px;min-width:0;}
   body.step-on .stepnav{display:inline-flex;}
@@ -775,9 +778,24 @@
         </div>
       </div>
 
-      <!-- STEP（Digitakt式）：操作ヒント。STEP中のみ表示。トラック切替は上の◀ edWho ▶ -->
+      <!-- STEP（Digitakt式）：PAT/BAR選択＋ヒント。STEP中のみ表示。トラック切替は上の◀ edWho ▶ -->
       <div class="stepbar" id="stepBar">
-        <span class="stepbar-hint">GRID: PADでステップON/OFF（Shiftでアクセント）／トラックは上の ◀ ▶</span>
+        <span class="patlabel">PAT</span>
+        <div class="seg" id="gPatSeg">
+          <button class="patbtn on" data-p="0">A</button>
+          <button class="patbtn" data-p="1">B</button>
+          <button class="patbtn" data-p="2">C</button>
+          <button class="patbtn" data-p="3">D</button>
+        </div>
+        <span class="patlabel">BAR</span>
+        <div class="seg" id="gBarSeg">
+          <button class="patbtn on" data-b="0">1</button>
+          <button class="patbtn" data-b="1">2</button>
+          <button class="patbtn" data-b="2">3</button>
+          <button class="patbtn" data-b="3">4</button>
+        </div>
+        <button class="t dupbar" id="gDupBar" title="今の小節を次の小節に複写して伸ばす">DUP►</button>
+        <span class="stepbar-hint">PADでON/OFF</span>
       </div>
       <!-- 16 pads (主役) -->
       <div class="pads cols8" id="pads"></div>
@@ -2445,48 +2463,50 @@ document.getElementById("meloExit").addEventListener("click",()=>{
   selectPad(d);
 });
 
-// パターン選択：編集対象を移す＋再生中なら次の小節アタマで切替を予約
-patSeg.addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  const p=+b.dataset.p;
+// パターン/小節選択：SEQとGRIDで共有
+function setEditPat(p){
   editPat=p;
   if(playing) queuedPat = (p===displayPat) ? null : p;  // 今のを再タップ＝予約キャンセル
   paintSteps(); paintPatBar();
-});
-// 小節選択（編集対象の小節）
-barSeg.addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  editBar=+b.dataset.b;
-  paintSteps(); paintPatBar();
-});
-// DUP►：今の小節を次の小節に複写して伸ばす（全トラック）
-document.getElementById("dupBar").addEventListener("click",()=>{
+}
+function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); }
+function dupBarNext(){
   if(editBar>=3) return;   // 最大4小節
   pushUndo();
   const dst=editBar+1;
   for(let i=0;i<PADS.length;i++) tracks[i].patterns[editPat][dst]=tracks[i].patterns[editPat][editBar].slice();
   editBar=dst;             // 複写先の小節を編集対象に
   paintSteps(); paintPatBar();
+}
+const gPatSeg=document.getElementById("gPatSeg");
+const gBarSeg=document.getElementById("gBarSeg");
+[[patSeg,"p",setEditPat],[gPatSeg,"p",setEditPat]].forEach(([seg,k,fn])=>{
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; fn(+b.dataset[k]); });
 });
+[[barSeg,"b",setEditBar],[gBarSeg,"b",setEditBar]].forEach(([seg,k,fn])=>{
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; fn(+b.dataset[k]); });
+});
+document.getElementById("dupBar").addEventListener("click",dupBarNext);
+document.getElementById("gDupBar").addEventListener("click",dupBarNext);
 // 再生中＝外枠 / 予約中＝点滅 / 中身あり＝ドット
 function updatePatIndicator(p){
-  [...patSeg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); });
+  [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
 }
-function clearPatIndicator(){ [...patSeg.children].forEach(b=>b.classList.remove("playing","queued")); }
-function updateBarIndicator(bar){ [...barSeg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar)); }
-function clearBarIndicator(){ [...barSeg.children].forEach(b=>b.classList.remove("playing")); }
+function clearPatIndicator(){ [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); }
+function updateBarIndicator(bar){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); }
+function clearBarIndicator(){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); }
 // 編集状態・中身ドット・予約点滅・ループ外小節をまとめて反映
 function paintPatBar(){
-  [...patSeg.children].forEach((b,j)=>{
+  [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
     b.classList.toggle("on", j===editPat);
     b.classList.toggle("has", patHasContent(j));
     b.classList.toggle("queued", playing && queuedPat===j);
-  });
-  [...barSeg.children].forEach((b,j)=>{
+  }));
+  [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
     b.classList.toggle("on", j===editBar);
     b.classList.toggle("has", barHasContent(editPat,j));
     b.classList.toggle("dim", j>=patLength(editPat) && !barHasContent(editPat,j));
-  });
+  }));
 }
 
 // ---------- MIX view ----------
