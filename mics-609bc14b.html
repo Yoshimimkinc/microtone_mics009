@@ -175,10 +175,11 @@
   /* ベースは「音あり色」(アンバー)＝値0でもノートONが分かる。その上に各パラメータ色のバーを重ねる */
   body.step-on .pad.valbar{background:linear-gradient(180deg,var(--amber),#c25e22)!important;box-shadow:0 0 14px rgba(255,138,61,.5)!important;overflow:hidden;}
   body.step-on .pad.valbar .lockfill{display:block;}
-  body.step-on .pad.valbar .stepn{color:#fff;}
-  .pad .lockv{display:none;position:absolute;left:0;right:0;bottom:4px;z-index:2;text-align:center;
-    font-size:15px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000;}
-  body.step-on .pad.haslock .lockv{display:block;}
+  /* 値表示中はステップ番号を隠して数字の重なりを防ぐ（中央に値だけ大きく出す） */
+  body.step-on .pad.valbar .stepn{display:none;}
+  .pad .lockv{display:none;position:absolute;inset:0;z-index:2;align-items:center;justify-content:center;
+    font-size:16px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000;}
+  body.step-on .pad.valbar .lockv{display:flex;}
   body.step-on .pad.haslock{outline:1px dashed rgba(255,255,255,.4);outline-offset:-3px;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
     border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
@@ -569,6 +570,18 @@
     .pads .pad:nth-child(n+9):nth-child(-n+12){order:2!important;}
     .pads .pad:nth-child(n+13){order:1!important;}
     #layoutSeg{display:none!important;}
+    /* === スマホ STEPモードの崩れ対策 === */
+    /* 案2: ノブ行の固定高さを解除し、p-lock行は折り返さず横スクロール1行に */
+    .strip-ctrls{min-height:0;}
+    body.step-on #viewPads .gridctrls{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;gap:6px;}
+    .gridctrls>*,.gridctrls .seg,.gridctrls .plockbtn,.gridctrls .patlabel{flex:0 0 auto;}
+    .gridctrls .plock-row{flex-wrap:nowrap;flex:0 0 auto;}
+    .gridctrls .stepbar-hint{display:none;}
+    /* 案3: STEP入力中は波形を畳んでパッド/p-lock行に高さを回す */
+    body.step-on #viewPads .wave-wrap{display:none;}
+    /* パッド数字はスマホで控えめに（重なり防止） */
+    .pads .pad .stepn{font-size:15px;}
+    .pads .pad .lockv{font-size:14px;}
     /* Koala風ミニマル：詳細ツマミ(フィルター/Choke/Cutoff/Reso)はスマホでは隠す */
     .strip-ctrls .adv{display:none!important;}
     /* SEQ/MIXは固定高さの中で内部縦スクロール（PADSは収める方針と両立） */
