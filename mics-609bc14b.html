@@ -1990,19 +1990,44 @@ PADS.forEach((p,i)=>{
   grid.appendChild(row);
 });
 
+// 再生カーソルの現在位置キャッシュ（毎ステップの全面塗り直しを避けるため）
+let _seqCurStep=-1, _padCurStep=-1;
+function curStepFor(){ return (playing && editPat===displayPat && editBar===displayBar) ? playStep : -1; }
 function paintSteps(){
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID中はPADのステップ表示も更新（再生ヘッド追従）
   if(!viewSeqEl.classList.contains("active")) return;   // SEQ非表示なら重い16×16グリッド更新は不要（毎ステップの負荷を削減）
   if(melodicMode){ paintMelodic(); return; }
+  const cs=curStepFor();
   for(let i=0;i<PADS.length;i++){
     const pat=getPattern(i);
     rowEls[i].forEach((el,s)=>{
       el.classList.toggle("on",pat[s]>0);
       el.classList.toggle("acc",pat[s]===2);
-      el.classList.toggle("cursor",playing && editPat===displayPat && editBar===displayBar && s===playStep);
+      el.classList.toggle("cursor",s===cs);
     });
   }
   [...grid.children].forEach((row,i)=>row.classList.toggle("sel",i===selected));
+  _seqCurStep=cs;   // 全面塗り直し後はカーソルキャッシュも同期
+}
+// 毎ステップの軽量更新：ON/ACCは編集時しか変わらないので、動くカーソルだけを差分更新する
+function moveCursors(){
+  if(stepMode){
+    const ns=curStepFor();
+    if(ns!==_padCurStep){
+      if(_padCurStep>=0){ const p=padsEl.children[_padCurStep]; if(p) p.classList.remove("stepcur"); }
+      if(ns>=0){ const p=padsEl.children[ns]; if(p) p.classList.add("stepcur"); }
+      _padCurStep=ns;
+    }
+  }
+  if(viewSeqEl.classList.contains("active")){
+    if(melodicMode){ paintMelodic(); return; }
+    const ns=curStepFor();
+    if(ns!==_seqCurStep){
+      if(_seqCurStep>=0){ for(let i=0;i<PADS.length;i++){ const c=rowEls[i][_seqCurStep]; if(c) c.classList.remove("cursor"); } }
+      if(ns>=0){ for(let i=0;i<PADS.length;i++){ const c=rowEls[i][ns]; if(c) c.classList.add("cursor"); } }
+      _seqCurStep=ns;
+    }
+  }
 }
 
 // ---------- mute / solo ----------
@@ -2144,7 +2169,8 @@ const hStart=document.getElementById("hStart"), hEnd=document.getElementById("hE
 const shadeL=document.getElementById("shadeL"), shadeR=document.getElementById("shadeR");
 
 // Koala風：各パッドに小さな波形を描く
-function drawPadWave(i){
+function padWaveInk(){ return (getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8"); }
+function drawPadWave(i, ink){
   const pad=padsEl.children[i]; if(!pad) return;
   const cv=pad.querySelector(".pad-wave"); if(!cv) return;
   const w=pad.clientWidth, h=pad.clientHeight;
@@ -2159,7 +2185,7 @@ function drawPadWave(i){
   const e=Math.floor((tracks[i].end??1)*data.length);
   const len=Math.max(1,e-s), bin=Math.max(1,Math.floor(len/w));
   const mid=h/2;
-  ctx.strokeStyle=(getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8");
+  ctx.strokeStyle=ink||padWaveInk();   // getComputedStyleは高コスト→バッチ時は一度だけ算出して使い回す
   ctx.lineWidth=1; ctx.beginPath();
   for(let x=0;x<w;x++){
     let mn=1,mx=-1; const o=s+x*bin;
@@ -2169,7 +2195,7 @@ function drawPadWave(i){
   }
   ctx.stroke();
 }
-function drawAllPadWaves(){ for(let i=0;i<PADS.length;i++) drawPadWave(i); }
+function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink); }
 
 function drawWave(){
   const t=tracks[selected];
@@ -2529,7 +2555,7 @@ function drawLoop(){
     if(ev.hits) ev.hits.forEach(h=>{flashPad(h.pad,h.acc);if(typeof vuHit==="function")vuHit(h.pad,h.acc);});
     if(ev.pat!==undefined){ displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
   }
-  if(cur!==null){ playStep=cur; paintSteps(); }
+  if(cur!==null){ playStep=cur; moveCursors(); }
   updatePlayCursor(now);
   if(playing) requestAnimationFrame(drawLoop);
 }
@@ -2571,12 +2597,13 @@ function paintStepPads(){
   if(!stepMode) return;
   const pat=getPattern(selected);
   const spec=activeLock?PLOCKS[activeLock]:null;
+  const _padCurStepCalc=curStepFor();
   for(let s=0;s<PADS.length;s++){
     const el=padsEl.children[s]; const v=pat[s]||0;
     el.classList.toggle("stepon", v>0);
     el.classList.toggle("stepacc", v===2);
     el.classList.toggle("beathead", s%4===0);
-    el.classList.toggle("stepcur", playing && editPat===displayPat && editBar===displayBar && s===playStep);
+    el.classList.toggle("stepcur", s===_padCurStepCalc);
     const lk=getLockEdit(selected, s);
     const has=!!(lk && Object.keys(lk).length);
     el.classList.toggle("haslock", has && v>0);
@@ -2596,9 +2623,11 @@ function paintStepPads(){
       if(lv) lv.textContent="";
     }
   }
+  _padCurStep=_padCurStepCalc;   // 全面塗り直し後はカーソルキャッシュも同期
 }
 function clearStepPadClasses(){
   for(let s=0;s<PADS.length;s++){ const el=padsEl.children[s]; el.classList.remove("stepon","stepacc","beathead","stepcur","haslock","valbar"); if(el._lockv) el._lockv.textContent=""; if(el._lockfill) el._lockfill.style.width="0%"; }
+  _padCurStep=-1;
 }
 function toggleStepAt(s, accent){
   pushUndo();
