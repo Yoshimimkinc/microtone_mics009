@@ -403,8 +403,9 @@
     button.t{padding:6px 8px;font-size:10px;min-width:0;}
     .transport{gap:6px;}
     .transport .ctrl{font-size:9px;}
-    /* PLAYは押しやすいよう約2個分の幅＋大きめに。Rec/Tap/Undoは均等配分 */
-    .transport .play{flex:2 1 0;min-height:46px;font-size:14px;letter-spacing:.16em;}
+    /* PLAYは押しやすいよう約2個分の幅。文字サイズは4つとも統一（UNDOも収まる大きさ） */
+    .transport button.t{font-size:12px;letter-spacing:.06em;padding-left:4px;padding-right:4px;}
+    .transport .play{flex:2 1 0;min-height:46px;}
     .transport .rec,.transport #tap,.transport #undoBtn{flex:1 1 0;min-height:46px;}
     #bpm{max-width:84px;}
     .modebar-row{margin:8px 0 8px;gap:12px;}
