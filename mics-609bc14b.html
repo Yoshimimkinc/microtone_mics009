@@ -1444,6 +1444,11 @@ function stopVoices(t, when){
       v.env.gain.setTargetAtTime(0, when, 0.005); // 5ms フェードで切る
       v.src.stop(when+0.03);
     }catch(e){}
+    // ループ系など、停止後にonendedが来ない場合の保険：停止予定時刻の少し後に強制後始末
+    if(v.cleanup){
+      if(v.wd) clearTimeout(v.wd);
+      v.wd = setTimeout(v.cleanup, Math.max(0, when+0.03-AC.currentTime)*1000 + 300);
+    }
   });
   t.activeVoices.length=0;
 }
@@ -1504,6 +1509,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   // プツ音回避：頭3ms フェードイン、ワンショット終端3ms フェードアウト
   const FADE = 0.003;
 
+  let oneShotLen = 0;   // 一発ものの再生長（ウォッチドッグ用。ループは0）
   if(t.loop){
     const lsN = Math.min(eN-0.001, Math.max(0, t.loopStart));
     src.loop = true;
@@ -1515,6 +1521,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
     // ループは終端で切らない（ループ点はゼロ交差でなくてもプツは出にくい）。停止時にstopVoicesがフェードアウト
   } else {
     const len = Math.max(0.005, (endSec-startSec)/src.playbackRate.value);
+    oneShotLen = len;
     env.gain.setValueAtTime(0, when);
     env.gain.linearRampToValueAtTime(peak, when+Math.min(FADE,len*0.4));
     // 終端フェードアウト
@@ -1524,7 +1531,15 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
     try{ src.start(when, startSec, len); }catch(e){ try{src.start(when);}catch(_){} }
   }
 
-  const voice = {src, env, filt};
+  const voice = {src, env, filt, dSend, rSend, done:false, wd:null};
+  // 後始末は冪等（onended・ウォッチドッグ・stopVoicesのどれから呼ばれても一度だけ実行）
+  voice.cleanup = ()=>{
+    if(voice.done) return; voice.done=true;
+    if(voice.wd){ clearTimeout(voice.wd); voice.wd=null; }
+    const k=t.activeVoices.indexOf(voice);
+    if(k>=0) t.activeVoices.splice(k,1);
+    try{src.disconnect();env.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
+  };
   // 波形プレイヘッド：選択中パッドの発音を記録
   if(i===selected){
     lastPlayhead = {
@@ -1536,11 +1551,11 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
     ensureCursorLoop();
   }
   t.activeVoices.push(voice);
-  src.onended = ()=>{
-    const k=t.activeVoices.indexOf(voice);
-    if(k>=0) t.activeVoices.splice(k,1);
-    try{src.disconnect();env.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
-  };
+  src.onended = voice.cleanup;
+  // 一発もの：onendedが来ないブラウザ/状況でも確実に後始末（尺＋1秒の保険）。ループはstopVoices側で保険を張る
+  if(!t.loop){
+    voice.wd = setTimeout(voice.cleanup, Math.max(0, when-AC.currentTime+oneShotLen)*1000 + 1000);
+  }
 }
 
 // ---------- trigger (UI/seq 共通入口) ----------
