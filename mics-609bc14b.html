@@ -144,7 +144,8 @@
   .viewdots .vdot.on{background:var(--teal);width:22px;border-radius:5px;}
   .viewdots .vdot-label{font-size:11px;letter-spacing:.14em;color:var(--ink);font-weight:700;}
   .viewdots .vdot-hint{font-size:10px;letter-spacing:.04em;color:var(--dim);margin-left:auto;}
-  body.step-on .pads .pad{order:0!important;}
+  /* STEP中は並び順を1..16の順送りに（:nth-child(n)で詳細度を上げ、MPC配列のorderルールに確実に勝つ） */
+  body.step-on .pads .pad:nth-child(n){order:0!important;}
   body.step-on .pads .pad .nm{display:none;}
   body.step-on .pads .pad>.pad-wave{display:none;}
   body.step-on .pads .pad::before{display:none;}
@@ -587,8 +588,6 @@
     .gridctrls>*,.gridctrls .seg,.gridctrls .plockbtn,.gridctrls .patlabel{flex:0 0 auto;}
     .gridctrls .plock-row{flex-wrap:nowrap;flex:0 0 auto;}
     .gridctrls .stepbar-hint{display:none;}
-    /* 案3: STEP入力中は波形を畳んでパッド/p-lock行に高さを回す */
-    body.step-on #viewPads .wave-wrap{display:none;}
     /* パッド数字はスマホで控えめに（重なり防止） */
     .pads .pad .stepn{font-size:15px;}
     .pads .pad .lockv{font-size:14px;}
@@ -1652,6 +1651,7 @@ const mixerEl = document.getElementById("mixer");   // 早期宣言でsyncMixLay
 const sampNameEl = document.getElementById("sampName");   // ステータス表示（多用するためキャッシュ）
 const viewPadsEl = document.getElementById("viewPads");
 const viewMixEl  = document.getElementById("viewMix");     // vuLoop（毎フレーム）で参照するためキャッシュ
+const viewSeqEl  = document.getElementById("viewSeq");     // 毎ステップ描画の可視判定に使う
 // パッドの種別カテゴリ（色分け用）：ドラム/ベース/サンプル/空
 function padCategory(i){
   const p=PADS[i];
@@ -1669,6 +1669,7 @@ PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
   d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="stepn">${i+1}</div><div class="lockv"></div>`;
+  d._lockfill=d.querySelector(".lockfill"); d._lockv=d.querySelector(".lockv");   // 毎ステップ描画でquerySelectorしないよう参照をキャッシュ
   d.dataset.i=i;
   d.setAttribute("role","button");
   d.setAttribute("aria-label", p.name+" pad");
@@ -1783,6 +1784,7 @@ PADS.forEach((p,i)=>{
 
 function paintSteps(){
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID中はPADのステップ表示も更新（再生ヘッド追従）
+  if(!viewSeqEl.classList.contains("active")) return;   // SEQ非表示なら重い16×16グリッド更新は不要（毎ステップの負荷を削減）
   if(melodicMode){ paintMelodic(); return; }
   for(let i=0;i<PADS.length;i++){
     const pat=getPattern(i);
@@ -2243,7 +2245,7 @@ function driftSec(){
 function laidbackSec(){ return 0.006 + 0.016*grooveFactor(); } // 2拍4拍: 6〜22ms
 function staggerSec(){  return 0.0015 + 0.003*grooveFactor(); } // 同時発音: 1.5〜4.5ms/音
 
-const LOOKAHEAD = 0.025;    // sec, how far ahead we schedule
+const LOOKAHEAD = 0.1;      // sec, how far ahead we schedule（25ms→100ms：メインスレッドが詰まっても発音が遅れないように）
 const INTERVAL = 25;        // ms timer
 let schedTimer = null;
 let drawQueue = [];         // {step, time, hits}
@@ -2357,7 +2359,7 @@ function paintStepPads(){
     el.classList.toggle("haslock", has && v>0);
     const lockedActive = !!(spec && lk && lk[activeLock]!=null && v>0);
     el.classList.toggle("valbar", lockedActive);
-    const fill=el.querySelector(".lockfill"), lv=el.querySelector(".lockv");
+    const fill=el._lockfill, lv=el._lockv;
     if(lockedActive){
       const val=lk[activeLock];
       let norm = spec.log
@@ -2373,7 +2375,7 @@ function paintStepPads(){
   }
 }
 function clearStepPadClasses(){
-  for(let s=0;s<PADS.length;s++){ const el=padsEl.children[s]; el.classList.remove("stepon","stepacc","beathead","stepcur","haslock","valbar"); const lv=el.querySelector(".lockv"); if(lv) lv.textContent=""; const fl=el.querySelector(".lockfill"); if(fl) fl.style.width="0%"; }
+  for(let s=0;s<PADS.length;s++){ const el=padsEl.children[s]; el.classList.remove("stepon","stepacc","beathead","stepcur","haslock","valbar"); if(el._lockv) el._lockv.textContent=""; if(el._lockfill) el._lockfill.style.width="0%"; }
 }
 function toggleStepAt(s, accent){
   pushUndo();
