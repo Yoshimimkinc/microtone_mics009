@@ -134,9 +134,11 @@
   /* GRID中：ノブ類は不可視にして高さだけ維持、PAT/BARを重ねて表示 */
   body.step-on #viewPads .strip-ctrls>:not(.gridctrls){visibility:hidden;}
   body.step-on #viewPads .gridctrls{display:flex;}
-  /* トラック切替◀▶：上のedWho両脇。GRID(step)中のみ表示 */
-  .stepnav{display:none;padding:6px 10px;min-width:0;}
-  body.step-on .stepnav{display:inline-flex;}
+  /* トラック切替◀▶：edWho両脇に常時表示（出し入れで高さ/位置が動かない） */
+  .who-wrap{display:flex;align-items:center;gap:8px;min-width:0;}
+  .stepnav{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;min-width:0;}
+  .strip-head .who{flex:0 0 130px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #rec{min-width:96px;}   /* ●Rec/■Step で幅が変わらないよう固定 */
   /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
   body.step-on .pads .pad{order:0!important;}
   body.step-on .pads .pad .nm{display:none;}
@@ -696,9 +698,11 @@
       <!-- waveform strip -->
       <div class="strip">
         <div class="strip-head">
-          <button class="t stepnav" id="stepPrev" aria-label="前のトラック">◀</button>
-          <div class="who" id="edWho">01 KICK</div>
-          <button class="t stepnav" id="stepNext" aria-label="次のトラック">▶</button>
+          <div class="who-wrap">
+            <button class="t stepnav" id="stepPrev" aria-label="前のトラック">◀</button>
+            <div class="who" id="edWho">01 KICK</div>
+            <button class="t stepnav" id="stepNext" aria-label="次のトラック">▶</button>
+          </div>
           <div class="strip-actions">
             <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"></span>
             <span class="loadbtn" id="loadBtn">LOAD</span>
