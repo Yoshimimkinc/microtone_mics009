@@ -640,8 +640,10 @@
   #splash .s-model{font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;}
   #splash .s-ver{font-size:10px;letter-spacing:.2em;color:var(--dim);margin-top:3px;}
   #splash .s-update{margin-top:16px;font-size:11px;letter-spacing:.12em;color:#fff;
-    background:var(--amber);border:none;border-radius:6px;padding:9px 15px;cursor:pointer;
-    text-transform:uppercase;animation:spblink 1.2s ease-in-out infinite;}
+    background:#5a5550;border:none;border-radius:6px;padding:9px 15px;cursor:pointer;}
+  /* 新バージョン検知時だけ目立たせる（明るい赤橙＋点滅＋グロー） */
+  #splash .s-update.s-update-new{background:#ff5a3c;box-shadow:0 0 14px rgba(255,90,60,.7);
+    animation:spblink 1.2s ease-in-out infinite;}
   #splash .s-prompt{margin-top:34px;font-size:13px;letter-spacing:.34em;color:var(--teal);
     text-transform:uppercase;animation:spblink 1.4s ease-in-out infinite;}
   @keyframes spblink{0%,100%{opacity:.35}50%{opacity:1}}
@@ -653,7 +655,7 @@
 <div id="splash">
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
-  <button class="s-update" id="splashUpdate" style="display:none">● NEW VERSION</button>
+  <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
   <div class="s-ver" id="splashVer">v0.1.0</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
@@ -1122,7 +1124,7 @@ for(let i = 0; i < 1024; i++){
   bsCurve[i] = x + 0.35 * x * x;  // 非対称 = 2次倍音（偶数）が出る
 }
 bassSat.curve = bsCurve;
-bassSat.oversample = "2x";
+bassSat.oversample = "none";   // サブ低域のみ整形＝エイリアス不可聴。常時稼働なので軽量化
 const bassGain = AC.createGain();
 bassGain.gain.value = 0.12;  // 控えめに混ぜる
 // masterGainからパラレルに分岐
@@ -1205,12 +1207,11 @@ function setDelayTempo(){
 const reverbSend = AC.createGain(); reverbSend.gain.value = 0;
 const reverb = AC.createConvolver();
 (function(){
-  const dur=2.6, rate=AC.sampleRate, len=Math.floor(dur*rate);
-  const ir=AC.createBuffer(2,len,rate);
-  for(let ch=0;ch<2;ch++){
-    const d=ir.getChannelData(ch);
-    for(let i=0;i<len;i++){ const t=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.2); }  // 指数減衰ノイズ=ホール
-  }
+  // モノ＆短め(1.5s)のIR：コンボルバは常時稼働するためCPU負荷を大きく削減（音色はほぼ同等）
+  const dur=1.5, rate=AC.sampleRate, len=Math.floor(dur*rate);
+  const ir=AC.createBuffer(1,len,rate);
+  const d=ir.getChannelData(0);
+  for(let i=0;i<len;i++){ const t=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.2); }  // 指数減衰ノイズ=ホール
   reverb.buffer=ir;
 })();
 const reverbPre = AC.createDelay(0.1); reverbPre.delayTime.value=0.02;   // プリディレイ
@@ -1777,7 +1778,7 @@ PADS.forEach((p,i)=>{
     if(melodicMode){
       const pitchIdx=(PADS.length-1)-i, sel=selected, t=tracks[sel];
       if(t.loop && t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; }   // 発音中の再トリガ＝止まる
-      else { playVoice(sel, AC.currentTime, false, false, scaleSemi(t.scale, pitchIdx)); if(t.loop) t.loopPlaying=true; }
+      else { playVoice(sel, AC.currentTime, false, false, scaleSemi(t.scale, pitchIdx)); if(t.loop) t.loopPlaying=true; if(typeof vuHit==="function") vuHit(sel, false); }
     }
     else { trigger(i); selectPad(i); }
   });
@@ -2035,6 +2036,7 @@ function positionHandles(){
 let lastPlayhead=null;       // 直近の選択パッド発音
 let cursorRaf=null;
 const playheadEl=document.getElementById("playhead");
+let waveW = 0;   // waveWrapの幅をキャッシュ（毎フレームのclientWidthレイアウト読みを回避。resize/ビュー切替で更新）
 function updatePlayCursor(now){
   if(!lastPlayhead){ playheadEl.style.opacity=0; return; }
   const ph=lastPlayhead;
@@ -2051,8 +2053,8 @@ function updatePlayCursor(now){
     pos=ph.startN+elapsed;
     if(pos>=ph.endN){ playheadEl.style.opacity=0; lastPlayhead=null; return; }
   }
-  const W=waveWrap.clientWidth;
-  playheadEl.style.left=(pos*W)+"px";
+  if(!waveW) waveW=waveWrap.clientWidth;   // 必要時のみ実測、以降はキャッシュを使う
+  playheadEl.style.left=(pos*waveW)+"px";
   playheadEl.style.opacity=1;
 }
 // 手叩き時もカーソルが動くよう、必要な間だけrAFを回す
@@ -2237,7 +2239,7 @@ function syncEditor(){
   if(typeof refreshDials==="function") refreshDials();
   drawWave();
 }
-window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
+window.addEventListener("resize",()=>{ waveW=waveWrap.clientWidth; if(viewPadsEl.classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
 
 // ---------- transport (self-scheduling, lookahead) ----------
 let bpmVal = 100;
@@ -2278,9 +2280,10 @@ function scheduleStep(stepNo, when){
   const hits=[];
   let n=0;  // 同時発音のスタッガー順（若い番号＝Kick→Snare…から先に発音）
   const stg=staggerSec();
+  const soloActive=anySolo();   // ループ外で一度だけ評価（毎ステップ最大16×16=256回の冗長スキャンを解消）
   for(let i=0;i<PADS.length;i++){
     const v=getPlayPattern(i)[stepNo];
-    if(v>0 && audible(i)){
+    if(v>0 && !tracks[i].mute && (!soloActive || tracks[i].solo)){   // audible(i) と同等
       const t=tracks[i];
       const lk=getLockPlay(i, playPat, playBar, stepNo);   // そのステップのp-lock
       if(t.loop){
@@ -2633,7 +2636,7 @@ function switchView(viewId){
   modeBtns.forEach(b=>{ const on=b.dataset.view===viewId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
   document.body.classList.toggle("mix-on", viewId==="viewMix");   // スマホ：MASTERをMIX時のみ表示
-  if(viewId==="viewPads"){ drawWave(); drawAllPadWaves(); }
+  if(viewId==="viewPads"){ waveW=waveWrap.clientWidth; drawWave(); drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
   if(viewId==="viewMix") paintMixer();
   // スマホのドット/ラベル同期
@@ -3235,15 +3238,19 @@ const APP_VERSION = "0.1.0";
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
-  // 更新ボタンのタップはスプラッシュ起動に伝播させず、リロードで最新取得
-  if(upEl) upEl.addEventListener("pointerdown",e=>{ e.stopPropagation(); location.reload(); });
-  // 同じ場所のversion.jsonを取得して比較（ローカルfile://やオフライン時は黙って無視）
+  // 更新ボタンのタップはスプラッシュ起動に伝播させず、キャッシュバスター付きで最新を取得
+  if(upEl) upEl.addEventListener("pointerdown",e=>{
+    e.stopPropagation();
+    const base=location.href.split('#')[0].split('?')[0];
+    location.replace(base+'?v='+Date.now());
+  });
+  // 同じ場所のversion.jsonを取得して比較（ローカルfile://やオフライン時は黙って無視）。新版なら強調表示
   fetch("version.json?ts="+Date.now(),{cache:"no-store"})
     .then(r=>r.ok?r.json():null)
     .then(d=>{
       if(d && d.version && d.version!==APP_VERSION && upEl){
-        upEl.textContent="● NEW v"+d.version+" — TAP TO UPDATE";
-        upEl.style.display="";
+        upEl.textContent="● 新バージョン v"+d.version+" — 更新";
+        upEl.classList.add("s-update-new");
       }
     }).catch(()=>{});
 })();
