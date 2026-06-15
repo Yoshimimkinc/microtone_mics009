@@ -510,8 +510,11 @@
   .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--amber);opacity:0;pointer-events:none;
     box-shadow:0 0 10px 1px var(--amber),0 0 4px #fff;border-radius:1px;}
   /* sampling overlay */
-  .rec-overlay{position:absolute;inset:0;background:rgba(12,15,18,.92);display:none;
-    justify-content:center;align-items:center;z-index:5;border-radius:8px;}
+  /* 窓波形撤去後：サンプリング/抽出オーバーレイは画面上部に浮かぶ小パネル */
+  .rec-overlay{position:fixed;left:50%;top:84px;transform:translateX(-50%);
+    background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+    border-radius:12px;padding:14px 18px;display:none;justify-content:center;align-items:center;
+    z-index:9991;box-shadow:0 18px 50px rgba(0,0,0,.6);}
   .rec-overlay.show{display:flex;}
   .rec-panel{display:flex;gap:10px;align-items:center;}
   .rec-dot{color:var(--red);font-size:18px;animation:blink .6s infinite;}
@@ -872,15 +875,8 @@
             <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
-        <div class="wave-wrap" id="waveWrap">
-          <canvas id="wave"></canvas>
-          <div class="shade" id="shadeL"></div>
-          <div class="shade" id="shadeR"></div>
-          <div class="handle loop" id="hLoop"><span class="cap">LOOP</span></div>
-          <div class="handle start" id="hStart"><span class="cap">START</span></div>
-          <div class="handle end" id="hEnd"><span class="cap">END</span></div>
-          <div class="playhead" id="playhead"></div>
-          <div class="rec-overlay" id="recOverlay">
+        <!-- 窓波形は撤去。サンプル編集は EDIT+パッド→モーダルへ集約。サンプリング/抽出オーバーレイは浮遊パネルとして存続 -->
+        <div class="rec-overlay" id="recOverlay">
             <div class="rec-panel">
               <div class="rec-choose" id="recChoose">
                 <button class="t" id="recTab">Tab Audio</button>
@@ -899,7 +895,6 @@
               <span id="extractMsg" style="font-size:10px;color:var(--dim);">タップで再生して音を取り込みます</span>
             </div>
           </div>
-        </div>
         <!-- compact controls row -->
         <div class="strip-ctrls">
           <label class="toggle" id="loopToggle"><span class="sw"></span><span>Loop</span></label>
@@ -1718,16 +1713,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
     if(k>=0) t.activeVoices.splice(k,1);
     try{src.disconnect();env.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
   };
-  // 波形プレイヘッド：選択中パッドの発音を記録（窓波形が可視のときだけ＝不可視時はrAFカーソルループを起こさない）
-  if(i===selected && waveWrap.offsetParent){
-    lastPlayhead = {
-      pad:i, when, startN:sN, endN:eN,
-      rate:src.playbackRate.value,
-      loop:t.loop, loopStartN: t.loop?Math.min(eN-0.001,Math.max(0,t.loopStart)):0,
-      dur:dur,   // ピッチ済みバッファの尺（rate=1なのでこれで進行が一致）
-    };
-    ensureCursorLoop();
-  }
+  // 窓波形プレイヘッドは撤去済み（カーソル記録なし）
   t.activeVoices.push(voice);
   src.onended = voice.cleanup;
   // 一発もの：onendedが来ないブラウザ/状況でも確実に後始末（尺＋1秒の保険）。ループはstopVoices側で保険を張る
@@ -2161,12 +2147,7 @@ layoutSeg.addEventListener("click",e=>{
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
 
-// ---------- sample editor ----------
-const waveCv = document.getElementById("wave");
-const waveWrap = document.getElementById("waveWrap");
-const wctx = waveCv.getContext("2d");
-const hStart=document.getElementById("hStart"), hEnd=document.getElementById("hEnd"), hLoop=document.getElementById("hLoop");
-const shadeL=document.getElementById("shadeL"), shadeR=document.getElementById("shadeR");
+// ---------- sample editor ---------- （窓波形は撤去：drawWave/ハンドル/カーソル機構は廃止）
 
 // Koala風：各パッドに小さな波形を描く
 function padWaveInk(){ return (getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8"); }
@@ -2197,118 +2178,8 @@ function drawPadWave(i, ink){
 }
 function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink); }
 
-function drawWave(){
-  const t=tracks[selected];
-  const W=waveWrap.clientWidth, H=waveWrap.clientHeight;
-  const dpr=window.devicePixelRatio||1;
-  waveCv.width=W*dpr; waveCv.height=H*dpr;
-  wctx.setTransform(dpr,0,0,dpr,0,0);
-  wctx.clearRect(0,0,W,H);
-  document.getElementById("edWho").textContent=String(selected+1).padStart(2,"0")+" "+ (PADS[selected].type==="sample"?t.name:PADS[selected].name);
-  if(!t.buffer){ wctx.fillStyle="#3a4149";wctx.font="11px sans-serif";wctx.fillText("no sample",10,H/2);positionHandles();return; }
-  const data=t.buffer.getChannelData(0);
-  const mid=H/2;
-  // 中心線
-  wctx.strokeStyle="#2c333b";wctx.beginPath();wctx.moveTo(0,mid);wctx.lineTo(W,mid);wctx.stroke();
-  // 上下envelopeを先に集計
-  const step=Math.max(1,Math.floor(data.length/W));
-  const top=new Float32Array(W), bot=new Float32Array(W);
-  for(let x=0;x<W;x++){
-    let min=1,max=-1; const o=x*step;
-    for(let n=0;n<step;n++){const v=data[o+n]||0;if(v<min)min=v;if(v>max)max=v;}
-    top[x]=mid-max*mid*0.92; bot[x]=mid-min*mid*0.92;
-  }
-  // テーマのアクセント色で塗りつぶし（上下ミラー）
-  const acc=(getComputedStyle(document.body).getPropertyValue("--teal").trim())||"#3dd6c4";
-  const grad=wctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,acc); grad.addColorStop(.5,acc); grad.addColorStop(1,acc);
-  wctx.beginPath();
-  wctx.moveTo(0,top[0]);
-  for(let x=1;x<W;x++) wctx.lineTo(x,top[x]);
-  for(let x=W-1;x>=0;x--) wctx.lineTo(x,bot[x]);
-  wctx.closePath();
-  wctx.globalAlpha=.5; wctx.fillStyle=grad; wctx.fill(); wctx.globalAlpha=1;
-  // 上縁を明るい線でくっきり
-  wctx.strokeStyle=acc; wctx.lineWidth=1.4; wctx.beginPath();
-  wctx.moveTo(0,top[0]); for(let x=1;x<W;x++) wctx.lineTo(x,top[x]); wctx.stroke();
-  positionHandles();
-}
-function positionHandles(){
-  const t=tracks[selected];
-  const W=waveWrap.clientWidth;
-  const sx=t.start*W, ex=t.end*W, lx=t.loopStart*W;
-  hStart.style.left=sx+"px";
-  hEnd.style.left=ex+"px";
-  hLoop.style.left=lx+"px";
-  hLoop.style.display=t.loop?"block":"none";
-  shadeL.style.left="0"; shadeL.style.width=sx+"px";
-  shadeR.style.left=ex+"px"; shadeR.style.width=(W-ex)+"px";
-}
-
-// ---------- 波形プレイヘッド ----------
-let lastPlayhead=null;       // 直近の選択パッド発音
-let cursorRaf=null;
-const playheadEl=document.getElementById("playhead");
-let waveW = 0;   // waveWrapの幅をキャッシュ（毎フレームのclientWidthレイアウト読みを回避。resize/ビュー切替で更新）
-function updatePlayCursor(now){
-  if(!lastPlayhead){ playheadEl.style.opacity=0; return; }
-  const ph=lastPlayhead;
-  if(ph.pad!==selected){ playheadEl.style.opacity=0; lastPlayhead=null; return; }
-  const elapsed=(now-ph.when)*ph.rate/ph.dur;   // 正規化された進行量
-  if(elapsed<0){ return; }                       // まだ発音前（先読み分）
-  let pos;
-  if(ph.loop){
-    const span=ph.endN-ph.loopStartN;
-    const first=ph.endN-ph.startN;
-    if(elapsed<first) pos=ph.startN+elapsed;
-    else pos=ph.loopStartN+((elapsed-first)%span);
-  } else {
-    pos=ph.startN+elapsed;
-    if(pos>=ph.endN){ playheadEl.style.opacity=0; lastPlayhead=null; return; }
-  }
-  if(!waveW) waveW=waveWrap.clientWidth;   // 必要時のみ実測、以降はキャッシュを使う
-  playheadEl.style.left=(pos*waveW)+"px";
-  playheadEl.style.opacity=1;
-}
-// 手叩き時もカーソルが動くよう、必要な間だけrAFを回す
-function ensureCursorLoop(){
-  if(cursorRaf) return;
-  const loop=()=>{
-    updatePlayCursor(AC.currentTime);
-    if(lastPlayhead){ cursorRaf=requestAnimationFrame(loop); }
-    else { cursorRaf=null; }
-  };
-  cursorRaf=requestAnimationFrame(loop);
-}
-// ドラッグ
-let dragH=null;
-function xToNorm(clientX){
-  const r=waveWrap.getBoundingClientRect();
-  return Math.min(1,Math.max(0,(clientX-r.left)/r.width));
-}
-function nearest(nx){
-  const t=tracks[selected];
-  const cand=[["start",t.start],["end",t.end]];
-  if(t.loop) cand.push(["loop",t.loopStart]);
-  cand.sort((a,b)=>Math.abs(a[1]-nx)-Math.abs(b[1]-nx));
-  return cand[0][0];
-}
-waveWrap.addEventListener("pointerdown",e=>{
-  if(!tracks[selected].buffer)return;
-  pushUndo();   // start/end/loop調整前の状態を記録
-  dragH=nearest(xToNorm(e.clientX));
-  waveWrap.setPointerCapture(e.pointerId);
-  applyDrag(e.clientX);
-});
-waveWrap.addEventListener("pointermove",e=>{ if(dragH)applyDrag(e.clientX); });
-waveWrap.addEventListener("pointerup",()=>{
-  if(!dragH)return;
-  // startを離したらアタック（立ち上がり）へ常にスナップ
-  if(dragH==="start") snapStartToOnset();
-  dragH=null;
-  // スタート/ストップ（およびループ点）が確定した瞬間にパッド内波形を再描画
-  drawPadWave(selected);
-});
+// drawWave / positionHandles / プレイヘッド / ハンドルドラッグ は窓波形撤去により全廃。
+// START/END/LOOP編集と試聴は EDIT+パッド→編集モーダルへ集約。
 
 // 立ち上がり検出：startの近傍で「最初に音量が急増する点」へ吸着（食い込み防止）
 function snapStartToOnset(){
@@ -2334,15 +2205,7 @@ function snapStartToOnset(){
   for(let p=lo;p<=hi;p++){
     if(rms(p)>=thresh){ onset=p; break; }
   }
-  if(onset>=0){ t.start=Math.min(onset/N, t.end-0.002); positionHandles(); }
-}
-
-function applyDrag(clientX){
-  const t=tracks[selected];const nx=xToNorm(clientX);
-  if(dragH==="start") t.start=Math.min(nx,t.end-0.002);
-  else if(dragH==="end") t.end=Math.max(nx,t.start+0.002);
-  else if(dragH==="loop") t.loopStart=Math.min(Math.max(nx,t.start),t.end-0.002);
-  positionHandles();
+  if(onset>=0){ t.start=Math.min(onset/N, t.end-0.002); drawPadWave(selected); }
 }
 
 // loop toggle
@@ -2352,7 +2215,7 @@ loopToggle.addEventListener("click",()=>{
   const t=tracks[selected];t.loop=!t.loop;
   loopToggle.classList.toggle("on",t.loop);
   if(t.loop && t.loopStart<t.start) t.loopStart=t.start;
-  positionHandles();
+  drawPadWave(selected);
 });
 // filter seg
 const filtSeg=document.getElementById("filtSeg");
@@ -2450,9 +2313,10 @@ function syncEditor(){
   [...filtSeg.children].forEach(x=>x.classList.toggle("on",x.dataset.f===t.filter));
   const ks=document.getElementById("kScale"); if(ks) ks.value=t.scale||"off";
   if(typeof refreshDials==="function") refreshDials();
-  drawWave();
+  const ew=document.getElementById("edWho"); if(ew) ew.textContent=String(selected+1).padStart(2,"0")+" "+(PADS[selected].type==="sample"?t.name:PADS[selected].name);
+  drawPadWave(selected);   // 窓波形の代わりにパッド内波形を更新
 }
-window.addEventListener("resize",()=>{ waveW=waveWrap.clientWidth; if(viewPadsEl.classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
+window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active")){ drawAllPadWaves(); } });
 
 // ---------- transport (self-scheduling, lookahead) ----------
 let bpmVal = 100;
@@ -2556,7 +2420,6 @@ function drawLoop(){
     if(ev.pat!==undefined){ displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
   }
   if(cur!==null){ playStep=cur; moveCursors(); }
-  updatePlayCursor(now);
   if(playing) requestAnimationFrame(drawLoop);
 }
 
@@ -2863,7 +2726,6 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     show("OK: "+f.name);
     padsEl.children[target].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
     selectPad(target);   // 取り込み先パッドへフォーカスを移す（抽出中に別パッドを触っていても結果が見える）
-    if(typeof drawWave==="function") drawWave();
     drawPadWave(target);
   }catch(err){
     const m=(err&&err.message)?err.message:String(err);
@@ -2927,7 +2789,7 @@ const DEFAULT_PROJECT = {
 loadPresets().then(async ()=>{
   try{ await applyProject(DEFAULT_PROJECT); }catch(e){ console.warn("default project:", e); }
   sampNameEl.textContent="presets ready";
-  drawWave(); drawAllPadWaves();
+  drawAllPadWaves();
 });
 
 // ---------- mode switch ----------
@@ -2936,7 +2798,7 @@ function switchView(viewId){
   modeBtns.forEach(b=>{ const on=b.dataset.view===viewId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
   document.body.classList.toggle("mix-on", viewId==="viewMix");   // スマホ：MASTERをMIX時のみ表示
-  if(viewId==="viewPads"){ waveW=waveWrap.clientWidth; drawWave(); drawAllPadWaves(); }
+  if(viewId==="viewPads"){ drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
   if(viewId==="viewMix") paintMixer();
   // スマホのドット/ラベル同期
