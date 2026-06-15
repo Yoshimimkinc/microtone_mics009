@@ -434,6 +434,11 @@
   .msbtn.copy.armed .d{background:#3a2c00;}
   .msbtn.chop.armed{background:#b07cff;color:#1d0a3a;border-color:#b07cff;box-shadow:0 0 16px rgba(176,124,255,.5);}
   .msbtn.chop.armed .d{background:#1d0a3a;}
+  .msbtn.edit.armed{background:#5b9dff;color:#06183a;border-color:#5b9dff;box-shadow:0 0 16px rgba(91,157,255,.5);}
+  .msbtn.edit.armed .d{background:#06183a;}
+  /* EDIT mode：対象選択を促すパッドのほのかな点滅枠 */
+  body.edit-arm .pads .pad{cursor:pointer;}
+  body.edit-arm .pads .pad::after{content:"";position:absolute;inset:0;border:1px dashed rgba(91,157,255,.55);border-radius:9px;pointer-events:none;}
   .pad.copysrc{box-shadow:0 0 0 2px #ffd24d inset,0 4px 8px rgba(0,0,0,.4);}
   .mshint{font-size:10px;color:var(--dim);letter-spacing:.1em;}
   /* pad mute/solo state */
@@ -452,6 +457,37 @@
   .strip-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-top:12px;min-height:74px;}
   .knob.mini{flex:1 1 90px;min-width:80px;max-width:140px;gap:4px;}
   .knob.mini label{font-size:9px;}
+  /* ===== EDIT-modal リデザイン（モック） =====
+     窓の波形(#waveWrap)は撤去し、サンプル編集は EDIT+パッド→モーダルへ集約。
+     通常PADSでは編集ノブ行も畳んでパッドを縦最大化。GRID入力(step-on)時のみ従来の操作行を表示。 */
+  #viewPads .wave-wrap{display:none!important;}
+  body:not(.step-on) #viewPads .strip-ctrls{display:none!important;}
+  body:not(.step-on) #viewPads .strip{padding:8px 14px;margin-bottom:10px;}
+  /* パッド内波形を主役に（撤去した窓波形の代わり） */
+  .pad>.pad-wave{opacity:.6;}
+  .pad.sel>.pad-wave{opacity:.85;}
+  /* 編集モーダル */
+  .modal.pe{width:min(440px,94vw);}
+  .pe-wave{position:relative;background:#0c0f12;border:1px solid var(--line);border-radius:8px;
+    height:128px;overflow:hidden;margin-bottom:12px;}
+  .pe-wave canvas{display:block;width:100%;height:100%;}
+  .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;}
+  .pe-wave .handle.start{background:var(--teal);}
+  .pe-wave .handle.end{background:var(--red);}
+  .pe-wave .handle.loop{background:#ffd24d;}
+  .pe-wave .handle .cap{position:absolute;top:2px;font-size:8px;letter-spacing:.1em;padding:1px 3px;border-radius:2px;white-space:nowrap;}
+  .pe-wave .handle.start .cap{left:3px;background:var(--teal);color:#06201d;}
+  .pe-wave .handle.end .cap{right:3px;background:var(--red);color:#2a0808;}
+  .pe-wave .handle.loop .cap{left:3px;background:#ffd24d;color:#3a2c00;}
+  .pe-wave .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);}
+  .pe-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
+  .pe-row .knob{flex:1 1 84px;}
+  .pe-audition{width:100%;margin-bottom:12px;padding:10px;font-size:13px;letter-spacing:.1em;
+    background:var(--teal);color:#06201d;border:none;border-radius:7px;cursor:pointer;font:inherit;font-weight:600;}
+  .pe-adv-toggle{font-size:10px;color:var(--dim);letter-spacing:.16em;cursor:pointer;
+    border:1px solid var(--line);border-radius:5px;padding:5px 10px;display:inline-block;margin-top:4px;}
+  .pe-adv{display:none;margin-top:12px;}
+  .pe-adv.show{display:block;}
   /* sample editor */
   .ed-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
   .ed-head .who{font-size:15px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;}
@@ -729,6 +765,46 @@
         </div>
       </div>
     </div>
+    <!-- サンプル編集モーダル（EDIT＋パッドで対象を開く / モック） -->
+    <div class="modal-backdrop" id="padEditModal" style="display:none;">
+      <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
+        <div class="modal-head"><span id="peTitle">EDIT PAD</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+        <div class="pe-wave">
+          <canvas id="peWave"></canvas>
+          <div class="shade" id="peShadeL"></div>
+          <div class="shade" id="peShadeR"></div>
+          <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
+          <div class="handle start" id="peStart"><span class="cap">START</span></div>
+          <div class="handle end" id="peEnd"><span class="cap">END</span></div>
+        </div>
+        <button class="pe-audition" id="peAudition">▶ 試聴</button>
+        <div class="pe-row">
+          <label class="toggle" id="peLoopToggle"><span class="sw"></span><span>Loop</span></label>
+          <div class="knob mini"><label>Pitch <span class="v" id="pePitch">0</span></label>
+            <input type="range" min="-12" max="12" step="1" value="0"></div>
+          <div class="knob mini"><label>Scale</label>
+            <select class="t" id="peScale" style="padding:5px 7px;">
+              <option value="off">OFF</option><option value="chro">CHRO</option>
+              <option value="maj">MAJ</option><option value="min">MIN</option><option value="pent">PENT</option>
+            </select></div>
+          <div class="knob mini"><label>Level <span class="v" id="peLevel">-4</span></label>
+            <input type="range" min="-30" max="6" step="1" value="-4"></div>
+        </div>
+        <span class="pe-adv-toggle" id="peAdvToggle">ADV ▾</span>
+        <div class="pe-adv" id="peAdv">
+          <div class="modal-label" style="margin-top:10px;">Filter / Choke</div>
+          <div class="pe-row">
+            <div class="seg" id="peFilt">
+              <button class="on">OFF</button><button>LP</button><button>HP</button>
+            </div>
+            <div class="knob mini"><label>Cutoff <span class="v" id="peCut">12.0k</span></label>
+              <input type="range" min="200" max="18000" step="50" value="12000"></div>
+            <div class="knob mini"><label>Reso <span class="v" id="peRes">0.7</span></label>
+              <input type="range" min="0.1" max="14" step="0.1" value="0.7"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="modebar-row">
@@ -867,6 +943,7 @@
         <button class="msbtn solo" id="holdSolo"><span class="d"></span>SOLO</button>
         <button class="msbtn copy" id="holdCopy"><span class="d"></span>COPY</button>
         <button class="msbtn chop" id="holdChop"><span class="d"></span>CHOPPY</button>
+        <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
         <div class="seg" id="layoutSeg" style="margin-left:auto;">
           <button data-c="8" class="on">8×2</button>
           <button data-c="4">4×4</button>
@@ -1783,6 +1860,10 @@ PADS.forEach((p,i)=>{
       try{ d.setPointerCapture(e.pointerId); }catch(_){}
       return;
     }
+    if(armMode==="edit"){                  // EDIT中：対象パッドの編集モーダルを開く
+      if(AC.state!=="running")await AC.resume();
+      trigger(i); selectPad(i); openPadEdit(i); return;
+    }
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     if(AC.state!=="running")await AC.resume();
     trigger(i);selectPad(i);
@@ -1999,6 +2080,8 @@ function arm(mode,on){
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdCopy").classList.toggle("armed",armMode==="copy");
   document.getElementById("holdChop").classList.toggle("armed",armMode==="chop");
+  document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
+  document.body.classList.toggle("edit-arm",armMode==="edit");
   paintPadStates();
 }
 function bindHold(btnId,mode){
@@ -2013,6 +2096,7 @@ bindHold("holdMute","mute");
 bindHold("holdSolo","solo");
 bindHold("holdCopy","copy");
 bindHold("holdChop","chop");
+bindHold("holdEdit","edit");
 // （トグル式のため自動解除は行わない。ESCで全モード解除）
 window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&armMode) arm(armMode,false); });
 
@@ -2566,6 +2650,76 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
   btn.addEventListener("click",open);
   closeBtn.addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });   // 背景クリックで閉じる
+})();
+
+// ---------- サンプル編集モーダル（EDIT＋パッド / モック） ----------
+// 撤去した窓波形の代わりに、対象パッドの編集をモーダルへ集約。
+// 本配線（双方向反映・START/ENDドラッグ）は次段階。ここでは見た目とフローを提示。
+let peTarget=0;
+function renderPeWave(i){
+  const cv=document.getElementById("peWave"); if(!cv) return;
+  const wrap=cv.parentElement, W=wrap.clientWidth, H=wrap.clientHeight;
+  if(!W||!H) return;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const mid=H/2;
+  ctx.strokeStyle="#2c333b"; ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(W,mid); ctx.stroke();
+  const buf=tracks[i].buffer;
+  const acc=(getComputedStyle(document.body).getPropertyValue("--teal").trim())||"#3dd6c4";
+  if(buf){
+    const data=buf.getChannelData(0);
+    const step=Math.max(1,Math.floor(data.length/W));
+    const top=new Float32Array(W), bot=new Float32Array(W);
+    for(let x=0;x<W;x++){ let mn=1,mx=-1; const o=x*step;
+      for(let n=0;n<step;n++){ const v=data[o+n]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
+      top[x]=mid-mx*mid*0.92; bot[x]=mid-mn*mid*0.92; }
+    ctx.beginPath(); ctx.moveTo(0,top[0]);
+    for(let x=1;x<W;x++) ctx.lineTo(x,top[x]);
+    for(let x=W-1;x>=0;x--) ctx.lineTo(x,bot[x]);
+    ctx.closePath(); ctx.globalAlpha=.5; ctx.fillStyle=acc; ctx.fill(); ctx.globalAlpha=1;
+    ctx.strokeStyle=acc; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(0,top[0]);
+    for(let x=1;x<W;x++) ctx.lineTo(x,top[x]); ctx.stroke();
+  } else {
+    ctx.fillStyle="#3a4149"; ctx.font="11px sans-serif"; ctx.fillText("no sample",10,mid);
+  }
+  // ハンドル/シェード位置（start/end/loop）
+  const t=tracks[i], sx=(t.start||0)*W, ex=(t.end??1)*W, lx=(t.loopStart||0)*W;
+  document.getElementById("peStart").style.left=sx+"px";
+  document.getElementById("peEnd").style.left=ex+"px";
+  const pl=document.getElementById("peLoop"); pl.style.left=lx+"px"; pl.style.display=t.loop?"block":"none";
+  const shL=document.getElementById("peShadeL"), shR=document.getElementById("peShadeR");
+  shL.style.left="0"; shL.style.width=sx+"px"; shR.style.left=ex+"px"; shR.style.width=(W-ex)+"px";
+}
+function openPadEdit(i){
+  peTarget=i;
+  const t=tracks[i];
+  document.getElementById("peTitle").textContent=String(i+1).padStart(2,"0")+" "+(PADS[i].type==="sample"?t.name:PADS[i].name);
+  document.getElementById("pePitch").textContent=t.tune+" st";
+  document.getElementById("peLevel").textContent=t.vol+" dB";
+  document.getElementById("peCut").textContent=(t.cutoff/1000).toFixed(1)+"k";
+  document.getElementById("peRes").textContent=t.reso.toFixed(1);
+  document.getElementById("peScale").value=t.scale||"off";
+  document.getElementById("peLoopToggle").classList.toggle("on",t.loop);
+  [...document.getElementById("peFilt").children].forEach((b,bi)=>b.classList.toggle("on",["off","lp","hp"][bi]===t.filter));
+  document.getElementById("peAdv").classList.remove("show");
+  const modal=document.getElementById("padEditModal");
+  modal.style.display="flex";
+  requestAnimationFrame(()=>renderPeWave(i));   // 表示後に正しい幅で描画
+}
+(function(){
+  const modal=document.getElementById("padEditModal");
+  const close=()=>{ modal.style.display="none"; };
+  document.getElementById("peClose").addEventListener("click",close);
+  modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
+  document.getElementById("peAudition").addEventListener("click",async()=>{
+    if(AC.state!=="running")await AC.resume(); trigger(peTarget);
+  });
+  document.getElementById("peAdvToggle").addEventListener("click",()=>{
+    document.getElementById("peAdv").classList.toggle("show");
+  });
+  window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
 })();
 
 // tempo / swing / vol
