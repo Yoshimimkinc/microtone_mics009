@@ -1792,11 +1792,14 @@ PADS.forEach((p,i)=>{
       if(melodicMode){
         const pitchIdx=(PADS.length-1)-i;                       // 行→音程
         const cur=getPattern(selected)[s];
-        getPattern(selected)[s]=(cur===pitchIdx+1)?0:pitchIdx+1; // モノ：その列の音程をセット/解除
+        const nv=(cur===pitchIdx+1)?0:pitchIdx+1;               // モノ：その列の音程をセット/解除
+        getPattern(selected)[s]=nv;
+        if(nv===0) clearLockEdit(selected, s);                  // OFFにしたらp-lockも消す
       } else {
         const cur=getPattern(i)[s];
-        if(e.shiftKey){ getPattern(i)[s]=cur===2?0:2; }
-        else { getPattern(i)[s]=cur?0:1; }
+        const nv = e.shiftKey ? (cur===2?0:2) : (cur?0:1);
+        getPattern(i)[s]=nv;
+        if(nv===0) clearLockEdit(i, s);                         // OFFにしたらp-lockも消す
       }
       paintSteps(); paintPatBar();   // 中身ドット・小節長を更新
     });
@@ -2282,9 +2285,12 @@ function scheduleStep(stepNo, when){
   const stg=staggerSec();
   const soloActive=anySolo();   // ループ外で一度だけ評価（毎ステップ最大16×16=256回の冗長スキャンを解消）
   for(let i=0;i<PADS.length;i++){
+    const t=tracks[i];
+    const aud = !t.mute && (!soloActive || t.solo);   // audible(i) と同等
+    // 鳴っているループ系がミュート/ソロ外しで聞こえなくなったら確実に止める（垂れ流し防止）
+    if(t.loop && t.loopPlaying && !aud){ stopVoices(t, when); t.loopPlaying=false; }
     const v=getPlayPattern(i)[stepNo];
-    if(v>0 && !tracks[i].mute && (!soloActive || tracks[i].solo)){   // audible(i) と同等
-      const t=tracks[i];
+    if(v>0 && aud){
       const lk=getLockPlay(i, playPat, playBar, stepNo);   // そのステップのp-lock
       if(t.loop){
         // ループ系はシーケンス上でトグル：トリガが来るたびに ON→OFF→ON…（負荷もかからない）
@@ -2711,7 +2717,16 @@ function dupBarNext(){
   if(editBar>=3) return;   // 最大4小節
   pushUndo();
   const dst=editBar+1;
-  for(let i=0;i<PADS.length;i++) tracks[i].patterns[editPat][dst]=tracks[i].patterns[editPat][editBar].slice();
+  for(let i=0;i<PADS.length;i++){
+    const t=tracks[i];
+    t.patterns[editPat][dst]=t.patterns[editPat][editBar].slice();
+    // p-lockも複写先の小節へコピー（無ければ消す）。ロックは "pat_bar_step" キー
+    if(t.locks) for(let s=0;s<STEPS;s++){
+      const k=lockKey(editPat,editBar,s), nk=lockKey(editPat,dst,s);
+      if(t.locks[k]) t.locks[nk]=JSON.parse(JSON.stringify(t.locks[k]));
+      else delete t.locks[nk];
+    }
+  }
   editBar=dst;             // 複写先の小節を編集対象に
   paintSteps(); paintPatBar();
 }
@@ -3113,6 +3128,8 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
     swing:swingPct,
     comp:{on:compOn, threshold:compThreshold, drive:compDrive},
     masterVol:+document.getElementById("kMaster").value,
+    groupVol:groupVol.slice(),                                  // グループフェーダー
+    fx:{delayAmt:fxDelayAmt, reverbAmt:fxReverbAmt, delayOn:fxDelayOn, reverbOn:fxReverbOn},  // 送りFX
     tracks:tracks.map((t,i)=>{
       const crop=calcCrop(t);
       return {
@@ -3146,6 +3163,9 @@ document.getElementById("loadProjBtn").addEventListener("click",()=>{
   document.getElementById("projFile").click();
 });
 async function applyProject(proj){
+    // 読込前に鳴っている音を止め、ループ/予約状態をリセット（旧バッファの垂れ流し・状態ズレ防止）
+    tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });
+    queuedPat=null;
     // restore globals
     bpmVal=proj.bpm||100;
     document.getElementById("bpm").value=bpmVal;
@@ -3170,6 +3190,9 @@ async function applyProject(proj){
       masterGain.gain.value=Math.pow(10,proj.masterVol/20);
       document.getElementById("vMaster").textContent=proj.masterVol+" dB";
     }
+    // グループフェーダー・送りFX（旧ファイルに無ければ既定のまま）
+    if(proj.groupVol){ for(let g=0;g<4;g++) groupVol[g]=proj.groupVol[g]??0; applyGroupVol(); }
+    if(proj.fx){ fxDelayAmt=proj.fx.delayAmt??0; fxReverbAmt=proj.fx.reverbAmt??0; fxDelayOn=!!proj.fx.delayOn; fxReverbOn=!!proj.fx.reverbOn; applyFx(); }
     // tracks
     for(let i=0;i<Math.min(proj.tracks.length,16);i++){
       const pt=proj.tracks[i], t=tracks[i];
