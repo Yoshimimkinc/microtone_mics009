@@ -252,6 +252,15 @@
     letter-spacing:.06em;cursor:pointer;background:#1a1e23;color:var(--dim);transition:.1s;}
   .ch-ms button.m-on{background:var(--red);color:#fff;}
   .ch-ms button.s-on{background:var(--teal);color:#06201d;}
+  /* 折り畳みトグル（チャンネルレベルは普段たたむ） */
+  .collapse-toggle{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:9px 12px;min-height:40px;cursor:pointer;
+    font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.26em;}
+  .collapse-toggle:hover{border-color:var(--dim);}
+  .collapse-toggle .chev{transition:transform .15s;display:inline-block;color:var(--teal);font-size:12px;}
+  .collapse-toggle[aria-expanded="true"] .chev{transform:rotate(90deg);}
+  .mixer.collapsed{display:none;}
   /* グループM/S（4ch×4を一括）。2列=左右、上=サンプル/下=ドラムの2×2 */
   .grp-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:540px;}
   .grp{display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -768,8 +777,10 @@
         <div class="grp-row" id="grpRow"></div>
       </div>
       <div class="mix-section">
-        <div class="label">Channel levels</div>
-        <div class="mixer" id="mixer"></div>
+        <button class="label collapse-toggle" id="chToggle" aria-expanded="false" aria-controls="mixer">
+          <span class="chev">▸</span><span>Channel levels</span>
+        </button>
+        <div class="mixer collapsed" id="mixer"></div>
       </div>
     </div>
   </div>
@@ -2414,6 +2425,17 @@ function syncMixLayout(){
 }
 syncMixLayout();
 
+// チャンネルレベルは普段たたむ（既定=閉）。トグルで開閉
+(function(){
+  const t=document.getElementById("chToggle");
+  if(!t) return;
+  t.addEventListener("click",()=>{
+    const collapsed=mixerEl.classList.toggle("collapsed");
+    t.setAttribute("aria-expanded", collapsed?"false":"true");
+    if(typeof lockViewHeight==="function") lockViewHeight();
+  });
+})();
+
 // マスターボリューム
 document.getElementById("kMaster").addEventListener("pointerdown",()=>pushUndo());
 document.getElementById("kMaster").addEventListener("input",function(){
@@ -2752,6 +2774,14 @@ const APP_VERSION = "0.1.0";
       }
     }catch(e){}
     if(splash){ splash.classList.add("hide"); setTimeout(()=>splash.remove(),400); }
+    // 開始タップの直後に続くtouchend/clickが下のUI（SCALE等）を誤爆しないよう一瞬だけ入力を遮断
+    const shield=document.createElement("div");
+    shield.style.cssText="position:fixed;inset:0;z-index:99999;background:transparent;";
+    const swallow=e=>{ e.stopPropagation(); e.preventDefault(); };
+    ["pointerdown","pointerup","mousedown","mouseup","click","touchstart","touchend"]
+      .forEach(ev=>shield.addEventListener(ev,swallow,true));
+    document.body.appendChild(shield);
+    setTimeout(()=>shield.remove(),450);
     window.removeEventListener("pointerdown",start);
     window.removeEventListener("keydown",start);
   }
