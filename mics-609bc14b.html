@@ -161,18 +161,19 @@
   .plockbtn{border:1px solid var(--line);border-radius:5px;background:var(--pad);
     font:inherit;font-size:10px;font-weight:700;letter-spacing:.06em;padding:6px 9px;cursor:pointer;min-height:30px;}
   .plockbtn[data-lock="pitch"]{color:#3dd6c4;}
-  .plockbtn[data-lock="level"]{color:#ff8a3d;}
+  .plockbtn[data-lock="level"]{color:#ff5db0;}
   .plockbtn[data-lock="filter"]{color:#b07cff;}
   .plockbtn[data-lock="delay"]{color:#5fd35f;}
   .plockbtn[data-lock="reverb"]{color:#5aa9ff;}
   .plockbtn[data-lock="pitch"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;}
-  .plockbtn[data-lock="level"].on{background:#ff8a3d;color:#2a1405;border-color:#ff8a3d;}
+  .plockbtn[data-lock="level"].on{background:#ff5db0;color:#2a0a1e;border-color:#ff5db0;}
   .plockbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
   .plockbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
   .plockbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
   /* p-lock 値バー（左→右の塗りで値を表現）＋数字 */
   .pad .lockfill{display:none;position:absolute;left:0;top:0;bottom:0;width:0%;z-index:0;pointer-events:none;}
-  body.step-on .pad.valbar{background:linear-gradient(180deg,#2c313a,#23272e)!important;box-shadow:none!important;overflow:hidden;}
+  /* ベースは「音あり色」(アンバー)＝値0でもノートONが分かる。その上に各パラメータ色のバーを重ねる */
+  body.step-on .pad.valbar{background:linear-gradient(180deg,var(--amber),#c25e22)!important;box-shadow:0 0 14px rgba(255,138,61,.5)!important;overflow:hidden;}
   body.step-on .pad.valbar .lockfill{display:block;}
   body.step-on .pad.valbar .stepn{color:#fff;}
   .pad .lockv{display:none;position:absolute;left:0;right:0;bottom:4px;z-index:2;text-align:center;
@@ -1245,7 +1246,7 @@ function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][pla
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット
 const PLOCKS = {
   pitch:  {min:-12, max:12,   def:0,     color:"61,214,196",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 半音
-  level:  {min:-30, max:6,    def:-4,    color:"255,138,61",  fmt:v=>Math.round(v)},                              // dB
+  level:  {min:-30, max:6,    def:-4,    color:"255,93,176",  fmt:v=>Math.round(v)},                              // dB
   filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
   delay:  {min:0,   max:1,    def:0.3,   color:"95,211,95",   fmt:v=>Math.round(v*100)},                          // 送り%
   reverb: {min:0,   max:1,    def:0.3,   color:"90,169,255",  fmt:v=>Math.round(v*100)},                          // 送り%
