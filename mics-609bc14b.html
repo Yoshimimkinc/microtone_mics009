@@ -571,6 +571,11 @@
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
     .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
     .pads .pad{aspect-ratio:auto!important;min-height:0!important;padding:6px!important;}
+    /* モバイル：ぼかしグロー(box-shadow blur)とトランジションは毎ステップ再描画が重い→無効化（背景色での点灯は残す） */
+    .pad{transition:none!important;}
+    .pad.hit,.pad.hit.hit-acc{box-shadow:none!important;}
+    body.step-on .pad.stepon,body.step-on .pad.valbar{box-shadow:none!important;}
+    body.step-on .pad.stepcur{box-shadow:none!important;}
     /* MPC配列：ドラム(1-8)を下段、サンプル(9-16)を上段に（cols8/4×4どちらでも） */
     .pads .pad:nth-child(-n+4){order:4!important;}
     .pads .pad:nth-child(n+5):nth-child(-n+8){order:3!important;}
@@ -2284,6 +2289,11 @@ function stepTimeClean(stepNo){
 }
 
 function scheduler(){
+  // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、
+  // バー基準を現在時刻へ引き直して取り戻す
+  const behind = (AC.currentTime - stepTimeClean(stepIdx));
+  if(behind > 0.12){ barStartTime += behind; }
+  let guard = 0;
   while(stepTimeClean(stepIdx) < AC.currentTime + LOOKAHEAD){
     // SP的微細ドリフトはスケジュール時のみ適用
     const when = stepTimeClean(stepIdx) + driftSec();
@@ -2296,6 +2306,7 @@ function scheduler(){
       if(queuedPat !== null){ playPat = queuedPat; playBar = 0; queuedPat = null; }
       else { playBar++; if(playBar >= patLength(playPat)) playBar = 0; }
     }
+    if(++guard > STEPS) break;   // 1tickで最大1小節分まで（暴走防止）
   }
 }
 function drawLoop(){
@@ -2328,6 +2339,7 @@ playBtn.addEventListener("click",async()=>{
     barStartTime=AC.currentTime+0.05;
     schedTimer=setInterval(scheduler, INTERVAL);
     requestAnimationFrame(drawLoop);
+    if(typeof kickVu==="function") kickVu();   // VUループ起動（停止中はアイドルで止まっている）
   } else {
     clearInterval(schedTimer); schedTimer=null;
     drawQueue.length=0; playStep=0; paintSteps();
@@ -2838,10 +2850,12 @@ function vuHit(padIdx, accent){
   const g=dbToGain(tracks[padIdx].vol + (accent?5:0));
   vuLevels[padIdx]=Math.min(1, g*1.4);   // 少し誇張して見やすく
   masterVuLevel=Math.min(1, masterVuLevel + g*0.4);
+  if(typeof kickVu==="function") kickVu();   // 発音時にVUループを起こす（アイドル時は止まっている）
 }
 
-// --- VUアニメーションループ ---
+// --- VUアニメーションループ（アイドル時は自動停止＝メインスレッドを永久に起こさない） ---
 const masterVuEl=document.getElementById("masterVu");
+let vuRaf=null;
 function vuLoop(){
   const mixActive=viewMixEl.classList.contains("active");
   if(mixActive){   // chフェーダーのVUは隠れてる時は更新不要
@@ -2858,9 +2872,11 @@ function vuLoop(){
   // ディケイ
   for(let i=0;i<PADS.length;i++) vuLevels[i]*=0.88;
   masterVuLevel*=0.92;
-  requestAnimationFrame(vuLoop);
+  // 再生中、またはまだレベルが残っている間だけ回す。無音アイドルでは停止
+  if(playing || masterVuLevel>0.002){ vuRaf=requestAnimationFrame(vuLoop); }
+  else { vuRaf=null; masterVuEl.style.width="0%"; masterVuEl.classList.remove("peak"); }
 }
-requestAnimationFrame(vuLoop);
+function kickVu(){ if(vuRaf==null) vuRaf=requestAnimationFrame(vuLoop); }
 
 function paintMixer(){
   for(let i=0;i<PADS.length;i++){
