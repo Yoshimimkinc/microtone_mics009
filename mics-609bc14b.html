@@ -403,9 +403,11 @@
     background:var(--ink);transform-origin:50% 17px;
     transform:translateX(-50%) rotate(calc(var(--p,0)*290deg - 145deg));}
   .dial:active{box-shadow:0 0 0 2px var(--amber),0 2px 5px rgba(0,0,0,.45);}
-  .dial-val{display:block;text-align:center;margin-top:3px;font-size:12px;color:var(--ink);
-    font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1.1;}
-  .knob.has-dial>label{justify-content:center;}   /* 値を下へ移したのでラベル名は中央寄せ */
+  /* 値はノブ内（下寄り中央）に重ねて表示＝行を消費しない */
+  .dial .dial-val{position:absolute;left:-3px;right:-3px;bottom:7px;text-align:center;
+    font-size:9px;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:0;
+    line-height:1;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.75);}
+  .knob.has-dial>label{justify-content:center;}   /* ラベル名は中央寄せ（ノブと縦に揃える） */
   .ctrl input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
   .seg{display:flex;gap:0;background:#0d1013;border:1px solid var(--line);border-radius:6px;padding:3px;width:fit-content;}
   .seg button{background:transparent;color:var(--dim);border:none;border-radius:4px;
@@ -1838,9 +1840,9 @@ function makeDial(id){
   const dial=document.createElement("div"); dial.className="dial";
   dial.setAttribute("aria-hidden","true");
   range.parentNode.insertBefore(dial, range);
-  // 値表示(.v)をノブの真下へ移動して読みやすく（bindKnobは同じ要素を更新し続ける）
+  // 値表示(.v)をノブの中（下寄り）へ重ねて表示。行を増やさず読める（bindKnobは同要素を更新継続）
   const valSpan=wrap.querySelector("label .v");
-  if(valSpan){ valSpan.classList.add("dial-val"); dial.insertAdjacentElement("afterend", valSpan); }
+  if(valSpan){ valSpan.classList.add("dial-val"); dial.appendChild(valSpan); }
   const min=+range.min, max=+range.max, step=+range.step||1, span=(max-min)||1;
   const update=()=> dial.style.setProperty("--p", (((+range.value)-min)/span).toFixed(4));
   update();
