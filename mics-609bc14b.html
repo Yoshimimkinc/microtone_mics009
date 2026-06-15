@@ -156,7 +156,8 @@
   body.step-on .pad.stepon .stepn{color:#2a1405;}
   body.step-on .pad.stepacc{background:linear-gradient(180deg,#ffd08a,var(--amber));}
   /* 再生中の現在ステップ */
-  body.step-on .pad.stepcur{outline:2px solid var(--teal);outline-offset:-2px;}
+  body.step-on .pad.stepcur{outline:5px solid var(--teal);outline-offset:-5px;
+    box-shadow:0 0 18px rgba(61,214,196,.85), inset 0 0 14px rgba(61,214,196,.5);z-index:2;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
     border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
   .ctrl{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;flex-shrink:1;min-width:0;}
