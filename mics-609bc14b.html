@@ -156,16 +156,29 @@
   /* 再生中の現在ステップ */
   body.step-on .pad.stepcur{outline:5px solid var(--teal);outline-offset:-5px;
     box-shadow:0 0 18px rgba(61,214,196,.85), inset 0 0 14px rgba(61,214,196,.5);z-index:2;}
-  /* p-lock ツールバー（PITCH/LEVEL/FILTER/DELAY/REVERB：1つだけ点灯） */
+  /* p-lock ツールバー（PITCH/LEVEL/FILTER/DELAY/REVERB：1つだけ点灯・パラメータ毎に色） */
   .plock-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
-  .plockbtn{border:1px solid var(--line);border-radius:5px;background:var(--pad);color:var(--dim);
+  .plockbtn{border:1px solid var(--line);border-radius:5px;background:var(--pad);
     font:inherit;font-size:10px;font-weight:700;letter-spacing:.06em;padding:6px 9px;cursor:pointer;min-height:30px;}
-  .plockbtn.on{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.5);}
-  /* p-lockされたステップの小さな値表示 */
-  .pad .lockv{display:none;position:absolute;left:0;right:0;bottom:3px;z-index:2;text-align:center;
-    font-size:10px;font-weight:700;color:var(--teal);font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000;}
+  .plockbtn[data-lock="pitch"]{color:#3dd6c4;}
+  .plockbtn[data-lock="level"]{color:#ff8a3d;}
+  .plockbtn[data-lock="filter"]{color:#b07cff;}
+  .plockbtn[data-lock="delay"]{color:#5fd35f;}
+  .plockbtn[data-lock="reverb"]{color:#5aa9ff;}
+  .plockbtn[data-lock="pitch"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;}
+  .plockbtn[data-lock="level"].on{background:#ff8a3d;color:#2a1405;border-color:#ff8a3d;}
+  .plockbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
+  .plockbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
+  .plockbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
+  /* p-lock 値バー（左→右の塗りで値を表現）＋数字 */
+  .pad .lockfill{display:none;position:absolute;left:0;top:0;bottom:0;width:0%;z-index:0;pointer-events:none;}
+  body.step-on .pad.valbar{background:linear-gradient(180deg,#2c313a,#23272e)!important;box-shadow:none!important;overflow:hidden;}
+  body.step-on .pad.valbar .lockfill{display:block;}
+  body.step-on .pad.valbar .stepn{color:#fff;}
+  .pad .lockv{display:none;position:absolute;left:0;right:0;bottom:4px;z-index:2;text-align:center;
+    font-size:15px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000;}
   body.step-on .pad.haslock .lockv{display:block;}
-  body.step-on .pad.haslock{outline:1px dashed rgba(61,214,196,.6);outline-offset:-3px;}
+  body.step-on .pad.haslock{outline:1px dashed rgba(255,255,255,.4);outline-offset:-3px;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
     border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
   .ctrl{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;flex-shrink:1;min-width:0;}
@@ -1231,11 +1244,11 @@ function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][pla
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット
 const PLOCKS = {
-  pitch:  {min:-12, max:12,   def:0,     fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 半音
-  level:  {min:-30, max:6,    def:-4,    fmt:v=>Math.round(v)},                              // dB
-  filter: {min:200, max:18000,def:12000, log:true, fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
-  delay:  {min:0,   max:1,    def:0.3,   fmt:v=>Math.round(v*100)},                          // 送り%
-  reverb: {min:0,   max:1,    def:0.3,   fmt:v=>Math.round(v*100)},                          // 送り%
+  pitch:  {min:-12, max:12,   def:0,     color:"61,214,196",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 半音
+  level:  {min:-30, max:6,    def:-4,    color:"255,138,61",  fmt:v=>Math.round(v)},                              // dB
+  filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
+  delay:  {min:0,   max:1,    def:0.3,   color:"95,211,95",   fmt:v=>Math.round(v*100)},                          // 送り%
+  reverb: {min:0,   max:1,    def:0.3,   color:"90,169,255",  fmt:v=>Math.round(v*100)},                          // 送り%
 };
 function lockKey(pat,bar,step){ return pat+"_"+bar+"_"+step; }
 function getLockEdit(trackIdx, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(editPat,editBar,step)]; }
@@ -1623,7 +1636,7 @@ function applyPadCategory(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="stepn">${i+1}</div><div class="lockv"></div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="stepn">${i+1}</div><div class="lockv"></div>`;
   d.dataset.i=i;
   d.setAttribute("role","button");
   d.setAttribute("aria-label", p.name+" pad");
@@ -2309,12 +2322,25 @@ function paintStepPads(){
     const lk=getLockEdit(selected, s);
     const has=!!(lk && Object.keys(lk).length);
     el.classList.toggle("haslock", has && v>0);
-    const lv=el.querySelector(".lockv");
-    if(lv) lv.textContent=(spec && lk && lk[activeLock]!=null && v>0) ? spec.fmt(lk[activeLock]) : "";
+    const lockedActive = !!(spec && lk && lk[activeLock]!=null && v>0);
+    el.classList.toggle("valbar", lockedActive);
+    const fill=el.querySelector(".lockfill"), lv=el.querySelector(".lockv");
+    if(lockedActive){
+      const val=lk[activeLock];
+      let norm = spec.log
+        ? (Math.log(val)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min))
+        : (val-spec.min)/(spec.max-spec.min);
+      norm=Math.max(0,Math.min(1,norm));
+      if(fill){ fill.style.width=(norm*100).toFixed(1)+"%"; fill.style.background="rgb("+spec.color+")"; }
+      if(lv) lv.textContent=spec.fmt(val);
+    } else {
+      if(fill) fill.style.width="0%";
+      if(lv) lv.textContent="";
+    }
   }
 }
 function clearStepPadClasses(){
-  for(let s=0;s<PADS.length;s++){ const el=padsEl.children[s]; el.classList.remove("stepon","stepacc","beathead","stepcur","haslock"); const lv=el.querySelector(".lockv"); if(lv) lv.textContent=""; }
+  for(let s=0;s<PADS.length;s++){ const el=padsEl.children[s]; el.classList.remove("stepon","stepacc","beathead","stepcur","haslock","valbar"); const lv=el.querySelector(".lockv"); if(lv) lv.textContent=""; const fl=el.querySelector(".lockfill"); if(fl) fl.style.width="0%"; }
 }
 function toggleStepAt(s, accent){
   pushUndo();
