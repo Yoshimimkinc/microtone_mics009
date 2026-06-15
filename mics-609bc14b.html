@@ -1513,6 +1513,31 @@ function audible(i){
   return true;
 }
 
+// ドロップサンプル・ピッチ（SP-1200式・補間なし）：
+// 元バッファを最近傍(nearest-neighbor)でratio倍にリサンプルし、AC.sampleRateのバッファに焼く。
+// これをplaybackRate=1.0で再生すると、ブラウザの補間を一切受けずSP的なエイリアス/粒立ちが出る。
+// 連続ベンドは無いアプリなので発音毎の生成で十分（短音はサブms、ループ系もトグル時のみ）。
+function pitchBufferNN(buf, ratio){
+  const srcSr = buf.sampleRate, ch = buf.numberOfChannels;
+  const step = ratio * srcSr / AC.sampleRate;            // 出力1サンプルあたり進める元サンプル数
+  const cap = AC.sampleRate * 12;                        // 念のため長さ上限（極端なピッチダウン対策）
+  const outLen = Math.max(1, Math.min(cap, Math.floor(buf.length / step)));
+  const out = AC.createBuffer(ch, outLen, AC.sampleRate);
+  for(let c=0;c<ch;c++){
+    const s = buf.getChannelData(c), d = out.getChannelData(c);
+    let pos = 0;
+    for(let n=0;n<outLen;n++){ d[n] = s[pos|0] || 0; pos += step; }  // 整数indexのみ＝ドロップサンプル
+  }
+  return out;
+}
+// 半音キーでピッチ済みバッファをキャッシュ（同音程の連打で毎回生成しない＝負荷増を防ぐ）。
+// t.bufferが差し替わったら自動でキャッシュ破棄（録音/読込/CHOPPY/再12bit化に追従）。
+function getPitchedBuffer(t, semi){
+  if(t._pcacheBuf !== t.buffer){ t._pcache = {}; t._pcacheBuf = t.buffer; }
+  let b = t._pcache[semi];
+  if(!b){ b = t._pcache[semi] = pitchBufferNN(t.buffer, Math.pow(2, semi/12)); }
+  return b;
+}
 // 1ヒット発音
 function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   const t = tracks[i];
@@ -1523,16 +1548,18 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   stopVoices(t, when);
   chokeGroup(t.choke, i, when);
 
-  const dur = t.buffer.duration;
+  // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
+  const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
+  const semi = t.tune + (noteSemi||0) + lkPitch;
+  const pbuf = getPitchedBuffer(t, semi);       // 半音キーでキャッシュ
+  const dur = pbuf.duration;   // ピッチ済みバッファの尺で以降の開始/終了/ループ点が正しくスケール
   const sN = Math.min(0.999, Math.max(0, t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
   const startSec = sN*dur, endSec = eN*dur;
 
   const src = AC.createBufferSource();
-  src.buffer = t.buffer;
-  // p-lock: pitch(半音) を加算
-  const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
-  src.playbackRate.value = Math.pow(2, (t.tune + (noteSemi||0) + lkPitch)/12);
+  src.buffer = pbuf;
+  src.playbackRate.value = 1;   // ピッチはバッファに焼き込み済み = ブラウザ補間を回避
 
   // フィルター（off時は挟まない）。p-lock filter があればカットオフを上書き（offなら一時的にLP）
   let head = src;
@@ -1597,7 +1624,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
       pad:i, when, startN:sN, endN:eN,
       rate:src.playbackRate.value,
       loop:t.loop, loopStartN: t.loop?Math.min(eN-0.001,Math.max(0,t.loopStart)):0,
-      dur:t.buffer.duration,
+      dur:dur,   // ピッチ済みバッファの尺（rate=1なのでこれで進行が一致）
     };
     ensureCursorLoop();
   }
