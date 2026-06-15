@@ -138,6 +138,8 @@
   .strip-head .who{flex:0 0 130px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #rec{min-width:96px;}   /* ●Rec/■Step で幅が変わらないよう固定 */
   /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
+  /* GRID REC中はビューがPADS固定 → PADS/SEQ/MIXタブは不要なので隠す（縦スペースも空く） */
+  body.step-on .modebar-row{display:none;}
   body.step-on .pads .pad{order:0!important;}
   body.step-on .pads .pad .nm{display:none;}
   body.step-on .pads .pad>.pad-wave{display:none;}
