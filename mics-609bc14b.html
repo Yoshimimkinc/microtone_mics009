@@ -125,13 +125,15 @@
   button.t#tap.on{background:var(--amber);color:#2a1405;border-color:var(--amber);}
   button.t.rec.on{background:var(--red);color:#2a0808;border-color:var(--red);}
   button.t.step.on{background:var(--amber);color:#2a1405;border-color:var(--amber);box-shadow:0 0 14px rgba(255,138,61,.4);}
-  /* STEP（Digitakt式）：ステップバー＋PADをステップ表示 */
-  .stepbar{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-  body.step-on .stepbar{display:flex;}
-  .stepbar .patlabel{font-size:10px;color:var(--dim);letter-spacing:.12em;}
+  /* STEP（Digitakt式）：ノブ行と同じ枠にPAT/BARを重ねる＝切替で高さが動かない */
+  .gridctrls{display:none;position:absolute;inset:0;align-items:center;gap:8px;flex-wrap:wrap;
+    background:var(--panel);padding-top:2px;}
+  .gridctrls .patlabel{font-size:10px;color:var(--dim);letter-spacing:.12em;}
   .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-left:auto;}
-  /* GRID中：PITCH/LEVEL等のノブ行を隠してPAD高さを確保（小節指定はステップバーへ） */
-  body.step-on #viewPads .strip-ctrls{display:none;}
+  body.step-on #viewPads .strip-ctrls{position:relative;}
+  /* GRID中：ノブ類は不可視にして高さだけ維持、PAT/BARを重ねて表示 */
+  body.step-on #viewPads .strip-ctrls>:not(.gridctrls){visibility:hidden;}
+  body.step-on #viewPads .gridctrls{display:flex;}
   /* トラック切替◀▶：上のedWho両脇。GRID(step)中のみ表示 */
   .stepnav{display:none;padding:6px 10px;min-width:0;}
   body.step-on .stepnav{display:inline-flex;}
@@ -530,10 +532,9 @@
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
     #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden;}
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
-    #viewPads>.stepbar{order:2;flex:0 0 auto;}
-    #viewPads>.pads{order:3;max-width:100%;flex:1 1 auto;min-height:0;}
-    #viewPads>.msbar{order:4;flex-wrap:wrap;flex:0 0 auto;}
-    #viewPads>.padTransport{order:5;margin:0;flex:0 0 auto;}
+    #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:0;}
+    #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;}
+    #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
     .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
     .pads .pad{aspect-ratio:auto!important;min-height:0!important;padding:6px!important;}
@@ -763,6 +764,25 @@
             <input type="range" id="kRes" min="0.1" max="14" step="0.1" value="0.7"></div>
           <div class="knob mini"><label>Level <span class="v" id="vLvl">-4</span></label>
             <input type="range" id="kLvl" min="-30" max="6" step="1" value="-4"></div>
+          <!-- GRID（Digitakt式）：PAT/BAR選択。ノブ行と同じ枠に重ねて高さ不変（GRID中のみ表示） -->
+          <div class="gridctrls" id="gridCtrls">
+            <span class="patlabel">PAT</span>
+            <div class="seg" id="gPatSeg">
+              <button class="patbtn on" data-p="0">A</button>
+              <button class="patbtn" data-p="1">B</button>
+              <button class="patbtn" data-p="2">C</button>
+              <button class="patbtn" data-p="3">D</button>
+            </div>
+            <span class="patlabel">BAR</span>
+            <div class="seg" id="gBarSeg">
+              <button class="patbtn on" data-b="0">1</button>
+              <button class="patbtn" data-b="1">2</button>
+              <button class="patbtn" data-b="2">3</button>
+              <button class="patbtn" data-b="3">4</button>
+            </div>
+            <button class="t dupbar" id="gDupBar" title="今の小節を次の小節に複写して伸ばす">DUP►</button>
+            <span class="stepbar-hint">PADでON/OFF</span>
+          </div>
         </div>
       </div>
 
@@ -778,25 +798,6 @@
         </div>
       </div>
 
-      <!-- STEP（Digitakt式）：PAT/BAR選択＋ヒント。STEP中のみ表示。トラック切替は上の◀ edWho ▶ -->
-      <div class="stepbar" id="stepBar">
-        <span class="patlabel">PAT</span>
-        <div class="seg" id="gPatSeg">
-          <button class="patbtn on" data-p="0">A</button>
-          <button class="patbtn" data-p="1">B</button>
-          <button class="patbtn" data-p="2">C</button>
-          <button class="patbtn" data-p="3">D</button>
-        </div>
-        <span class="patlabel">BAR</span>
-        <div class="seg" id="gBarSeg">
-          <button class="patbtn on" data-b="0">1</button>
-          <button class="patbtn" data-b="1">2</button>
-          <button class="patbtn" data-b="2">3</button>
-          <button class="patbtn" data-b="3">4</button>
-        </div>
-        <button class="t dupbar" id="gDupBar" title="今の小節を次の小節に複写して伸ばす">DUP►</button>
-        <span class="stepbar-hint">PADでON/OFF</span>
-      </div>
       <!-- 16 pads (主役) -->
       <div class="pads cols8" id="pads"></div>
 
@@ -2397,6 +2398,7 @@ document.querySelectorAll('input[type=range]').forEach(r=>{
 selectPad(0);
 paintPadStates();
 applyGroupVol(); setDelayTempo(); applyFx();   // グループバス/FXの初期化
+if(recMode==="grid") setStepMode(true);        // 既定=GRID：起動時からステップ入力状態
 
 // 起動時：プリセット音をオフライン生成して各パッドに焼き込む
 // 起動時に最初から入っているデフォルトパターン（音は組み込みプリセットを使うのでaudioは持たない＝軽量）
