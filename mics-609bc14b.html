@@ -1718,8 +1718,8 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
     if(k>=0) t.activeVoices.splice(k,1);
     try{src.disconnect();env.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
   };
-  // 波形プレイヘッド：選択中パッドの発音を記録
-  if(i===selected){
+  // 波形プレイヘッド：選択中パッドの発音を記録（窓波形が可視のときだけ＝不可視時はrAFカーソルループを起こさない）
+  if(i===selected && waveWrap.offsetParent){
     lastPlayhead = {
       pad:i, when, startN:sN, endN:eN,
       rate:src.playbackRate.value,
