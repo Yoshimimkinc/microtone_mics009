@@ -656,7 +656,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.1.0</div>
+  <div class="s-ver" id="splashVer">v0.2.0</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3334,7 +3334,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.2.0";
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

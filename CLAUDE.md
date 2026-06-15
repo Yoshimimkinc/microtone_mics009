@@ -68,4 +68,4 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 - **YKOYKО**: Illustrator (non-technical)
 
 ## Version
-MICS009 beta v0.1
+MICS009 beta v0.2.0
