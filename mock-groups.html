@@ -80,10 +80,13 @@ GROUPS.forEach(g=>{
     el.classList.toggle("soloed",solo);
   };
   paint();
-  // 上下ドラッグで音量
-  let drag=false, startY=0, startV=0, moved=false;
+  // 上下ドラッグで音量／ダブルタップで0dBリセット
+  let drag=false, startY=0, startV=0, moved=false, lastTap=0;
   el.addEventListener("pointerdown",e=>{
     if(e.target.closest(".ms")) return;        // M/Sボタンはドラッグ対象外
+    const now=Date.now();
+    if(now-lastTap<320){ lastTap=0; drag=false; vol=0; paint(); e.preventDefault(); return; }  // ダブルタップ→0dB
+    lastTap=now;
     drag=true; moved=false; startY=e.clientY; startV=vol;
     el.setPointerCapture(e.pointerId); e.preventDefault();
   });
