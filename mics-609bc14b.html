@@ -1041,6 +1041,47 @@ function extractViaPlayback(file){
 const masterGain = AC.createGain();
 masterGain.gain.value = 0.9;
 
+// ===== SP-1200 DAC段：固定26.04kHzゼロ次ホールド + 12bitリニア量子化（再構成フィルタ無し）=====
+// 文献(Yeh CCRMA他)準拠：実機は固定クロックDAC＋アンチイメージング無しで13kHz超のイメージングを放射する＝音の核。
+// pad総和(masterGain)直後に挿入し、以降(comp/サチュ/テープ/低域)はアウトボード扱い。
+// AudioWorkletは非同期ロード。非対応/失敗時はspOutを素通り（従来のmakeLofi音）にフォールバック。
+const SP_DAC_RATE = 26040;
+const spOut = AC.createGain();   // DAC出力ノード（このノードから先へ全アウトボードを接続）
+masterGain.connect(spOut);       // 既定は素通り。worklet成功時に masterGain→DAC→spOut へ差し替え
+(function loadSpDac(){
+  if(!(AC.audioWorklet && AC.audioWorklet.addModule)) return;   // 非対応ブラウザは素通り
+  const code =
+    "class SPDac extends AudioWorkletProcessor{"+
+    "  constructor(o){super();this.rate=(o&&o.processorOptions&&o.processorOptions.rate)||26040;this.phase=0;this.held=new Float32Array(32);}"+
+    "  process(inputs,outputs){"+
+    "    const input=inputs[0],output=outputs[0];"+
+    "    if(!output||!output.length)return true;"+
+    "    const nf=output[0].length,nc=output.length;"+
+    "    const inc=this.rate/sampleRate,step=2/4096;"+   // 12bitリニア
+    "    let phase=this.phase;"+
+    "    for(let i=0;i<nf;i++){"+
+    "      phase+=inc;let latch=false;if(phase>=1){phase-=1;latch=true;}"+
+    "      for(let ch=0;ch<nc;ch++){"+
+    "        if(latch){const inp=(input&&(input[ch]||input[0]));let s=inp?inp[i]:0;this.held[ch]=Math.round(s/step)*step;}"+   // 26kHzでラッチ＋量子化、間はホールド
+    "        output[ch][i]=this.held[ch];"+
+    "      }"+
+    "    }"+
+    "    this.phase=phase;return true;"+
+    "  }"+
+    "}"+
+    "registerProcessor('sp-dac',SPDac);";
+  const url=URL.createObjectURL(new Blob([code],{type:"application/javascript"}));
+  AC.audioWorklet.addModule(url).then(()=>{
+    try{
+      const dac=new AudioWorkletNode(AC,'sp-dac',{outputChannelCount:[2],processorOptions:{rate:SP_DAC_RATE}});
+      masterGain.disconnect(spOut);
+      masterGain.connect(dac);
+      dac.connect(spOut);
+    }catch(e){ /* 失敗時はmasterGain→spOutの素通りのまま */ }
+    URL.revokeObjectURL(url);
+  }).catch(()=>{ URL.revokeObjectURL(url); });
+})();
+
 // ===== アナログ風マスターコンプ + サチュレーション =====
 // Chain: voices → masterGain → comp → saturator → makeupGain → destination
 const comp = AC.createDynamicsCompressor();
@@ -1127,17 +1168,17 @@ bassSat.curve = bsCurve;
 bassSat.oversample = "none";   // サブ低域のみ整形＝エイリアス不可聴。常時稼働なので軽量化
 const bassGain = AC.createGain();
 bassGain.gain.value = 0.12;  // 控えめに混ぜる
-// masterGainからパラレルに分岐
-masterGain.connect(bassLp);
+// SP-DAC出力からパラレルに分岐
+spOut.connect(bassLp);
 bassLp.connect(bassSat);
 bassSat.connect(bassGain);
 bassGain.connect(tapeDelay);  // テープ経由で出力
 
-// 接続（テープ質感込み）
-// comp経路: masterGain → comp → saturator → makeupGain → tapeDelay → destination
-// bypass経路: masterGain → bypassGain → tapeDelay → destination
+// 接続（テープ質感込み）。SP-DAC段(spOut)以降がアウトボード
+// comp経路: spOut → comp → saturator → makeupGain → tapeDelay → destination
+// bypass経路: spOut → bypassGain → tapeDelay → destination
 // テープは常時ON（どちらの経路でもかかる）
-masterGain.connect(comp);
+spOut.connect(comp);
 comp.connect(saturator);
 saturator.connect(makeupGain);
 makeupGain.connect(tapeDelay);
@@ -1147,7 +1188,7 @@ tapeDelay.connect(AC.destination);
 let compOn = true;
 const bypassGain = AC.createGain();
 bypassGain.gain.value = 0;
-masterGain.connect(bypassGain);
+spOut.connect(bypassGain);
 bypassGain.connect(tapeDelay);  // bypass経路もテープを通す
 
 function setCompBypass(on){
@@ -1407,22 +1448,31 @@ function dbToGain(db){ return Math.pow(10, db/20); }
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
 function makeLofi(buffer){
+  // SP-1200の「録音ADC」段：入力アンチエイリアス(緩め)→26kHz相当のサンプル&ホールド→12bitリニア量子化。
+  // 実機の入力AAは〜13kHzで緩く落ちる程度（ブリックウォールではない）＝文献(Yeh)準拠。出力側の粗さはSP-DAC段が担当。
   const ch = buffer.numberOfChannels;
   const sr = buffer.sampleRate;
   const out = AC.createBuffer(ch, buffer.length, sr);
   const levels = Math.pow(2, LOFI.bits);          // 12bit = 4096段
   const half = levels/2;
   const hold = Math.max(1, Math.round(sr / LOFI.targetRate)); // 何サンプルに1回更新するか
+  // 入力AA: 2極Butterworth LP（RBJ）fc≈13kHz。録音側のエイリアスを軽く抑える（寄与は小さいのが実機）
+  const fc=Math.min(13000, sr*0.46);
+  const w0=2*Math.PI*fc/sr, cw=Math.cos(w0), sw=Math.sin(w0), alpha=sw/(2*0.7071);
+  const a0=1+alpha;
+  const B0=((1-cw)/2)/a0, B1=(1-cw)/a0, B2=((1-cw)/2)/a0, A1=(-2*cw)/a0, A2=(1-alpha)/a0;
   for(let c=0;c<ch;c++){
     const src = buffer.getChannelData(c);
     const dst = out.getChannelData(c);
-    let held = 0;
+    let held = 0, x1=0,x2=0,y1=0,y2=0;
     for(let n=0;n<src.length;n++){
+      // 入力AA（1パス2極LP）
+      const x=src[n];
+      let f=B0*x+B1*x1+B2*x2-A1*y1-A2*y2;
+      x2=x1; x1=x; y2=y1; y1=f;
       if(n % hold === 0){
-        // サンプル&ホールド（レート低下）＋ 12bit量子化
-        let s = src[n];
-        s = Math.round(s*half)/half;              // 量子化
-        held = s;
+        // サンプル&ホールド（レート低下）＋ 12bitリニア量子化（ディザ無し）
+        held = Math.round(f*half)/half;
       }
       dst[n] = held;
     }
