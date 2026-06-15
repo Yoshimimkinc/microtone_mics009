@@ -35,6 +35,7 @@
   .grp.muted .fill{background:linear-gradient(180deg, rgba(123,128,136,.3), rgba(123,128,136,.1));}
   .grp .row{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
   .grp .name{font-size:13px;letter-spacing:.06em;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .grp .sub{font-size:9px;color:var(--dim);letter-spacing:.04em;margin-top:2px;}
   .grp .ms{display:flex;gap:6px;}
   .grp .ms button{border:none;border-radius:7px;width:34px;height:30px;font:inherit;font-size:12px;font-weight:700;
     background:rgba(0,0,0,.28);color:var(--dim);cursor:pointer;}
@@ -53,8 +54,12 @@
   <div class="head"><span class="logo">micro<b>tone</b></span><span class="tag">GROUP MOCK</span></div>
   <div class="label">Groups — 角丸ボタンを上下になぞって音量 / 右上 M·S</div>
   <div class="grp-grid" id="grid"></div>
+
+  <div class="label" style="margin-top:6px;">FX — 左 ディレイ / 右 リバーブ（上下でかかり具合）</div>
+  <div class="grp-grid" id="fxgrid"></div>
+
   <div class="hint">※これはモック（見た目と操作感の確認用）。本体には未組込み。<br>
-    ボタンを上下にドラッグ＝グループ音量。M=ミュート / S=ソロ。</div>
+    上下ドラッグ＝量、ダブルタップ＝0に戻す。Groupは M=ミュート / S=ソロ。FXは右上 ON でバイパス切替。</div>
 
 <script>
 const GROUPS=[
@@ -102,6 +107,51 @@ GROUPS.forEach(g=>{
   mBtn.addEventListener("click",()=>{ mute=!mute; paint(); });
   sBtn.addEventListener("click",()=>{ solo=!solo; paint(); });
   grid.appendChild(el);
+});
+
+// ===== FX パッド（左=ディレイ / 右=リバーブ）。上下ドラッグ=Wet%、右上ON=バイパス =====
+const FX=[
+  {name:"DELAY",  sub:"3連符・テンポ追従（自動）", accent:"61,214,196"},   // teal
+  {name:"REVERB", sub:"HALL（ホール系）",          accent:"255,138,61"},   // amber
+];
+const fxgrid=document.getElementById("fxgrid");
+FX.forEach(fx=>{
+  let wet=0, on=true;
+  const el=document.createElement("div"); el.className="grp";
+  el.innerHTML=`<div class="fill"></div>
+    <div class="row"><div><div class="name">${fx.name}</div><div class="sub">${fx.sub}</div></div>
+      <div class="ms"><button class="onb">ON</button></div></div>
+    <div class="center"><div class="arrow">↕</div><div class="db"></div></div>`;
+  const fill=el.querySelector(".fill"), db=el.querySelector(".db"), onBtn=el.querySelector(".onb");
+  fill.style.background=`linear-gradient(180deg, rgba(${fx.accent},.4), rgba(${fx.accent},.12))`;
+  const paint=()=>{
+    fill.style.height=(on?wet:0)+"%";
+    db.innerHTML=wet+'<span class="u">%</span>';
+    el.style.opacity=on?"1":".55";
+    onBtn.classList.toggle("s-on",on);
+    onBtn.textContent=on?"ON":"OFF";
+  };
+  paint();
+  let drag=false, startY=0, startV=0, lastTap=0;
+  el.addEventListener("pointerdown",e=>{
+    if(e.target.closest(".ms")) return;
+    const now=Date.now();
+    if(now-lastTap<320){ lastTap=0; drag=false; wet=0; paint(); e.preventDefault(); return; }
+    lastTap=now;
+    drag=true; startY=e.clientY; startV=wet;
+    el.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  el.addEventListener("pointermove",e=>{
+    if(!drag) return;
+    const dy=startY-e.clientY;
+    let v=startV + (dy/140)*100;
+    v=Math.max(0,Math.min(100,Math.round(v)));
+    if(v!==wet){ wet=v; paint(); }
+  });
+  const end=()=>{ drag=false; };
+  el.addEventListener("pointerup",end); el.addEventListener("pointercancel",end);
+  onBtn.addEventListener("click",()=>{ on=!on; paint(); });
+  fxgrid.appendChild(el);
 });
 </script>
 </body>
