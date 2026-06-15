@@ -125,14 +125,12 @@
   button.t#tap.on{background:var(--amber);color:#2a1405;border-color:var(--amber);}
   button.t.rec.on{background:var(--red);color:#2a0808;border-color:var(--red);}
   button.t.step.on{background:var(--amber);color:#2a1405;border-color:var(--amber);box-shadow:0 0 14px rgba(255,138,61,.4);}
-  /* STEP（Digitakt式）：ノブ行と同じ枠にPAT/BARを重ねる＝切替で高さが動かない */
-  .gridctrls{display:none;position:absolute;inset:0;align-items:center;gap:8px;flex-wrap:wrap;
-    background:var(--panel);padding-top:2px;}
+  /* STEP（Digitakt式）：ノブ行の枠を固定高さにし、中身をPAT/BAR+p-lockへ差し替え＝切替で高さが動かない */
+  .gridctrls{display:none;align-items:center;gap:8px;flex-wrap:wrap;width:100%;}
   .gridctrls .patlabel{font-size:10px;color:var(--dim);letter-spacing:.12em;}
   .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-left:auto;}
-  body.step-on #viewPads .strip-ctrls{position:relative;}
-  /* GRID中：ノブ類は不可視にして高さだけ維持、PAT/BARを重ねて表示 */
-  body.step-on #viewPads .strip-ctrls>:not(.gridctrls){visibility:hidden;}
+  /* GRID中：ノブ類を非表示、PAT/BAR+p-lockを表示。strip-ctrlsは固定高さで揺れ防止 */
+  body.step-on #viewPads .strip-ctrls>:not(.gridctrls){display:none;}
   body.step-on #viewPads .gridctrls{display:flex;}
   /* トラック切替◀▶：edWho両脇に常時表示（出し入れで高さ/位置が動かない） */
   .who-wrap{display:flex;align-items:center;gap:8px;min-width:0;}
@@ -158,6 +156,16 @@
   /* 再生中の現在ステップ */
   body.step-on .pad.stepcur{outline:5px solid var(--teal);outline-offset:-5px;
     box-shadow:0 0 18px rgba(61,214,196,.85), inset 0 0 14px rgba(61,214,196,.5);z-index:2;}
+  /* p-lock ツールバー（PITCH/LEVEL/FILTER/DELAY/REVERB：1つだけ点灯） */
+  .plock-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+  .plockbtn{border:1px solid var(--line);border-radius:5px;background:var(--pad);color:var(--dim);
+    font:inherit;font-size:10px;font-weight:700;letter-spacing:.06em;padding:6px 9px;cursor:pointer;min-height:30px;}
+  .plockbtn.on{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.5);}
+  /* p-lockされたステップの小さな値表示 */
+  .pad .lockv{display:none;position:absolute;left:0;right:0;bottom:3px;z-index:2;text-align:center;
+    font-size:10px;font-weight:700;color:var(--teal);font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000;}
+  body.step-on .pad.haslock .lockv{display:block;}
+  body.step-on .pad.haslock{outline:1px dashed rgba(61,214,196,.6);outline-offset:-3px;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
     border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
   .ctrl{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;flex-shrink:1;min-width:0;}
@@ -419,7 +427,7 @@
   .loadbtn{color:var(--teal);cursor:pointer;font-size:11px;letter-spacing:.14em;
     border:1px solid var(--line);padding:5px 12px;border-radius:5px;}
   .loadbtn:hover{border-color:var(--teal);}
-  .strip-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-top:12px;}
+  .strip-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-top:12px;min-height:74px;}
   .knob.mini{flex:1 1 90px;min-width:80px;max-width:140px;gap:4px;}
   .knob.mini label{font-size:9px;}
   /* sample editor */
@@ -786,7 +794,15 @@
               <button class="patbtn" data-b="3">4</button>
             </div>
             <button class="t dupbar" id="gDupBar" title="今の小節を次の小節に複写して伸ばす">DUP►</button>
-            <span class="stepbar-hint">PADでON/OFF</span>
+            <div class="plock-row" id="plockRow">
+              <span class="patlabel">P-LOCK</span>
+              <button class="plockbtn" data-lock="pitch">PITCH</button>
+              <button class="plockbtn" data-lock="level">LEVEL</button>
+              <button class="plockbtn" data-lock="filter">FILTER</button>
+              <button class="plockbtn" data-lock="delay">DELAY</button>
+              <button class="plockbtn" data-lock="reverb">REVERB</button>
+            </div>
+            <span class="stepbar-hint" id="stepHint">PADでON/OFF</span>
           </div>
         </div>
       </div>
@@ -1183,6 +1199,7 @@ const tracks = PADS.map((p,i)=>({
   solo:false,
   activeVoices:[],
   name:p.name,
+  locks:{},           // パラメーターロック: "pat_bar_step" → {pitch,level,filter,delay,reverb}
 }));
 
 // SP風 12bit Lo-Fi 設定（全音源共通）
@@ -1197,6 +1214,8 @@ let editPat = 0;       // 編集中パターン 0-3 (A-D)
 let editBar = 0;       // 編集中の小節 0-3 (1-4)
 let recMode = "grid";  // "real"=リアルタイム録音 / "grid"=16PADステップ入力（Digitakt式）。既定=grid
 let stepMode = false;  // GRIDステップ入力モードの状態
+let activeLock = null; // 選択中のp-lockパラメータ（null=ON/OFFトグル）
+let stepDrag = null;   // GRIDでのパッドドラッグ状態
 let playPat = 0;       // 再生中パターン（スケジューラ用）
 let playBar = 0;       // 再生中の小節（スケジューラ用）
 let queuedPat = null;  // 予約中パターン（次の小節アタマで切替）
@@ -1208,6 +1227,26 @@ const PAT_NAMES = ["A","B","C","D"];
 function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar]; }
 // 再生中（パターン×小節）へのアクセサ
 function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][playBar]; }
+
+// ===== パラメーターロック（p-lock） =====
+// 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット
+const PLOCKS = {
+  pitch:  {min:-12, max:12,   def:0,     fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 半音
+  level:  {min:-30, max:6,    def:-4,    fmt:v=>Math.round(v)},                              // dB
+  filter: {min:200, max:18000,def:12000, log:true, fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
+  delay:  {min:0,   max:1,    def:0.3,   fmt:v=>Math.round(v*100)},                          // 送り%
+  reverb: {min:0,   max:1,    def:0.3,   fmt:v=>Math.round(v*100)},                          // 送り%
+};
+function lockKey(pat,bar,step){ return pat+"_"+bar+"_"+step; }
+function getLockEdit(trackIdx, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(editPat,editBar,step)]; }
+function getLockPlay(trackIdx, pat, bar, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(pat,bar,step)]; }
+function setLockEdit(trackIdx, step, param, value){
+  const t=tracks[trackIdx]; if(!t.locks) t.locks={};
+  const k=lockKey(editPat,editBar,step);
+  if(!t.locks[k]) t.locks[k]={};
+  t.locks[k][param]=value;
+}
+function clearLockEdit(trackIdx, step){ const t=tracks[trackIdx]; if(t.locks) delete t.locks[lockKey(editPat,editBar,step)]; }
 // 小節に音があるか／パターンの長さ（書いた分・最低1小節）
 function barHasContent(p,b){ for(let i=0;i<PADS.length;i++){ const a=tracks[i].patterns[p][b]; for(let s=0;s<STEPS;s++) if(a[s]>0) return true; } return false; }
 function patHasContent(p){ for(let b=0;b<4;b++) if(barHasContent(p,b)) return true; return false; }
@@ -1236,6 +1275,7 @@ function snapshotState(){
       mute:t.mute,solo:t.solo,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
+      locks:JSON.parse(JSON.stringify(t.locks||{})),
     })),
   };
 }
@@ -1253,6 +1293,7 @@ function restoreState(s){
     t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
     PADS[i].type=x.type;PADS[i].voice=x.voice;
     t.patterns=x.patterns;
+    t.locks=x.locks?JSON.parse(JSON.stringify(x.locks)):{};
     const nm=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
     if(nm) nm.textContent=(t.name||PADS[i].name).slice(0,8).toUpperCase();
   });
@@ -1365,7 +1406,7 @@ function audible(i){
 }
 
 // 1ヒット発音
-function playVoice(i, when, accent, fromSeq, noteSemi){
+function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   const t = tracks[i];
   if(!t.buffer) return;
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
@@ -1381,21 +1422,32 @@ function playVoice(i, when, accent, fromSeq, noteSemi){
 
   const src = AC.createBufferSource();
   src.buffer = t.buffer;
-  src.playbackRate.value = Math.pow(2, (t.tune + (noteSemi||0))/12);
+  // p-lock: pitch(半音) を加算
+  const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
+  src.playbackRate.value = Math.pow(2, (t.tune + (noteSemi||0) + lkPitch)/12);
 
-  // フィルター（off時は挟まない）
+  // フィルター（off時は挟まない）。p-lock filter があればカットオフを上書き（offなら一時的にLP）
   let head = src;
   let filt = null;
-  if(t.filter!=="off"){
+  let fType = t.filter, fCut = t.cutoff;
+  if(plock && plock.filter!=null){ fCut = plock.filter; if(fType==="off") fType="lp"; }
+  if(fType!=="off"){
     filt = AC.createBiquadFilter();
-    filt.type = t.filter==="lp" ? "lowpass" : "highpass";
-    filt.frequency.value = t.cutoff;
+    filt.type = fType==="lp" ? "lowpass" : "highpass";
+    filt.frequency.value = fCut;
     filt.Q.value = t.reso;
     src.connect(filt); head = filt;
   }
   const env = AC.createGain();
-  const peak = dbToGain(t.vol + (accent?5:0));
+  // p-lock: level(dB) があれば音量を上書き
+  const baseVol = (plock && plock.level!=null) ? plock.level : t.vol;
+  const peak = dbToGain(baseVol + (accent?5:0));
   head.connect(env); env.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→masterGain
+
+  // p-lock: ボイス毎のDELAY/REVERBセンド（グローバルFXのON/OFFとは独立してそのステップだけ送る）
+  let dSend=null, rSend=null;
+  if(plock && plock.delay>0){ dSend=AC.createGain(); dSend.gain.value=plock.delay; env.connect(dSend); dSend.connect(tapeEcho); }
+  if(plock && plock.reverb>0){ rSend=AC.createGain(); rSend.gain.value=plock.reverb; env.connect(rSend); rSend.connect(reverbPre); }
 
   // プツ音回避：頭3ms フェードイン、ワンショット終端3ms フェードアウト
   const FADE = 0.003;
@@ -1435,7 +1487,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi){
   src.onended = ()=>{
     const k=t.activeVoices.indexOf(voice);
     if(k>=0) t.activeVoices.splice(k,1);
-    try{src.disconnect();env.disconnect();if(filt)filt.disconnect();}catch(e){}
+    try{src.disconnect();env.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
   };
 }
 
@@ -1571,16 +1623,49 @@ function applyPadCategory(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="stepn">${i+1}</div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="stepn">${i+1}</div><div class="lockv"></div>`;
   d.dataset.i=i;
   d.setAttribute("role","button");
   d.setAttribute("aria-label", p.name+" pad");
   d.addEventListener("pointerdown",async(e)=>{
-    if(stepMode){ toggleStepAt(i, e.shiftKey); return; }   // GRID入力：PAD i = ステップ i のON/OFF
+    if(stepMode){   // GRID入力：タップ=ON/OFF、パラメータ選択中は左右ドラッグでp-lock記録
+      e.preventDefault();
+      let startVal=null;
+      if(activeLock){ const spec=PLOCKS[activeLock]; const lk=getLockEdit(selected,i); startVal=(lk&&lk[activeLock]!=null)?lk[activeLock]:spec.def; }
+      stepDrag={pad:i, x0:e.clientX, moved:false, startVal, undone:false};
+      try{ d.setPointerCapture(e.pointerId); }catch(_){}
+      return;
+    }
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     if(AC.state!=="running")await AC.resume();
     trigger(i);selectPad(i);
   });
+  d.addEventListener("pointermove",(e)=>{
+    if(!stepMode || !stepDrag || stepDrag.pad!==i || !activeLock) return;
+    const dx=e.clientX-stepDrag.x0;
+    if(!stepDrag.moved && Math.abs(dx)>4){ stepDrag.moved=true; }
+    if(stepDrag.moved){
+      if(!stepDrag.undone){ pushUndo(); stepDrag.undone=true; }
+      const spec=PLOCKS[activeLock];
+      let v;
+      if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max);
+        let lv=Math.log(stepDrag.startVal)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv);
+      } else {
+        v=stepDrag.startVal+(dx/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v));
+        if(activeLock==="pitch"||activeLock==="level") v=Math.round(v);
+      }
+      const pat=getPattern(selected); if(!(pat[i]>0)) pat[i]=1;   // 記録時は自動ON
+      setLockEdit(selected, i, activeLock, v);
+      paintStepPads(); paintPatBar();
+    }
+  });
+  const endStepDrag=(e)=>{
+    if(!stepMode || !stepDrag || stepDrag.pad!==i){ return; }
+    if(!stepDrag.moved){ toggleStepAt(i, e&&e.shiftKey); }   // 動かさなければタップ=ON/OFF
+    stepDrag=null;
+  };
+  d.addEventListener("pointerup",endStepDrag);
+  d.addEventListener("pointercancel",()=>{ if(stepDrag&&stepDrag.pad===i) stepDrag=null; });
   padsEl.appendChild(d);
 });
 function flashPad(i,accent){
@@ -2126,13 +2211,14 @@ function scheduleStep(stepNo, when){
     const v=getPlayPattern(i)[stepNo];
     if(v>0 && audible(i)){
       const t=tracks[i];
+      const lk=getLockPlay(i, playPat, playBar, stepNo);   // そのステップのp-lock
       if(t.loop){
         // ループ系はシーケンス上でトグル：トリガが来るたびに ON→OFF→ON…（負荷もかからない）
         if(t.loopPlaying){ stopVoices(t, when); t.loopPlaying=false; }
-        else { playVoice(i, when + n*stg, false, true, isMelodic(i)?scaleSemi(t.scale, v-1):0); t.loopPlaying=true; hits.push({pad:i, acc:false}); n++; }
+        else { playVoice(i, when + n*stg, false, true, isMelodic(i)?scaleSemi(t.scale, v-1):0, lk); t.loopPlaying=true; hits.push({pad:i, acc:false}); n++; }
       } else {
-        if(isMelodic(i)) playVoice(i, when + n*stg, false, true, scaleSemi(t.scale, v-1));
-        else playVoice(i, when + n*stg, v===2, true);
+        if(isMelodic(i)) playVoice(i, when + n*stg, false, true, scaleSemi(t.scale, v-1), lk);
+        else playVoice(i, when + n*stg, v===2, true, 0, lk);
         hits.push({pad:i, acc:isMelodic(i)?false:v===2}); n++;
       }
     }
@@ -2213,23 +2299,44 @@ function stepTrackName(){ const t=tracks[selected]; return String(selected+1).pa
 function paintStepPads(){
   if(!stepMode) return;
   const pat=getPattern(selected);
+  const spec=activeLock?PLOCKS[activeLock]:null;
   for(let s=0;s<PADS.length;s++){
     const el=padsEl.children[s]; const v=pat[s]||0;
     el.classList.toggle("stepon", v>0);
     el.classList.toggle("stepacc", v===2);
     el.classList.toggle("beathead", s%4===0);
     el.classList.toggle("stepcur", playing && editPat===displayPat && editBar===displayBar && s===playStep);
+    const lk=getLockEdit(selected, s);
+    const has=!!(lk && Object.keys(lk).length);
+    el.classList.toggle("haslock", has && v>0);
+    const lv=el.querySelector(".lockv");
+    if(lv) lv.textContent=(spec && lk && lk[activeLock]!=null && v>0) ? spec.fmt(lk[activeLock]) : "";
   }
 }
 function clearStepPadClasses(){
-  for(let s=0;s<PADS.length;s++){ padsEl.children[s].classList.remove("stepon","stepacc","beathead","stepcur"); }
+  for(let s=0;s<PADS.length;s++){ const el=padsEl.children[s]; el.classList.remove("stepon","stepacc","beathead","stepcur","haslock"); const lv=el.querySelector(".lockv"); if(lv) lv.textContent=""; }
 }
 function toggleStepAt(s, accent){
   pushUndo();
   const pat=getPattern(selected); const cur=pat[s]||0;
-  if(accent) pat[s]=cur===2?0:2; else pat[s]=cur?0:1;
+  const nv = accent ? (cur===2?0:2) : (cur?0:1);
+  pat[s]=nv;
+  if(nv===0) clearLockEdit(selected, s);   // OFFにしたらそのステップのp-lockも消す
   paintStepPads(); if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
 }
+// p-lock ツールバー（1つだけ点灯／再押しで解除）
+(function(){
+  const row=document.getElementById("plockRow"); if(!row) return;
+  row.addEventListener("click",e=>{
+    const b=e.target.closest(".plockbtn"); if(!b) return;
+    const p=b.dataset.lock;
+    activeLock=(activeLock===p)?null:p;
+    [...row.querySelectorAll(".plockbtn")].forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
+    const hint=document.getElementById("stepHint");
+    if(hint) hint.textContent= activeLock ? (activeLock.toUpperCase()+"：PADを左右で記録") : "PADでON/OFF";
+    paintStepPads();
+  });
+})();
 function setStepMode(on){
   stepMode=on;
   document.body.classList.toggle("step-on",on);
@@ -2895,6 +3002,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
         filter:t.filter, cutoff:t.cutoff, reso:t.reso,
         choke:t.choke, mute:t.mute, solo:t.solo,
         patterns:t.patterns,
+        locks:t.locks||{},
         audio: crop ? uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp)) : null,
       };
     }),
@@ -2958,6 +3066,7 @@ async function applyProject(proj){
         }
         for(let bar=0;bar<4;bar++) while(t.patterns[p][bar].length<STEPS) t.patterns[p][bar].push(0);
       }
+      t.locks = pt.locks ? JSON.parse(JSON.stringify(pt.locks)) : {};   // p-lock
       // audio
       if(pt.audio){
         const wav=b64ToUint8(pt.audio);
