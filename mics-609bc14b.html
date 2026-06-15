@@ -522,6 +522,14 @@
     border-radius:12px;padding:14px 18px;display:none;justify-content:center;align-items:center;
     z-index:9991;box-shadow:0 18px 50px rgba(0,0,0,.6);}
   .rec-overlay.show{display:flex;}
+  /* 一時トースト：Loaded/Sampled/エラー等を数秒だけ画面上部に表示（常駐しない） */
+  .toast{position:fixed;left:50%;top:84px;transform:translateX(-50%) translateY(-6px);
+    background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+    border-radius:10px;padding:9px 14px;color:var(--ink);font-size:11px;letter-spacing:.06em;
+    max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    opacity:0;pointer-events:none;z-index:9992;box-shadow:0 14px 40px rgba(0,0,0,.55);
+    transition:opacity .18s,transform .18s;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .rec-panel{display:flex;gap:10px;align-items:center;}
   .rec-dot{color:var(--red);font-size:18px;animation:blink .6s infinite;}
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
@@ -625,7 +633,6 @@
     .strip-actions{flex:0 0 auto;gap:6px;}
     .strip-actions .loadbtn{padding:5px 8px;font-size:10px;white-space:nowrap;}
     .strip-head .stepnav{padding:6px 7px;}
-    #sampName{max-width:70px;}
     /* スマホのPADS画面ではMUTE/SOLOは非表示（M/SはMIX画面に集約。COPY/CHOPPYは残す） */
     #holdMute,#holdSolo{display:none!important;}
     #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
@@ -883,12 +890,13 @@
             <button class="t stepnav" id="stepNext" aria-label="次のトラック">▶</button>
           </div>
           <div class="strip-actions">
-            <span id="sampName" style="color:var(--dim);font-size:10px;letter-spacing:.08em;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"></span>
             <span class="loadbtn" id="loadBtn">LOAD</span>
             <span class="loadbtn" id="sampleBtn" style="color:var(--red);">● SMPL</span>
             <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
+        <!-- ステータスはバーに常駐させず、必要時だけ出る一時トースト（Loaded/Sampled/エラー用） -->
+        <div id="sampName" class="toast" role="status" aria-live="polite"></div>
         <!-- 窓波形は撤去。サンプル編集は EDIT+パッド→モーダルへ集約。サンプリング/抽出オーバーレイは浮遊パネルとして存続 -->
         <div class="rec-overlay" id="recOverlay">
             <div class="rec-panel">
@@ -1850,6 +1858,14 @@ async function loadPresets(){
 const padsEl = document.getElementById("pads");
 const mixerEl = document.getElementById("mixer");   // 早期宣言でsyncMixLayout等のTDZを回避
 const sampNameEl = document.getElementById("sampName");   // ステータス表示（多用するためキャッシュ）
+// textContentがセットされたら数秒だけトースト表示→自動で消す（バーに常駐させない）
+let _toastTimer=null;
+new MutationObserver(()=>{
+  const has=!!(sampNameEl.textContent||"").trim();
+  sampNameEl.classList.toggle("show",has);
+  if(_toastTimer){ clearTimeout(_toastTimer); _toastTimer=null; }
+  if(has){ _toastTimer=setTimeout(()=>{ sampNameEl.classList.remove("show"); _toastTimer=null; }, 2400); }
+}).observe(sampNameEl,{childList:true,characterData:true,subtree:true});
 const viewPadsEl = document.getElementById("viewPads");
 const viewMixEl  = document.getElementById("viewMix");     // vuLoop（毎フレーム）で参照するためキャッシュ
 const viewSeqEl  = document.getElementById("viewSeq");     // 毎ステップ描画の可視判定に使う
@@ -2802,7 +2818,6 @@ const DEFAULT_PROJECT = {
 };
 loadPresets().then(async ()=>{
   try{ await applyProject(DEFAULT_PROJECT); }catch(e){ console.warn("default project:", e); }
-  sampNameEl.textContent="presets ready";
   drawAllPadWaves();
 });
 
