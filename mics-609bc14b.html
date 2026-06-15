@@ -2398,7 +2398,6 @@ document.querySelectorAll('input[type=range]').forEach(r=>{
 selectPad(0);
 paintPadStates();
 applyGroupVol(); setDelayTempo(); applyFx();   // グループバス/FXの初期化
-if(recMode==="grid") setStepMode(true);        // 既定=GRID：起動時からステップ入力状態
 
 // 起動時：プリセット音をオフライン生成して各パッドに焼き込む
 // 起動時に最初から入っているデフォルトパターン（音は組み込みプリセットを使うのでaudioは持たない＝軽量）
