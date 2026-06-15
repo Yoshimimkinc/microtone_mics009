@@ -185,12 +185,23 @@
     user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent;
   }
   .pad:active{transform:translateY(2px);}
-  .pad>.pad-wave{position:absolute;inset:0;width:100%;height:100%;opacity:.3;pointer-events:none;border-radius:9px;}
+  .pad>.pad-wave{position:absolute;inset:0;width:100%;height:100%;opacity:.42;pointer-events:none;border-radius:9px;}
+  .pad.sel>.pad-wave{opacity:.6;}
   .pad .n{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;position:relative;z-index:1;}
   .pad .nm{font-size:12px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;align-self:flex-start;position:relative;z-index:1;}
+  /* 種別カラーコード：左端のカラーバー（休符時から種類が一目で分かる） */
+  .pad{--cat:var(--line);}
+  .pad.pcat-drum{--cat:var(--amber);}
+  .pad.pcat-bass{--cat:var(--red);}
+  .pad.pcat-sample{--cat:var(--teal);}
+  .pad.pcat-empty{--cat:var(--line);}
+  .pad::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    border-radius:9px 0 0 9px;background:var(--cat);opacity:.85;pointer-events:none;z-index:1;}
+  .pad.pcat-empty::before{opacity:.35;}
   .pad.sel{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
   .pad.hit{background:linear-gradient(180deg,var(--amber),#c25e22);
     box-shadow:0 0 18px rgba(255,138,61,.55);}
+  .pad.hit.hit-acc{box-shadow:0 0 30px 3px rgba(255,138,61,.9);}  /* アクセント=より明るく点灯 */
   .pad.hit .nm,.pad.hit .n{color:#2a1405;}
 
   /* sequencer — 16-row grid */
@@ -361,7 +372,8 @@
   .handle.end .cap{right:3px;background:var(--red);color:#2a0808;}
   .handle.loop .cap{left:3px;background:#ffd24d;color:#3a2c00;}
   .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);pointer-events:none;}
-  .playhead{position:absolute;top:0;bottom:0;width:2px;background:#fff;opacity:0;pointer-events:none;box-shadow:0 0 6px rgba(255,255,255,.8);}
+  .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--amber);opacity:0;pointer-events:none;
+    box-shadow:0 0 10px 1px var(--amber),0 0 4px #fff;border-radius:1px;}
   /* sampling overlay */
   .rec-overlay{position:absolute;inset:0;background:rgba(12,15,18,.92);display:none;
     justify-content:center;align-items:center;z-index:5;border-radius:8px;}
@@ -374,6 +386,23 @@
   .knob label .v{color:var(--ink);font-variant-numeric:tabular-nums;}
   .knob input[type=range]{width:100%;accent-color:var(--amber);}
   .knob input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
+  /* ===== 円形ノブ（Tune/Cutoff/Reso/Level）：rangeを隠してdialで操作 ===== */
+  .knob.has-dial{align-items:center;position:relative;}
+  .knob.has-dial>label{width:100%;}
+  .knob.has-dial>input[type=range]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+  .dial{width:44px;height:44px;border-radius:50%;position:relative;margin:2px auto 0;flex:0 0 auto;
+    background:radial-gradient(circle at 50% 38%,var(--pad-face),var(--pad));
+    border:1px solid var(--edge);
+    box-shadow:0 2px 5px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);
+    touch-action:none;cursor:ns-resize;}
+  .dial::before{content:"";position:absolute;inset:-4px;border-radius:50%;
+    background:conic-gradient(from 215deg,var(--amber) calc(var(--p,0)*290deg),rgba(255,255,255,.07) 0 290deg,transparent 0);
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));
+    mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));}
+  .dial::after{content:"";position:absolute;left:50%;top:5px;width:2.5px;height:13px;border-radius:2px;
+    background:var(--ink);transform-origin:50% 17px;
+    transform:translateX(-50%) rotate(calc(var(--p,0)*290deg - 145deg));}
+  .dial:active{box-shadow:0 0 0 2px var(--amber),0 2px 5px rgba(0,0,0,.45);}
   .ctrl input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
   .seg{display:flex;gap:0;background:#0d1013;border:1px solid var(--line);border-radius:6px;padding:3px;width:fit-content;}
   .seg button{background:transparent;color:var(--dim);border:none;border-radius:4px;
@@ -513,8 +542,8 @@
       <div class="model">MICS009 beta v0.1</div>
     </div>
     <div class="transport">
-      <button class="t play" id="play">Play</button>
-      <button class="t rec" id="rec">Rec</button>
+      <button class="t play" id="play">▶ Play</button>
+      <button class="t rec" id="rec">● Rec</button>
       <button class="t" id="tap">Tap</button>
       <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩ Undo</button>
       <div class="tempo-row">
@@ -1053,6 +1082,7 @@ function restoreState(s){
   if(typeof paintPadStates==="function") paintPadStates();
   if(typeof paintMixer==="function") paintMixer();
   if(typeof paintPatBar==="function") paintPatBar();
+  if(typeof applyPadCategory==="function") for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 }
 function pushUndo(){ undoStack.push(snapshotState()); if(undoStack.length>40) undoStack.shift(); }
@@ -1335,9 +1365,22 @@ const mixerEl = document.getElementById("mixer");   // 早期宣言でsyncMixLay
 const sampNameEl = document.getElementById("sampName");   // ステータス表示（多用するためキャッシュ）
 const viewPadsEl = document.getElementById("viewPads");
 const viewMixEl  = document.getElementById("viewMix");     // vuLoop（毎フレーム）で参照するためキャッシュ
+// パッドの種別カテゴリ（色分け用）：ドラム/ベース/サンプル/空
+function padCategory(i){
+  const p=PADS[i];
+  if(p.voice==="sinbass") return "bass";
+  if(p.type==="sample") return "sample";
+  if(p.type==="synth") return "drum";
+  return "empty";
+}
+function applyPadCategory(i){
+  const el=padsEl.children[i]; if(!el) return;
+  el.classList.remove("pcat-drum","pcat-bass","pcat-sample","pcat-empty");
+  el.classList.add("pcat-"+padCategory(i));
+}
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
-  d.className="pad"+(i===selected?" sel":"");
+  d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
   d.innerHTML=`<canvas class="pad-wave"></canvas><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div>`;
   d.dataset.i=i;
   d.setAttribute("role","button");
@@ -1349,9 +1392,10 @@ PADS.forEach((p,i)=>{
   });
   padsEl.appendChild(d);
 });
-function flashPad(i){
+function flashPad(i,accent){
   const el=padsEl.children[i];el.classList.add("hit");
-  setTimeout(()=>el.classList.remove("hit"),110);
+  if(accent) el.classList.add("hit-acc");
+  setTimeout(()=>{el.classList.remove("hit");el.classList.remove("hit-acc");},110);
 }
 function selectPad(i){
   selected=i;
@@ -1451,6 +1495,7 @@ function copyPadSound(src,dst){
   d.name=s.name;
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
+  applyPadCategory(dst);
   const nm=padsEl.children[src].querySelector(".nm").textContent;
   padsEl.children[dst].querySelector(".nm").textContent=nm;
   // SEQ画面の行名も更新
@@ -1600,15 +1645,29 @@ function drawWave(){
   if(!t.buffer){ wctx.fillStyle="#3a4149";wctx.font="11px sans-serif";wctx.fillText("no sample",10,H/2);positionHandles();return; }
   const data=t.buffer.getChannelData(0);
   const mid=H/2;
+  // 中心線
   wctx.strokeStyle="#2c333b";wctx.beginPath();wctx.moveTo(0,mid);wctx.lineTo(W,mid);wctx.stroke();
-  wctx.strokeStyle="#5a6b6a";wctx.lineWidth=1;wctx.beginPath();
+  // 上下envelopeを先に集計
   const step=Math.max(1,Math.floor(data.length/W));
+  const top=new Float32Array(W), bot=new Float32Array(W);
   for(let x=0;x<W;x++){
-    let min=1,max=-1;
-    for(let n=0;n<step;n++){const v=data[x*step+n]||0;if(v<min)min=v;if(v>max)max=v;}
-    wctx.moveTo(x,mid-max*mid*0.92);wctx.lineTo(x,mid-min*mid*0.92);
+    let min=1,max=-1; const o=x*step;
+    for(let n=0;n<step;n++){const v=data[o+n]||0;if(v<min)min=v;if(v>max)max=v;}
+    top[x]=mid-max*mid*0.92; bot[x]=mid-min*mid*0.92;
   }
-  wctx.stroke();
+  // テーマのアクセント色で塗りつぶし（上下ミラー）
+  const acc=(getComputedStyle(document.body).getPropertyValue("--teal").trim())||"#3dd6c4";
+  const grad=wctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,acc); grad.addColorStop(.5,acc); grad.addColorStop(1,acc);
+  wctx.beginPath();
+  wctx.moveTo(0,top[0]);
+  for(let x=1;x<W;x++) wctx.lineTo(x,top[x]);
+  for(let x=W-1;x>=0;x--) wctx.lineTo(x,bot[x]);
+  wctx.closePath();
+  wctx.globalAlpha=.5; wctx.fillStyle=grad; wctx.fill(); wctx.globalAlpha=1;
+  // 上縁を明るい線でくっきり
+  wctx.strokeStyle=acc; wctx.lineWidth=1.4; wctx.beginPath();
+  wctx.moveTo(0,top[0]); for(let x=1;x<W;x++) wctx.lineTo(x,top[x]); wctx.stroke();
   positionHandles();
 }
 function positionHandles(){
@@ -1761,6 +1820,43 @@ bindKnob("kRes","vRes",x=>x.toFixed(1),x=>tracks[selected].reso=x);
 bindKnob("kLvl","vLvl",x=>x+" dB",x=>{tracks[selected].vol=x;
   const vv=document.getElementById("vol");if(vv)vv.value=x;});
 
+// ===== 円形ノブ：rangeを隠してdialで操作（縦ドラッグ=値変更） =====
+const dials=[];
+function refreshDials(){ dials.forEach(u=>u()); }
+function makeDial(id){
+  const range=document.getElementById(id); if(!range) return;
+  const wrap=range.closest(".knob"); if(!wrap) return;
+  wrap.classList.add("has-dial");
+  const dial=document.createElement("div"); dial.className="dial";
+  dial.setAttribute("aria-hidden","true");
+  range.parentNode.insertBefore(dial, range);
+  const min=+range.min, max=+range.max, step=+range.step||1, span=(max-min)||1;
+  const update=()=> dial.style.setProperty("--p", (((+range.value)-min)/span).toFixed(4));
+  update();
+  range.addEventListener("input", update);
+  let dragging=false, startY=0, startVal=0;
+  dial.addEventListener("pointerdown", e=>{
+    dragging=true; startY=e.clientY; startVal=+range.value;
+    dial.setPointerCapture(e.pointerId);
+    if(typeof pushUndo==="function") pushUndo();
+    e.preventDefault();
+  });
+  dial.addEventListener("pointermove", e=>{
+    if(!dragging) return;
+    const dy=startY - e.clientY;                  // 上方向で増加
+    let v=startVal + (dy/150)*span;               // 約150pxでフルレンジ
+    v=Math.round(v/step)*step;
+    v=Math.max(min, Math.min(max, v));
+    if(v!==+range.value){ range.value=v; range.dispatchEvent(new Event("input",{bubbles:true})); }
+    update();
+  });
+  const end=()=>{ dragging=false; };
+  dial.addEventListener("pointerup", end);
+  dial.addEventListener("pointercancel", end);
+  dials.push(update);
+}
+["kTune","kCut","kRes","kLvl"].forEach(makeDial);
+
 // エディタを選択パッドに同期
 function syncEditor(){
   const t=tracks[selected];
@@ -1772,6 +1868,7 @@ function syncEditor(){
   chokeSel.value=Math.min(8,t.choke||0);
   [...filtSeg.children].forEach(x=>x.classList.toggle("on",x.dataset.f===t.filter));
   const ks=document.getElementById("kScale"); if(ks) ks.value=t.scale||"off";
+  if(typeof refreshDials==="function") refreshDials();
   drawWave();
 }
 window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active")){ drawWave(); drawAllPadWaves(); } });
@@ -1863,7 +1960,7 @@ function drawLoop(){
   while(drawQueue.length && drawQueue[0].time < now){
     const ev=drawQueue.shift();
     cur=ev.step;
-    if(ev.hits) ev.hits.forEach(h=>{flashPad(h.pad);if(typeof vuHit==="function")vuHit(h.pad,h.acc);});
+    if(ev.hits) ev.hits.forEach(h=>{flashPad(h.pad,h.acc);if(typeof vuHit==="function")vuHit(h.pad,h.acc);});
     if(ev.pat!==undefined){ displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
   }
   if(cur!==null){ playStep=cur; paintSteps(); }
@@ -1876,7 +1973,7 @@ playBtn.addEventListener("click",async()=>{
   if(AC.state!=="running") await AC.resume();
   playing=!playing;
   playBtn.classList.toggle("on",playing);
-  playBtn.textContent=playing?"Stop":"Play";
+  playBtn.textContent=playing?"■ Stop":"▶ Play";
   // S2400風の右下START/STOPも同期
   const pp=document.getElementById("padPlay");
   if(pp){pp.classList.toggle("on",playing);pp.textContent=playing?"■ STOP":"▶ START";}
@@ -1896,7 +1993,7 @@ playBtn.addEventListener("click",async()=>{
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
-recBtn.addEventListener("click",()=>{recording=!recording; if(recording) pushUndo(); recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"Rec ●":"Rec";});
+recBtn.addEventListener("click",()=>{recording=!recording; if(recording) pushUndo(); recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"■ Rec":"● Rec";});
 document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // ---------- メニュー（ケバブ→モーダル） DADS dialog 準拠 ----------
@@ -2001,6 +2098,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     tracks[target].start=0; tracks[target].end=1;
     tracks[target].loop=false; tracks[target].loopStart=0;
     PADS[target].type="sample";
+    applyPadCategory(target);
     tracks[target].name = f.name.slice(0,10);
     show("OK: "+f.name);
     padsEl.children[target].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
@@ -2358,6 +2456,7 @@ async function finalizeRec(){
     tracks[selected].start=0;tracks[selected].end=1;
     tracks[selected].loop=false;tracks[selected].loopStart=0;
     PADS[selected].type="sample";
+    applyPadCategory(selected);
     tracks[selected].name="REC";
     const nm="REC "+String(selected+1).padStart(2,"0");
     padsEl.children[selected].querySelector(".nm").textContent=nm;
@@ -2513,6 +2612,7 @@ async function applyProject(proj){
       if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${t.name}`;
     }
     editPat=0; editBar=0;
+    for(let i=0;i<PADS.length;i++) applyPadCategory(i);
     selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves();
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{
