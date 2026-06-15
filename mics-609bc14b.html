@@ -1847,13 +1847,27 @@ function makeDial(id){
   const update=()=> dial.style.setProperty("--p", (((+range.value)-min)/span).toFixed(4));
   update();
   range.addEventListener("input", update);
-  let dragging=false, startY=0, startVal=0;
+  let dragging=false, startY=0, startVal=0, lastTap=0;
+  const resetVal=(0>=min&&0<=max)?0:+range.defaultValue;   // 0が範囲内なら0、外なら既定値へ
+  const resetDefault=()=>{
+    if(typeof pushUndo==="function") pushUndo();
+    range.value=resetVal;
+    range.dispatchEvent(new Event("input",{bubbles:true}));
+    update();
+  };
   dial.addEventListener("pointerdown", e=>{
+    const now=Date.now();
+    if(now-lastTap<320){                             // ダブルタップ → 既定値へ戻す
+      lastTap=0; dragging=false; e.preventDefault();
+      resetDefault(); return;
+    }
+    lastTap=now;
     dragging=true; startY=e.clientY; startVal=+range.value;
     dial.setPointerCapture(e.pointerId);
     if(typeof pushUndo==="function") pushUndo();
     e.preventDefault();
   });
+  dial.addEventListener("dblclick", e=>{ e.preventDefault(); resetDefault(); });
   dial.addEventListener("pointermove", e=>{
     if(!dragging) return;
     const dy=startY - e.clientY;                  // 上方向で増加
