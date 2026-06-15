@@ -1049,8 +1049,11 @@ const delaySend = AC.createGain(); delaySend.gain.value = 0;     // FX量(0..1)
 const tapeEcho  = AC.createDelay(2.0); tapeEcho.delayTime.value = 0.4;  // 後でテンポ追従
 const echoFbLP  = AC.createBiquadFilter(); echoFbLP.type="lowpass";  echoFbLP.frequency.value=2600; echoFbLP.Q.value=0.2; // リピートで高域減衰=もこもこ
 const echoFbHP  = AC.createBiquadFilter(); echoFbHP.type="highpass"; echoFbHP.frequency.value=180;  // テープらしく低域も少し削る
-const echoSat   = AC.createWaveShaper(); echoSat.curve=makeSatCurve(2.2); echoSat.oversample="2x";  // テープ飽和
-const echoFb    = AC.createGain(); echoFb.gain.value=0.46;       // リピート量（フィードバック）
+const echoSat   = AC.createWaveShaper(); echoSat.oversample="2x";  // テープ飽和
+// 原点の傾き=1（利得を持たない）ソフト飽和。makeSatCurveは正規化(/tanh)で原点傾き>1のため
+// フィードバックループに入れるとループ利得>1で自己発振する → 専用カーブで防止
+(function(){ const n=1024,c=new Float32Array(n),k=2.2; for(let i=0;i<n;i++){ const x=i*2/n-1; c[i]=Math.tanh(x*k)/k; } echoSat.curve=c; })();
+const echoFb    = AC.createGain(); echoFb.gain.value=0.4;        // リピート量（フィードバック）<1で安定
 const echoWet   = AC.createGain(); echoWet.gain.value=0.9;
 const echoLfo   = AC.createOscillator(); echoLfo.type="sine"; echoLfo.frequency.value=0.6;  // テープのワウ
 const echoLfoDepth = AC.createGain(); echoLfoDepth.gain.value=0.0018;
