@@ -1,2 +1,5 @@
 # Claude Code local state / agent worktrees (ephemeral, not for the repo)
-.claude/
+.claude/*
+
+# ただしロール定義（6ロール・ユニット）はプロジェクトの一部として追跡する
+!.claude/agents/

@@ -67,5 +67,19 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 - **aki**: Vocalist (needs simplest UI)
 - **YKOYKО**: Illustrator (non-technical)
 
+## Unit = 6 Roles
+制作の基本単位は「1ユニット = 6ロール」。各ロールは `.claude/agents/` にエージェント化済み（`producer` / `code` / `ui` / `sound` / `feel` / `artware`）。
+
+| ロール | 視点 / 担当 | 現メンバー |
+|--------|------------|-----------|
+| プロデューサー | スコープ・調停・最終判断 | Yoshi |
+| プログラミングコード担当 | 実装・最適化・バグ修正 | Claude Code |
+| UI担当 | レイアウト・CSS・レスポンシブ・情報階層 | （専任不在＝重点） |
+| 音源担当 | Web Audio・音作り・グルーヴ | hichannel |
+| 操作感担当 | "aki rule"・触り心地・手数 | aki |
+| アートウェア担当（感性） | 世界観・色・命名・ヴァイブ | YKOYKO |
+
+運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
+
 ## Version
 MICS009 beta v0.2.0
