@@ -587,11 +587,12 @@
     .viewdots{display:flex;}
     .modebar-row{margin:4px 0 8px;}
     /* === スマホ STEPモードの崩れ対策 === */
-    /* 案2: ノブ行の固定高さを解除し、p-lock行は折り返さず横スクロール1行に */
+    /* ノブ行の固定高さを解除。p-lock行は改行して自分の行に降ろし、5ボタンを常時表示（横スクロールで隠れない） */
     .strip-ctrls{min-height:0;}
-    body.step-on #viewPads .gridctrls{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;gap:6px;}
-    .gridctrls>*,.gridctrls .seg,.gridctrls .plockbtn,.gridctrls .patlabel{flex:0 0 auto;}
-    .gridctrls .plock-row{flex-wrap:nowrap;flex:0 0 auto;}
+    body.step-on #viewPads .gridctrls{flex-wrap:wrap;overflow:visible;width:100%;gap:6px 8px;}
+    .gridctrls .seg,.gridctrls .patlabel,.gridctrls .dupbar{flex:0 0 auto;}
+    .gridctrls .plock-row{flex:1 1 100%;flex-wrap:wrap;}   /* 改行して全幅。5ボタンが収まらなければさらに折り返す */
+    .gridctrls .plockbtn{flex:1 1 auto;}                    /* 残り幅を均等に分けて押しやすく */
     .gridctrls .stepbar-hint{display:none;}
     /* パッド数字はスマホで控えめに（重なり防止） */
     .pads .pad .stepn{font-size:15px;}
