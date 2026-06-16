@@ -468,7 +468,9 @@
      通常PADSでは編集ノブ行も畳んでパッドを縦最大化。GRID入力(step-on)時のみ従来の操作行を表示。 */
   #viewPads .wave-wrap{display:none!important;}
   body:not(.step-on) #viewPads .strip-ctrls{display:none!important;}
-  body:not(.step-on) #viewPads .strip{padding:8px 14px;margin-bottom:10px;}
+  body:not(.step-on) #viewPads .strip{padding:10px 14px;margin-bottom:10px;}
+  /* 窓波形撤去後、strip-headが唯一の中身。下マージンを消して上下中央に揃える（上寄り防止＋フォーカス枠の見切れ防止） */
+  body:not(.step-on) #viewPads .strip-head{margin-bottom:0;}
   /* パッド内波形を主役に（撤去した窓波形の代わり） */
   .pad>.pad-wave{opacity:.6;}
   .pad.sel>.pad-wave{opacity:.85;}
@@ -488,14 +490,21 @@
   .pe-wave .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);}
   .pe-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
   .pe-row .knob{flex:1 1 84px;}
-  .pe-audition{width:100%;margin-bottom:8px;padding:10px;font-size:13px;letter-spacing:.1em;
-    background:var(--teal);color:#06201d;border:none;border-radius:7px;cursor:pointer;font:inherit;font-weight:600;}
-  .pe-actions{display:flex;gap:8px;margin-bottom:12px;}
-  .pe-secbtn{flex:1 1 auto;padding:8px 10px;font-size:11px;letter-spacing:.08em;
-    background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;cursor:pointer;font:inherit;}
-  .pe-secbtn:hover{border-color:var(--amber);color:var(--amber);}
-  .pe-adv-toggle{font-size:10px;color:var(--dim);letter-spacing:.16em;cursor:pointer;
-    border:1px solid var(--line);border-radius:5px;padding:5px 10px;display:inline-block;margin-top:4px;}
+  /* 機材然とした抑制トーン：ベタ塗りの巨大ボタンは廃止。ダーク＋細枠＋控えめアクセント */
+  .pe-transport{display:flex;gap:8px;margin:10px 0 12px;}
+  .pe-transport button{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:10px 12px;font:inherit;font-size:11px;letter-spacing:.1em;
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;cursor:pointer;transition:.12s;}
+  .pe-play .tri{width:0;height:0;border-style:solid;border-width:5px 0 5px 8px;
+    border-color:transparent transparent transparent var(--teal);}
+  .pe-play:hover{border-color:var(--teal);color:var(--teal);}
+  .pe-play:active{background:rgba(61,214,196,.12);}
+  .pe-trim:hover{border-color:var(--amber);color:var(--amber);}
+  .pe-adv-toggle{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;
+    margin-top:4px;padding:9px 12px;font:inherit;font-size:11px;color:var(--dim);letter-spacing:.14em;
+    background:var(--panel2);border:1px solid var(--line);border-radius:7px;cursor:pointer;transition:.12s;
+    box-sizing:border-box;}
+  .pe-adv-toggle:hover{border-color:var(--edge);color:var(--ink);}
   .pe-adv{display:none;margin-top:12px;}
   .pe-adv.show{display:block;}
   /* sample editor */
@@ -807,9 +816,9 @@
           <div class="handle start" id="peStart"><span class="cap">START</span></div>
           <div class="handle end" id="peEnd"><span class="cap">END</span></div>
         </div>
-        <button class="pe-audition" id="peAudition">▶ 試聴</button>
-        <div class="pe-actions">
-          <button class="pe-secbtn" id="peTrunc">✂ トランケート（選択範囲で切り詰め）</button>
+        <div class="pe-transport">
+          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>試聴</button>
+          <button class="pe-trim" id="peTrunc">✂ トリム</button>
         </div>
         <div class="pe-row">
           <label class="toggle" id="peLoopToggle"><span class="sw"></span><span>Loop</span></label>
