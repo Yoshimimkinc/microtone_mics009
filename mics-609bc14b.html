@@ -492,6 +492,9 @@
   .pe-hint{font-size:9px;color:var(--dim);letter-spacing:.04em;text-transform:none;margin-left:7px;}
   /* 機材然とした抑制トーン：ベタ塗りの巨大ボタンは廃止。ダーク＋細枠＋控えめアクセント */
   .pe-transport{display:flex;gap:8px;margin:10px 0 0;}
+  .pe-chop{display:flex;gap:8px;margin:8px 0 0;align-items:center;flex-wrap:wrap;}
+  .pe-chop .seg{flex:0 0 auto;}
+  .pe-chop #edChopApply{flex:1 1 120px;min-height:40px;}
   .pe-transport button{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;
     padding:10px 12px;font:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
     background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;cursor:pointer;transition:.12s;}
@@ -818,6 +821,12 @@
           <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PLAY</button>
           <button class="pe-trim" id="peTrunc">✂ TRIM</button>
         </div>
+        <div class="pe-chop">
+          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATK</button></div>
+          <div class="seg" id="edChopDiv"><button data-n="2">2</button><button data-n="4">4</button><button class="on" data-n="8">8</button><button data-n="16">16</button></div>
+          <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
+          <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
+        </div>
         <div class="pe-row pe-basic">
           <label class="toggle" id="peLoopToggle"><span class="sw"></span><span>Loop</span></label>
           <div class="knob mini"><label>Pitch <span class="v" id="pePitch">0</span></label>
@@ -1017,7 +1026,8 @@
       <div class="msbar">
         <button class="msbtn mute" id="holdMute"><span class="d"></span>MUTE</button>
         <button class="msbtn solo" id="holdSolo"><span class="d"></span>SOLO</button>
-        <button class="msbtn chop" id="holdChop"><span class="d"></span>CHOPPY</button>
+        <!-- CHOPPYはEDITモーダル内に統合（表のトグルは隠す。JS参照は残すので非表示のみ） -->
+        <button class="msbtn chop" id="holdChop" style="display:none;"><span class="d"></span>CHOPPY</button>
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
         <div class="seg" id="layoutSeg" style="margin-left:auto;">
           <button data-c="8" class="on">8×2</button>
@@ -2742,6 +2752,12 @@ function renderPeWave(i){
   } else {
     ctx.fillStyle="#3a4149"; ctx.font="11px sans-serif"; ctx.fillText("no sample",10,mid);
   }
+  // CHOPスライス境界線（編集対象パッドのときだけ）：分割プレビュー
+  if(buf && i===chopTarget && chopBounds.length>2){
+    ctx.strokeStyle=(getComputedStyle(document.body).getPropertyValue("--amber").trim())||"#ffb84d";
+    ctx.lineWidth=1.5;
+    for(let k=1;k<chopBounds.length-1;k++){ const x=chopBounds[k]*W; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  }
   // ハンドル/シェード位置（start/end/loop）
   const t=tracks[i], sx=(t.start||0)*W, ex=(t.end??1)*W, lx=(t.loopStart||0)*W;
   document.getElementById("peStart").style.left=sx+"px";
@@ -2770,6 +2786,14 @@ function openPadEdit(i){
   document.getElementById("peChokeSel").value=ck;
   document.getElementById("peAdv").classList.remove("show");
   document.getElementById("peAdvToggle").textContent="ADV ▾";
+  // CHOPプレビュー初期化（この編集パッドを対象に。既定 TIME / 8分割）
+  chopTarget=i; chopMode="time"; chopDivN=8; chopSens="mid";
+  syncChopSeg("edChopMode","mode",chopMode);
+  syncChopSeg("edChopDiv","n",String(chopDivN));
+  syncChopSeg("edChopSens","s",chopSens);
+  document.getElementById("edChopDiv").style.display = chopMode==="time"?"":"none";
+  document.getElementById("edChopSens").style.display = chopMode==="attack"?"":"none";
+  computeChopBounds();
   const modal=document.getElementById("padEditModal");
   modal.style.display="flex";
   requestAnimationFrame(()=>renderPeWave(i));   // 表示後に正しい幅で描画
@@ -2860,6 +2884,20 @@ function openPadEdit(i){
     if(t.choke>0){ t.choke=0; sel.value=0; e.currentTarget.classList.remove("on"); }
     else { t.choke=+sel.value>0?+sel.value:1; sel.value=t.choke; e.currentTarget.classList.add("on"); }
   });
+  // ===== CHOP（EDIT内に統合）：この編集パッドをスライスして各パッドへ展開 =====
+  document.getElementById("edChopMode").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    chopMode=b.dataset.mode; chopTarget=peTarget; syncChopSeg("edChopMode","mode",chopMode);
+    document.getElementById("edChopDiv").style.display = chopMode==="time"?"":"none";
+    document.getElementById("edChopSens").style.display = chopMode==="attack"?"":"none";
+    computeChopBounds(); renderPeWave(peTarget);
+  });
+  document.getElementById("edChopDiv").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    chopDivN=+b.dataset.n; chopTarget=peTarget; syncChopSeg("edChopDiv","n",String(chopDivN)); computeChopBounds(); renderPeWave(peTarget);
+  });
+  document.getElementById("edChopSens").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    chopSens=b.dataset.s; chopTarget=peTarget; syncChopSeg("edChopSens","s",chopSens); computeChopBounds(); renderPeWave(peTarget);
+  });
+  document.getElementById("edChopApply").addEventListener("click",()=>{ chopTarget=peTarget; computeChopBounds(); applyChop(); });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
 })();
 
@@ -2914,8 +2952,9 @@ function computeChopBounds(){
   }
   chopBounds=bs;
   const N=Math.max(1,bs.length-1), anchor=chopAnchor(N);
-  document.getElementById("chopApplyTxt").textContent =
-    "SPREAD → "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0")+" ("+N+")";
+  const txt="CHOP → "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0")+" ("+N+")";
+  const a=document.getElementById("chopApplyTxt"); if(a) a.textContent="SPREAD → "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0")+" ("+N+")";
+  const b=document.getElementById("edChopTxt"); if(b) b.textContent=txt;
 }
 function chopAnchor(N){ return Math.max(0, Math.min(chopTarget, 16-N)); }
 function renderChopWave(){
@@ -2966,7 +3005,9 @@ function applyChop(){
   }
   selectPad(anchor);
   sampNameEl.textContent="CHOP → PAD "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0");
-  document.getElementById("chopModal").style.display="none";
+  // 展開したらモーダルを閉じて結果（パッド）を見せる（EDIT統合/旧スタンドアロン両対応）
+  const chm=document.getElementById("chopModal"); if(chm) chm.style.display="none";
+  const pem=document.getElementById("padEditModal"); if(pem) pem.style.display="none";
 }
 (function(){
   const modal=document.getElementById("chopModal");
