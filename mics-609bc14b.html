@@ -637,7 +637,7 @@
     #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden;}
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:0;}
-    #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;}
+    #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin-top:6px;}   /* パッドから少しだけ下に離す */
     /* スマホ：COPY/CHOPPY/EDITは行幅を均等に分けてフィル */
     #viewPads>.msbar .msbtn{flex:1 1 0;min-width:0;padding-left:6px;padding-right:6px;}
     /* スマホ：strip-headを1行に収める（トラック名は省略、LOAD/SMPLは折返さない） */
@@ -732,7 +732,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.1</div>
+  <div class="s-ver" id="splashVer">v0.2.2</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3807,7 +3807,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.1";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.2";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
