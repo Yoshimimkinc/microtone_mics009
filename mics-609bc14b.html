@@ -714,7 +714,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.5</div>
+  <div class="s-ver" id="splashVer">v0.2.6</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3117,11 +3117,12 @@ const DEFAULT_PROJECT = {
   version:2, bpm:100, swing:67,
   comp:{on:true, threshold:-12, drive:1.5}, masterVol:0,
   tracks:[
-    // 1-8＝サンプル枠（空）
-    {type:'empty', name:'PAD 1'},
-    {type:'empty', name:'PAD 2'},
-    {type:'empty', name:'PAD 3'},
-    {type:'empty', name:'PAD 4'},
+    // 1-4＝起動デモのフレーズ（合成→4スライス）。各ビート頭で 1→2→3→4 を鳴らすと1小節のフレーズに復元。
+    {type:'sample', name:'PHRASE 1', choke:2, start:0,    end:0.25, patterns:[[1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0]]},
+    {type:'sample', name:'PHRASE 2', choke:2, start:0.25, end:0.5,  patterns:[[0,0,0,0, 1,0,0,0, 0,0,0,0, 0,0,0,0]]},
+    {type:'sample', name:'PHRASE 3', choke:2, start:0.5,  end:0.75, patterns:[[0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0]]},
+    {type:'sample', name:'PHRASE 4', choke:2, start:0.75, end:1,    patterns:[[0,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,0,0]]},
+    // 5-8＝サンプル枠（空）
     {type:'empty', name:'PAD 5'},
     {type:'empty', name:'PAD 6'},
     {type:'empty', name:'PAD 7'},
@@ -3137,8 +3138,45 @@ const DEFAULT_PROJECT = {
     {type:'synth', voice:'sinbass', name:'SINBASS', scale:'chro', patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
   ]
 };
+// 起動デモ用フレーズを合成（外部音源不要）。1小節=2.4s(100BPM)、素朴なリフ。
+async function renderPhrase(){
+  const sr=AC.sampleRate, beat=0.6, dur=beat*4;
+  const off=new OfflineAudioContext(1, Math.ceil(sr*dur), sr);
+  const notes=[110.00, 146.83, 164.81, 130.81];   // A2 / D3 / E3 / C3 風
+  const out=off.createGain(); out.gain.value=0.9;
+  const lp=off.createBiquadFilter(); lp.type="lowpass"; lp.Q.value=7;
+  lp.frequency.setValueAtTime(700, 0); lp.frequency.linearRampToValueAtTime(2600, dur);  // ゆるいフィルタスイープ
+  out.connect(lp); lp.connect(off.destination);
+  notes.forEach((f,i)=>{
+    const t0=i*beat;
+    [0,1].forEach(vi=>{                              // 基音(saw)＋オクターブ上(square)を薄く重ねる
+      const o=off.createOscillator(); o.type=vi?"square":"sawtooth"; o.frequency.value=f*(vi?2:1);
+      const g=off.createGain(); const amp=vi?0.18:0.5;
+      g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(amp,t0+0.008);
+      g.gain.exponentialRampToValueAtTime(0.008, t0+beat*0.92);
+      o.connect(g); g.connect(out); o.start(t0); o.stop(t0+beat);
+    });
+  });
+  return await off.startRendering();
+}
+// pad1-4にフレーズを4等分スライスで焼き込む（バッファ共有・モノチョーク＝スライスプレーヤー）
+async function bakePhrase(){
+  try{
+    const raw=await renderPhrase();
+    const buf=makeLofi(raw);
+    for(let k=0;k<4;k++){
+      const t=tracks[k];
+      t.rawBuffer=raw; t.buffer=buf;
+      t.start=k/4; t.end=(k+1)/4; t.loop=false; t.loopStart=0; t.tune=0; t.choke=2;
+      t.name="PHRASE "+(k+1);
+      PADS[k].type="sample"; PADS[k].voice=null;
+      refreshPadDisplay(k);
+    }
+  }catch(e){ console.warn("phrase bake:", e); }
+}
 loadPresets().then(async ()=>{
   try{ await applyProject(DEFAULT_PROJECT); }catch(e){ console.warn("default project:", e); }
+  await bakePhrase();
   drawAllPadWaves();
 });
 
@@ -3767,7 +3805,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.5";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.6";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
