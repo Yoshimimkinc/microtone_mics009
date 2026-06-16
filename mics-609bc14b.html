@@ -424,8 +424,7 @@
   .msbtn.solo.armed .d{background:#06201d;box-shadow:0 0 6px #06201d;}
   .msbtn.edit.armed{background:#5b9dff;color:#06183a;border-color:#5b9dff;box-shadow:0 0 16px rgba(91,157,255,.5);}
   .msbtn.edit.armed .d{background:#06183a;}
-  /* MUTE/SOLOはPADSバーから撤去（M/SはMIX画面に集約）。残るEDITボタンを揃える */
-  #holdMute,#holdSolo{display:none!important;}
+  /* MIX画面廃止に伴い、MUTE/SOLOはPADSバーに復活（M/Sの行き場をここに確保） */
   .msbar .msbtn{justify-content:center;min-width:104px;}
   /* EDIT mode：対象選択を促すパッドのほのかな点滅枠 */
   body.edit-arm .pads .pad{cursor:pointer;}
@@ -613,9 +612,7 @@
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
     .seg button{padding:5px 10px;font-size:10px;}
-    /* MASTERはMIX画面の時だけ（PADS/SEQでは隠して場所を空ける） */
-    .master-bar{display:none;}
-    body.mix-on .master-bar{display:flex;border-left:none;padding-left:0;flex-basis:100%;}
+    /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
     #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden;}
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
@@ -630,8 +627,7 @@
     .strip-actions{flex:0 0 auto;gap:6px;}
     .strip-actions .loadbtn{padding:5px 8px;font-size:10px;white-space:nowrap;}
     .strip-head .stepnav{padding:6px 7px;}
-    /* スマホのPADS画面ではMUTE/SOLOは非表示（M/SはMIX画面に集約。EDITは残す） */
-    #holdMute,#holdSolo{display:none!important;}
+    /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
     #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
     .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
@@ -714,7 +710,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.7</div>
+  <div class="s-ver" id="splashVer">v0.2.8</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -767,14 +763,29 @@
           <div style="font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:.02em;">REAL=リアルタイム録音 / GRID=16PADでステップ入力（Digitakt式）</div>
         </div>
         <div class="modal-sec">
-          <div class="modal-label">Master / Comp</div>
-          <div class="master-ctrls">
+          <div class="modal-label">Master</div>
+          <div class="master-bar" id="masterBar">
+            <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
+            <div class="master-ctrls">
+              <div class="knob"><label>Master <span class="v" id="vMaster">0 dB</span></label>
+                <input type="range" id="kMaster" min="-30" max="6" step="1" value="0"></div>
+            </div>
+          </div>
+          <div class="master-ctrls" style="margin-top:12px;">
             <label class="toggle on" id="compToggle"><span class="sw"></span><span>COMP</span></label>
             <div class="knob"><label>Threshold <span class="v" id="vComp">-12</span></label>
               <input type="range" id="kComp" min="-30" max="0" step="1" value="-12"></div>
             <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
               <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
           </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Groups — 上下ドラッグ=音量 / M·S / ダブルタップ=0dB</div>
+          <div class="pad-grid" id="grpRow"></div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">FX — テープディレイ(RE-101) / リバーブ(HALL)</div>
+          <div class="pad-grid" id="fxRow"></div>
         </div>
         <div class="modal-sec">
           <div class="modal-label">Sound (A/B 試聴)</div>
@@ -866,20 +877,11 @@
     <div class="modebar">
       <button class="modebtn on" id="modePads" data-view="viewPads"><span class="led"></span>Pads</button>
       <button class="modebtn" id="modeSeq" data-view="viewSeq"><span class="led"></span>Seq</button>
-      <button class="modebtn" id="modeMix" data-view="viewMix"><span class="led"></span>Mix</button>
     </div>
-    <!-- スマホ専用：3モードはスワイプ切替＋このドットで現在地表示（タップでも切替可）。タブを省いてスペース確保 -->
+    <!-- スマホ専用：2モードはスワイプ切替＋このドットで現在地表示（タップでも切替可） -->
     <div class="viewdots" id="viewDots">
       <button class="vdot on" data-view="viewPads" aria-label="Pads"><span class="vd-dot"></span>PADS</button>
       <button class="vdot" data-view="viewSeq" aria-label="Seq"><span class="vd-dot"></span>SEQ</button>
-      <button class="vdot" data-view="viewMix" aria-label="Mix"><span class="vd-dot"></span>MIX</button>
-    </div>
-    <div class="master-bar" id="masterBar">
-      <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
-      <div class="master-ctrls">
-        <div class="knob"><label>Master <span class="v" id="vMaster">0 dB</span></label>
-          <input type="range" id="kMaster" min="-30" max="6" step="1" value="0"></div>
-      </div>
     </div>
   </div>
 
@@ -1039,22 +1041,6 @@
     </div>
 
     <!-- MIX view -->
-    <div class="view" id="viewMix">
-      <div class="mix-section">
-        <div class="label">Groups — 上下ドラッグで音量 / 右上 M·S / ダブルタップで0dB</div>
-        <div class="pad-grid" id="grpRow"></div>
-      </div>
-      <div class="mix-section">
-        <div class="label">FX — 左 テープディレイ(RE-101) / 右 リバーブ(HALL)</div>
-        <div class="pad-grid" id="fxRow"></div>
-      </div>
-      <div class="mix-section">
-        <button class="label collapse-toggle" id="chToggle" aria-expanded="false" aria-controls="mixer">
-          <span class="chev">▸</span><span>Channel levels</span>
-        </button>
-        <div class="mixer collapsed" id="mixer"></div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -1907,7 +1893,6 @@ async function loadPresets(){
 
 // ---------- UI build ----------
 const padsEl = document.getElementById("pads");
-const mixerEl = document.getElementById("mixer");   // 早期宣言でsyncMixLayout等のTDZを回避
 const sampNameEl = document.getElementById("sampName");   // ステータス表示（多用するためキャッシュ）
 // textContentがセットされたら数秒だけトースト表示→自動で消す（バーに常駐させない）
 let _toastTimer=null;
@@ -1918,7 +1903,6 @@ new MutationObserver(()=>{
   if(has){ _toastTimer=setTimeout(()=>{ sampNameEl.classList.remove("show"); _toastTimer=null; }, 2400); }
 }).observe(sampNameEl,{childList:true,characterData:true,subtree:true});
 const viewPadsEl = document.getElementById("viewPads");
-const viewMixEl  = document.getElementById("viewMix");     // vuLoop（毎フレーム）で参照するためキャッシュ
 const viewSeqEl  = document.getElementById("viewSeq");     // 毎ステップ描画の可視判定に使う
 // パッドの種別カテゴリ（色分け用）：ドラム/ベース/サンプル/空
 function padCategory(i){
@@ -2245,7 +2229,6 @@ layoutSeg.addEventListener("click",e=>{
   // 4×4のときだけS2400風スプリットに（右に波形/操作、右下にStart/Stop）
   viewPadsEl.classList.toggle("split", b.dataset.c==="4");
   [...layoutSeg.children].forEach(x=>x.classList.toggle("on",x===b));
-  if(typeof syncMixLayout==="function") syncMixLayout();
   if(typeof lockViewHeight==="function") lockViewHeight();
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
@@ -3081,7 +3064,7 @@ window.addEventListener("keydown",async(e)=>{
   // TAB：PADS→SEQ→MIX を順送り（Shift+TABで逆）
   if(e.key==="Tab"){
     e.preventDefault();
-    const order=["viewPads","viewSeq","viewMix"];
+    const order=["viewPads","viewSeq"];
     let cur=order.findIndex(v=>document.getElementById(v).classList.contains("active")); if(cur<0)cur=0;
     switchView(order[(cur+(e.shiftKey?-1:1)+order.length)%order.length]);
     return;
@@ -3200,15 +3183,13 @@ loadPresets().then(async ()=>{
 });
 
 // ---------- mode switch ----------
-const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeMix")];
+const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq")];
 function switchView(viewId){
   modeBtns.forEach(b=>{ const on=b.dataset.view===viewId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
-  document.body.classList.toggle("mix-on", viewId==="viewMix");   // スマホ：MASTERをMIX時のみ表示
   if(viewId==="viewPads"){ drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
-  if(viewId==="viewMix") paintMixer();
-  // スマホのモードドット同期（●PADS 〇SEQ 〇MIX）
+  // スマホのモードドット同期（●PADS 〇SEQ）
   const dots=document.getElementById("viewDots");
   if(dots){ dots.querySelectorAll(".vdot").forEach(d=>d.classList.toggle("on",d.dataset.view===viewId)); }
   lockViewHeight();
@@ -3218,7 +3199,7 @@ document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("clic
 
 // スマホ：左右スワイプで PADS/SEQ/MIX を切替（p-lock記録中やスライダー上は無効）
 (function(){
-  const order=["viewPads","viewSeq","viewMix"];
+  const order=["viewPads","viewSeq"];
   let sx=0,sy=0,st=0,sEl=null,tracking=false;
   const curView=()=>order.find(id=>{const el=document.getElementById(id);return el&&el.classList.contains("active");})||"viewPads";
   addEventListener("touchstart",(e)=>{
@@ -3241,13 +3222,12 @@ document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("clic
 let refViewH = 0;
 function lockViewHeight(){
   const body=document.querySelector(".body");
-  const vp=viewPadsEl, vm=viewMixEl;
+  const vp=viewPadsEl;
   if(!body||!vp) return;
-  if(window.innerWidth<=600){ body.style.minHeight=""; if(vm) vm.style.maxHeight=""; return; } // スマホは固定しない
+  if(window.innerWidth<=600){ body.style.minHeight=""; return; } // スマホは固定しない
   if(vp.classList.contains("active")){ body.style.minHeight=""; refViewH=vp.offsetHeight; }     // PADSの自然高さを基準に測る
   if(refViewH){
     body.style.minHeight = refViewH+"px";        // どのビューも縮まない＝高さ一定
-    if(vm) vm.style.maxHeight = refViewH+"px";    // MIXは伸びない（超過分は内部スクロール）
   }
   // SEQのグリッドはCSSのflexで余白を自動充填するので個別計算は不要
 }
@@ -3322,43 +3302,11 @@ function paintPatBar(){
   }));
 }
 
-// ---------- MIX view ----------
-// mixerEl は早期宣言済み（TDZ回避）
-const chEls=[];  // {fader, val, el, nm, vu, mBtn, sBtn}
-const vuLevels=new Float32Array(PADS.length);   // 0..1 各chのVU値
+// ---------- Group / FX / Master（メニュー内）----------
+// 16chフェーダーは撤去：per-pad音量はEDIT/P-LOCK、M/SはPADSのMUTE/SOLOへ集約（DRY＝状態の単一管理）。
 let masterVuLevel=0;
 
-PADS.forEach((p,i)=>{
-  const ch=document.createElement("div");
-  ch.className="ch";
-  const num=document.createElement("div"); num.className="ch-num";
-  num.textContent=String(i+1).padStart(2,"0");
-
-  // フェーダー＋VU一体
-  const wrap=document.createElement("div"); wrap.className="ch-fader-wrap";
-  const vu=document.createElement("div"); vu.className="ch-vu";
-  const fader=document.createElement("input");
-  fader.type="range"; fader.min=-30; fader.max=6; fader.step=1; fader.value=tracks[i].vol;
-  wrap.appendChild(vu); wrap.appendChild(fader);
-
-  const val=document.createElement("div"); val.className="ch-val"; val.textContent=tracks[i].vol;
-  const msDiv=document.createElement("div"); msDiv.className="ch-ms";
-  const mBtn=document.createElement("button"); mBtn.textContent="M";
-  const sBtn=document.createElement("button"); sBtn.textContent="S";
-  mBtn.addEventListener("click",()=>{ pushUndo(); tracks[i].mute=!tracks[i].mute; paintMixer(); paintPadStates(); });
-  sBtn.addEventListener("click",()=>{ pushUndo(); tracks[i].solo=!tracks[i].solo; paintMixer(); paintPadStates(); });
-  msDiv.appendChild(mBtn); msDiv.appendChild(sBtn);
-  const nm=document.createElement("div"); nm.className="ch-name"; nm.textContent=p.name;
-  ch.appendChild(num); ch.appendChild(wrap); ch.appendChild(val); ch.appendChild(msDiv); ch.appendChild(nm);
-  fader.addEventListener("input",()=>{
-    tracks[i].vol=+fader.value; val.textContent=fader.value;
-  });
-  fader.addEventListener("pointerdown",()=>{ pushUndo(); fader.focus(); });
-  mixerEl.appendChild(ch);
-  chEls.push({fader,val,el:ch,nm,vu,mBtn,sBtn});
-});
-
-// --- MIXパッド（大きい角丸ボタン）：上下ドラッグ=値 / ダブルタップ=既定 / ボタン群 ---
+// --- グループ/FXパッド（大きい角丸ボタン）：上下ドラッグ=値 / ダブルタップ=既定 / ボタン群 ---
 const mixPads=[];
 function paintAll(){ mixPads.forEach(p=>p()); }
 function makeMixPad(o){
@@ -3442,10 +3390,9 @@ makeMixPad({
 function paintGroups(){ paintAll(); }   // paintMixerから呼ばれる
 paintAll();   // 初期表示
 
-// --- VUトリガー：発音時にレベルを設定 ---
+// --- VUトリガー：発音時にマスターVUレベルを設定 ---
 function vuHit(padIdx, accent){
   const g=dbToGain(tracks[padIdx].vol + (accent?5:0));
-  vuLevels[padIdx]=Math.min(1, g*1.4);   // 少し誇張して見やすく
   masterVuLevel=Math.min(1, masterVuLevel + g*0.4);
   if(typeof kickVu==="function") kickVu();   // 発音時にVUループを起こす（アイドル時は止まっている）
 }
@@ -3454,57 +3401,18 @@ function vuHit(padIdx, accent){
 const masterVuEl=document.getElementById("masterVu");
 let vuRaf=null;
 function vuLoop(){
-  const mixActive=viewMixEl.classList.contains("active");
-  if(mixActive){   // chフェーダーのVUは隠れてる時は更新不要
-    for(let i=0;i<PADS.length;i++){
-      const h=Math.round(vuLevels[i]*100);
-      chEls[i].vu.style.height=h+"%";
-      chEls[i].vu.classList.toggle("peak",vuLevels[i]>0.85);
-    }
-  }
-  // マスターVUは常時表示なので常に更新
+  // マスターVU（メニュー内）。chフェーダーVUは撤去。
   const mw=Math.round(masterVuLevel*100);
-  masterVuEl.style.width=mw+"%";
-  masterVuEl.classList.toggle("peak",masterVuLevel>0.85);
-  // ディケイ
-  for(let i=0;i<PADS.length;i++) vuLevels[i]*=0.88;
+  if(masterVuEl){ masterVuEl.style.width=mw+"%"; masterVuEl.classList.toggle("peak",masterVuLevel>0.85); }
   masterVuLevel*=0.92;
   // 再生中、またはまだレベルが残っている間だけ回す。無音アイドルでは停止
   if(playing || masterVuLevel>0.002){ vuRaf=requestAnimationFrame(vuLoop); }
-  else { vuRaf=null; masterVuEl.style.width="0%"; masterVuEl.classList.remove("peak"); }
+  else { vuRaf=null; if(masterVuEl){ masterVuEl.style.width="0%"; masterVuEl.classList.remove("peak"); } }
 }
 function kickVu(){ if(vuRaf==null) vuRaf=requestAnimationFrame(vuLoop); }
 
-function paintMixer(){
-  for(let i=0;i<PADS.length;i++){
-    const c=chEls[i];
-    c.fader.value=tracks[i].vol;
-    c.val.textContent=tracks[i].vol;
-    c.el.classList.toggle("muted",tracks[i].mute);
-    c.el.classList.toggle("soloed",tracks[i].solo);
-    c.mBtn.classList.toggle("m-on",tracks[i].mute);
-    c.sBtn.classList.toggle("s-on",tracks[i].solo);
-    c.nm.textContent=tracks[i].name||PADS[i].name;
-  }
-  if(typeof paintGroups==="function") paintGroups();
-}
-
-// MIXレイアウトをPADSと連動
-function syncMixLayout(){
-  mixerEl.classList.toggle("mix4",!padsEl.classList.contains("cols8"));
-}
-syncMixLayout();
-
-// チャンネルレベルは普段たたむ（既定=閉）。トグルで開閉
-(function(){
-  const t=document.getElementById("chToggle");
-  if(!t) return;
-  t.addEventListener("click",()=>{
-    const collapsed=mixerEl.classList.toggle("collapsed");
-    t.setAttribute("aria-expanded", collapsed?"false":"true");
-    if(typeof lockViewHeight==="function") lockViewHeight();
-  });
-})();
+// 旧16chミキサーは撤去。互換のため paintMixer はグループ表示更新に縮約（呼び出し元はそのまま動く）。
+function paintMixer(){ if(typeof paintGroups==="function") paintGroups(); }
 
 // マスターボリューム
 document.getElementById("kMaster").addEventListener("pointerdown",()=>pushUndo());
@@ -3824,7 +3732,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.7";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.8";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

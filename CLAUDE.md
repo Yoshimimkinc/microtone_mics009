@@ -32,16 +32,16 @@ tapeHiss ───────────────────────�
 - `chainLen` (1-4): how many patterns play in sequence (A→B→C→D)
 - Accessor functions: `getPattern(i)` for edit, `getPlayPattern(i)` for playback
 
-### UI Modes
-- **PADS**: Koala-style layout. Waveform strip on top, pads below. MUTE/SOLO/COPY/CHOPPY/EDIT toggles.
+### UI Modes (2 screens since v0.2.8)
+- **PADS**: Koala-style layout. Waveform strip on top, pads below. MUTE/SOLO/EDIT toggles. Layout toggle (desktop): 8×2 (browse) / 4×4 (S2400 split, perform).
 - **SEQ**: 16×16 step grid with pattern A/B/C/D selector and chain length.
-- **MIX**: Channel faders with VU meters, M/S per channel, master comp/drive/volume.
+- **MIX screen removed**: per-pad volume = EDIT Level + P-LOCK level; mute/solo = PADS MUTE/SOLO modes. Group volume (4), FX (delay/reverb), Master volume + COMP live in the **menu (⋮)**. Rationale: same state was editable from 3 places (DRY violation → sync bugs). Audio routing (groupBus/GROUP_OF/FX nodes) unchanged — only UI moved. See `docs/screen-spec.md`.
 
 ### Key Design Rules
 - **"aki rule"**: Hide complex settings. Anyone should be able to enjoy sampling music without understanding filters or choke groups. Simple surface, depth underneath.
 - Pad layout: natural numbering (top-left = pad 1). Sample slots (1-8) on top, default drums (9-16) on bottom. Numbering reads top→bottom; drums stay on the bottom rows for ergonomics. No CSS `order` reversal — DOM order = visual order.
-- MIX grid matches PADS grid layout (spatial memory consistency)
-- All mode buttons (MUTE/SOLO/COPY/CHOPPY/EDIT) use toggle pattern, not hold
+- **Single source of truth for state**: a given track property should be edited from one place (avoid duplicate UIs writing the same `tracks[i].*` — that caused sync bugs).
+- All mode buttons (MUTE/SOLO/EDIT) use toggle pattern, not hold
 - Start point snaps to attack transients (onset detection)
 - CHOPPY auto-sets choke groups and end points
 
@@ -82,7 +82,7 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
 
 ## Version
-MICS009 beta v0.2.7
+MICS009 beta v0.2.8
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
 - `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
