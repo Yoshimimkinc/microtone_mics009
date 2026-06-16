@@ -1362,12 +1362,12 @@ let compDrive = 1.5;
 let compMakeup = 1.2;
 
 // ===== グループバス（4ch×4をまとめて音量）：voices → groupBus[g] → masterGain =====
-// グループ割り当て: g0=サンプル9-12, g1=サンプル13-16, g2=ドラム1-4, g3=ドラム5-8
+// グループ割り当て（パッド並びに一致）: g0=サンプル1-4, g1=サンプル5-8(上段), g2=ドラム9-12, g3=ドラム13-16(下段)
 const GROUP_OF = new Array(16);
-[8,9,10,11].forEach(i=>GROUP_OF[i]=0);
-[12,13,14,15].forEach(i=>GROUP_OF[i]=1);
-[0,1,2,3].forEach(i=>GROUP_OF[i]=2);
-[4,5,6,7].forEach(i=>GROUP_OF[i]=3);
+[0,1,2,3].forEach(i=>GROUP_OF[i]=0);
+[4,5,6,7].forEach(i=>GROUP_OF[i]=1);
+[8,9,10,11].forEach(i=>GROUP_OF[i]=2);
+[12,13,14,15].forEach(i=>GROUP_OF[i]=3);
 const groupVol=[0,0,0,0];   // dB（PADを上下ドラッグで変化）
 const groupBus=[0,1,2,3].map(()=>{ const g=AC.createGain(); g.connect(masterGain); return g; });
 function applyGroupVol(){ for(let g=0;g<4;g++) groupBus[g].gain.value=Math.pow(10,groupVol[g]/20); }
@@ -3350,10 +3350,10 @@ function makeMixPad(o){
 // グループ（上=サンプル/下=ドラム）。上下=グループ音量、M/S=4ch一括、ダブルタップ=0dB
 const grpRow=document.getElementById("grpRow");
 const MIX_GROUPS=[
-  {name:"SMP 9-12",  idx:[8,9,10,11],  g:0, accent:"61,214,196"},
-  {name:"SMP 13-16", idx:[12,13,14,15],g:1, accent:"61,214,196"},
-  {name:"DR 1-4",    idx:[0,1,2,3],    g:2, accent:"255,138,61"},
-  {name:"DR 5-8",    idx:[4,5,6,7],    g:3, accent:"255,138,61"},
+  {name:"SMP 1-4",  idx:[0,1,2,3],    g:0, accent:"61,214,196"},
+  {name:"SMP 5-8",  idx:[4,5,6,7],    g:1, accent:"61,214,196"},
+  {name:"DR 9-12",  idx:[8,9,10,11],  g:2, accent:"255,138,61"},
+  {name:"DR 13-16", idx:[12,13,14,15],g:3, accent:"255,138,61"},
 ];
 MIX_GROUPS.forEach(G=>makeMixPad({
   container:grpRow, title:G.name, accent:G.accent, min:-30, max:6, step:1, reset:0,
