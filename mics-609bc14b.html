@@ -876,6 +876,35 @@
         </div>
       </div>
     </div>
+
+    <div class="modal-backdrop" id="chopModal" style="display:none;">
+      <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="chopTitle">
+        <div class="modal-head"><span id="chopTitle">CHOPPY</span><button class="t" id="chopClose" aria-label="Close">✕</button></div>
+        <div class="pe-wave"><canvas id="chopWave"></canvas></div>
+        <div class="modal-sec" style="margin-top:14px;">
+          <div class="modal-label">MODE</div>
+          <div class="seg" id="chopMode">
+            <button class="on" data-mode="time">TIME</button><button data-mode="attack">ATTACK</button>
+          </div>
+        </div>
+        <div class="modal-sec" id="chopTimeRow">
+          <div class="modal-label">SLICES <span class="pe-hint">等分</span></div>
+          <div class="seg" id="chopDiv">
+            <button data-n="2">2</button><button data-n="4">4</button><button class="on" data-n="8">8</button><button data-n="16">16</button>
+          </div>
+        </div>
+        <div class="modal-sec" id="chopAttRow" style="display:none;">
+          <div class="modal-label">SENSITIVITY <span class="pe-hint">アタックで分割</span></div>
+          <div class="seg" id="chopSens">
+            <button data-s="low">LOW</button><button class="on" data-s="mid">MID</button><button data-s="high">HIGH</button>
+          </div>
+        </div>
+        <div class="pe-transport">
+          <button class="pe-play" id="chopAudition" aria-label="試聴"><span class="tri"></span>PLAY</button>
+          <button class="pe-trim" id="chopApply" style="border-color:var(--teal);color:var(--teal);">✓ <span id="chopApplyTxt">SPREAD</span></button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="modebar-row">
@@ -2110,19 +2139,10 @@ function moveCursors(){
 
 // ---------- mute / solo ----------
 let armMode = null;  // null | "mute" | "solo" | "chop" | "edit"（chop＝COPY統合：複製/スライス）
-let copySrc = null;  // CHOP中の元パッド（複製元／スライス元）
+let copySrc = null;  // chop armed時の選択状態（paintPadStatesのハイライト用）
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
-let chopBase = null, chopNum = 0;  // CHOPPYスライスの連番命名（BASE 1/2/3/4…）
 // CHOPPYスライスの基準名（末尾の連番は剥がす＝再チョップでも増殖しない）
 function chopBaseName(i){ return (tracks[i].name||PADS[i].name||"").replace(/\s*\d+$/,"").trim()||"SLICE"; }
-// パッド名をトラック＋PADS/SEQ表示に反映
-function setPadName(i,nm){
-  tracks[i].name=nm;
-  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
-  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
-}
 function paintPadStates(){
   for(let i=0;i<PADS.length;i++){
     const el=padsEl.children[i];
@@ -2181,69 +2201,19 @@ function refreshPadDisplay(i){
   drawPadWave(i);
 }
 
-// 次のアタックを検出（チョッピー用）：大きめのヒットだけを拾う
-function findNextOnset(t){
-  if(!t.buffer) return null;
-  const data=t.buffer.getChannelData(0);
-  const N=data.length, sr=t.buffer.sampleRate;
-  const win=Math.max(4,Math.round(sr*0.002));        // 2ms窓
-  const hop=Math.max(1,Math.round(sr*0.001));        // 1ms刻みで走査
-  const from=Math.min(N-win-1, Math.round(t.start*N)+Math.round(N/32)); // 尺の1/32以内は無視（HH等をスキップ）
-  const rms=p=>{let s=0;for(let n=0;n<win;n++){const v=data[p+n];s+=v*v;}return Math.sqrt(s/win);};
-  // start以降のピークRMS（粗く）
-  let peak=0;
-  for(let p=from;p<N-win;p+=hop*4){const r=rms(p);if(r>peak)peak=r;}
-  if(peak<0.01) return null;
-  const lowTh=peak*0.15, highTh=peak*0.7;  // 減衰をしっかり待ち、強いヒット(70%)のみ拾う
-  // 1) 減衰を待つ
-  let p=from, decayed=false;
-  for(;p<N-win;p+=hop){ if(rms(p)<lowTh){decayed=true;break;} }
-  if(!decayed) return null;
-  // 2) 強い再立ち上がり点（ピークの50%超え＝大きめのアタック）
-  for(;p<N-win;p+=hop){ if(rms(p)>=highTh) break; }
-  if(p>=N-win) return null;
-  // 3) 足元補正：その近傍ピークの15%を超えた最初の点（既存スナップと同方式）
-  const r2=Math.round(sr*0.012);
-  const lo=Math.max(win,p-r2), hi=Math.min(N-win-1,p+r2);
-  let pk2=0; for(let q=lo;q<=hi;q++){const r=rms(q);if(r>pk2)pk2=r;}
-  const footTh=pk2*0.15;
-  for(let q=lo;q<=hi;q++){ if(rms(q)>=footTh) return q/N; }
-  return p/N;
-}
 function assignMS(i){
   if(armMode==="mute"){ tracks[i].mute=!tracks[i].mute; }
   else if(armMode==="solo"){ tracks[i].solo=!tracks[i].solo; }
   else if(armMode==="chop"){
-    // COPYを統合：素材を見て自動で振り分け。長い素材＝アタックで切り分け、短いワンショット＝複製のみ。
-    if(copySrc===null){ copySrc=i; chopBase=chopBaseName(i); chopNum=0; }  // 最初のタップ＝元
-    else if(i!==copySrc){
-      const s=tracks[copySrc];
-      const region = s.buffer ? (s.end-s.start)*s.buffer.duration : 0;
-      // 短いネタ(<0.3s)はチョップしない。長い素材のみ次アタックを探す。
-      const next = region>=0.3 ? findNextOnset(s) : null;
-      copyPadSound(copySrc,i);
-      if(next!==null){
-        // === スライス（数珠つなぎ） ===
-        tracks[i].start=Math.min(next, tracks[i].end-0.002);
-        s.end=Math.max(s.start+0.002, next);   // 元のendを次アタック直前で切る（隙間も重なりもなし）
-        // スライス同士は同時に鳴らない（同一チョークグループに自動割当）
-        if(!s.choke || s.choke===1){ s.choke=nextChokeGroup; nextChokeGroup = nextChokeGroup>=8 ? 2 : nextChokeGroup+1; }
-        tracks[i].choke = s.choke;
-        // 音色名に連番を付与：元が「BASE 1」、以降「BASE 2/3/4…」
-        if(chopNum===0){ setPadName(copySrc, chopBase+" 1"); chopNum=1; }
-        chopNum++;
-        setPadName(i, chopBase+" "+chopNum);
-        copySrc=i;                             // 貼り先が次の元になる
-      }
-      // else＝複製のみ：チョーク自動割当なし／元のendも触らない／元は据え置き（同じネタを複数パッドへ）
-      flashPad(i);
-    }
+    // 1ネタ→複数パッドへ一撃展開のモーダルを開く（スライスプレーヤー導線）。開けたらワンショット解除。
+    if(openChopModal(i)) arm("chop", false);
+    return;
   }
   paintPadStates();
 }
 function arm(mode,on){
   armMode = on?mode:null;
-  if(!on||mode!=="chop"){ copySrc=null; chopBase=null; chopNum=0; } // 解除で元（コピー/スライス元）リセット
+  if(!on||mode!=="chop") copySrc=null; // 解除で選択リセット
   document.getElementById("holdMute").classList.toggle("armed",armMode==="mute");
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdChop").classList.toggle("armed",armMode==="chop");
@@ -2780,6 +2750,133 @@ function openPadEdit(i){
     document.getElementById("peShadeR").style.width="0px";
   });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
+})();
+
+// ===== CHOPPY モーダル（1ネタ→複数パッドへ一撃展開＝スライスプレーヤー）=====
+let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
+function openChopModal(i){
+  if(!tracks[i].buffer){ sampNameEl.textContent="サンプルがありません"; return false; }
+  chopTarget=i; chopMode="time"; chopDivN=8; chopSens="mid";
+  document.getElementById("chopTitle").textContent="CHOPPY · "+chopBaseName(i);
+  syncChopSeg("chopMode","mode",chopMode);
+  syncChopSeg("chopDiv","n",String(chopDivN));
+  syncChopSeg("chopSens","s",chopSens);
+  document.getElementById("chopTimeRow").style.display = chopMode==="time"?"":"none";
+  document.getElementById("chopAttRow").style.display  = chopMode==="attack"?"":"none";
+  computeChopBounds();
+  document.getElementById("chopModal").style.display="flex";
+  requestAnimationFrame(renderChopWave);
+  return true;
+}
+function syncChopSeg(id,attr,val){
+  [...document.getElementById(id).children].forEach(b=>b.classList.toggle("on",b.dataset[attr]===val));
+}
+// アタック検出（複数オンセット）：感度で立ち上がり閾値を変える。最大16スライス。
+function detectOnsets(t,s,e,sens){
+  const data=t.buffer.getChannelData(0), L=data.length, sr=t.buffer.sampleRate;
+  const win=Math.max(4,Math.round(sr*0.005)), hop=Math.max(1,Math.round(sr*0.003));
+  const a=Math.max(0,Math.floor(s*L)), b=Math.min(L-win,Math.floor(e*L));
+  const rms=p=>{let x=0;for(let n=0;n<win;n++){const v=data[p+n]||0;x+=v*v;}return Math.sqrt(x/win);};
+  const env=[]; for(let p=a;p<b;p+=hop) env.push({p,r:rms(p)});
+  let peak=0; for(const o of env) if(o.r>peak) peak=o.r;
+  if(peak<=0) return [];
+  const th=peak*({low:0.5,mid:0.32,high:0.18}[sens]||0.32);
+  const minGap=Math.round(sr*0.06);            // 60ms以内の連続検出は1つに
+  const out=[]; let lastP=-1e9, armed=true;
+  for(let k=1;k<env.length;k++){
+    const cur=env[k].r, prev=env[k-1].r;
+    if(armed && cur>=th && cur>prev && (env[k].p-lastP)>=minGap){ out.push(env[k].p/L); lastP=env[k].p; armed=false; }
+    if(cur<th*0.6) armed=true;                  // 谷を通ったら次の立ち上がりを拾う
+  }
+  return out;
+}
+function computeChopBounds(){
+  const t=tracks[chopTarget]; if(!t||!t.buffer){ chopBounds=[]; return; }
+  const s=t.start||0, e=(t.end??1);
+  let bs;
+  if(chopMode==="time"){
+    bs=[]; for(let k=0;k<=chopDivN;k++) bs.push(s+(e-s)*k/chopDivN);
+  } else {
+    const on=detectOnsets(t,s,e,chopSens).filter(o=>o>s+0.001 && o<e-0.001);
+    bs=[...new Set([s,...on,e])].sort((x,y)=>x-y);
+    if(bs.length>17) bs=bs.slice(0,16).concat([e]);   // 16スライス上限
+  }
+  chopBounds=bs;
+  const N=Math.max(1,bs.length-1), anchor=chopAnchor(N);
+  document.getElementById("chopApplyTxt").textContent =
+    "SPREAD → "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0")+" ("+N+")";
+}
+function chopAnchor(N){ return Math.max(0, Math.min(chopTarget, 16-N)); }
+function renderChopWave(){
+  const cv=document.getElementById("chopWave"); if(!cv) return;
+  const wrap=cv.parentElement, W=wrap.clientWidth, H=wrap.clientHeight; if(!W||!H) return;
+  const dpr=window.devicePixelRatio||1; cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const mid=H/2, t=tracks[chopTarget], buf=t&&t.buffer;
+  const acc=(getComputedStyle(document.body).getPropertyValue("--teal").trim())||"#3dd6c4";
+  ctx.strokeStyle="#2c333b"; ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(W,mid); ctx.stroke();
+  if(buf){
+    const data=buf.getChannelData(0), step=Math.max(1,Math.floor(data.length/W));
+    const top=new Float32Array(W), bot=new Float32Array(W);
+    for(let x=0;x<W;x++){ let mn=1,mx=-1; const o=x*step;
+      for(let n=0;n<step;n++){ const v=data[o+n]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
+      top[x]=mid-mx*mid*0.92; bot[x]=mid-mn*mid*0.92; }
+    ctx.beginPath(); ctx.moveTo(0,top[0]);
+    for(let x=1;x<W;x++) ctx.lineTo(x,top[x]);
+    for(let x=W-1;x>=0;x--) ctx.lineTo(x,bot[x]);
+    ctx.closePath(); ctx.globalAlpha=.5; ctx.fillStyle=acc; ctx.fill(); ctx.globalAlpha=1;
+  }
+  // スライス境界線（内側のみ）＋スライス番号
+  const N=chopBounds.length-1;
+  ctx.fillStyle="rgba(255,160,40,.10)";
+  for(let k=0;k<N;k++){ if(k%2){ const x0=chopBounds[k]*W; ctx.fillRect(x0,0,(chopBounds[k+1]-chopBounds[k])*W,H); } }
+  ctx.strokeStyle=(getComputedStyle(document.body).getPropertyValue("--amber").trim())||"#ffb84d";
+  ctx.lineWidth=1.5;
+  for(let k=1;k<N;k++){ const x=chopBounds[k]*W; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+}
+function applyChop(){
+  const bounds=chopBounds, N=bounds.length-1; if(N<1) return;
+  pushUndo();
+  const src=tracks[chopTarget];
+  const snap={buffer:src.buffer, rawBuffer:src.rawBuffer, tune:src.tune, filter:src.filter, cutoff:src.cutoff, reso:src.reso, vol:src.vol,
+              type:(PADS[chopTarget].type==="empty"?"sample":PADS[chopTarget].type), voice:PADS[chopTarget].voice};
+  const base=chopBaseName(chopTarget);
+  const anchor=chopAnchor(N);
+  const grp=nextChokeGroup; nextChokeGroup = nextChokeGroup>=8 ? 2 : nextChokeGroup+1; // 全スライス同一チョーク＝モノ（前を切る）
+  for(let k=0;k<N;k++){
+    const idx=anchor+k, d=tracks[idx];
+    d.buffer=snap.buffer; d.rawBuffer=snap.rawBuffer;
+    d.tune=snap.tune; d.filter=snap.filter; d.cutoff=snap.cutoff; d.reso=snap.reso; d.vol=snap.vol;
+    d.loop=false; d.loopStart=0;
+    d.start=bounds[k]; d.end=Math.max(bounds[k]+0.0005, bounds[k+1]);
+    d.choke=grp; d.name=base+" "+(k+1);
+    PADS[idx].type=snap.type; PADS[idx].voice=snap.voice;
+    refreshPadDisplay(idx);
+  }
+  selectPad(anchor);
+  sampNameEl.textContent="CHOP → PAD "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0");
+  document.getElementById("chopModal").style.display="none";
+}
+(function(){
+  const modal=document.getElementById("chopModal");
+  const close=()=>{ modal.style.display="none"; };
+  document.getElementById("chopClose").addEventListener("click",close);
+  modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
+  window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
+  document.getElementById("chopMode").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    chopMode=b.dataset.mode; syncChopSeg("chopMode","mode",chopMode);
+    document.getElementById("chopTimeRow").style.display = chopMode==="time"?"":"none";
+    document.getElementById("chopAttRow").style.display  = chopMode==="attack"?"":"none";
+    computeChopBounds(); renderChopWave();
+  });
+  document.getElementById("chopDiv").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    chopDivN=+b.dataset.n; syncChopSeg("chopDiv","n",String(chopDivN)); computeChopBounds(); renderChopWave();
+  });
+  document.getElementById("chopSens").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    chopSens=b.dataset.s; syncChopSeg("chopSens","s",chopSens); computeChopBounds(); renderChopWave();
+  });
+  document.getElementById("chopAudition").addEventListener("click",async()=>{ if(AC.state!=="running")await AC.resume(); trigger(chopTarget); });
+  document.getElementById("chopApply").addEventListener("click",applyChop);
 })();
 
 // tempo / swing / vol
