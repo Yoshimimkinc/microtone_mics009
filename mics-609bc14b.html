@@ -2069,6 +2069,17 @@ function moveCursors(){
 let armMode = null;  // null | "mute" | "solo" | "chop" | "edit"（chop＝COPY統合：複製/スライス）
 let copySrc = null;  // CHOP中の元パッド（複製元／スライス元）
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
+let chopBase = null, chopNum = 0;  // CHOPPYスライスの連番命名（BASE 1/2/3/4…）
+// CHOPPYスライスの基準名（末尾の連番は剥がす＝再チョップでも増殖しない）
+function chopBaseName(i){ return (tracks[i].name||PADS[i].name||"").replace(/\s*\d+$/,"").trim()||"SLICE"; }
+// パッド名をトラック＋PADS/SEQ表示に反映
+function setPadName(i,nm){
+  tracks[i].name=nm;
+  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
+  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
+  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
+  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
+}
 function paintPadStates(){
   for(let i=0;i<PADS.length;i++){
     const el=padsEl.children[i];
@@ -2132,7 +2143,7 @@ function assignMS(i){
   else if(armMode==="solo"){ tracks[i].solo=!tracks[i].solo; }
   else if(armMode==="chop"){
     // COPYを統合：素材を見て自動で振り分け。長い素材＝アタックで切り分け、短いワンショット＝複製のみ。
-    if(copySrc===null){ copySrc=i; }       // 最初のタップ＝元
+    if(copySrc===null){ copySrc=i; chopBase=chopBaseName(i); chopNum=0; }  // 最初のタップ＝元
     else if(i!==copySrc){
       const s=tracks[copySrc];
       const region = s.buffer ? (s.end-s.start)*s.buffer.duration : 0;
@@ -2146,6 +2157,10 @@ function assignMS(i){
         // スライス同士は同時に鳴らない（同一チョークグループに自動割当）
         if(!s.choke || s.choke===1){ s.choke=nextChokeGroup; nextChokeGroup = nextChokeGroup>=8 ? 2 : nextChokeGroup+1; }
         tracks[i].choke = s.choke;
+        // 音色名に連番を付与：元が「BASE 1」、以降「BASE 2/3/4…」
+        if(chopNum===0){ setPadName(copySrc, chopBase+" 1"); chopNum=1; }
+        chopNum++;
+        setPadName(i, chopBase+" "+chopNum);
         copySrc=i;                             // 貼り先が次の元になる
       }
       // else＝複製のみ：チョーク自動割当なし／元のendも触らない／元は据え置き（同じネタを複数パッドへ）
@@ -2156,7 +2171,7 @@ function assignMS(i){
 }
 function arm(mode,on){
   armMode = on?mode:null;
-  if(!on||mode!=="chop") copySrc=null; // 解除で元（コピー/スライス元）リセット
+  if(!on||mode!=="chop"){ copySrc=null; chopBase=null; chopNum=0; } // 解除で元（コピー/スライス元）リセット
   document.getElementById("holdMute").classList.toggle("armed",armMode==="mute");
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdChop").classList.toggle("armed",armMode==="chop");
