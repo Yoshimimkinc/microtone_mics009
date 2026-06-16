@@ -3,3 +3,6 @@
 
 # ただしロール定義（6ロール・ユニット）はプロジェクトの一部として追跡する
 !.claude/agents/
+
+# Node deps (ephemeral test tooling like jsdom; not part of the app)
+node_modules/
