@@ -207,13 +207,7 @@
   .pads.cols8{grid-template-columns:repeat(8,1fr);max-width:none;}
   .pads.cols8 .pad{aspect-ratio:1.8;padding:7px 8px;}
   .pads.cols8 .pad .nm{font-size:11px;}
-  /* パッド行反転：1-8(ドラム)を下段、9-16(サンプル用)を上段 */
-  .pads.cols8 .pad:nth-child(-n+8){order:2;}
-  .pads.cols8 .pad:nth-child(n+9){order:1;}
-  .pads:not(.cols8) .pad:nth-child(-n+4){order:4;}
-  .pads:not(.cols8) .pad:nth-child(n+5):nth-child(-n+8){order:3;}
-  .pads:not(.cols8) .pad:nth-child(n+9):nth-child(-n+12){order:2;}
-  .pads:not(.cols8) .pad:nth-child(n+13){order:1;}
+  /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
   /* .active も必須にして、SEQ/MIX表示中にPADSが残らないようにする */
@@ -291,13 +285,7 @@
   .mix-section{margin-bottom:24px;}
   .mixer{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;}
   .mixer.mix4{grid-template-columns:repeat(4,minmax(0,1fr));}
-  /* MIXも行反転（PADSと一致） */
-  .mixer:not(.mix4) .ch:nth-child(-n+8){order:2;}
-  .mixer:not(.mix4) .ch:nth-child(n+9){order:1;}
-  .mixer.mix4 .ch:nth-child(-n+4){order:4;}
-  .mixer.mix4 .ch:nth-child(n+5):nth-child(-n+8){order:3;}
-  .mixer.mix4 .ch:nth-child(n+9):nth-child(-n+12){order:2;}
-  .mixer.mix4 .ch:nth-child(n+13){order:1;}
+  /* MIXも自然順（PADSと一致） */
   .ch{display:flex;flex-direction:column;align-items:center;gap:4px;
     background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:8px 2px 10px;}
   .ch .ch-name{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;
@@ -667,11 +655,7 @@
     .pad.hit,.pad.hit.hit-acc{box-shadow:none!important;}
     body.step-on .pad.stepon,body.step-on .pad.valbar{box-shadow:none!important;}
     body.step-on .pad.stepcur{box-shadow:none!important;}
-    /* MPC配列：ドラム(1-8)を下段、サンプル(9-16)を上段に（cols8/4×4どちらでも） */
-    .pads .pad:nth-child(-n+4){order:4!important;}
-    .pads .pad:nth-child(n+5):nth-child(-n+8){order:3!important;}
-    .pads .pad:nth-child(n+9):nth-child(-n+12){order:2!important;}
-    .pads .pad:nth-child(n+13){order:1!important;}
+    /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
     #layoutSeg{display:none!important;}
     /* === スマホ：3モードはタブを廃止し、スワイプ＋ドットで切替（スペース確保） === */
     .modebar-row .modebar{display:none;}
@@ -1112,6 +1096,15 @@ document.addEventListener("touchmove", e=>{ if(e.touches && e.touches.length>1) 
 const STEPS = 16;
 // --- pad definitions: 8 synth voices + 8 empty sample slots ---
 const PADS = [
+  // 上段(1-8)＝サンプル枠（空）／下段(9-16)＝デフォルトのドラム音。番号は左上から自然順。
+  {name:"PAD 1", type:"empty"},
+  {name:"PAD 2", type:"empty"},
+  {name:"PAD 3", type:"empty"},
+  {name:"PAD 4", type:"empty"},
+  {name:"PAD 5", type:"empty"},
+  {name:"PAD 6", type:"empty"},
+  {name:"PAD 7", type:"empty"},
+  {name:"PAD 8", type:"empty"},
   {name:"KICK", type:"synth", voice:"kick"},
   {name:"SNARE",type:"synth", voice:"snare"},
   {name:"HAT",  type:"synth", voice:"hat"},
@@ -1120,14 +1113,6 @@ const PADS = [
   {name:"RIM",  type:"synth", voice:"rim"},
   {name:"TOM",  type:"synth", voice:"tom"},
   {name:"SINBASS", type:"synth", voice:"sinbass"},
-  {name:"PAD 9", type:"empty"},
-  {name:"PAD 10",type:"empty"},
-  {name:"PAD 11",type:"empty"},
-  {name:"PAD 12",type:"empty"},
-  {name:"PAD 13",type:"empty"},
-  {name:"PAD 14",type:"empty"},
-  {name:"PAD 15",type:"empty"},
-  {name:"PAD 16",type:"empty"},
 ];
 const KEYMAP = ["1","2","3","4","5","6","7","8","q","w","e","r","t","y","u","i"];
 // Shift+キーは記号になるため、レイアウト非依存の e.code でも判定（ミュート用）
@@ -3024,6 +3009,16 @@ const DEFAULT_PROJECT = {
   version:2, bpm:100, swing:67,
   comp:{on:true, threshold:-12, drive:1.5}, masterVol:0,
   tracks:[
+    // 1-8＝サンプル枠（空）
+    {type:'empty', name:'PAD 1'},
+    {type:'empty', name:'PAD 2'},
+    {type:'empty', name:'PAD 3'},
+    {type:'empty', name:'PAD 4'},
+    {type:'empty', name:'PAD 5'},
+    {type:'empty', name:'PAD 6'},
+    {type:'empty', name:'PAD 7'},
+    {type:'empty', name:'PAD 8'},
+    // 9-16＝デフォルトのドラム音
     {type:'synth', voice:'kick',  name:'KICK',  patterns:[[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1]]},
     {type:'synth', voice:'snare', name:'SNARE', patterns:[[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0]]},
     {type:'synth', voice:'hat',   name:'HAT', choke:1, patterns:[[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0]]},

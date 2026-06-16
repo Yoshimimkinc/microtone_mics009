@@ -39,7 +39,7 @@ tapeHiss ───────────────────────�
 
 ### Key Design Rules
 - **"aki rule"**: Hide complex settings. Anyone should be able to enjoy sampling music without understanding filters or choke groups. Simple surface, depth underneath.
-- Pad layout: drums (1-8) on BOTTOM row, sample slots (9-16) on top (MPC convention + ergonomics)
+- Pad layout: natural numbering (top-left = pad 1). Sample slots (1-8) on top, default drums (9-16) on bottom. Numbering reads top→bottom; drums stay on the bottom rows for ergonomics. No CSS `order` reversal — DOM order = visual order.
 - MIX grid matches PADS grid layout (spatial memory consistency)
 - All mode buttons (MUTE/SOLO/COPY/CHOPPY/EDIT) use toggle pattern, not hold
 - Start point snaps to attack transients (onset detection)
