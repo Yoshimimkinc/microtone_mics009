@@ -999,8 +999,7 @@
       <div class="msbar">
         <button class="msbtn mute" id="holdMute"><span class="d"></span>MUTE</button>
         <button class="msbtn solo" id="holdSolo"><span class="d"></span>SOLO</button>
-        <button class="msbtn copy" id="holdCopy"><span class="d"></span>COPY</button>
-        <button class="msbtn chop" id="holdChop"><span class="d"></span>CHOPPY</button>
+        <button class="msbtn chop" id="holdChop"><span class="d"></span>CHOP</button>
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
         <div class="seg" id="layoutSeg" style="margin-left:auto;">
           <button data-c="8" class="on">8×2</button>
@@ -2067,8 +2066,8 @@ function moveCursors(){
 }
 
 // ---------- mute / solo ----------
-let armMode = null;  // null | "mute" | "solo" | "copy" | "chop"
-let copySrc = null;  // copy/chopモード中のコピー元パッド
+let armMode = null;  // null | "mute" | "solo" | "chop" | "edit"（chop＝COPY統合：複製/スライス）
+let copySrc = null;  // CHOP中の元パッド（複製元／スライス元）
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
 function paintPadStates(){
   for(let i=0;i<PADS.length;i++){
@@ -2131,38 +2130,35 @@ function findNextOnset(t){
 function assignMS(i){
   if(armMode==="mute"){ tracks[i].mute=!tracks[i].mute; }
   else if(armMode==="solo"){ tracks[i].solo=!tracks[i].solo; }
-  else if(armMode==="copy"){
-    if(copySrc===null){ copySrc=i; }       // 最初のタップ＝コピー元
-    else if(i!==copySrc){ copyPadSound(copySrc,i); flashPad(i); }
-  }
   else if(armMode==="chop"){
+    // COPYを統合：素材を見て自動で振り分け。長い素材＝アタックで切り分け、短いワンショット＝複製のみ。
     if(copySrc===null){ copySrc=i; }       // 最初のタップ＝元
     else if(i!==copySrc){
-      const next=findNextOnset(tracks[copySrc]);
+      const s=tracks[copySrc];
+      const region = s.buffer ? (s.end-s.start)*s.buffer.duration : 0;
+      // 短いネタ(<0.3s)はチョップしない。長い素材のみ次アタックを探す。
+      const next = region>=0.3 ? findNextOnset(s) : null;
       copyPadSound(copySrc,i);
       if(next!==null){
+        // === スライス（数珠つなぎ） ===
         tracks[i].start=Math.min(next, tracks[i].end-0.002);
-        // コピー元のendを次アタック直前で切る（スライス間の隙間も重なりもなし）
-        tracks[copySrc].end=Math.max(tracks[copySrc].start+0.002, next);
+        s.end=Math.max(s.start+0.002, next);   // 元のendを次アタック直前で切る（隙間も重なりもなし）
+        // スライス同士は同時に鳴らない（同一チョークグループに自動割当）
+        if(!s.choke || s.choke===1){ s.choke=nextChokeGroup; nextChokeGroup = nextChokeGroup>=8 ? 2 : nextChokeGroup+1; }
+        tracks[i].choke = s.choke;
+        copySrc=i;                             // 貼り先が次の元になる
       }
-      // チョッピーのスライス同士は同時に鳴らない（同一チョークグループに自動割当）
-      if(!tracks[copySrc].choke || tracks[copySrc].choke===1){ // 未設定 or HH群なら専用群を新規発行
-        tracks[copySrc].choke = nextChokeGroup;
-        nextChokeGroup = nextChokeGroup>=8 ? 2 : nextChokeGroup+1; // 2-8で循環
-      }
-      tracks[i].choke = tracks[copySrc].choke;
+      // else＝複製のみ：チョーク自動割当なし／元のendも触らない／元は据え置き（同じネタを複数パッドへ）
       flashPad(i);
-      copySrc=i;                            // 数珠つなぎ：貼り先が次の元になる
     }
   }
   paintPadStates();
 }
 function arm(mode,on){
   armMode = on?mode:null;
-  if(!on||(mode!=="copy"&&mode!=="chop")) copySrc=null; // 解除でコピー元リセット
+  if(!on||mode!=="chop") copySrc=null; // 解除で元（コピー/スライス元）リセット
   document.getElementById("holdMute").classList.toggle("armed",armMode==="mute");
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
-  document.getElementById("holdCopy").classList.toggle("armed",armMode==="copy");
   document.getElementById("holdChop").classList.toggle("armed",armMode==="chop");
   document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
   document.body.classList.toggle("edit-arm",armMode==="edit");
@@ -2178,7 +2174,6 @@ function bindHold(btnId,mode){
 }
 bindHold("holdMute","mute");
 bindHold("holdSolo","solo");
-bindHold("holdCopy","copy");
 bindHold("holdChop","chop");
 bindHold("holdEdit","edit");
 // （トグル式のため自動解除は行わない。ESCで全モード解除）
