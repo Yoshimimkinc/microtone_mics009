@@ -1919,7 +1919,9 @@ PADS.forEach((p,i)=>{
     }
     if(armMode==="edit"){                  // EDIT中：対象パッドの編集モーダルを開く
       if(AC.state!=="running")await AC.resume();
-      trigger(i); selectPad(i); openPadEdit(i); return;
+      trigger(i); selectPad(i); openPadEdit(i);
+      arm("edit", false);                  // ワンショット：開いた瞬間にEDITを解除（戻ると非選択状態＝誤爆防止）
+      return;
     }
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     if(AC.state!=="running")await AC.resume();
