@@ -714,7 +714,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.6</div>
+  <div class="s-ver" id="splashVer">v0.2.7</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3138,25 +3138,44 @@ const DEFAULT_PROJECT = {
     {type:'synth', voice:'sinbass', name:'SINBASS', scale:'chro', patterns:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
   ]
 };
-// 起動デモ用フレーズを合成（外部音源不要）。1小節=2.4s(100BPM)、素朴なリフ。
+// 起動デモ用フレーズを合成（外部音源不要）。ローファイ・ヒップホップなエレピ(Rhodes風FM)の4コード・ストローク。
+// 1小節=2.4s(100BPM)、各ビートにコード1発： Fmaj7 → Em7 → Dm7 → Cmaj7（下降の哀愁進行）。
 async function renderPhrase(){
   const sr=AC.sampleRate, beat=0.6, dur=beat*4;
   const off=new OfflineAudioContext(1, Math.ceil(sr*dur), sr);
-  const notes=[110.00, 146.83, 164.81, 130.81];   // A2 / D3 / E3 / C3 風
-  const out=off.createGain(); out.gain.value=0.9;
-  const lp=off.createBiquadFilter(); lp.type="lowpass"; lp.Q.value=7;
-  lp.frequency.setValueAtTime(700, 0); lp.frequency.linearRampToValueAtTime(2600, dur);  // ゆるいフィルタスイープ
-  out.connect(lp); lp.connect(off.destination);
-  notes.forEach((f,i)=>{
-    const t0=i*beat;
-    [0,1].forEach(vi=>{                              // 基音(saw)＋オクターブ上(square)を薄く重ねる
-      const o=off.createOscillator(); o.type=vi?"square":"sawtooth"; o.frequency.value=f*(vi?2:1);
-      const g=off.createGain(); const amp=vi?0.18:0.5;
-      g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(amp,t0+0.008);
-      g.gain.exponentialRampToValueAtTime(0.008, t0+beat*0.92);
-      o.connect(g); g.connect(out); o.start(t0); o.stop(t0+beat);
-    });
-  });
+  const out=off.createGain(); out.gain.value=0.8;
+  const warm=off.createBiquadFilter(); warm.type="lowpass"; warm.frequency.value=3200; warm.Q.value=0.5;  // 角を丸める＝ローファイの温かみ
+  out.connect(warm); warm.connect(off.destination);
+  // ビニール・クラックル（埃っぽさをネタ自体に焼き込む＝レコードから抜いたサンプル感）
+  const nlen=Math.ceil(sr*dur), nb=off.createBuffer(1,nlen,sr), ndat=nb.getChannelData(0);
+  for(let n=0;n<nlen;n++){ ndat[n]=(Math.random()*2-1)*0.012; if(Math.random()<0.0006) ndat[n]+=(Math.random()*2-1)*0.5; }  // 微小ヒス＋たまにパチッ
+  const nsrc=off.createBufferSource(); nsrc.buffer=nb;
+  const nhp=off.createBiquadFilter(); nhp.type="highpass"; nhp.frequency.value=1200;
+  const ng=off.createGain(); ng.gain.value=0.6;
+  nsrc.connect(nhp); nhp.connect(ng); ng.connect(warm); nsrc.start(0);
+  // Rhodes風エレピ1音：FM（modが減衰して「コンッ」というtine感）＋速い減衰のアンプ
+  function ep(freq, t0, amp){
+    const car=off.createOscillator(); car.type="sine"; car.frequency.value=freq;
+    const mod=off.createOscillator(); mod.type="sine"; mod.frequency.value=freq;     // 1:1 FM
+    const md=off.createGain();
+    md.gain.setValueAtTime(freq*2.4, t0);                       // アタックで倍音(tine bark)
+    md.gain.exponentialRampToValueAtTime(freq*0.18, t0+0.16);   // 速く減衰して丸い持続音へ
+    mod.connect(md); md.connect(car.frequency);
+    const g=off.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(amp, t0+0.006);              // 速いアタック
+    g.gain.exponentialRampToValueAtTime(amp*0.22, t0+0.42);     // ストローク的な減衰
+    g.gain.exponentialRampToValueAtTime(0.0006, t0+beat*0.98);  // ビート内で消える＝スライス端がクリーン
+    car.connect(g); g.connect(out);
+    mod.start(t0); mod.stop(t0+beat); car.start(t0); car.stop(t0+beat);
+  }
+  const chords=[
+    [174.61,220.00,261.63,329.63],  // Fmaj7  (F A C E)
+    [164.81,196.00,246.94,293.66],  // Em7    (E G B D)
+    [146.83,174.61,220.00,261.63],  // Dm7    (D F A C)
+    [130.81,164.81,196.00,246.94],  // Cmaj7  (C E G B)
+  ];
+  chords.forEach((ch,i)=>{ const t0=i*beat; ch.forEach((f,vi)=>ep(f, t0, vi===0?0.20:0.15)); });  // ルートを少し前に
   return await off.startRendering();
 }
 // pad1-4にフレーズを4等分スライスで焼き込む（バッファ共有・モノチョーク＝スライスプレーヤー）
@@ -3805,7 +3824,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.6";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.7";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
