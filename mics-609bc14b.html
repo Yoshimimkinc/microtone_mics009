@@ -140,7 +140,7 @@
   /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
   /* ビュー切替ドット（既定=PCでは非表示。スマホのmedia queryで表示） */
   /* 画面モード：●PADS 〇SEQ 〇MIX を画面幅いっぱいに均等表示してスワイプを促す */
-  .viewdots{display:none;align-items:stretch;gap:0;}
+  .viewdots{display:none;align-items:stretch;gap:0;width:100%;}
   .viewdots .vdot{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:7px;
     background:none;border:none;padding:8px 4px;cursor:pointer;
     font-size:11px;letter-spacing:.12em;font-weight:700;color:var(--dim);transition:color .15s;}
@@ -476,37 +476,47 @@
   .pad.sel>.pad-wave{opacity:.85;}
   /* 編集モーダル */
   .modal.pe{width:min(440px,94vw);}
-  .pe-wave{position:relative;background:#0c0f12;border:1px solid var(--line);border-radius:8px;
-    height:128px;overflow:hidden;margin-bottom:12px;}
+  /* 波形＝発光するLCD窓（沈ませて窓だけが点いて見える。外向きグローは使わずinsetで軽量） */
+  .pe-wave{position:relative;background:#0a0d10;border:1px solid var(--edge);border-radius:8px;
+    height:128px;overflow:hidden;margin-bottom:0;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.65),inset 0 0 0 1px rgba(61,214,196,.05);}
   .pe-wave canvas{display:block;width:100%;height:100%;}
   .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;}
+  .pe-wave .handle::before{content:"";position:absolute;top:0;bottom:0;left:-9px;right:-9px;}  /* 見た目2pxのままタッチ判定だけ拡張 */
   .pe-wave .handle.start{background:var(--teal);}
   .pe-wave .handle.end{background:var(--red);}
-  .pe-wave .handle.loop{background:#ffd24d;}
-  .pe-wave .handle .cap{position:absolute;top:2px;font-size:8px;letter-spacing:.1em;padding:1px 3px;border-radius:2px;white-space:nowrap;}
-  .pe-wave .handle.start .cap{left:3px;background:var(--teal);color:#06201d;}
-  .pe-wave .handle.end .cap{right:3px;background:var(--red);color:#2a0808;}
-  .pe-wave .handle.loop .cap{left:3px;background:#ffd24d;color:#3a2c00;}
+  .pe-wave .handle.loop{background:var(--amber);}
+  /* キャップ＝窓に貼ったラベルテープ（彩度を一段落とし、薄影で浮かせる） */
+  .pe-wave .handle .cap{position:absolute;top:2px;font-size:8px;letter-spacing:.1em;padding:1px 3px;border-radius:2px;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.5);}
+  .pe-wave .handle.start .cap{left:3px;background:rgba(61,214,196,.9);color:#06201d;}
+  .pe-wave .handle.end .cap{right:3px;background:rgba(255,77,77,.9);color:#2a0808;}
+  .pe-wave .handle.loop .cap{left:3px;background:rgba(255,184,77,.92);color:#3a2c00;}
   .pe-wave .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);}
+  /* 面割り：窓 / 基本 / 詳細 を罫線で分ける */
+  .pe-basic{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;}
   .pe-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
   .pe-row .knob{flex:1 1 84px;}
+  .pe-row .toggle{align-self:flex-end;}   /* トグルとノブのベースライン統一 */
+  .pe-hint{font-size:9px;color:var(--dim);letter-spacing:.04em;text-transform:none;margin-left:7px;}
   /* 機材然とした抑制トーン：ベタ塗りの巨大ボタンは廃止。ダーク＋細枠＋控えめアクセント */
-  .pe-transport{display:flex;gap:8px;margin:10px 0 12px;}
-  .pe-transport button{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:8px;
-    padding:10px 12px;font:inherit;font-size:11px;letter-spacing:.1em;
+  .pe-transport{display:flex;gap:8px;margin:10px 0 0;}
+  .pe-transport button{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;
+    padding:10px 12px;font:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
     background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;cursor:pointer;transition:.12s;}
   .pe-play .tri{width:0;height:0;border-style:solid;border-width:5px 0 5px 8px;
     border-color:transparent transparent transparent var(--teal);}
   .pe-play:hover{border-color:var(--teal);color:var(--teal);}
   .pe-play:active{background:rgba(61,214,196,.12);}
   .pe-trim:hover{border-color:var(--amber);color:var(--amber);}
-  .pe-adv-toggle{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;
-    margin-top:4px;padding:9px 12px;font:inherit;font-size:11px;color:var(--dim);letter-spacing:.14em;
+  .pe-adv-toggle{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:44px;
+    margin-top:12px;padding:9px 12px;font:inherit;font-size:11px;color:var(--dim);letter-spacing:.16em;text-transform:uppercase;
     background:var(--panel2);border:1px solid var(--line);border-radius:7px;cursor:pointer;transition:.12s;
     box-sizing:border-box;}
   .pe-adv-toggle:hover{border-color:var(--edge);color:var(--ink);}
   .pe-adv{display:none;margin-top:12px;}
   .pe-adv.show{display:block;}
+  .pe-adv.show .modal-label:first-child{margin-top:0;}
+  @media(max-width:380px){ .pe-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;} }
   /* sample editor */
   .ed-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
   .ed-head .who{font-size:15px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;}
@@ -816,10 +826,10 @@
           <div class="handle end" id="peEnd"><span class="cap">END</span></div>
         </div>
         <div class="pe-transport">
-          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>試聴</button>
-          <button class="pe-trim" id="peTrunc">✂ トリム</button>
+          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PLAY</button>
+          <button class="pe-trim" id="peTrunc">✂ TRIM</button>
         </div>
-        <div class="pe-row">
+        <div class="pe-row pe-basic">
           <label class="toggle" id="peLoopToggle"><span class="sw"></span><span>Loop</span></label>
           <div class="knob mini"><label>Pitch <span class="v" id="pePitch">0</span></label>
             <input type="range" min="-12" max="12" step="1" value="0"></div>
@@ -833,7 +843,7 @@
         </div>
         <span class="pe-adv-toggle" id="peAdvToggle">ADV ▾</span>
         <div class="pe-adv" id="peAdv">
-          <div class="modal-label" style="margin-top:10px;">フィルター</div>
+          <div class="modal-label" style="margin-top:14px;">FILTER</div>
           <div class="pe-row">
             <div class="seg" id="peFilt">
               <button class="on">OFF</button><button>LP</button><button>HP</button>
@@ -843,16 +853,16 @@
             <div class="knob mini"><label>Reso <span class="v" id="peRes">0.7</span></label>
               <input type="range" min="0.1" max="14" step="0.1" value="0.7"></div>
           </div>
-          <div class="modal-label" style="margin-top:14px;">同時に鳴らさない（チョーク）</div>
+          <div class="modal-label" style="margin-top:14px;">CHOKE <span class="pe-hint">同時に鳴らさない</span></div>
           <div class="pe-row">
-            <label class="toggle" id="peChokeToggle"><span class="sw"></span><span>同時に鳴らさない</span></label>
-            <div class="knob mini"><label>グループ</label>
+            <label class="toggle" id="peChokeToggle"><span class="sw"></span><span>ON</span></label>
+            <div class="knob mini"><label>Group</label>
               <select class="t" id="peChokeSel" style="padding:5px 7px;">
                 <option value="0">OFF</option><option>1</option><option>2</option><option>3</option>
                 <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
               </select></div>
           </div>
-          <div class="modal-label" style="margin-top:14px;">アタック / フェード</div>
+          <div class="modal-label" style="margin-top:14px;">ATTACK · FADE</div>
           <div class="pe-row">
             <div class="knob mini"><label>Attack <span class="v" id="peAtt">0 ms</span></label>
               <input type="range" min="0" max="200" step="1" value="0"></div>
@@ -2648,7 +2658,7 @@ function renderPeWave(i){
 function openPadEdit(i){
   peTarget=i;
   const t=tracks[i];
-  document.getElementById("peTitle").textContent=String(i+1).padStart(2,"0")+" "+(PADS[i].type==="sample"?t.name:PADS[i].name);
+  document.getElementById("peTitle").textContent="PAD "+String(i+1).padStart(2,"0")+" · "+(PADS[i].type==="sample"?t.name:PADS[i].name);
   document.getElementById("pePitch").textContent=t.tune+" st";
   document.getElementById("peLevel").textContent=t.vol+" dB";
   document.getElementById("peCut").textContent=(t.cutoff/1000).toFixed(1)+"k";
@@ -2660,6 +2670,7 @@ function openPadEdit(i){
   document.getElementById("peChokeToggle").classList.toggle("on",ck>0);
   document.getElementById("peChokeSel").value=ck;
   document.getElementById("peAdv").classList.remove("show");
+  document.getElementById("peAdvToggle").textContent="ADV ▾";
   const modal=document.getElementById("padEditModal");
   modal.style.display="flex";
   requestAnimationFrame(()=>renderPeWave(i));   // 表示後に正しい幅で描画
@@ -2672,8 +2683,9 @@ function openPadEdit(i){
   document.getElementById("peAudition").addEventListener("click",async()=>{
     if(AC.state!=="running")await AC.resume(); trigger(peTarget);
   });
-  document.getElementById("peAdvToggle").addEventListener("click",()=>{
-    document.getElementById("peAdv").classList.toggle("show");
+  document.getElementById("peAdvToggle").addEventListener("click",(e)=>{
+    const open=document.getElementById("peAdv").classList.toggle("show");
+    e.currentTarget.textContent = open ? "ADV ▴" : "ADV ▾";
   });
   // トランケート（モック）：選択範囲＝サンプル全体になった見た目に。実バッファ切り詰めは次段階。
   document.getElementById("peTrunc").addEventListener("click",()=>{
