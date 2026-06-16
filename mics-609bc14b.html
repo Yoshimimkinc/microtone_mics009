@@ -485,8 +485,8 @@
     height:128px;overflow:hidden;margin-bottom:0;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.65),inset 0 0 0 1px rgba(61,214,196,.05);}
   .pe-wave canvas{display:block;width:100%;height:100%;}
-  .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;}
-  .pe-wave .handle::before{content:"";position:absolute;top:0;bottom:0;left:-9px;right:-9px;}  /* 見た目2pxのままタッチ判定だけ拡張 */
+  .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;touch-action:none;cursor:ew-resize;z-index:2;}
+  .pe-wave .handle::before{content:"";position:absolute;top:0;bottom:0;left:-11px;right:-11px;}  /* 見た目2pxのままタッチ判定だけ拡張 */
   .pe-wave .handle.start{background:var(--teal);}
   .pe-wave .handle.end{background:var(--red);}
   .pe-wave .handle.loop{background:var(--amber);}
@@ -495,7 +495,7 @@
   .pe-wave .handle.start .cap{left:3px;background:rgba(61,214,196,.9);color:#06201d;}
   .pe-wave .handle.end .cap{right:3px;background:rgba(255,77,77,.9);color:#2a0808;}
   .pe-wave .handle.loop .cap{left:3px;background:rgba(255,184,77,.92);color:#3a2c00;}
-  .pe-wave .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);}
+  .pe-wave .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);pointer-events:none;z-index:1;}
   /* 面割り：窓 / 基本 / 詳細 を罫線で分ける */
   .pe-basic{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;}
   .pe-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
@@ -2731,7 +2731,7 @@ function openPadEdit(i){
 }
 (function(){
   const modal=document.getElementById("padEditModal");
-  const close=()=>{ modal.style.display="none"; };
+  const close=()=>{ modal.style.display="none"; if(typeof drawPadWave==="function") drawPadWave(peTarget); };
   document.getElementById("peClose").addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
   document.getElementById("peAudition").addEventListener("click",async()=>{
@@ -2741,13 +2741,30 @@ function openPadEdit(i){
     const open=document.getElementById("peAdv").classList.toggle("show");
     e.currentTarget.textContent = open ? "ADV ▴" : "ADV ▾";
   });
-  // トランケート（モック）：選択範囲＝サンプル全体になった見た目に。実バッファ切り詰めは次段階。
+  // START/END/LOOPハンドルのドラッグ＝波形上で選択範囲を編集→tracksに反映、即再描画＆音に反映
+  const peWaveWrap=()=>document.getElementById("peWave").parentElement;
+  function bindPeHandle(id,kind){
+    const el=document.getElementById(id); let dragging=false;
+    const apply=(clientX)=>{
+      const r=peWaveWrap().getBoundingClientRect();
+      let n=(clientX-r.left)/r.width; n=Math.max(0,Math.min(1,n));
+      const t=tracks[peTarget];
+      if(kind==="start")      t.start=Math.min(n,(t.end??1)-0.002);
+      else if(kind==="end")   t.end=Math.max(n,(t.start||0)+0.002);
+      else                    t.loopStart=Math.max(0,Math.min(n,(t.end??1)));
+      renderPeWave(peTarget);
+    };
+    el.addEventListener("pointerdown",e=>{ e.preventDefault(); e.stopPropagation(); dragging=true; pushUndo(); try{el.setPointerCapture(e.pointerId);}catch(_){} apply(e.clientX); });
+    el.addEventListener("pointermove",e=>{ if(dragging) apply(e.clientX); });
+    const up=()=>{ dragging=false; };
+    el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+  }
+  bindPeHandle("peStart","start"); bindPeHandle("peEnd","end"); bindPeHandle("peLoop","loop");
+  // TRIM：選択範囲を全体にリセット（start=0/end=1）→tracksに反映して再描画
   document.getElementById("peTrunc").addEventListener("click",()=>{
-    const W=document.getElementById("peWave").parentElement.clientWidth;
-    document.getElementById("peStart").style.left="0px";
-    document.getElementById("peEnd").style.left=W+"px";
-    document.getElementById("peShadeL").style.width="0px";
-    document.getElementById("peShadeR").style.width="0px";
+    pushUndo();
+    const t=tracks[peTarget]; t.start=0; t.end=1;
+    renderPeWave(peTarget);
   });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
 })();
