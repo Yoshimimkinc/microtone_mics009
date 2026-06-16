@@ -103,3 +103,31 @@
 5. 本Specを CLAUDE.md から参照（single source of truth）。
 
 > 変更は1項目ずつ。各修正後に headless 検証→`+0.0.1`→main。仕様変更があれば**まずこのSpecを更新**してから実装する（spec-first）。
+
+---
+
+## 8. 【決定 2026-06】MIX画面を廃止（To-Be）
+**背景**：MIXの大半は per-pad パラメータの重複（16chフェーダー=EDIT Level/P-LOCK、ch毎M/S=PADSのMUTE/SOLO、Master/COMP=メニュー）。
+同じ状態を複数UIから触る＝二重管理＝同期バグの温床（DRY違反）。固有価値は **Group音量** と **グローバルFX** のみ。
+→ プロデューサー判断：**A. MIX画面を廃止**。これにより I1/I5（MIX⇔PADS不整合）も消滅する。
+
+### To-Be 構成（3画面→2画面）
+- **画面は PADS / SEQ の2つ**（MIXタブ・ドット・スワイプ対象から除外）。
+- **per-pad ミックス**：音量＝EDITのLevel＋P-LOCK level。ミュート/ソロ＝PADSの **MUTE/SOLO モード**（モバイルでも復活）。
+- **Group音量（4）** と **FX（delay/reverb 量・ON/OFF）** と **Master音量** は **メニュー（⋮）内**へ移設（Master/Comp/Sound A/B と同居）。
+- **撤去**：16chフェーダー＋ch毎VU＋`syncMixLayout`/`mix4`、`#viewMix`、MIXモードボタン/ドット。
+- **音声配線は不変**：`groupBus`/`GROUP_OF`/FXノード/masterGain はそのまま。**UIだけ移設**。
+
+### 影響（R: 不変条件への影響）
+- R1（MIX=PADS列）：MIX消滅で**論点ごと消える**。
+- M/S の行き場：モバイルで隠していた MUTE/SOLO を PADS に**戻す**（必須）。
+- VU：チャンネルVUは廃止。マスターVUはメニュー内に残す（任意）。
+
+### 実装順（1項目ずつ・各回 headless 検証）
+1. Group/FX/Master の各ブロックを `#viewMix`/ヘッダから **メニューへ物理移動**（`makeMixPad` は id 参照なので流用可）。
+2. 16chミキサー（`#mixer` 構築ループ・`chEls`・チャンネルVU・`paintMixer`のch部・`chToggle`）を撤去。
+3. ナビからMIX除外（`modeMix`・viewdots・swipe `order`・`switchView`の`viewMix`分岐・`mix-on`）。
+4. `#viewMix` 空コンテナ削除、`syncMixLayout`/`mix4` 撤去。
+5. モバイルの `#holdMute,#holdSolo{display:none}` を解除＝PADSでM/S復活。
+6. 検証→`+0.0.1`→main。
+
