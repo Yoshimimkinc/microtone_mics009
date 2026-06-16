@@ -732,7 +732,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.0</div>
+  <div class="s-ver" id="splashVer">v0.2.1</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3807,7 +3807,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.2.1";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
@@ -3817,11 +3817,14 @@ const APP_VERSION = "0.2.0";
     const base=location.href.split('#')[0].split('?')[0];
     location.replace(base+'?v='+Date.now());
   });
-  // 同じ場所のversion.jsonを取得して比較（ローカルfile://やオフライン時は黙って無視）。新版なら強調表示
+  // semver比較（a>b か）。"0.2.10">"0.2.9" を正しく判定
+  const verGt=(a,b)=>{ const pa=String(a).split('.').map(n=>parseInt(n,10)||0), pb=String(b).split('.').map(n=>parseInt(n,10)||0);
+    for(let i=0;i<3;i++){ const x=pa[i]||0,y=pb[i]||0; if(x!==y) return x>y; } return false; };
+  // 同じ場所のversion.jsonを取得して比較（file://やオフラインは黙って無視）。サーバ側が"本当に新しい"時だけ強調
   fetch("version.json?ts="+Date.now(),{cache:"no-store"})
     .then(r=>r.ok?r.json():null)
     .then(d=>{
-      if(d && d.version && d.version!==APP_VERSION && upEl){
+      if(d && d.version && verGt(d.version, APP_VERSION) && upEl){
         upEl.textContent="● 新バージョン v"+d.version+" — 更新";
         upEl.classList.add("s-update-new");
       }

@@ -82,4 +82,10 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
 
 ## Version
-MICS009 beta v0.2.0
+MICS009 beta v0.2.1
+
+**Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
+- `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
+- `version.json` `"version"` (must equal APP_VERSION)
+
+The splash shows `v<APP_VERSION>` and an update button. On boot it fetches `version.json`; if its version is strictly newer (semver) than the loaded build, the button highlights "新バージョン … 更新" (tap = cache-busting reload). Keeping the two equal per commit means a stale cached client correctly detects the newer deploy.
