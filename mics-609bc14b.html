@@ -470,7 +470,7 @@
   .modal.pe{width:min(440px,94vw);}
   /* 波形＝発光するLCD窓（沈ませて窓だけが点いて見える。外向きグローは使わずinsetで軽量） */
   .pe-wave{position:relative;background:#0a0d10;border:1px solid var(--edge);border-radius:8px;
-    height:128px;overflow:hidden;margin-bottom:0;
+    height:128px;overflow:hidden;margin-bottom:0;touch-action:none;cursor:ew-resize;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.65),inset 0 0 0 1px rgba(61,214,196,.05);}
   .pe-wave canvas{display:block;width:100%;height:100%;}
   .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;touch-action:none;cursor:ew-resize;z-index:2;}
@@ -810,7 +810,7 @@
           <div class="shade" id="peShadeL"></div>
           <div class="shade" id="peShadeR"></div>
           <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
-          <div class="handle start" id="peStart"><span class="cap">START</span></div>
+          <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
           <div class="handle end" id="peEnd"><span class="cap">END</span></div>
         </div>
         <div class="pe-transport">
@@ -820,14 +820,14 @@
         <div class="pe-row pe-basic">
           <label class="toggle" id="peLoopToggle"><span class="sw"></span><span>Loop</span></label>
           <div class="knob mini"><label>Pitch <span class="v" id="pePitch">0</span></label>
-            <input type="range" min="-12" max="12" step="1" value="0"></div>
+            <input type="range" id="pePitchR" min="-12" max="12" step="1" value="0"></div>
           <div class="knob mini"><label>Scale</label>
             <select class="t" id="peScale" style="padding:5px 7px;">
               <option value="off">OFF</option><option value="chro">CHRO</option>
               <option value="maj">MAJ</option><option value="min">MIN</option><option value="pent">PENT</option>
             </select></div>
           <div class="knob mini"><label>Level <span class="v" id="peLevel">-4</span></label>
-            <input type="range" min="-30" max="6" step="1" value="-4"></div>
+            <input type="range" id="peLevelR" min="-30" max="6" step="1" value="-4"></div>
         </div>
         <span class="pe-adv-toggle" id="peAdvToggle">ADV ▾</span>
         <div class="pe-adv" id="peAdv">
@@ -837,9 +837,9 @@
               <button class="on">OFF</button><button>LP</button><button>HP</button>
             </div>
             <div class="knob mini"><label>Cutoff <span class="v" id="peCut">12.0k</span></label>
-              <input type="range" min="200" max="18000" step="50" value="12000"></div>
+              <input type="range" id="peCutR" min="200" max="18000" step="50" value="12000"></div>
             <div class="knob mini"><label>Reso <span class="v" id="peRes">0.7</span></label>
-              <input type="range" min="0.1" max="14" step="0.1" value="0.7"></div>
+              <input type="range" id="peResR" min="0.1" max="14" step="0.1" value="0.7"></div>
           </div>
           <div class="modal-label" style="margin-top:14px;">CHOKE <span class="pe-hint">同時に鳴らさない</span></div>
           <div class="pe-row">
@@ -853,9 +853,9 @@
           <div class="modal-label" style="margin-top:14px;">ATTACK · FADE</div>
           <div class="pe-row">
             <div class="knob mini"><label>Attack <span class="v" id="peAtt">0 ms</span></label>
-              <input type="range" min="0" max="200" step="1" value="0"></div>
+              <input type="range" id="peAttR" min="0" max="200" step="1" value="0"></div>
             <div class="knob mini"><label>Fade <span class="v" id="peFade">3 ms</span></label>
-              <input type="range" min="0" max="500" step="1" value="3"></div>
+              <input type="range" id="peFadeR" min="0" max="500" step="1" value="3"></div>
           </div>
         </div>
       </div>
@@ -1518,7 +1518,7 @@ function snapshotState(){
     fxReverbOn:(typeof fxReverbOn!=="undefined"?fxReverbOn:true),
     tracks: tracks.map((t,i)=>({
       vol:t.vol,tune:t.tune,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,
-      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,
+      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,
       mute:t.mute,solo:t.solo,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
@@ -1536,7 +1536,7 @@ function restoreState(s){
   tracks.forEach((t,i)=>{
     const x=s.tracks[i];
     t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
-    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;
+    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;
     t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
     PADS[i].type=x.type;PADS[i].voice=x.voice;
     t.patterns=x.patterns;
@@ -1737,8 +1737,9 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   if(plock && plock.delay>0){ dSend=AC.createGain(); dSend.gain.value=plock.delay; env.connect(dSend); dSend.connect(tapeEcho); }
   if(plock && plock.reverb>0){ rSend=AC.createGain(); rSend.gain.value=plock.reverb; env.connect(rSend); rSend.connect(reverbPre); }
 
-  // プツ音回避：頭3ms フェードイン、ワンショット終端3ms フェードアウト
-  const FADE = 0.003;
+  // 頭=アタック(フェードイン)、終端=フェード(フェードアウト)。未設定はプツ音回避の既定値。
+  const ATT  = Math.max(0.001, (t.attack||0)/1000);
+  const FADE = Math.max(0.001, (t.fade??3)/1000);
 
   let oneShotLen = 0;   // 一発ものの再生長（ウォッチドッグ用。ループは0）
   if(t.loop){
@@ -1747,14 +1748,14 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
     src.loopStart = lsN*dur;
     src.loopEnd = endSec;
     env.gain.setValueAtTime(0, when);
-    env.gain.linearRampToValueAtTime(peak, when+FADE);
+    env.gain.linearRampToValueAtTime(peak, when+ATT);
     try{ src.start(when, startSec); }catch(e){ try{src.start(when);}catch(_){} }
     // ループは終端で切らない（ループ点はゼロ交差でなくてもプツは出にくい）。停止時にstopVoicesがフェードアウト
   } else {
     const len = Math.max(0.005, (endSec-startSec)/src.playbackRate.value);
     oneShotLen = len;
     env.gain.setValueAtTime(0, when);
-    env.gain.linearRampToValueAtTime(peak, when+Math.min(FADE,len*0.4));
+    env.gain.linearRampToValueAtTime(peak, when+Math.min(ATT,len*0.4));
     // 終端フェードアウト
     const fadeOutStart = when + Math.max(0, len-FADE);
     env.gain.setValueAtTime(peak, fadeOutStart);
@@ -2144,7 +2145,7 @@ function copyPadSound(src,dst){
   d.tune=s.tune; d.start=s.start; d.end=s.end;
   d.loop=s.loop; d.loopStart=s.loopStart;
   d.filter=s.filter; d.cutoff=s.cutoff; d.reso=s.reso;
-  d.vol=s.vol; d.choke=s.choke;
+  d.vol=s.vol; d.choke=s.choke; d.scale=s.scale; d.attack=s.attack; d.fade=s.fade;
   d.name=s.name;
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
@@ -2168,7 +2169,7 @@ function swapPads(a,b){
   if(a===b) return;
   pushUndo();
   const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name"]){
+  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade"]){
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   let t=PADS[a].type;  PADS[a].type=PADS[b].type;   PADS[b].type=t;
@@ -2698,10 +2699,13 @@ function openPadEdit(i){
   peTarget=i;
   const t=tracks[i];
   document.getElementById("peTitle").textContent="PAD "+String(i+1).padStart(2,"0")+" · "+(PADS[i].type==="sample"?t.name:PADS[i].name);
-  document.getElementById("pePitch").textContent=t.tune+" st";
-  document.getElementById("peLevel").textContent=t.vol+" dB";
-  document.getElementById("peCut").textContent=(t.cutoff/1000).toFixed(1)+"k";
-  document.getElementById("peRes").textContent=t.reso.toFixed(1);
+  const att=t.attack||0, fade=t.fade??3;
+  document.getElementById("pePitchR").value=t.tune; document.getElementById("pePitch").textContent=t.tune+" st";
+  document.getElementById("peLevelR").value=t.vol;  document.getElementById("peLevel").textContent=t.vol+" dB";
+  document.getElementById("peCutR").value=t.cutoff; document.getElementById("peCut").textContent=(t.cutoff/1000).toFixed(1)+"k";
+  document.getElementById("peResR").value=t.reso;   document.getElementById("peRes").textContent=t.reso.toFixed(1);
+  document.getElementById("peAttR").value=att;      document.getElementById("peAtt").textContent=att+" ms";
+  document.getElementById("peFadeR").value=fade;    document.getElementById("peFade").textContent=fade+" ms";
   document.getElementById("peScale").value=t.scale||"off";
   document.getElementById("peLoopToggle").classList.toggle("on",t.loop);
   [...document.getElementById("peFilt").children].forEach((b,bi)=>b.classList.toggle("on",["off","lp","hp"][bi]===t.filter));
@@ -2726,30 +2730,77 @@ function openPadEdit(i){
     const open=document.getElementById("peAdv").classList.toggle("show");
     e.currentTarget.textContent = open ? "ADV ▴" : "ADV ▾";
   });
-  // START/END/LOOPハンドルのドラッグ＝波形上で選択範囲を編集→tracksに反映、即再描画＆音に反映
-  const peWaveWrap=()=>document.getElementById("peWave").parentElement;
-  function bindPeHandle(id,kind){
-    const el=document.getElementById(id); let dragging=false;
-    const apply=(clientX)=>{
-      const r=peWaveWrap().getBoundingClientRect();
-      let n=(clientX-r.left)/r.width; n=Math.max(0,Math.min(1,n));
-      const t=tracks[peTarget];
-      if(kind==="start")      t.start=Math.min(n,(t.end??1)-0.002);
-      else if(kind==="end")   t.end=Math.max(n,(t.start||0)+0.002);
-      else                    t.loopStart=Math.max(0,Math.min(n,(t.end??1)));
-      renderPeWave(peTarget);
-    };
-    el.addEventListener("pointerdown",e=>{ e.preventDefault(); e.stopPropagation(); dragging=true; pushUndo(); try{el.setPointerCapture(e.pointerId);}catch(_){} apply(e.clientX); });
-    el.addEventListener("pointermove",e=>{ if(dragging) apply(e.clientX); });
-    const up=()=>{ dragging=false; };
-    el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
-  }
-  bindPeHandle("peStart","start"); bindPeHandle("peEnd","end"); bindPeHandle("peLoop","loop");
+  // 波形ストリップ全体をドラッグ対象に＝細いハンドルを狙わなくても、近い方のSTRT/END/LOOPが動く（掴みやすさ優先）
+  const peWaveEl=document.getElementById("peWave").parentElement;
+  let dragKind=null;
+  const peNorm=(clientX)=>{ const r=peWaveEl.getBoundingClientRect(); return Math.max(0,Math.min(1,(clientX-r.left)/r.width)); };
+  const pickHandle=(n)=>{
+    const t=tracks[peTarget];
+    const cands=[["start",t.start||0],["end",t.end??1]];
+    if(t.loop) cands.push(["loop",t.loopStart||0]);
+    let best="start", bd=Infinity;
+    for(const [k,v] of cands){ const d=Math.abs(v-n); if(d<bd){ bd=d; best=k; } }
+    return best;
+  };
+  const peApply=(n)=>{
+    const t=tracks[peTarget];
+    if(dragKind==="start")    t.start=Math.min(n,(t.end??1)-0.002);
+    else if(dragKind==="end") t.end=Math.max(n,(t.start||0)+0.002);
+    else                      t.loopStart=Math.max(0,Math.min(n,(t.end??1)));
+    renderPeWave(peTarget);
+  };
+  peWaveEl.addEventListener("pointerdown",e=>{
+    if(!tracks[peTarget]||!tracks[peTarget].buffer) return;   // 空パッドは無視
+    e.preventDefault();
+    const n=peNorm(e.clientX); dragKind=pickHandle(n); pushUndo();
+    try{ peWaveEl.setPointerCapture(e.pointerId); }catch(_){}
+    peApply(n);
+  });
+  peWaveEl.addEventListener("pointermove",e=>{ if(dragKind) peApply(peNorm(e.clientX)); });
+  const peUp=()=>{ dragKind=null; };
+  peWaveEl.addEventListener("pointerup",peUp); peWaveEl.addEventListener("pointercancel",peUp);
   // TRIM：選択範囲を全体にリセット（start=0/end=1）→tracksに反映して再描画
   document.getElementById("peTrunc").addEventListener("click",()=>{
     pushUndo();
     const t=tracks[peTarget]; t.start=0; t.end=1;
     renderPeWave(peTarget);
+  });
+  // ===== ノブ/トグル類を実機配線（tracks[peTarget]に書き戻す） =====
+  function bindPeKnob(id,valId,fmt,set){
+    const k=document.getElementById(id), v=document.getElementById(valId);
+    k.addEventListener("pointerdown",()=>pushUndo());
+    k.addEventListener("keydown",e=>{ if(/Arrow|Page|Home|End/.test(e.key)) pushUndo(); });
+    k.addEventListener("input",()=>{ set(+k.value); v.textContent=fmt(+k.value); });
+  }
+  bindPeKnob("pePitchR","pePitch",x=>x+" st", x=>tracks[peTarget].tune=x);
+  bindPeKnob("peLevelR","peLevel",x=>x+" dB", x=>tracks[peTarget].vol=x);
+  bindPeKnob("peCutR","peCut",  x=>(x/1000).toFixed(1)+"k", x=>tracks[peTarget].cutoff=x);
+  bindPeKnob("peResR","peRes",  x=>x.toFixed(1), x=>tracks[peTarget].reso=x);
+  bindPeKnob("peAttR","peAtt",  x=>x+" ms", x=>tracks[peTarget].attack=x);
+  bindPeKnob("peFadeR","peFade",x=>x+" ms", x=>tracks[peTarget].fade=x);
+  document.getElementById("peScale").addEventListener("change",e=>{ pushUndo(); tracks[peTarget].scale=e.target.value; });
+  document.getElementById("peLoopToggle").addEventListener("click",e=>{
+    pushUndo(); const t=tracks[peTarget]; t.loop=!t.loop;
+    e.currentTarget.classList.toggle("on",t.loop);
+    if(t.loop && (t.loopStart==null || t.loopStart<t.start)) t.loopStart=t.start;
+    renderPeWave(peTarget);
+  });
+  document.getElementById("peFilt").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    pushUndo(); const t=tracks[peTarget];
+    const f=["off","lp","hp"][[...b.parentElement.children].indexOf(b)]; t.filter=f;
+    if(f==="lp" && t.cutoff>=10000){ t.cutoff=3000; document.getElementById("peCutR").value=3000; document.getElementById("peCut").textContent="3.0k"; }
+    if(f==="hp" && t.cutoff>=10000){ t.cutoff=700;  document.getElementById("peCutR").value=700;  document.getElementById("peCut").textContent="0.7k"; }
+    [...b.parentElement.children].forEach(x=>x.classList.toggle("on",x===b));
+  });
+  document.getElementById("peChokeSel").addEventListener("change",e=>{
+    pushUndo(); const g=+e.target.value; tracks[peTarget].choke=g;
+    document.getElementById("peChokeToggle").classList.toggle("on",g>0);
+  });
+  document.getElementById("peChokeToggle").addEventListener("click",e=>{
+    pushUndo(); const t=tracks[peTarget], sel=document.getElementById("peChokeSel");
+    if(t.choke>0){ t.choke=0; sel.value=0; e.currentTarget.classList.remove("on"); }
+    else { t.choke=+sel.value>0?+sel.value:1; sel.value=t.choke; e.currentTarget.classList.add("on"); }
   });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
 })();
@@ -3539,6 +3590,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
         loopStart: crop?crop.loopStart:t.loopStart,
         filter:t.filter, cutoff:t.cutoff, reso:t.reso,
         choke:t.choke, mute:t.mute, solo:t.solo,
+        attack:t.attack||0, fade:t.fade??3,
         patterns:t.patterns,
         locks:t.locks||{},
         audio: crop ? uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp)) : null,
@@ -3599,6 +3651,7 @@ async function applyProject(proj){
       t.start=pt.start??t.start??0; t.end=pt.end??t.end??1;   // 未指定はプリセットの自動トリム値を保持
       t.loop=pt.loop??t.loop??false; t.loopStart=pt.loopStart??t.loopStart??0;   // 未指定はプリセット既定を保持
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
+      t.attack=pt.attack??0; t.fade=pt.fade??3;
       t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
       // パターン読込（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
       if(pt.patterns) for(let p=0;p<4;p++){
