@@ -44,7 +44,6 @@
     --ink:#f0f2f4;--dim:#aab0b6;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;}
   /* SP-1200の質感：グレー本体＋青いセクションライン＋緑LCD寄りの画面＋赤アクセント */
   body.t-sp .label{color:#3f86d6;}
-  body.t-sp .wave-wrap{background:#0a130c;}
   /* Roland TR-808風：黒地 + チャコール本体 + オレンジ/黄アクセント */
   body.t-rl{--bg:#0e0f11;--panel:#2c2f34;--panel2:#373c43;--edge:#121316;--line:#474d56;
     --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#33373d;--pad-face:#3e444c;}
@@ -61,7 +60,10 @@
     display:flex;align-items:center;justify-content:center;padding:20px;}
   .modal{background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
     border-radius:14px;padding:18px 20px 20px;width:min(360px,92vw);
+    max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;   /* 小型端末で見切れてもスクロールで全要素に届く */
     box-shadow:0 24px 70px rgba(0,0,0,.6);}
+  /* 縦が低い端末では上寄せにして頭（波形/閉じる）が切れないように */
+  @media(max-height:680px){ .modal-backdrop{align-items:flex-start;} }
   .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
     font-size:11px;letter-spacing:.26em;color:var(--dim);}
   .modal-head .t{padding:6px 10px;font-size:13px;}
@@ -329,8 +331,9 @@
   .mpad-name{font-size:13px;letter-spacing:.06em;color:var(--ink);font-variant-numeric:tabular-nums;}
   .mpad-sub{font-size:9px;color:var(--dim);letter-spacing:.03em;margin-top:2px;}
   .mpad-btns{display:flex;gap:6px;}
-  .mpad-b{border:none;border-radius:7px;min-width:34px;height:30px;padding:0 8px;font:inherit;font-size:12px;font-weight:700;
+  .mpad-b{border:none;border-radius:7px;min-width:40px;height:36px;padding:0 8px;font:inherit;font-size:12px;font-weight:700;
     background:rgba(0,0,0,.28);color:var(--dim);cursor:pointer;}
+  @media(pointer:coarse){ .mpad-b{height:44px;min-width:44px;} }   /* タッチ端末は44pxタップ領域 */
   .mpad-b.m-on{background:var(--red);color:#fff;}
   .mpad-b.s-on{background:var(--teal);color:#06201d;}
   .mpad-b.part{outline:2px solid var(--amber);outline-offset:-2px;}
@@ -382,8 +385,6 @@
   .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
   .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
-  .seq-foot{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;align-items:center;}
-  .seq-foot .ctrl input[type=range]{min-width:50px;max-width:120px;}
   .hint{font-size:10px;color:var(--dim);letter-spacing:.08em;margin-top:14px;line-height:1.7;}
   .hint kbd{background:#0d1013;border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:var(--ink);font-family:inherit;}
   .file{font-size:11px;}
@@ -454,7 +455,6 @@
   /* ===== EDIT-modal リデザイン（モック） =====
      窓の波形(#waveWrap)は撤去し、サンプル編集は EDIT+パッド→モーダルへ集約。
      通常PADSでは編集ノブ行も畳んでパッドを縦最大化。GRID入力(step-on)時のみ従来の操作行を表示。 */
-  #viewPads .wave-wrap{display:none!important;}
   body:not(.step-on) #viewPads .strip-ctrls{display:none!important;}
   body:not(.step-on) #viewPads .strip{padding:10px 14px;margin-bottom:10px;}
   /* 窓波形撤去後、strip-headが唯一の中身。下マージンを消して上下中央に揃える（上寄り防止＋フォーカス枠の見切れ防止） */
@@ -507,22 +507,10 @@
   .pe-adv{display:none;margin-top:12px;}
   .pe-adv.show{display:block;}
   .pe-adv.show .modal-label:first-child{margin-top:0;}
-  @media(max-width:380px){ .pe-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;} }
+  @media(max-width:380px){ .pe-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;}
+    .pe-chop{gap:6px;} .pe-chop #edChopApply{flex:1 1 100%;} }   /* CHOP行：Applyは必ず単独行・全幅で不揃い折返しを防ぐ */
   /* sample editor */
-  .ed-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
-  .ed-head .who{font-size:15px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;}
-  .wave-wrap{position:relative;background:#0c0f12;border:1px solid var(--line);border-radius:8px;
-    height:96px;overflow:hidden;cursor:crosshair;touch-action:none;}
-  #wave{display:block;width:100%;height:100%;}
-  .handle{position:absolute;top:0;bottom:0;width:2px;pointer-events:none;}
-  .handle.start{background:var(--teal);}
-  .handle.end{background:var(--red);}
-  .handle.loop{background:#ffd24d;}
-  .handle .cap{position:absolute;top:2px;font-size:8px;letter-spacing:.1em;padding:1px 3px;border-radius:2px;color:#06201d;white-space:nowrap;}
-  .handle.start .cap{left:3px;background:var(--teal);}
-  .handle.end .cap{right:3px;background:var(--red);color:#2a0808;}
-  .handle.loop .cap{left:3px;background:#ffd24d;color:#3a2c00;}
-  .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);pointer-events:none;}
+  /* EDIT再生位置トレース（#pePlayhead）。波形ハンドル/シェードは .pe-wave 配下に定義済み */
   .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--amber);opacity:0;pointer-events:none;
     box-shadow:0 0 10px 1px var(--amber),0 0 4px #fff;border-radius:1px;}
   /* sampling overlay */
@@ -622,7 +610,6 @@
     .seg button{min-height:34px;}
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
     .strip{padding:9px;}
-    .wave-wrap{height:58px;}
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
     .seg button{padding:5px 10px;font-size:10px;}
@@ -696,7 +683,6 @@
     .modebtn{padding:6px 12px;font-size:12px;letter-spacing:.12em;}
     .msbtn{padding:5px 8px;font-size:9px;}
     .strip-head .who{font-size:12px;}
-    .wave-wrap{height:60px;}
     .knob.mini{min-width:60px;}
   }
 
@@ -728,7 +714,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.3</div>
+  <div class="s-ver" id="splashVer">v0.2.4</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1298,10 +1284,14 @@ bassSat.curve = bsCurve;
 bassSat.oversample = "none";   // サブ低域のみ整形＝エイリアス不可聴。常時稼働なので軽量化
 const bassGain = AC.createGain();
 bassGain.gain.value = 0.12;  // 控えめに混ぜる
+// 非対称waveshaper(x+0.35x²)が生むDC/超低域オフセットを除去（25Hz HP＝可聴下、位相影響ほぼ無し）
+const bassDcBlock = AC.createBiquadFilter();
+bassDcBlock.type = "highpass"; bassDcBlock.frequency.value = 25; bassDcBlock.Q.value = 0.707;
 // SP-DAC出力からパラレルに分岐
 spOut.connect(bassLp);
 bassLp.connect(bassSat);
-bassSat.connect(bassGain);
+bassSat.connect(bassDcBlock);
+bassDcBlock.connect(bassGain);
 bassGain.connect(tapeDelay);  // テープ経由で出力
 
 // 接続（テープ質感込み）。SP-DAC段(spOut)以降がアウトボード
@@ -1331,7 +1321,7 @@ function setCompBypass(on){
     // コンプ経路をミュート、バイパス経路を開く
     comp.threshold.value = 0;  // 閾値0dBで実質かからない
     makeupGain.gain.value = 0;
-    bypassGain.gain.value = 0.9;
+    bypassGain.gain.value = 1.0;  // ON時の平均メイクアップに近づけ、ON/OFFのA/B音量差を縮める
   }
 }
 let compThreshold = -12;
@@ -1418,6 +1408,8 @@ const tracks = PADS.map((p,i)=>({
   filter:"off",      // "off" | "lp" | "hp"
   cutoff:12000,      // Hz
   reso:0.7,          // Q
+  attack:0,          // ms 頭フェードイン
+  fade:3,            // ms 終端フェードアウト
   choke: (p.voice==="hat"||p.voice==="ohat") ? 1 : 0,
   mute:false,
   solo:false,
@@ -1510,6 +1502,8 @@ function restoreState(s){
   if(typeof compOn!=="undefined") compOn=s.compOn;
   if(typeof compThreshold!=="undefined") compThreshold=s.compThreshold;
   if(typeof compDrive!=="undefined") compDrive=s.compDrive;
+  // メイクアップゲインはしきい値から再計算（undoでコンプの音量補償がズレないように）
+  if(typeof compMakeup!=="undefined") compMakeup = 1 + Math.abs(compThreshold)/30*0.8;
   editPat=s.editPat; editBar=s.editBar;
   tracks.forEach((t,i)=>{
     const x=s.tracks[i];
@@ -1664,9 +1658,14 @@ function pitchBufferNN(buf, ratio){
 // 半音キーでピッチ済みバッファをキャッシュ（同音程の連打で毎回生成しない＝負荷増を防ぐ）。
 // t.bufferが差し替わったら自動でキャッシュ破棄（録音/読込/CHOPPY/再12bit化に追従）。
 function getPitchedBuffer(t, semi){
-  if(t._pcacheBuf !== t.buffer){ t._pcache = {}; t._pcacheBuf = t.buffer; }
+  if(t._pcacheBuf !== t.buffer){ t._pcache = {}; t._pcacheKeys = []; t._pcacheBuf = t.buffer; }
   let b = t._pcache[semi];
-  if(!b){ b = t._pcache[semi] = pitchBufferNN(t.buffer, Math.pow(2, semi/12)); }
+  if(!b){
+    b = t._pcache[semi] = pitchBufferNN(t.buffer, Math.pow(2, semi/12));
+    // 長尺ループ×多音程でピッチ済みバッファが溜まりすぎないようLRU上限（最大16音程）
+    (t._pcacheKeys || (t._pcacheKeys=[])).push(semi);
+    while(t._pcacheKeys.length > 16){ const old=t._pcacheKeys.shift(); if(old!==semi) delete t._pcache[old]; }
+  }
   return b;
 }
 // 1ヒット発音
@@ -1707,7 +1706,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   const env = AC.createGain();
   // p-lock: level(dB) があれば音量を上書き
   const baseVol = (plock && plock.level!=null) ? plock.level : t.vol;
-  const peak = dbToGain(baseVol + (accent?5:0));
+  const peak = dbToGain(baseVol + (accent?3:0));
   head.connect(env); env.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→masterGain
 
   // p-lock: ボイス毎のDELAY/REVERBセンド（グローバルFXのON/OFFとは独立してそのステップだけ送る）
@@ -1732,10 +1731,12 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   } else {
     const len = Math.max(0.005, (endSec-startSec)/src.playbackRate.value);
     oneShotLen = len;
+    const attEnd = Math.min(ATT, len*0.4);     // アタック終端（極短スライスは尺の40%まで）
+    const fadeDur = Math.min(FADE, len*0.4);    // フェードもスケール
     env.gain.setValueAtTime(0, when);
-    env.gain.linearRampToValueAtTime(peak, when+Math.min(ATT,len*0.4));
-    // 終端フェードアウト
-    const fadeOutStart = when + Math.max(0, len-FADE);
+    env.gain.linearRampToValueAtTime(peak, when+attEnd);
+    // 終端フェードアウト：開始点をアタック終端以降にクランプ（極短スライスで頭プツ/段差が出ないよう交差を防ぐ）
+    const fadeOutStart = when + Math.max(attEnd, len-fadeDur);
     env.gain.setValueAtTime(peak, fadeOutStart);
     env.gain.linearRampToValueAtTime(0, when+len);
     try{ src.start(when, startSec, len); }catch(e){ try{src.start(when);}catch(_){} }
@@ -1989,8 +1990,8 @@ PADS.forEach((p,i)=>{
       return;
     }
     if(tgt>=0 && tgt!==i){
-      if(copy){ copyPadSound(i,tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0"); }
-      else    { swapPads(i,tgt);     sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0"); }
+      if(copy){ copyPadSound(i,tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      else    { swapPads(i,tgt);     sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       flashPad(tgt);
     }
     // ドロップ先なし＝何もしない（EDITは維持して続けて並べ替え可）
@@ -2183,6 +2184,7 @@ function assignMS(i){
   else if(armMode==="solo"){ tracks[i].solo=!tracks[i].solo; }
   paintPadStates();
 }
+let _editHintShown=false;
 function arm(mode,on){
   armMode = on?mode:null;
   if(!on) copySrc=null; // 解除で選択リセット
@@ -2190,6 +2192,8 @@ function arm(mode,on){
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
   document.body.classList.toggle("edit-arm",armMode==="edit");
+  // EDITの隠れジェスチャを初回だけ案内（タップ=編集 / ドラッグ=入替 / 長押し=コピー）
+  if(armMode==="edit" && !_editHintShown){ _editHintShown=true; sampNameEl.textContent="EDIT: タップ=編集 / ドラッグ=入替 / 長押し=コピー"; }
   paintPadStates();
 }
 function bindHold(btnId,mode){
@@ -2522,9 +2526,14 @@ playBtn.addEventListener("click",async()=>{
 });
 document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
+// GRID時は「打ち込み(STEP)」、REAL時は「録音(REC)」とラベルで役割を分ける（赤●=録音 と混同しないように）
+function updateRecBtnLabel(){
+  if(recMode==="grid"){ recBtn.textContent = stepMode ? "■ Step" : "▦ Step"; recBtn.classList.toggle("on",stepMode); }
+  else { recBtn.textContent = recording ? "■ Rec" : "● Rec"; recBtn.classList.toggle("on",recording); }
+}
 recBtn.addEventListener("click",()=>{
   if(recMode==="grid"){ setStepMode(!stepMode); return; }   // GRID：Recでステップ入力ON/OFF
-  recording=!recording; if(recording) pushUndo(); recBtn.classList.toggle("on",recording);recBtn.textContent=recording?"■ Rec":"● Rec";
+  recording=!recording; if(recording) pushUndo(); updateRecBtnLabel();
 });
 
 // ===== GRID（Digitakt式）ステップ入力 =====
@@ -2589,8 +2598,7 @@ function toggleStepAt(s, accent){
 function setStepMode(on){
   stepMode=on;
   document.body.classList.toggle("step-on",on);
-  recBtn.classList.toggle("on",on);
-  recBtn.textContent = on ? "■ Step" : "● Rec";
+  updateRecBtnLabel();
   if(on){
     if(!viewPadsEl.classList.contains("active") && typeof switchView==="function") switchView("viewPads");
     paintStepPads();
@@ -2606,8 +2614,10 @@ document.getElementById("stepNext").addEventListener("click",()=>stepShift(1));
     recMode=b.dataset.rm;
     [...seg.children].forEach(x=>x.classList.toggle("on",x===b));
     if(recMode!=="grid" && stepMode) setStepMode(false);   // REALに戻したらGRID解除
+    updateRecBtnLabel();
   });
 })();
+updateRecBtnLabel();   // 起動時（既定grid）はSTEP表示に
 document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // ---------- メニュー（ケバブ→モーダル） DADS dialog 準拠 ----------
@@ -2701,7 +2711,9 @@ function renderPeWave(i){
   const mid=H/2;
   ctx.strokeStyle="#2c333b"; ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(W,mid); ctx.stroke();
   const buf=tracks[i].buffer;
-  const acc=(getComputedStyle(document.body).getPropertyValue("--teal").trim())||"#3dd6c4";
+  const cs=getComputedStyle(document.body);   // テーマ色は1回だけ読む（ドラッグ追従のgetComputedStyle連発を回避）
+  const acc=(cs.getPropertyValue("--teal").trim())||"#3dd6c4";
+  const amber=(cs.getPropertyValue("--amber").trim())||"#ffb84d";
   if(buf){
     const data=buf.getChannelData(0);
     const step=Math.max(1,Math.floor(data.length/W));
@@ -2720,7 +2732,7 @@ function renderPeWave(i){
   }
   // CHOPスライス境界線（編集対象パッドのときだけ）：分割プレビュー
   if(buf && i===chopTarget && chopBounds.length>2){
-    ctx.strokeStyle=(getComputedStyle(document.body).getPropertyValue("--amber").trim())||"#ffb84d";
+    ctx.strokeStyle=amber;
     ctx.lineWidth=1.5;
     for(let k=1;k<chopBounds.length-1;k++){ const x=chopBounds[k]*W; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
   }
@@ -2766,7 +2778,7 @@ function openPadEdit(i){
 }
 (function(){
   const modal=document.getElementById("padEditModal");
-  const close=()=>{ modal.style.display="none"; if(typeof drawPadWave==="function") drawPadWave(peTarget); };
+  const close=()=>{ modal.style.display="none"; if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor(); };
   document.getElementById("peClose").addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
   document.getElementById("peAudition").addEventListener("click",async()=>{
@@ -2811,6 +2823,7 @@ function openPadEdit(i){
     pushUndo();
     cropBufferToSelection(t);
     renderPeWave(peTarget); drawPadWave(peTarget);
+    sampNameEl.textContent="TRIM完了  ↩で戻せる";
   });
   // ===== ノブ/トグル類を実機配線（tracks[peTarget]に書き戻す） =====
   function bindPeKnob(id,valId,fmt,set){
@@ -2928,7 +2941,7 @@ function applyChop(){
     refreshPadDisplay(idx);
   }
   selectPad(anchor);
-  sampNameEl.textContent="CHOP → PAD "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0");
+  sampNameEl.textContent="CHOP → PAD "+String(anchor+1).padStart(2,"0")+"–"+String(anchor+N).padStart(2,"0")+"  ↩で戻せる";
   // 展開したらモーダルを閉じて結果（パッド）を見せる（EDIT統合/旧スタンドアロン両対応）
   const pem=document.getElementById("padEditModal"); if(pem) pem.style.display="none";
 }
@@ -3438,6 +3451,7 @@ let recStream=null, recorder=null, recChunks=[], recStartMs=0, recTimerId=null;
 document.getElementById("sampleBtn").addEventListener("click",()=>{
   recOverlay.classList.add("show");
   recChoose.style.display="flex"; recActiveEl.style.display="none";
+  sampNameEl.textContent="→ PAD "+String(selected+1).padStart(2,"0")+" に取り込み";   // 取り込み先を明示
 });
 document.getElementById("recCancel").addEventListener("click",()=>{ stopRec(true); });
 document.getElementById("recTab").addEventListener("click",async()=>{
@@ -3515,7 +3529,7 @@ async function finalizeRec(){
     tracks[selected].name="REC";
     const nm="REC "+String(selected+1).padStart(2,"0");
     padsEl.children[selected].querySelector(".nm").textContent=nm;
-    sampNameEl.textContent="Sampled! ("+((blob.size/1024)|0)+"KB)";
+    sampNameEl.textContent="Sampled! → PAD "+String(selected+1).padStart(2,"0")+" ("+((blob.size/1024)|0)+"KB)";
     drawPadWave(selected);
     if(typeof syncEditor==="function") syncEditor();
   }catch(e){
@@ -3604,7 +3618,10 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
   const blob=new Blob([json],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href=url; a.download="mics009-project.mics"; a.click();
+  // ファイル名に日時を付与（複数プロジェクトを区別しやすく）: mics009-YYMMDD-HHMM.mics
+  const d=new Date(), z=n=>String(n).padStart(2,"0");
+  const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
+  a.href=url; a.download="mics009-"+stamp+".mics"; a.click();
   URL.revokeObjectURL(url);
   sampNameEl.textContent="Saved!";
 });
@@ -3709,7 +3726,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.3";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.4";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
