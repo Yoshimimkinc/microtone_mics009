@@ -714,7 +714,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.4</div>
+  <div class="s-ver" id="splashVer">v0.2.5</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -774,6 +774,13 @@
               <input type="range" id="kComp" min="-30" max="0" step="1" value="-12"></div>
             <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
               <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Sound (A/B 試聴)</div>
+          <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>DAC 2段ローファイ（OFF=1段）</span></label>
+            <label class="toggle" id="loopSnapToggle"><span class="sw"></span><span>ループ点ゼロ交差スナップ</span></label>
           </div>
         </div>
         <div class="modal-sec">
@@ -1164,15 +1171,27 @@ masterGain.gain.value = 0.9;
 const SP_DAC_RATE = 26040;
 const spOut = AC.createGain();   // DAC出力ノード（このノードから先へ全アウトボードを接続）
 masterGain.connect(spOut);       // 既定は素通り。worklet成功時に masterGain→DAC→spOut へ差し替え
+let spDacNode=null;              // A/Bトグルで bypass を送るため参照を保持
+let loopZeroSnap=false;          // A/B: ループ点を最近傍ゼロ交差にスナップ（既定OFF=任意点）
+// 最近傍のゼロ交差サンプル位置を返す（±win以内、符号反転点）。見つからなければ元のidx
+function nearestZeroCross(data, idx, win){
+  idx=Math.max(1,Math.min(data.length-1,idx|0));
+  for(let d=0; d<win; d++){
+    const a=idx+d; if(a>0&&a<data.length && (data[a-1]<=0)!==(data[a]<=0)) return a;
+    const b=idx-d; if(b>0&&b<data.length && (data[b-1]<=0)!==(data[b]<=0)) return b;
+  }
+  return idx;
+}
 (function loadSpDac(){
   if(!(AC.audioWorklet && AC.audioWorklet.addModule)) return;   // 非対応ブラウザは素通り
   const code =
     "class SPDac extends AudioWorkletProcessor{"+
-    "  constructor(o){super();this.rate=(o&&o.processorOptions&&o.processorOptions.rate)||26040;this.phase=0;this.held=new Float32Array(32);}"+
+    "  constructor(o){super();this.rate=(o&&o.processorOptions&&o.processorOptions.rate)||26040;this.phase=0;this.held=new Float32Array(32);this.bypass=false;this.port.onmessage=(e)=>{if(e.data&&'bypass' in e.data)this.bypass=!!e.data.bypass;};}"+
     "  process(inputs,outputs){"+
     "    const input=inputs[0],output=outputs[0];"+
     "    if(!output||!output.length)return true;"+
     "    const nf=output[0].length,nc=output.length;"+
+    "    if(this.bypass){for(let ch=0;ch<nc;ch++){const inp=(input&&(input[ch]||input[0]));const o=output[ch];if(inp){o.set(inp);}else{o.fill(0);}}return true;}"+   // OFF=DAC段を素通り（焼き込み済みmakeLofiのみ＝1段）
     "    const inc=this.rate/sampleRate,step=2/4096;"+   // 12bitリニア
     "    let phase=this.phase;"+
     "    for(let i=0;i<nf;i++){"+
@@ -1193,6 +1212,7 @@ masterGain.connect(spOut);       // 既定は素通り。worklet成功時に mas
       masterGain.disconnect(spOut);
       masterGain.connect(dac);
       dac.connect(spOut);
+      spDacNode=dac;
     }catch(e){ /* 失敗時はmasterGain→spOutの素通りのまま */ }
     URL.revokeObjectURL(url);
   }).catch(()=>{ URL.revokeObjectURL(url); });
@@ -1722,8 +1742,15 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   if(t.loop){
     const lsN = Math.min(eN-0.001, Math.max(0, t.loopStart));
     src.loop = true;
-    src.loopStart = lsN*dur;
-    src.loopEnd = endSec;
+    let lsSec = lsN*dur, leSec = endSec;
+    if(loopZeroSnap){   // A/B: ループ点を最近傍ゼロ交差へ（継ぎ目のプツ低減）
+      const d=pbuf.getChannelData(0), sr=pbuf.sampleRate, win=Math.round(sr*0.002);
+      lsSec = nearestZeroCross(d, Math.round(lsSec*sr), win)/sr;
+      leSec = nearestZeroCross(d, Math.round(leSec*sr), win)/sr;
+      if(leSec <= lsSec+0.001) leSec = endSec;   // 退避：逆転/極小ループを防ぐ
+    }
+    src.loopStart = lsSec;
+    src.loopEnd = leSec;
     env.gain.setValueAtTime(0, when);
     env.gain.linearRampToValueAtTime(peak, when+ATT);
     try{ src.start(when, startSec); }catch(e){ try{src.start(when);}catch(_){} }
@@ -2619,6 +2646,20 @@ document.getElementById("stepNext").addEventListener("click",()=>stepShift(1));
 })();
 updateRecBtnLabel();   // 起動時（既定grid）はSTEP表示に
 document.getElementById("undoBtn").addEventListener("click", doUndo);
+// ===== Sound A/B トグル（メニュー） =====
+(function(){
+  const dac=document.getElementById("dacLofiToggle");
+  if(dac) dac.addEventListener("click",()=>{
+    const on=!dac.classList.contains("on"); dac.classList.toggle("on",on);
+    if(spDacNode) try{ spDacNode.port.postMessage({bypass:!on}); }catch(_){}   // ON=2段(DAC有効) / OFF=1段(素通り)
+    sampNameEl.textContent = on ? "DAC 2段ローファイ ON" : "DAC 1段（makeLofiのみ）";
+  });
+  const lp=document.getElementById("loopSnapToggle");
+  if(lp) lp.addEventListener("click",()=>{
+    loopZeroSnap=!lp.classList.contains("on"); lp.classList.toggle("on",loopZeroSnap);
+    sampNameEl.textContent = loopZeroSnap ? "ループ点ゼロ交差スナップ ON" : "ループ点スナップ OFF";
+  });
+})();
 
 // ---------- メニュー（ケバブ→モーダル） DADS dialog 準拠 ----------
 (function(){
@@ -3726,7 +3767,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.4";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.5";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
