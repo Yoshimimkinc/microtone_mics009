@@ -825,7 +825,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.23</div>
+  <div class="s-ver" id="splashVer">v0.2.24</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1214,6 +1214,9 @@ const PADS = [
 const KEYMAP = ["1","2","3","4","5","6","7","8","q","w","e","r","t","y","u","i"];
 // Shift+キーは記号になるため、レイアウト非依存の e.code でも判定（ミュート用）
 const CODEMAP = ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7","Digit8","KeyQ","KeyW","KeyE","KeyR","KeyT","KeyY","KeyU","KeyI"];
+// 音階パッド選択中＝ホーム行を「鍵盤」に：左→右で音階デグリー0..（chro=半音 / maj/min/pent=音階）
+// 数字行(1-8)・Q行(9-16)のスライス・トリガとは別の行なので両立する（パッド毎の切替＝そのパッドのscale設定）
+const MELO_KEYS = ["a","s","d","f","g","h","j","k","l",";"];
 
 // ===== MPC-style sampler engine (raw Web Audio) =====
 // 全パッドが1つのAudioContextを共有。発音はバッファを持つボイスをプールから確保。
@@ -2240,6 +2243,9 @@ function selectPad(i, light){
   // 内容が変わる呼び出し（undo/load/applyChop等）はlight無しで常に最新化。
   if(light && !changed) return;
   refreshSeqMode();
+  // 音階パッドを選んだら鍵盤の使い方を一度提示（discoverability）
+  if(changed && isMelodic(i) && typeof sampNameEl!=="undefined" && sampNameEl)
+    sampNameEl.textContent="♪ "+PADS[i].name+"：ホーム行 A〜; ＝音階キー（"+tracks[i].scale+"）";
   if(typeof syncEditor==="function") syncEditor();
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
 }
@@ -3300,6 +3306,20 @@ window.addEventListener("keydown",async(e)=>{
     if(mi>=0){ e.preventDefault(); tracks[mi].mute=!tracks[mi].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }
   }
   const k=e.key.toLowerCase();
+  // 音階パッド選択中：ホーム行＝そのパッドのクロマチック/音階鍵盤（スライス用の数字/Q行と両立）
+  if(isMelodic(selected)){
+    const mk=MELO_KEYS.indexOf(k);
+    if(mk>=0){
+      e.preventDefault();
+      if(AC.state!=="running")await AC.resume();
+      const t=tracks[selected], semi=scaleSemi(t.scale, mk);
+      playVoice(selected, AC.currentTime, false, false, semi);
+      if(typeof vuHit==="function") vuHit(selected,false);
+      flashPad(selected);
+      sampNameEl.textContent=String(selected+1).padStart(2,"0")+" "+t.name+" ♪ "+(semi>=0?"+":"")+semi;
+      return;
+    }
+  }
   const i=KEYMAP.indexOf(k);
   if(i>=0){if(AC.state!=="running")await AC.resume();trigger(i);selectPad(i,true);}
 });
@@ -4058,7 +4078,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.23";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.24";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
