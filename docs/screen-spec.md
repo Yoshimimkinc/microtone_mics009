@@ -155,3 +155,12 @@
 ### 実装イテレーション
 - **v1（骨格）**：横向き4×4で3カラム化（左/中央大パッド/右）＋ダーク・デバイス装飾＋回転オーバーレイ。中央=#pads最大化、左=MUTE/SOLO/EDIT+BPM/SWING/TAP、右=Pattern A-D+PLAY/STOP+REC+Undo+⋮、上=小スクリーン。**非対応の機種固有ボタンは載せない**。
 - v2：上部エンコーダ（Group/FX/Master/Swing）、色・質感の作り込み（artware）、パッドのベロシティ表現等。
+
+---
+
+## 10. 【決定】Performance P-LOCK（演奏中いじり）＝2パターンを1ジェスチャに
+歴史的背景：**SP-1200**＝音色をライブで触る（記録しない＝瞬間）。**Elektron/S2400**＝ステップ毎p-lockに記録。現場ではこの2つが両方要る。
+→ 統一モデル：**パラメータ選択（PITCH/LEVEL/FILTER, `activeLock`をGRIDと共有）× パッド縦ドラッグ × REC-armで分岐**。
+- **REC OFF＝瞬間**：ベース値(tune/vol/cutoff)を生でいじり、**離すと復帰**。保存に触れない。
+- **REC ON＝保持/記録**：いじりを残す（v1はベース保持。v2でプレイヘッドのステップへp-lock生記録＝GRIDと同データ・同鳴り）。
+整合性：`activeLock`・PLOCKS spec・（記録時は）ロック保存/`playVoice`適用を**すべて再利用**＝二重管理なし。delay/reverbはper-padベースが無いので当面FX throwで代替（記録版で対応予定）。
