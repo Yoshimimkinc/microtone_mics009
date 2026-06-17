@@ -9,15 +9,17 @@ Single HTML file (`index.html`), zero external dependencies. Pure Web Audio API.
 ### Audio Engine
 - `AudioContext` with `latencyHint:"interactive"` for minimum latency
 - All samples are 12-bit quantized + 26kHz sample rate (SP-1200 emulation) via `makeLofi()`
+- Pitch shift uses drop-sample (nearest-neighbour) resampling baked to a buffer played at `rate=1.0` (`pitchBufferNN`) → SP-style aliasing/grit instead of clean browser interpolation
 - Presets are synthesized at startup via `OfflineAudioContext` then baked as samples
-- Every pad plays the same way: `AudioBufferSourceNode` → filter(optional) → gain envelope → masterGain
+- Every pad plays the same way: `AudioBufferSourceNode` → filter(optional) → gain envelope → groupBus → SP channel filter → masterGain
+- **SP channel filter** (`SP_CH`/`grpFilters`, v0.2.28): per-group lowpass mirroring SP-1200 output-channel zones — sample groups (g0/g1) bright/near-bypass, drum groups (g2/g3) 4-pole rounded; g2 has a per-hit dynamic cutoff envelope (opens then closes). Runtime toggle in menu (default ON) via `applySpChFilter()`.
 
 ### Signal Chain
 ```
-pads → masterGain → [comp → saturator → makeupGain] → tapeDelay → output
-                  ↘ [bypass (comp off)]              ↗
-                  └→ bassLp → bassSat → bassGain ───→↗
-tapeHiss ──────────────────────────────────────────→ output
+pads → groupBus[g] → SP-chan-filter[g] → masterGain → [comp → saturator → makeupGain] → tapeDelay → output
+                                                     ↘ [bypass (comp off)]              ↗
+                                                     └→ bassLp → bassSat → bassGain ───→↗
+tapeHiss ───────────────────────────────────────────────────────────────────────────→ output
 ```
 
 ### Timing / Groove (SP-1200 emulation)
