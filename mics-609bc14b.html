@@ -787,7 +787,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.18</div>
+  <div class="s-ver" id="splashVer">v0.2.19</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1601,6 +1601,13 @@ function setLockEdit(trackIdx, step, param, value){
   t.locks[k][param]=value;
 }
 function clearLockEdit(trackIdx, step){ const t=tracks[trackIdx]; if(t.locks) delete t.locks[lockKey(editPat,editBar,step)]; }
+// 再生座標へp-lockを書く（演奏ライブ記録：再生中のプレイヘッドのステップにオートメーションを焼く）
+function setLockPlay(trackIdx, pat, bar, step, param, value){
+  const t=tracks[trackIdx]; if(!t.locks) t.locks={};
+  const k=lockKey(pat,bar,step);
+  if(!t.locks[k]) t.locks[k]={};
+  t.locks[k][param]=value;
+}
 // 小節に音があるか／パターンの長さ（書いた分・最低1小節）
 function barHasContent(p,b){ for(let i=0;i<PADS.length;i++){ const a=tracks[i].patterns[p][b]; for(let s=0;s<STEPS;s++) if(a[s]>0) return true; } return false; }
 function patHasContent(p){ for(let b=0;b<4;b++) if(barHasContent(p,b)) return true; return false; }
@@ -2627,6 +2634,12 @@ function scheduleStep(stepNo, when){
     if(t.loop && t.loopPlaying && !aud){ stopVoices(t, when); t.loopPlaying=false; }
     const v=getPlayPattern(i)[stepNo];
     if(v>0 && aud){
+      // 演奏ライブ記録：REC ON中、ドラッグ中のパッドのこのトリガにp-lockを焼く（GRIDと同一データ）
+      if(perfRecArm && perfDrag && perfDrag.moved && perfDrag.pad===i && perfDrag.param){
+        if(perfSnap && !perfSnap.recorded){ pushUndo(); perfSnap.recorded=true; }
+        const pp=perfDrag.param, pv=(pp==="filter")?t.cutoff:t[PERF_BASE[pp]];
+        setLockPlay(i, playPat, playBar, stepNo, pp, pv);
+      }
       const lk=getLockPlay(i, playPat, playBar, stepNo);   // そのステップのp-lock
       if(t.loop){
         // ループ系はシーケンス上でトグル：トリガが来るたびに ON→OFF→ON…（負荷もかからない）
@@ -3460,12 +3473,13 @@ function perfRevertSnap(){    // perfSnap の元値へ16パッドを戻す
 function perfLockApply(prev){
   // 直前のP-LOCKを抜けた（別へ/解放）→ REC OFFなら元値へ復帰
   if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
-    if(!perfRecArm) perfRevertSnap();
+    // REC OFF＝瞬間（復帰）／REC ONでもステップへ記録済みならbaseは復帰（オートメーションはlocksに在る）
+    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();
     perfSnap=null;
   }
   // 新しいP-LOCKが有効＝16パッドの元値をスナップショット（復帰用）
   if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
-    perfSnap={param:activeLock, vals:[], filt:[]};
+    perfSnap={param:activeLock, vals:[], filt:[], recorded:false};
     for(let i=0;i<16;i++){ const t=tracks[i]; perfSnap.vals[i]= activeLock==="filter"?t.cutoff : t[PERF_BASE[activeLock]]; perfSnap.filt[i]=t.filter; }
   }
   if(!(activeLock && PERF_BASE[activeLock])) perfSnap=null;
@@ -3484,7 +3498,7 @@ function perfLockApply(prev){
     perfLockApply(prev); paintPerf();
   }));
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：いじりをパターンに保持" : "REC OFF：演奏のみ（離すと戻る）"; });
+    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：演奏のみ（離すと戻る）"; });
   const bpm=$("bpm");
   const nudgeBpm=d=>{ if(!bpm)return; const v=Math.max(+bpm.min,Math.min(+bpm.max,(+bpm.value)+d)); bpm.value=v; bpm.dispatchEvent(new Event("input",{bubbles:true})); paintPerf(); };
   if($("perfBpmUp")) $("perfBpmUp").addEventListener("click",()=>nudgeBpm(1));
@@ -3497,7 +3511,7 @@ function updatePerf(){
   document.body.classList.toggle("perf", four && land);
   document.body.classList.toggle("perf-rotate", four && !land);   // 4×4だが縦＝回転促す（事実上の縦禁止）
   if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（REC OFFなら復帰）
-    if(perfSnap){ if(!perfRecArm) perfRevertSnap(); perfSnap=null; }
+    if(perfSnap){ if(!perfRecArm || perfSnap.recorded) perfRevertSnap(); perfSnap=null; }
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
@@ -4010,7 +4024,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.18";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.19";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
