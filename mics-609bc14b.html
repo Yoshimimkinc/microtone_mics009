@@ -161,9 +161,10 @@
   /* 拍頭（1,5,9,13）を少し明るく */
   body.step-on .pad.beathead{background:linear-gradient(180deg,#3b424b,#2f353d);}
   /* ステップON */
-  body.step-on .pad.stepon{background:linear-gradient(180deg,var(--amber),#c25e22);box-shadow:0 0 14px rgba(255,138,61,.5);}
+  /* !important＝perfモードの高詳細度パッド背景(#viewPads)に勝たせ、ONを必ず塗りつぶす（valbarと同方針） */
+  body.step-on .pad.stepon{background:linear-gradient(180deg,var(--amber),#c25e22)!important;box-shadow:0 0 14px rgba(255,138,61,.5)!important;}
   body.step-on .pad.stepon .stepn{color:#2a1405;}
-  body.step-on .pad.stepacc{background:linear-gradient(180deg,#ffd08a,var(--amber));}
+  body.step-on .pad.stepacc{background:linear-gradient(180deg,#ffd08a,var(--amber))!important;}
   /* 再生中の現在ステップ */
   body.step-on .pad.stepcur{outline:5px solid var(--teal);outline-offset:-5px;
     box-shadow:0 0 18px rgba(61,214,196,.85), inset 0 0 14px rgba(61,214,196,.5);z-index:2;}
@@ -825,7 +826,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.24</div>
+  <div class="s-ver" id="splashVer">v0.2.25</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4078,7 +4079,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.24";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.25";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
