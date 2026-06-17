@@ -184,3 +184,12 @@
 - **見た目はグリッドのまま**：`drawQueue` の visual は `when`（公称）基準なのでカーソルは動かさず、**音だけ**前後する＝SP/Elektronのマイクロタイミングと同じ「ノリ」操作。
 - **対象外**：演奏ライブ・モジュレート（`PERF_BASE`）には載せない（基準トラック値を持たないパラメータのため）。NUDGEは**GRIDステップ編集のp-lock専用**。
 - 他5つ（pitch/level/filter/delay/reverb）と完全同一の操作系：NUDGE選択→ステップ横ドラッグで±msを記録。
+
+## 13. 【整理 v0.2.27】5Sクリーンアップ＋MENUのMIX(Groups/FX)廃止＋onset吸着の復活
+- **整理（死蝕コード除去）**：未参照を grep で確証してから削除。CSS `.pat-indicator`/`.master-section`/`.mshint`、JS `stepDur`/`PAT_NAMES`。
+- **MENUのMIX廃止**：MIX画面廃止時にメニューへ移していた **Groups（グループ音量×4）と FX（delay/reverb）のパッドUIを撤去**（producer判断＝Groups+FXのみ／Master・COMPは残す）。
+  - 値は引き続き `.mics` から `applyGroupVol`/`applyFx` で**読込・適用**される（音は不変）。編集UIのみ削除。
+  - 連動して `makeMixPad`/`mixPads`/`paintAll`/`paintGroups`/`MIX_GROUPS`/`grpRow`/`fxRow` と `.mpad*`/`.pad-grid` CSS を一掃。`paintMixer()` は呼び出し元互換のため **no-op** で残置。
+- **onset吸着の復活**：`snapStartToOnset` が未接続（死蝕）だったのを `snapStartToOnset(idx)` 化し、**EDITの開始点ハンドルを離した瞬間**に最寄りアタックへ±12ms吸着するよう再接続（CLAUDE.md設計ルール「Start point snaps to attack transients」を実態に復帰）。
+- **躾（ドキュメント整合）**：CLAUDE.md Key Functions の誤記（存在しない `findNextOnset`→実在の `detectOnsets`、`snapStartToOnset` 署名）を修正。
+- **起動デフォルトソング差し替え**：`default.mics` をユーザー提供の最新ビート（v2 / BPM94.5 / 16トラック）に更新。

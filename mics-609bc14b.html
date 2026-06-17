@@ -435,38 +435,11 @@
   .patbtn.queued{box-shadow:0 0 0 2px var(--teal);z-index:2;animation:spblink .8s ease-in-out infinite;}  /* 予約中＝点滅 */
   .patbtn.has::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:.85;}  /* 中身ありドット */
   .patbtn.dim{opacity:.4;}  /* ループ外の小節は薄く */
-  .pat-indicator{font-size:14px;font-weight:700;color:var(--teal);
-    min-width:24px;text-align:center;padding:4px 8px;
-    border:1px solid var(--teal);border-radius:5px;font-variant-numeric:tabular-nums;}
-  /* MIXパッド（大きい角丸ボタン）：上下ドラッグ=値、右上ボタン。2列=左右の2×2 */
-  .pad-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:560px;}
-  .mpad{position:relative;overflow:hidden;border-radius:18px;min-height:132px;padding:12px;
-    background:linear-gradient(180deg,var(--pad-face),var(--pad));border:1px solid var(--edge);
-    box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
-    touch-action:none;cursor:ns-resize;user-select:none;display:flex;flex-direction:column;}
-  .mpad.dim{opacity:.55;}
-  .mpad-fill{position:absolute;left:0;right:0;bottom:0;height:0%;pointer-events:none;
-    background:linear-gradient(180deg, rgba(var(--acc),.4), rgba(var(--acc),.12));transition:height .03s linear;}
-  .mpad-row{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
-  .mpad-name{font-size:13px;letter-spacing:.06em;color:var(--ink);font-variant-numeric:tabular-nums;}
-  .mpad-sub{font-size:9px;color:var(--dim);letter-spacing:.03em;margin-top:2px;}
-  .mpad-btns{display:flex;gap:6px;}
-  .mpad-b{border:none;border-radius:7px;min-width:40px;height:36px;padding:0 8px;font:inherit;font-size:12px;font-weight:700;
-    background:rgba(0,0,0,.28);color:var(--dim);cursor:pointer;}
-  @media(pointer:coarse){ .mpad-b{height:44px;min-width:44px;} }   /* タッチ端末は44pxタップ領域 */
-  .mpad-b.m-on{background:var(--red);color:#fff;}
-  .mpad-b.s-on{background:var(--teal);color:#06201d;}
-  .mpad-b.part{outline:2px solid var(--amber);outline-offset:-2px;}
-  .mpad-center{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
-  .mpad-arrow{font-size:26px;line-height:1;color:var(--ink);opacity:.45;}
-  .mpad-val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);}
-  .mpad-val .u{font-size:11px;color:var(--dim);font-weight:400;margin-left:2px;}
   /* master VU */
   .master-vu-wrap{position:relative;width:100%;height:16px;background:#0d1013;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px;}
   .master-vu-bar{height:100%;width:0;border-radius:3px;
     background:linear-gradient(90deg,var(--teal),var(--amber));transition:width .06s linear;}
   .master-vu-bar.peak{background:linear-gradient(90deg,var(--amber),#ff4d4d);}
-  .master-section{border-top:1px solid var(--line);padding-top:18px;}
   .master-ctrls{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;}
   .master-ctrls .knob{flex:1 1 120px;max-width:180px;}
   /* MASTER OUTPUT をモード切替ボタンの横に常設（横並び・コンパクト） */
@@ -553,7 +526,6 @@
   .pad.dragsrc{box-shadow:0 0 0 2px var(--teal) inset,0 6px 12px rgba(0,0,0,.5);opacity:.85;}
   .pad.copyarm{box-shadow:0 0 0 2px #ffd24d inset,0 6px 12px rgba(0,0,0,.5);}
   .pad.droptgt{box-shadow:0 0 0 2px var(--amber) inset,0 0 14px rgba(255,160,40,.5);}
-  .mshint{font-size:10px;color:var(--dim);letter-spacing:.1em;}
   /* pad mute/solo state */
   .pad.muted{opacity:.4;}
   .pad.muted::after{content:"M";position:absolute;top:7px;right:9px;font-size:11px;color:var(--red);font-weight:700;}
@@ -828,7 +800,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.26</div>
+  <div class="s-ver" id="splashVer">v0.2.27</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -896,14 +868,6 @@
             <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
               <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
           </div>
-        </div>
-        <div class="modal-sec">
-          <div class="modal-label">Groups — 上下ドラッグ=音量 / M·S / ダブルタップ=0dB</div>
-          <div class="pad-grid" id="grpRow"></div>
-        </div>
-        <div class="modal-sec">
-          <div class="modal-label">FX — テープディレイ(RE-101) / リバーブ(HALL)</div>
-          <div class="pad-grid" id="fxRow"></div>
         </div>
         <div class="modal-sec">
           <div class="modal-label">Sound (A/B 試聴)</div>
@@ -1613,7 +1577,6 @@ let playBar = 0;       // 再生中の小節（スケジューラ用）
 let queuedPat = null;  // 予約中パターン（次の小節アタマで切替）
 let displayPat = 0;    // 表示中の再生パターン（drawLoop用）
 let displayBar = 0;    // 表示中の再生小節（drawLoop用）
-const PAT_NAMES = ["A","B","C","D"];
 
 // 編集中（パターン×小節）へのアクセサ
 function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar]; }
@@ -2493,8 +2456,8 @@ function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i+
 // START/END/LOOP編集と試聴は EDIT+パッド→編集モーダルへ集約。
 
 // 立ち上がり検出：startの近傍で「最初に音量が急増する点」へ吸着（食い込み防止）
-function snapStartToOnset(){
-  const t=tracks[selected];
+function snapStartToOnset(idx=selected){
+  const t=tracks[idx];
   if(!t.buffer)return;
   // 波形の先頭ごく近くに置いたときは吸着しない（頭をそのまま残す）
   if(t.start <= 0.005){ return; }
@@ -2516,7 +2479,7 @@ function snapStartToOnset(){
   for(let p=lo;p<=hi;p++){
     if(rms(p)>=thresh){ onset=p; break; }
   }
-  if(onset>=0){ t.start=Math.min(onset/N, t.end-0.002); drawPadWave(selected); }
+  if(onset>=0){ t.start=Math.min(onset/N, t.end-0.002); }
 }
 
 // loop toggle
@@ -2639,7 +2602,6 @@ let swingPct = 50;          // SP流 離散値: 50/54/58/63/67/71
 const PPQ = 24;
 const TICKS_PER_16TH = PPQ/4; // 6
 function tickDur(){ return (60/bpmVal)/PPQ; }      // 1tickの長さ（秒）
-function stepDur(){ return (60/bpmVal)/4; }         // 16分音符の長さ（秒）
 function swingDelayTicks(){
   return Math.round((2*swingPct/100 - 1) * TICKS_PER_16TH);
 }
@@ -3072,7 +3034,11 @@ function openPadEdit(i){
     peApply(n);
   });
   peWaveEl.addEventListener("pointermove",e=>{ if(dragKind) peApply(peNorm(e.clientX)); });
-  const peUp=()=>{ dragKind=null; };
+  // 開始点は離した瞬間に最寄りのアタックへ吸着（±12ms）。CLAUDE.md「Start point snaps to attack transients」
+  const peUp=()=>{
+    const wasStart=(dragKind==="start"); dragKind=null;
+    if(wasStart){ snapStartToOnset(peTarget); renderPeWave(peTarget); if(typeof drawPadWave==="function") drawPadWave(peTarget); }
+  };
   peWaveEl.addEventListener("pointerup",peUp); peWaveEl.addEventListener("pointercancel",peUp);
   // TRIM：STRT〜ENDの範囲でバッファを実際に切り出す（外側を破棄）→start=0/end=1にリセット
   document.getElementById("peTrunc").addEventListener("click",()=>{
@@ -3656,93 +3622,10 @@ function paintPatBar(){
   }));
 }
 
-// ---------- Group / FX / Master（メニュー内）----------
-// 16chフェーダーは撤去：per-pad音量はEDIT/P-LOCK、M/SはPADSのMUTE/SOLOへ集約（DRY＝状態の単一管理）。
+// ---------- Master（メニュー内）----------
+// Group/FXのメニューUIは廃止（音量・FX値は .mics から applyGroupVol/applyFx で読込・適用され続ける）。
+// per-pad音量はEDIT/P-LOCK、M/SはPADSのMUTE/SOLOへ集約（DRY＝状態の単一管理）。
 let masterVuLevel=0;
-
-// --- グループ/FXパッド（大きい角丸ボタン）：上下ドラッグ=値 / ダブルタップ=既定 / ボタン群 ---
-const mixPads=[];
-function paintAll(){ mixPads.forEach(p=>p()); }
-function makeMixPad(o){
-  const el=document.createElement("div"); el.className="mpad"; el.style.setProperty("--acc",o.accent);
-  el.innerHTML=`<div class="mpad-fill"></div>
-    <div class="mpad-row"><div><div class="mpad-name">${o.title}</div>${o.sub?`<div class="mpad-sub">${o.sub}</div>`:""}</div>
-      <div class="mpad-btns"></div></div>
-    <div class="mpad-center"><div class="mpad-arrow">↕</div><div class="mpad-val"></div></div>`;
-  const fill=el.querySelector(".mpad-fill"), valEl=el.querySelector(".mpad-val"), btnWrap=el.querySelector(".mpad-btns");
-  (o.buttons||[]).forEach(b=>{
-    const bt=document.createElement("button"); bt.textContent=b.label; bt.className="mpad-b "+(b.cls||"");
-    bt.setAttribute("aria-label",o.title+" "+b.label);
-    bt.addEventListener("click",e=>{ e.stopPropagation(); b.onClick(); paintAll(); });
-    btnWrap.appendChild(bt); b._el=bt;
-  });
-  const span=(o.max-o.min)||1;
-  function paint(){
-    const v=o.get();
-    fill.style.height=(((v-o.min)/span)*100).toFixed(1)+"%";
-    valEl.innerHTML=o.fmt(v);
-    (o.buttons||[]).forEach(b=>{ if(b.state) b.state(b._el); });
-    if(o.dim) el.classList.toggle("dim",o.dim());
-  }
-  let drag=false,startY=0,startV=0,lastTap=0;
-  el.addEventListener("pointerdown",e=>{
-    if(e.target.closest(".mpad-btns")) return;          // ボタンはドラッグ対象外
-    const now=Date.now();
-    if(now-lastTap<320){ lastTap=0; drag=false; pushUndo(); o.set(o.reset); paint(); e.preventDefault(); return; } // ダブルタップ→既定
-    lastTap=now; drag=true; startY=e.clientY; startV=o.get(); pushUndo();
-    el.setPointerCapture(e.pointerId); e.preventDefault();
-  });
-  el.addEventListener("pointermove",e=>{
-    if(!drag) return;
-    const dy=startY-e.clientY;
-    let v=startV+(dy/140)*span;
-    v=Math.max(o.min,Math.min(o.max, o.step?Math.round(v/o.step)*o.step:v));
-    if(v!==o.get()){ o.set(v); paint(); }
-  });
-  const end=()=>{drag=false;};
-  el.addEventListener("pointerup",end); el.addEventListener("pointercancel",end);
-  o.container.appendChild(el); mixPads.push(paint);
-}
-// グループ（上=サンプル/下=ドラム）。上下=グループ音量、M/S=4ch一括、ダブルタップ=0dB
-const grpRow=document.getElementById("grpRow");
-const MIX_GROUPS=[
-  {name:"SMP 1-4",  idx:[0,1,2,3],    g:0, accent:"61,214,196"},
-  {name:"SMP 5-8",  idx:[4,5,6,7],    g:1, accent:"61,214,196"},
-  {name:"DR 9-12",  idx:[8,9,10,11],  g:2, accent:"255,138,61"},
-  {name:"DR 13-16", idx:[12,13,14,15],g:3, accent:"255,138,61"},
-];
-MIX_GROUPS.forEach(G=>makeMixPad({
-  container:grpRow, title:G.name, accent:G.accent, min:-30, max:6, step:1, reset:0,
-  get:()=>groupVol[G.g], set:v=>{ groupVol[G.g]=v; applyGroupVol(); },
-  fmt:v=>(v>0?"+":"")+v+'<span class="u">dB</span>',
-  dim:()=>G.idx.every(i=>tracks[i].mute),
-  buttons:[
-    {label:"M",cls:"m",onClick:()=>{ pushUndo(); const on=!G.idx.every(i=>tracks[i].mute); G.idx.forEach(i=>tracks[i].mute=on); paintMixer(); paintPadStates(); },
-      state:bt=>{ const all=G.idx.every(i=>tracks[i].mute),some=G.idx.some(i=>tracks[i].mute); bt.classList.toggle("m-on",all); bt.classList.toggle("part",some&&!all); }},
-    {label:"S",cls:"s",onClick:()=>{ pushUndo(); const on=!G.idx.every(i=>tracks[i].solo); G.idx.forEach(i=>tracks[i].solo=on); paintMixer(); paintPadStates(); },
-      state:bt=>{ const all=G.idx.every(i=>tracks[i].solo),some=G.idx.some(i=>tracks[i].solo); bt.classList.toggle("s-on",all); bt.classList.toggle("part",some&&!all); }},
-  ],
-}));
-// FX（左=テープディレイ / 右=リバーブ）。上下=かかり具合(Wet%)、ON=バイパス、ダブルタップ=0
-const fxRow=document.getElementById("fxRow");
-makeMixPad({
-  container:fxRow, title:"TAPE DELAY", sub:"RE-101風・3連/テンポ追従", accent:"61,214,196",
-  min:0, max:100, step:1, reset:0,
-  get:()=>Math.round(fxDelayAmt*100), set:v=>{ fxDelayAmt=v/100; if(v>0) fxDelayOn=true; applyFx(); },
-  fmt:v=>v+'<span class="u">%</span>', dim:()=>!fxDelayOn,
-  buttons:[{label:"ON",cls:"on",onClick:()=>{ fxDelayOn=!fxDelayOn; applyFx(); },
-    state:bt=>{ bt.classList.toggle("s-on",fxDelayOn); bt.textContent=fxDelayOn?"ON":"OFF"; }}],
-});
-makeMixPad({
-  container:fxRow, title:"REVERB", sub:"HALL（ホール系）", accent:"255,138,61",
-  min:0, max:100, step:1, reset:0,
-  get:()=>Math.round(fxReverbAmt*100), set:v=>{ fxReverbAmt=v/100; if(v>0) fxReverbOn=true; applyFx(); },
-  fmt:v=>v+'<span class="u">%</span>', dim:()=>!fxReverbOn,
-  buttons:[{label:"ON",cls:"on",onClick:()=>{ fxReverbOn=!fxReverbOn; applyFx(); },
-    state:bt=>{ bt.classList.toggle("s-on",fxReverbOn); bt.textContent=fxReverbOn?"ON":"OFF"; }}],
-});
-function paintGroups(){ paintAll(); }   // paintMixerから呼ばれる
-paintAll();   // 初期表示
 
 // --- VUトリガー：発音時にマスターVUレベルを設定 ---
 function vuHit(padIdx, accent){
@@ -3765,8 +3648,8 @@ function vuLoop(){
 }
 function kickVu(){ if(vuRaf==null) vuRaf=requestAnimationFrame(vuLoop); }
 
-// 旧16chミキサーは撤去。互換のため paintMixer はグループ表示更新に縮約（呼び出し元はそのまま動く）。
-function paintMixer(){ if(typeof paintGroups==="function") paintGroups(); }
+// 旧ミキサーUI（16ch→グループ/FXパッド）は撤去。互換のため paintMixer は no-op で残す（呼び出し元はそのまま動く）。
+function paintMixer(){}
 
 // マスターボリューム
 document.getElementById("kMaster").addEventListener("pointerdown",()=>pushUndo());
@@ -4086,7 +3969,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.26";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.27";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
