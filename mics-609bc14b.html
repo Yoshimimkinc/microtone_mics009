@@ -780,7 +780,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.11</div>
+  <div class="s-ver" id="splashVer">v0.2.12</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2034,6 +2034,13 @@ PADS.forEach((p,i)=>{
   d.setAttribute("role","button");
   d.setAttribute("aria-label", p.name+" pad");
   d.addEventListener("pointerdown",async(e)=>{
+    // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
+    if(document.body.classList.contains("perf") && activeLock && PERF_BASE[activeLock]){
+      e.preventDefault();
+      perfDrag={pad:i, y0:e.clientY, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
+      try{ d.setPointerCapture(e.pointerId); }catch(_){}
+      return;
+    }
     if(stepMode){   // GRID入力：タップ=ON/OFF、パラメータ選択中は左右ドラッグでp-lock記録
       e.preventDefault();
       let startVal=null;
@@ -2055,13 +2062,6 @@ PADS.forEach((p,i)=>{
       return;
     }
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
-    // Performance：P-LOCKパラメータ選択中はドラッグ＝ライブ・モジュレート（タップ=発音はpointerupで判定）
-    if(document.body.classList.contains("perf") && activeLock && PERF_BASE[activeLock]){
-      e.preventDefault();
-      perfDrag={pad:i, y0:e.clientY, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
-      try{ d.setPointerCapture(e.pointerId); }catch(_){}
-      return;
-    }
     if(AC.state!=="running")await AC.resume();
     trigger(i);selectPad(i,true);
   });
@@ -2142,6 +2142,10 @@ PADS.forEach((p,i)=>{
     if(perfDrag.param==="pitch") t.tune=Math.round(v);
     else if(perfDrag.param==="level") t.vol=Math.round(v);
     else t.cutoff=v;
+    // 画面に「いじってる値」をライブ表示＝何が起きてるか一目で分かる
+    const ps=document.getElementById("perfSel");
+    if(ps){ const cur=perfDrag.param==="pitch"?t.tune:perfDrag.param==="level"?t.vol:t.cutoff;
+      ps.textContent=String(i+1).padStart(2,"0")+" "+perfDrag.param.toUpperCase()+" ▸ "+spec.fmt(cur)+(perfRecArm?" ●REC":""); }
   });
   const endPerfDrag=(e)=>{
     if(!perfDrag || perfDrag.pad!==i) return;
@@ -2154,6 +2158,7 @@ PADS.forEach((p,i)=>{
     }
     // perfRecArm時はベース値を保持（=記録）。ステップ単位p-lock生記録は次段で追加。
     if(typeof syncEditor==="function") syncEditor();
+    if(typeof paintPerf==="function") paintPerf();   // 画面表示を選択パッド名に戻す
   };
   d.addEventListener("pointerup",endPerfDrag);
   d.addEventListener("pointercancel",endPerfDrag);
@@ -3440,6 +3445,7 @@ function updatePerf(){
   document.body.classList.toggle("perf", four && land);
   document.body.classList.toggle("perf-rotate", four && !land);   // 4×4だが縦＝回転促す（事実上の縦禁止）
   if(four && !wasPerf){
+    if(typeof stepMode!=="undefined" && stepMode && typeof setStepMode==="function") setStepMode(false);  // 演奏モードではGRIDステップ入力を使わない（STEPと無関係化）
     // ベストエフォートで横向きロック（Android系のみ有効。iPad Safariは非対応＝回転オーバーレイが実質ガード）
     try{ if(screen.orientation && screen.orientation.lock){ const p=screen.orientation.lock("landscape"); if(p&&p.catch) p.catch(()=>{}); } }catch(_){}
   }
@@ -3947,7 +3953,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.11";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.12";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
