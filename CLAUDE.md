@@ -35,7 +35,7 @@ tapeHiss ───────────────────────�
 - Accessor functions: `getPattern(i)` for edit, `getPlayPattern(i)` for playback
 
 ### UI Modes (2 screens since v0.2.8)
-- **PADS**: Koala-style layout. Waveform strip on top, pads below. MUTE/SOLO/EDIT toggles. Layout toggle (desktop): 8×2 (browse) / 4×4 (S2400 split, perform).
+- **PADS**: Koala-style layout. Waveform strip on top, pads below. MUTE/SOLO/EDIT toggles. **Pad grid is fixed 4×4** (8×2 layout removed v0.2.30 — maintaining two layouts wasn't worth it). Desktop uses the S2400 split (pads left, waveform/controls right) via `#viewPads.split`, always on; landscape ≥768 promotes to Performance Mode. Mobile forces 4×4 via media query.
 - **SEQ**: 16×16 step grid with pattern A/B/C/D selector and chain length.
 - **MIX screen removed**: per-pad volume = EDIT Level + P-LOCK level; mute/solo = PADS MUTE/SOLO modes. Rationale: same state was editable from 3 places (DRY violation → sync bugs). Audio routing (groupBus/GROUP_OF/FX nodes) unchanged — only UI moved. See `docs/screen-spec.md`.
 - **MENU (⋮) mixer UI removed (v0.2.27)**: the Group-volume (4) and FX (delay/reverb) pads were dropped from the menu too. Group/FX **values still load from `.mics` and apply** via `applyGroupVol`/`applyFx` — only the editing UI is gone. Master volume + COMP remain in the menu. `paintMixer()` kept as a no-op shim for existing callers.
@@ -85,7 +85,7 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
 
 ## Version
-MICS009 beta v0.2.29
+MICS009 beta v0.2.30
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
 - `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
