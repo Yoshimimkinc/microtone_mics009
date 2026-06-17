@@ -263,17 +263,10 @@
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
     grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr);gap:12px;}
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
-  body.perf #viewPads.split>.padTransport{grid-area:transport;display:flex;flex-direction:column;justify-content:flex-end;align-self:stretch;}
-  body.perf #viewPads.split>.padTransport .big-play{height:100%;min-height:64px;font-size:18px;}
   body.perf .perf-screen{grid-area:screen;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
     background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:10px 16px;
     font-size:12px;letter-spacing:.14em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
-  body.perf .perf-screen .perf-play-ind{margin-left:auto;color:var(--ink);cursor:pointer;
-    border:1px solid var(--edge);border-radius:7px;padding:7px 14px;background:var(--panel2);
-    min-height:36px;display:flex;align-items:center;transition:.08s;}
-  body.perf .perf-screen .perf-play-ind:active{transform:translateY(1px);}
-  body.perf .perf-screen .perf-play-ind.on{color:#06201d;background:var(--teal);border-color:var(--teal);}
   /* 右上：パターン A-D（2×2） */
   body.perf .perf-pats{grid-area:pats;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;}
   body.perf .perf-lctl{grid-area:lctl;display:flex;flex-direction:column;gap:8px;}
@@ -794,7 +787,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.17</div>
+  <div class="s-ver" id="splashVer">v0.2.18</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1094,7 +1087,6 @@
         <span id="perfBpm">100.0 BPM</span>
         <span id="perfPat">PAT A</span>
         <span id="perfSel">01 KICK</span>
-        <span class="perf-play-ind" id="perfPlayInd">■ STOP</span>
       </div>
       <div class="perf-rotate" id="perfRotate"><div>↻<br>横向きにしてください<br><small>演奏モード（4×4）</small></div></div>
       <!-- 右上：パターンA-Dライブ切替 -->
@@ -3429,7 +3421,6 @@ function paintPerf(){
   if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1)+" BPM";
   if($("perfPat")) $("perfPat").textContent="PAT "+"ABCD"[ep];
   if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
-  const pi=$("perfPlayInd"); if(pi){ const pl=(typeof playing!=="undefined" && playing); pi.textContent=pl?"▶ PLAY":"■ STOP"; pi.classList.toggle("on",pl); }
   if($("perfBpmNum")) $("perfBpmNum").textContent=Math.round(bv);
   const sw=document.getElementById("swing"); if($("perfSwingV")&&sw) $("perfSwingV").textContent=sw.value+"%";
   // パターン：現在=on、再生中の予約=queued
@@ -3494,8 +3485,6 @@ function perfLockApply(prev){
   }));
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
     sampNameEl.textContent = perfRecArm ? "REC ON：いじりをパターンに保持" : "REC OFF：演奏のみ（離すと戻る）"; });
-  // スクリーンの ▶PLAY/■STOP 表示をタップで再生/停止（大STARTの代わり）
-  if($("perfPlayInd")) $("perfPlayInd").addEventListener("click",()=>{ const p=$("play"); if(p) p.click(); paintPerf(); });
   const bpm=$("bpm");
   const nudgeBpm=d=>{ if(!bpm)return; const v=Math.max(+bpm.min,Math.min(+bpm.max,(+bpm.value)+d)); bpm.value=v; bpm.dispatchEvent(new Event("input",{bubbles:true})); paintPerf(); };
   if($("perfBpmUp")) $("perfBpmUp").addEventListener("click",()=>nudgeBpm(1));
@@ -4021,7 +4010,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.17";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.18";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
