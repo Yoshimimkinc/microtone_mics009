@@ -201,3 +201,13 @@ SP-1200の太さは①ピッチ変更のエイリアシング（既存`pitchBuff
 - ダイナミックフィルター：`playVoice`で dyn>0 のグループのみ、`when`に`setValueAtTime(cut+dyn)`→`setTargetAtTime(cut)`（クリック無し）。共有ノードを発音毎に再トリガ＝ch1-2の時間変化フィルター相当。
 - UI：メニューSoundに `SP チャンネルフィルター` トグル（既定ON・runtime・非保存＝DAC/loopSnapと同方針）。マッピングは`SP_CH`で後から調整可。
 - 注：SSM2044の厳密回路再現ではなく「4極・丸み・粘り」の質感近似。コンパンディング等は別途要検討。
+
+## 15. 【実装 v0.2.29】SSM2044 回路モデリング（AudioWorklet）
+v0.2.28のbiquad近似を本物の回路モデルへ置換。SP-1200の出力chに載る **SSM2044＝4極OTAローパスVCF(24dB/oct)** をモデリング。
+- **なぜWorklet**：ネイティブBiquadFilterではラダーのゼロ遅延帰還が作れない（ノード経由帰還=128サンプル遅延で破綻）。サンプル単位で解く必要があり AudioWorklet `ssm-2044` で実装。
+- **モデル**：OTAラダー＝1次LP×4段直列＋最終段→入力への共振帰還。各段に `tanh` 非線形(OTAの transconductance 飽和)＝SSM2044のクリーミーな歪み/粘り/自己発振。2xオーバーサンプリングで非線形の折返し低減。tanhが全段を有界化し数値的に安定（res<4で無入力時は零収束）。
+- **パラメータ**(AudioParam)：`cutoff`(a-rate＝ダイナミック自動化用) / `reso`(0..4) / `drive`(入力ドライブ)。グループ毎の値は `SP_CH`。
+- **割り当て**：g0/g1サンプル群=明るい(高cut/低res)、g2/g3ドラム群=丸める(低cut/レゾ)。g2のみ発音毎に `spDynOpen` でcutが開閉。
+- **ルーティング**：`groupBus[g] → (ssmNode[g] | grpBiquad[g]) → grpOut[g] → masterGain`。`grpOut`が安定末端でフィルタ実体を差し替えても再配線不要。
+- **フォールバック**：AudioWorklet非対応/ロード失敗時は biquad直列(`grpBiquad`)へ自動。初期は同期的にbiquadで鳴り、worklet成功で各グループをssmへ差し替え→`applySpChFilter()`再ルーティング。
+- **注意/未対応**：g≈2πfc/fsの明示オイラー積分（厳密なZDF/Huovilainen熱電圧チューニングは未採用＝高cutで僅かなチューニング誤差）。SPICEレベルのネットリスト再現ではなく「4極・OTA tanh・共振」の挙動モデル。コンパンディングは別検討。

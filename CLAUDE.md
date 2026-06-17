@@ -12,7 +12,7 @@ Single HTML file (`index.html`), zero external dependencies. Pure Web Audio API.
 - Pitch shift uses drop-sample (nearest-neighbour) resampling baked to a buffer played at `rate=1.0` (`pitchBufferNN`) → SP-style aliasing/grit instead of clean browser interpolation
 - Presets are synthesized at startup via `OfflineAudioContext` then baked as samples
 - Every pad plays the same way: `AudioBufferSourceNode` → filter(optional) → gain envelope → groupBus → SP channel filter → masterGain
-- **SP channel filter** (`SP_CH`/`grpFilters`, v0.2.28): per-group lowpass mirroring SP-1200 output-channel zones — sample groups (g0/g1) bright/near-bypass, drum groups (g2/g3) 4-pole rounded; g2 has a per-hit dynamic cutoff envelope (opens then closes). Runtime toggle in menu (default ON) via `applySpChFilter()`.
+- **SP channel filter = SSM2044 model** (`SP_CH`/`ssmNode`, v0.2.29): the SP-1200's per-output SSM2044 (4-pole OTA lowpass VCF) modeled as an **AudioWorklet** (`ssm-2044`): nonlinear ladder = 4 cascaded one-pole stages + resonance feedback, `tanh` saturation per stage (OTA character), 2× oversampling. One instance per group bus. Cutoff/reso/drive per group via `SP_CH`; sample groups (g0/g1) bright (high cutoff/low res), drum groups (g2/g3) rounded; g2 gets a per-hit dynamic cutoff envelope (`spDynOpen`). Graceful **biquad fallback** (`grpBiquad`) when AudioWorklet is unavailable. Stable output stage `grpOut[g]→masterGain` lets the filter impl swap without re-wiring. Runtime toggle in menu (default ON) via `applySpChFilter()`.
 
 ### Signal Chain
 ```
@@ -85,7 +85,7 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
 
 ## Version
-MICS009 beta v0.2.17
+MICS009 beta v0.2.29
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
 - `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
