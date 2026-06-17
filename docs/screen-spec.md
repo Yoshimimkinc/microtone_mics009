@@ -193,3 +193,11 @@
 - **onset吸着の復活**：`snapStartToOnset` が未接続（死蝕）だったのを `snapStartToOnset(idx)` 化し、**EDITの開始点ハンドルを離した瞬間**に最寄りアタックへ±12ms吸着するよう再接続（CLAUDE.md設計ルール「Start point snaps to attack transients」を実態に復帰）。
 - **躾（ドキュメント整合）**：CLAUDE.md Key Functions の誤記（存在しない `findNextOnset`→実在の `detectOnsets`、`snapStartToOnset` 署名）を修正。
 - **起動デフォルトソング差し替え**：`default.mics` をユーザー提供の最新ビート（v2 / BPM94.5 / 16トラック）に更新。
+
+## 14. 【実装 v0.2.28】SP-1200風「出力チャンネル別フィルター」（グループバス）
+SP-1200の太さは①ピッチ変更のエイリアシング（既存`pitchBufferNN`）②12bit/26kHz（既存`makeLofi`）③**出力ch別フィルター差**の重なり。③が穴だったので4グループバスに実装。
+- routing：`voice → env → groupBus[g](音量) → grpFilters[g](SPフィルター) → masterGain`。bypass時は `groupBus[g] → masterGain` 直結（`applySpChFilter`が切替、フィルター末端→masterは常時接続）。
+- ゾーン（`SP_CH`）：g0 SMP1-4=15k 1極（明るい/ザラ残す）、g1 SMP5-8=12k 1極、g2 DR9-12=5.2k 2極(≈4極)+レゾ0.95+**発音毎ダイナミック開閉(+3.8k→60ms時定数で閉)**、g3 DR13-16=6.2k 2極固定。
+- ダイナミックフィルター：`playVoice`で dyn>0 のグループのみ、`when`に`setValueAtTime(cut+dyn)`→`setTargetAtTime(cut)`（クリック無し）。共有ノードを発音毎に再トリガ＝ch1-2の時間変化フィルター相当。
+- UI：メニューSoundに `SP チャンネルフィルター` トグル（既定ON・runtime・非保存＝DAC/loopSnapと同方針）。マッピングは`SP_CH`で後から調整可。
+- 注：SSM2044の厳密回路再現ではなく「4極・丸み・粘り」の質感近似。コンパンディング等は別途要検討。
