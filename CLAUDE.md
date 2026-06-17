@@ -35,7 +35,8 @@ tapeHiss ───────────────────────�
 ### UI Modes (2 screens since v0.2.8)
 - **PADS**: Koala-style layout. Waveform strip on top, pads below. MUTE/SOLO/EDIT toggles. Layout toggle (desktop): 8×2 (browse) / 4×4 (S2400 split, perform).
 - **SEQ**: 16×16 step grid with pattern A/B/C/D selector and chain length.
-- **MIX screen removed**: per-pad volume = EDIT Level + P-LOCK level; mute/solo = PADS MUTE/SOLO modes. Group volume (4), FX (delay/reverb), Master volume + COMP live in the **menu (⋮)**. Rationale: same state was editable from 3 places (DRY violation → sync bugs). Audio routing (groupBus/GROUP_OF/FX nodes) unchanged — only UI moved. See `docs/screen-spec.md`.
+- **MIX screen removed**: per-pad volume = EDIT Level + P-LOCK level; mute/solo = PADS MUTE/SOLO modes. Rationale: same state was editable from 3 places (DRY violation → sync bugs). Audio routing (groupBus/GROUP_OF/FX nodes) unchanged — only UI moved. See `docs/screen-spec.md`.
+- **MENU (⋮) mixer UI removed (v0.2.27)**: the Group-volume (4) and FX (delay/reverb) pads were dropped from the menu too. Group/FX **values still load from `.mics` and apply** via `applyGroupVol`/`applyFx` — only the editing UI is gone. Master volume + COMP remain in the menu. `paintMixer()` kept as a no-op shim for existing callers.
 
 ### Key Design Rules
 - **"aki rule"**: Hide complex settings. Anyone should be able to enjoy sampling music without understanding filters or choke groups. Simple surface, depth underneath.
@@ -54,8 +55,8 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 |----------|---------|
 | `makeLofi(buffer)` | 12-bit quantization + sample rate reduction |
 | `playVoice(i, when, accent, fromSeq)` | Core sample playback with filter/loop/fade |
-| `snapStartToOnset()` | Attack detection for start point |
-| `findNextOnset(t)` | Next transient detection for CHOPPY |
+| `snapStartToOnset(idx)` | Attack snap for start point (runs on EDIT start-handle release) |
+| `detectOnsets(t,s,e,sens)` | Transient detection for CHOP (ATK mode) |
 | `stepTimeClean(stepNo)` | Tick-derived absolute step timing |
 | `driftSec()` | SP-style micro-timing jitter |
 | `bufToWav(buf, from, to)` | AudioBuffer → WAV encoder with crop |
