@@ -239,31 +239,50 @@
   .padTransport .big-play.on{background:linear-gradient(180deg,#5a2230,#3a1620);color:var(--red);border-color:var(--red);}
 
   /* ===== Performance Mode（4×4・横向き・PC/iPad）：中央=大パッド / 左右=操作列。ガワはダークなデバイス調 ===== */
-  .perf-screen,.perf-rotate{display:none;}
+  .perf-screen,.perf-rotate,.perf-pats,.perf-lctl,.perf-fx{display:none;}
   body.perf #viewPads.split.active{
     display:grid;
-    grid-template-columns:minmax(120px,168px) minmax(0,1fr) minmax(120px,168px);
-    grid-template-rows:auto minmax(0,1fr);
+    grid-template-columns:minmax(128px,176px) minmax(0,1fr) minmax(128px,176px);
+    grid-template-rows:auto auto auto minmax(0,1fr);
     grid-template-areas:
       "screen screen screen"
-      "msbar  pads    transport";
-    gap:12px 16px; align-items:stretch; height:100%;
+      "msbar  pads    pats"
+      "lctl   pads    rfx"
+      "lctl   pads    transport";
+    gap:10px 16px; align-items:stretch; height:100%;
   }
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
-  body.perf #viewPads.split>.msbar{grid-area:msbar;display:flex;flex-direction:column;align-items:stretch;gap:10px;margin:0;}
+  body.perf #viewPads.split>.msbar{grid-area:msbar;display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0;}
   body.perf #viewPads.split>.msbar .msbtn{min-width:0;flex:0 0 auto;}
-  body.perf #viewPads.split>.msbar #layoutSeg{margin:auto 0 0;}  /* 8×2へ戻すトグルは左列の下に */
+  body.perf #viewPads.split>.msbar #layoutSeg{margin:4px 0 0;}  /* 8×2へ戻すトグル */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
     grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr);gap:12px;}
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
   body.perf #viewPads.split>.padTransport{grid-area:transport;display:flex;flex-direction:column;justify-content:flex-end;align-self:stretch;}
-  body.perf #viewPads.split>.padTransport .big-play{height:100%;min-height:88px;font-size:18px;}
+  body.perf #viewPads.split>.padTransport .big-play{height:100%;min-height:64px;font-size:18px;}
   body.perf .perf-screen{grid-area:screen;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
     background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:10px 16px;
     font-size:12px;letter-spacing:.14em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
   body.perf .perf-screen .perf-play-ind{margin-left:auto;color:var(--dim);}
   body.perf .perf-screen .perf-play-ind.on{color:var(--red);}
+  /* 右上：パターン A-D（2×2） */
+  body.perf .perf-pats{grid-area:pats;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;}
+  body.perf .perf-lctl{grid-area:lctl;display:flex;flex-direction:column;gap:8px;}
+  body.perf .perf-fx{grid-area:rfx;display:flex;flex-direction:column;gap:8px;}
+  /* デバイス調ボタン */
+  .perf-b,.perf-pat{background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;
+    letter-spacing:.1em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
+  .perf-b:active,.perf-pat:active{transform:translateY(1px);}
+  .perf-b.sm{padding:6px;min-height:40px;font-size:16px;}
+  .perf-pat{font-size:16px;}
+  .perf-pat.on{background:linear-gradient(180deg,#2a6f66,#15433d);color:#bafff4;border-color:var(--teal);}
+  .perf-pat.queued{border-color:var(--amber);color:var(--amber);animation:spblink 1s ease-in-out infinite;}
+  .perf-b.fx.on{background:linear-gradient(180deg,#5a4a22,#3a2e14);color:var(--amber);border-color:var(--amber);}
+  .perf-bpm{display:flex;align-items:center;gap:6px;}
+  .perf-bpm .perf-bpm-read{flex:1;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;}
+  .perf-bpm .perf-bpm-read small{display:block;font-size:8px;color:var(--dim);letter-spacing:.2em;}
   /* 縦向き(4×4選択)では回転を促す */
   .perf-rotate{position:fixed;inset:0;z-index:9980;background:var(--bg);
     flex-direction:column;align-items:center;justify-content:center;text-align:center;
@@ -743,7 +762,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.9</div>
+  <div class="s-ver" id="splashVer">v0.2.10</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1046,6 +1065,25 @@
         <span class="perf-play-ind" id="perfPlayInd">■ STOP</span>
       </div>
       <div class="perf-rotate" id="perfRotate"><div>↻<br>横向きにしてください<br><small>演奏モード（4×4）</small></div></div>
+      <!-- 右上：パターンA-Dライブ切替 -->
+      <div class="perf-pats" id="perfPats">
+        <button class="perf-pat" data-p="0">A</button><button class="perf-pat" data-p="1">B</button>
+        <button class="perf-pat" data-p="2">C</button><button class="perf-pat" data-p="3">D</button>
+      </div>
+      <!-- 左：BPM / Swing -->
+      <div class="perf-lctl" id="perfLeftCtl">
+        <div class="perf-bpm">
+          <button class="perf-b sm" id="perfBpmDn" aria-label="BPM down">−</button>
+          <div class="perf-bpm-read"><span id="perfBpmNum">100</span><small>BPM</small></div>
+          <button class="perf-b sm" id="perfBpmUp" aria-label="BPM up">＋</button>
+        </div>
+        <button class="perf-b" id="perfSwing">SWING <span id="perfSwingV">50%</span></button>
+      </div>
+      <!-- 右：FXマクロ（スロー） -->
+      <div class="perf-fx" id="perfFx">
+        <button class="perf-b fx" id="perfDelay">DELAY</button>
+        <button class="perf-b fx" id="perfReverb">REVERB</button>
+      </div>
 
       <!-- hidden legacy vol sync -->
       <input type="range" id="vol" min="-30" max="6" step="1" value="-4" style="display:none;">
@@ -3285,15 +3323,49 @@ function perfFourUp(){ return viewPadsEl.classList.contains("split") && viewPads
 function paintPerf(){
   if(!document.body.classList.contains("perf")) return;
   const $=id=>document.getElementById(id);
-  if($("perfBpm")) $("perfBpm").textContent=(typeof bpmVal!=="undefined"?bpmVal:100).toFixed(1)+" BPM";
-  if($("perfPat")) $("perfPat").textContent="PAT "+"ABCD"[(typeof editPat!=="undefined"?editPat:0)];
+  const bv=(typeof bpmVal!=="undefined"?bpmVal:100), ep=(typeof editPat!=="undefined"?editPat:0);
+  if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1)+" BPM";
+  if($("perfPat")) $("perfPat").textContent="PAT "+"ABCD"[ep];
   if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
   const pi=$("perfPlayInd"); if(pi){ const pl=(typeof playing!=="undefined" && playing); pi.textContent=pl?"▶ PLAY":"■ STOP"; pi.classList.toggle("on",pl); }
+  if($("perfBpmNum")) $("perfBpmNum").textContent=Math.round(bv);
+  const sw=document.getElementById("swing"); if($("perfSwingV")&&sw) $("perfSwingV").textContent=sw.value+"%";
+  // パターン：現在=on、再生中の予約=queued
+  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{
+    const p=+b.dataset.p;
+    b.classList.toggle("on", p===ep);
+    b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
+  });
+  if($("perfDelay")) $("perfDelay").classList.toggle("on", (typeof fxDelayOn!=="undefined"&&fxDelayOn));
+  if($("perfReverb")) $("perfReverb").classList.toggle("on", (typeof fxReverbOn!=="undefined"&&fxReverbOn));
 }
+// 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
+(function(){
+  const $=id=>document.getElementById(id);
+  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
+  const bpm=$("bpm");
+  const nudgeBpm=d=>{ if(!bpm)return; const v=Math.max(+bpm.min,Math.min(+bpm.max,(+bpm.value)+d)); bpm.value=v; bpm.dispatchEvent(new Event("input",{bubbles:true})); paintPerf(); };
+  if($("perfBpmUp")) $("perfBpmUp").addEventListener("click",()=>nudgeBpm(1));
+  if($("perfBpmDn")) $("perfBpmDn").addEventListener("click",()=>nudgeBpm(-1));
+  if($("perfSwing")) $("perfSwing").addEventListener("click",()=>{ const s=$("swing"); if(!s)return; s.selectedIndex=(s.selectedIndex+1)%s.options.length; s.dispatchEvent(new Event("change",{bubbles:true})); paintPerf(); });
+  const fxThrow=(which)=>{
+    if(typeof applyFx!=="function") return;
+    if(which==="delay"){ fxDelayOn=!fxDelayOn; if(fxDelayOn && fxDelayAmt<0.05) fxDelayAmt=0.30; }
+    else { fxReverbOn=!fxReverbOn; if(fxReverbOn && fxReverbAmt<0.05) fxReverbAmt=0.30; }
+    applyFx(); paintPerf();
+  };
+  if($("perfDelay")) $("perfDelay").addEventListener("click",()=>fxThrow("delay"));
+  if($("perfReverb")) $("perfReverb").addEventListener("click",()=>fxThrow("reverb"));
+})();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
+  const wasPerf=document.body.classList.contains("perf");
   document.body.classList.toggle("perf", four && land);
-  document.body.classList.toggle("perf-rotate", four && !land);   // 4×4だが縦＝回転促す
+  document.body.classList.toggle("perf-rotate", four && !land);   // 4×4だが縦＝回転促す（事実上の縦禁止）
+  if(four && !wasPerf){
+    // ベストエフォートで横向きロック（Android系のみ有効。iPad Safariは非対応＝回転オーバーレイが実質ガード）
+    try{ if(screen.orientation && screen.orientation.lock){ const p=screen.orientation.lock("landscape"); if(p&&p.catch) p.catch(()=>{}); } }catch(_){}
+  }
   if(four && land) paintPerf();
 }
 ["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, updatePerf));
@@ -3798,7 +3870,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.9";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.10";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
