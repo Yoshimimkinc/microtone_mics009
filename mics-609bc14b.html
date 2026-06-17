@@ -792,7 +792,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.15</div>
+  <div class="s-ver" id="splashVer">v0.2.16</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1558,8 +1558,24 @@ let stepDrag = null;   // GRIDでのパッドドラッグ状態
 let editDrag = null;   // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）
 let perfDrag = null;   // Performance中のパッドドラッグ＝ライブ・モジュレート
 let perfRecArm = false;// Performance: REC ON=変更を保持（記録）/ OFF=P-LOCKキー解放で復帰
-let perfSnap = null;   // P-LOCKキー選択時に取った16パッドの元値（解放で復帰用）
+let perfSnap = null;   // P-LOCKキー選択時に取った16パッドの元値（解放で復帰／ダブルタップ基準）
+let perfTapT = [];     // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）
 const PERF_BASE = {pitch:"tune", level:"vol", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 5つとも演奏のパラメータ・ページで同等に扱う
+// 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）
+function perfResetPad(i, param){
+  if(!param || !PERF_BASE[param]) return;
+  const t=tracks[i], prop=PERF_BASE[param];
+  const hasSnap = perfSnap && perfSnap.param===param;
+  pushUndo();
+  if(param==="filter"){
+    t.cutoff = hasSnap ? perfSnap.vals[i] : PLOCKS.filter.def;
+    if(hasSnap) t.filter = perfSnap.filt[i];
+  } else {
+    t[prop] = hasSnap ? perfSnap.vals[i] : PLOCKS[param].def;
+  }
+  perfFillPad(i, param);
+  if(typeof syncEditor==="function") syncEditor();
+}
 let playPat = 0;       // 再生中パターン（スケジューラ用）
 let playBar = 0;       // 再生中の小節（スケジューラ用）
 let queuedPat = null;  // 予約中パターン（次の小節アタマで切替）
@@ -2052,6 +2068,11 @@ PADS.forEach((p,i)=>{
     // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
     if(document.body.classList.contains("perf") && activeLock && PERF_BASE[activeLock]){
       e.preventDefault();
+      const now=Date.now();
+      if(now-(perfTapT[i]||0) < 320){      // ダブルタップ＝そのパッドを基準値へ戻す
+        perfTapT[i]=0; perfResetPad(i, activeLock); return;
+      }
+      perfTapT[i]=now;
       perfDrag={pad:i, y0:e.clientY, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
       try{ d.setPointerCapture(e.pointerId); }catch(_){}
       return;
@@ -2143,7 +2164,7 @@ PADS.forEach((p,i)=>{
   d.addEventListener("pointermove",(e)=>{
     if(!perfDrag || perfDrag.pad!==i) return;
     const dy=perfDrag.y0-e.clientY;                       // 上で増加
-    if(!perfDrag.moved && Math.abs(dy)>6) perfDrag.moved=true;
+    if(!perfDrag.moved && Math.abs(dy)>6){ perfDrag.moved=true; perfTapT[i]=0; }   // ドラッグはダブルタップ計測に含めない
     if(!perfDrag.moved) return;
     const t=tracks[i], spec=PLOCKS[perfDrag.param];
     const prop=PERF_BASE[perfDrag.param];
@@ -3996,7 +4017,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.15";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.16";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
