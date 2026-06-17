@@ -238,6 +238,39 @@
   .padTransport .big-play:active{transform:translateY(1px);}
   .padTransport .big-play.on{background:linear-gradient(180deg,#5a2230,#3a1620);color:var(--red);border-color:var(--red);}
 
+  /* ===== Performance Mode（4×4・横向き・PC/iPad）：中央=大パッド / 左右=操作列。ガワはダークなデバイス調 ===== */
+  .perf-screen,.perf-rotate{display:none;}
+  body.perf #viewPads.split.active{
+    display:grid;
+    grid-template-columns:minmax(120px,168px) minmax(0,1fr) minmax(120px,168px);
+    grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:
+      "screen screen screen"
+      "msbar  pads    transport";
+    gap:12px 16px; align-items:stretch; height:100%;
+  }
+  body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
+  body.perf #viewPads.split>.msbar{grid-area:msbar;display:flex;flex-direction:column;align-items:stretch;gap:10px;margin:0;}
+  body.perf #viewPads.split>.msbar .msbtn{min-width:0;flex:0 0 auto;}
+  body.perf #viewPads.split>.msbar #layoutSeg{margin:auto 0 0;}  /* 8×2へ戻すトグルは左列の下に */
+  body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
+    grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr);gap:12px;}
+  body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
+  body.perf #viewPads.split>.padTransport{grid-area:transport;display:flex;flex-direction:column;justify-content:flex-end;align-self:stretch;}
+  body.perf #viewPads.split>.padTransport .big-play{height:100%;min-height:88px;font-size:18px;}
+  body.perf .perf-screen{grid-area:screen;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:10px 16px;
+    font-size:12px;letter-spacing:.14em;color:var(--teal);font-variant-numeric:tabular-nums;
+    box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
+  body.perf .perf-screen .perf-play-ind{margin-left:auto;color:var(--dim);}
+  body.perf .perf-screen .perf-play-ind.on{color:var(--red);}
+  /* 縦向き(4×4選択)では回転を促す */
+  .perf-rotate{position:fixed;inset:0;z-index:9980;background:var(--bg);
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    color:var(--ink);font-size:18px;letter-spacing:.1em;line-height:1.9;}
+  .perf-rotate small{color:var(--dim);font-size:12px;letter-spacing:.2em;}
+  body.perf-rotate .perf-rotate{display:flex;}
+
   .pad{
     position:relative;border-radius:9px;cursor:pointer;
     background:linear-gradient(180deg,var(--pad-face),var(--pad));
@@ -710,7 +743,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.8</div>
+  <div class="s-ver" id="splashVer">v0.2.9</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1004,6 +1037,15 @@
       <div class="padTransport" id="padTransport">
         <button class="big-play" id="padPlay">▶ START</button>
       </div>
+
+      <!-- Performance Mode（4×4横向き/PC・iPad）のガワ。通常は非表示、body.perf で表示 -->
+      <div class="perf-screen" id="perfScreen">
+        <span id="perfBpm">100.0 BPM</span>
+        <span id="perfPat">PAT A</span>
+        <span id="perfSel">01 KICK</span>
+        <span class="perf-play-ind" id="perfPlayInd">■ STOP</span>
+      </div>
+      <div class="perf-rotate" id="perfRotate"><div>↻<br>横向きにしてください<br><small>演奏モード（4×4）</small></div></div>
 
       <!-- hidden legacy vol sync -->
       <input type="range" id="vol" min="-30" max="6" step="1" value="-4" style="display:none;">
@@ -2230,6 +2272,7 @@ layoutSeg.addEventListener("click",e=>{
   viewPadsEl.classList.toggle("split", b.dataset.c==="4");
   [...layoutSeg.children].forEach(x=>x.classList.toggle("on",x===b));
   if(typeof lockViewHeight==="function") lockViewHeight();
+  if(typeof updatePerf==="function") updatePerf();
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
 });
 
@@ -3193,6 +3236,7 @@ function switchView(viewId){
   const dots=document.getElementById("viewDots");
   if(dots){ dots.querySelectorAll(".vdot").forEach(d=>d.classList.toggle("on",d.dataset.view===viewId)); }
   lockViewHeight();
+  if(typeof updatePerf==="function") updatePerf();
 }
 modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
 document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("click",()=>switchView(d.dataset.view)));
@@ -3234,6 +3278,28 @@ function lockViewHeight(){
 window.addEventListener("resize", lockViewHeight);
 window.addEventListener("load", lockViewHeight);
 setTimeout(lockViewHeight, 400);
+
+// ===== Performance Mode：4×4 × 横向き × PC/iPad幅(≥768) で発動。縦向き(4×4)は回転オーバーレイ =====
+function landscapeMode(){ return !(window.matchMedia && window.matchMedia("(orientation:landscape)").matches===false); }
+function perfFourUp(){ return viewPadsEl.classList.contains("split") && viewPadsEl.classList.contains("active") && window.innerWidth>=768; }
+function paintPerf(){
+  if(!document.body.classList.contains("perf")) return;
+  const $=id=>document.getElementById(id);
+  if($("perfBpm")) $("perfBpm").textContent=(typeof bpmVal!=="undefined"?bpmVal:100).toFixed(1)+" BPM";
+  if($("perfPat")) $("perfPat").textContent="PAT "+"ABCD"[(typeof editPat!=="undefined"?editPat:0)];
+  if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
+  const pi=$("perfPlayInd"); if(pi){ const pl=(typeof playing!=="undefined" && playing); pi.textContent=pl?"▶ PLAY":"■ STOP"; pi.classList.toggle("on",pl); }
+}
+function updatePerf(){
+  const four=perfFourUp(), land=landscapeMode();
+  document.body.classList.toggle("perf", four && land);
+  document.body.classList.toggle("perf-rotate", four && !land);   // 4×4だが縦＝回転促す
+  if(four && land) paintPerf();
+}
+["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, updatePerf));
+window.addEventListener("load", updatePerf);
+setTimeout(updatePerf, 350);
+setInterval(()=>{ if(document.body.classList.contains("perf")) paintPerf(); }, 200);   // 演奏中だけ画面表示を軽く同期
 
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
@@ -3732,7 +3798,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.8";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.9";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
