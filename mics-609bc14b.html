@@ -177,11 +177,13 @@
   .plockbtn[data-lock="filter"]{color:#b07cff;}
   .plockbtn[data-lock="delay"]{color:#5fd35f;}
   .plockbtn[data-lock="reverb"]{color:#5aa9ff;}
+  .plockbtn[data-lock="nudge"]{color:#ff965a;}
   .plockbtn[data-lock="pitch"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;}
   .plockbtn[data-lock="level"].on{background:#ff5db0;color:#2a0a1e;border-color:#ff5db0;}
   .plockbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
   .plockbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
   .plockbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
+  .plockbtn[data-lock="nudge"].on{background:#ff965a;color:#2a1205;border-color:#ff965a;}
   /* p-lock 値バー（左→右の塗りで値を表現）＋数字 */
   .pad .lockfill{display:none;position:absolute;left:0;top:0;bottom:0;width:0%;z-index:0;pointer-events:none;}
   /* ベースは「音あり色」(アンバー)＝値0でもノートONが分かる。その上に各パラメータ色のバーを重ねる */
@@ -826,7 +828,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.25</div>
+  <div class="s-ver" id="splashVer">v0.2.26</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1095,6 +1097,7 @@
               <button class="plockbtn" data-lock="filter">FILTER</button>
               <button class="plockbtn" data-lock="delay">DELAY</button>
               <button class="plockbtn" data-lock="reverb">REVERB</button>
+              <button class="plockbtn" data-lock="nudge">NUDGE</button>
             </div>
             <span class="stepbar-hint" id="stepHint">PADでON/OFF</span>
           </div>
@@ -1625,6 +1628,7 @@ const PLOCKS = {
   filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
   delay:  {min:0,   max:1,    def:0.3,   color:"95,211,95",   fmt:v=>Math.round(v*100)},                          // 送り%
   reverb: {min:0,   max:1,    def:0.3,   color:"90,169,255",  fmt:v=>Math.round(v*100)},                          // 送り%
+  nudge:  {min:-50, max:50,   def:0,     color:"255,150,90",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 前後タイミング(ms)。-=前ノリ/+=後ノリ
 };
 function lockKey(pat,bar,step){ return pat+"_"+bar+"_"+step; }
 function getLockEdit(trackIdx, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(editPat,editBar,step)]; }
@@ -2150,7 +2154,7 @@ PADS.forEach((p,i)=>{
         let lv=Math.log(stepDrag.startVal)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv);
       } else {
         v=stepDrag.startVal+(dx/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v));
-        if(activeLock==="pitch"||activeLock==="level") v=Math.round(v);
+        if(activeLock==="pitch"||activeLock==="level"||activeLock==="nudge") v=Math.round(v);
       }
       const pat=getPattern(selected); if(!(pat[i]>0)) pat[i]=1;   // 記録時は自動ON
       setLockEdit(selected, i, activeLock, v);
@@ -2679,13 +2683,16 @@ function scheduleStep(stepNo, when){
         setLockPlay(i, playPat, playBar, stepNo, pp, pv);
       }
       const lk=getLockPlay(i, playPat, playBar, stepNo);   // そのステップのp-lock
+      // NUDGE p-lock：このトリガだけ前後にずらす（ms→sec）。LOOKAHEAD(100ms)内なので前ノリも予約可。過去には出さない
+      const nudgeSec=(lk && typeof lk.nudge==="number") ? lk.nudge/1000 : 0;
+      const wn=Math.max(when + n*stg + nudgeSec, AC.currentTime);
       if(t.loop){
         // ループ系はシーケンス上でトグル：トリガが来るたびに ON→OFF→ON…（負荷もかからない）
         if(t.loopPlaying){ stopVoices(t, when); t.loopPlaying=false; }
-        else { playVoice(i, when + n*stg, false, true, isMelodic(i)?scaleSemi(t.scale, v-1):0, lk); t.loopPlaying=true; hits.push({pad:i, acc:false}); n++; }
+        else { playVoice(i, wn, false, true, isMelodic(i)?scaleSemi(t.scale, v-1):0, lk); t.loopPlaying=true; hits.push({pad:i, acc:false}); n++; }
       } else {
-        if(isMelodic(i)) playVoice(i, when + n*stg, false, true, scaleSemi(t.scale, v-1), lk);
-        else playVoice(i, when + n*stg, v===2, true, 0, lk);
+        if(isMelodic(i)) playVoice(i, wn, false, true, scaleSemi(t.scale, v-1), lk);
+        else playVoice(i, wn, v===2, true, 0, lk);
         hits.push({pad:i, acc:isMelodic(i)?false:v===2}); n++;
       }
     }
@@ -4079,7 +4086,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.25";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.26";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
