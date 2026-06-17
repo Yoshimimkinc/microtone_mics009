@@ -208,9 +208,6 @@
   /* pads */
   .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:540px;}
   .pads .pad{aspect-ratio:1;}
-  .pads.cols8{grid-template-columns:repeat(8,1fr);max-width:none;}
-  .pads.cols8 .pad{aspect-ratio:1.8;padding:7px 8px;}
-  .pads.cols8 .pad .nm{font-size:11px;}
   /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
@@ -260,7 +257,6 @@
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
   body.perf #viewPads.split>.msbar{grid-area:msbar;display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0;}
   body.perf #viewPads.split>.msbar .msbtn{min-width:0;flex:0 0 auto;}
-  body.perf #viewPads.split>.msbar #layoutSeg{margin:4px 0 0;}  /* 8×2へ戻すトグル */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
     grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr);gap:12px;}
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
@@ -694,7 +690,7 @@
     .msbtn{padding:6px 9px;font-size:10px;}
     /* DADS：タッチターゲット確保（要所は44px目安、稀用ボタンは詰めつつ最低限） */
     .modebtn{min-height:44px;}
-    #patSeg button,#barSeg button,#layoutSeg button{min-height:40px;}
+    #patSeg button,#barSeg button{min-height:40px;}
     button.t,.msbtn,.loadbtn{min-height:34px;}
     .toggle{min-height:34px;}
     .seg button{min-height:34px;}
@@ -729,7 +725,6 @@
     body.step-on .pad.stepon,body.step-on .pad.valbar{box-shadow:none!important;}
     body.step-on .pad.stepcur{box-shadow:none!important;}
     /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
-    #layoutSeg{display:none!important;}
     /* === スマホ：3モードはタブを廃止し、スワイプ＋ドットで切替（スペース確保） === */
     .modebar-row .modebar{display:none;}
     .viewdots{display:flex;}
@@ -800,7 +795,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.29</div>
+  <div class="s-ver" id="splashVer">v0.2.30</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -970,7 +965,7 @@
 
   <div class="body">
     <!-- PADS view (Koala-style: waveform strip on top, pads below) -->
-    <div class="view active" id="viewPads">
+    <div class="view active split" id="viewPads">
 
       <!-- waveform strip -->
       <div class="strip">
@@ -1069,20 +1064,16 @@
         </div>
       </div>
 
-      <!-- mute/solo + layout -->
+      <!-- mute/solo -->
       <div class="msbar">
         <button class="msbtn mute" id="holdMute"><span class="d"></span>MUTE</button>
         <button class="msbtn solo" id="holdSolo"><span class="d"></span>SOLO</button>
         <!-- CHOPPYはEDITモーダル内に統合（独立トグル/モーダルは廃止） -->
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
-        <div class="seg" id="layoutSeg" style="margin-left:auto;">
-          <button data-c="8" class="on">8×2</button>
-          <button data-c="4">4×4</button>
-        </div>
       </div>
 
-      <!-- 16 pads (主役) -->
-      <div class="pads cols8" id="pads"></div>
+      <!-- 16 pads (主役)：4×4固定（8×2レイアウトは廃止） -->
+      <div class="pads" id="pads"></div>
 
       <!-- start/stop (S2400風・4×4スプリット時に右下表示) -->
       <div class="padTransport" id="padTransport">
@@ -2539,18 +2530,7 @@ bindHold("holdEdit","edit");
 // （トグル式のため自動解除は行わない。ESCで全モード解除）
 window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&armMode) arm(armMode,false); });
 
-// pad layout 4x4 / 8x2
-const layoutSeg=document.getElementById("layoutSeg");
-layoutSeg.addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  padsEl.classList.toggle("cols8", b.dataset.c==="8");
-  // 4×4のときだけS2400風スプリットに（右に波形/操作、右下にStart/Stop）
-  viewPadsEl.classList.toggle("split", b.dataset.c==="4");
-  [...layoutSeg.children].forEach(x=>x.classList.toggle("on",x===b));
-  if(typeof lockViewHeight==="function") lockViewHeight();
-  if(typeof updatePerf==="function") updatePerf();
-  if(typeof drawAllPadWaves==="function") drawAllPadWaves();
-});
+// pad layout：4×4固定（8×2レイアウトは廃止＝#viewPadsに常時split／#padsはcols4既定）
 
 // ---------- sample editor ---------- （窓波形は撤去：drawWave/ハンドル/カーソル機構は廃止）
 
@@ -4107,7 +4087,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.29";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.2.30";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
