@@ -887,7 +887,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.12</div>
+  <div class="s-ver" id="splashVer">v0.3.13</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3607,10 +3607,10 @@ window.addEventListener("keydown",async(e)=>{
   if(ae && (ae.tagName==="TEXTAREA" || ae.tagName==="SELECT" ||
             (ae.tagName==="INPUT" && (ae.type||"").toLowerCase()!=="range"))) return;
   if(e.code==="Space"){e.preventDefault();playBtn.click();return;}
-  // Shift+パッドキー = そのパッドのミュートをトグル（発音せず）
+  // Shift+パッドキー = そのパッドを選択のみ（発音せず）。クリックの SHIFT+PAD と統一。MUTEは専用ボタンへ。
   if(e.shiftKey){
     const mi=CODEMAP.indexOf(e.code);
-    if(mi>=0){ e.preventDefault(); tracks[mi].mute=!tracks[mi].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }
+    if(mi>=0){ e.preventDefault(); selectPad(mi); return; }
   }
   const k=e.key.toLowerCase();
   // 最下段16ステップをキーボードで打ち込み（A-K=1-8 / Z-,=9-16）。Shift=アクセント。スケール鍵盤より優先。
@@ -4355,7 +4355,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.12";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.13";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
