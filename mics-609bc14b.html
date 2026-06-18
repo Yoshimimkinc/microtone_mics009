@@ -226,7 +226,7 @@
   /* 再生ヘッド＝明るいアンバーの枠（以前の「枠」表示）。再生中どこを鳴らしてるか一目で分かる */
   .stepbtn.cur{outline:2px solid var(--amber);outline-offset:1px;box-shadow:0 0 12px rgba(255,180,80,.7);z-index:1;}
   /* P-LOCK（per-step automation）：選択パラメータの値をフィル＋数値で表示。ドラッグで設定 */
-  .stepbtn .sfill{position:absolute;left:0;bottom:0;width:100%;height:0;opacity:.5;pointer-events:none;border-radius:0 0 4px 4px;transition:height .04s;}
+  .stepbtn .sfill{position:absolute;left:0;top:0;bottom:0;width:0;opacity:.5;pointer-events:none;border-radius:4px 0 0 4px;transition:width .04s;}
   .stepbtn .slv{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:8px;line-height:1;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none;}
   .stepbtn.plk{border-color:#fff;}
   .stepbtn.haslock::before{content:"";position:absolute;top:2px;right:3px;width:3px;height:3px;border-radius:50%;background:var(--amber);z-index:2;}
@@ -892,7 +892,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.23</div>
+  <div class="s-ver" id="splashVer">v0.3.24</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2319,7 +2319,7 @@ PADS.forEach((p,i)=>{
         perfTapT[i]=0; perfResetPad(i, activeLock); return;
       }
       perfTapT[i]=now;
-      perfDrag={pad:i, y0:e.clientY, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
+      perfDrag={pad:i, x0:e.clientX, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
       try{ d.setPointerCapture(e.pointerId); }catch(_){}
       return;
     }
@@ -2410,11 +2410,11 @@ PADS.forEach((p,i)=>{
   };
   d.addEventListener("pointerup",endEditDrag);
   d.addEventListener("pointercancel",endEditDrag);
-  // --- Performance：ライブ・モジュレート（縦ドラッグでP-LOCKパラメータを生いじり）---
+  // --- Performance：ライブ・モジュレート（横ドラッグでP-LOCKパラメータを生いじり。ステップ列と向きを統一） ---
   d.addEventListener("pointermove",(e)=>{
     if(!perfDrag || perfDrag.pad!==i) return;
-    const dy=perfDrag.y0-e.clientY;                       // 上で増加
-    if(!perfDrag.moved && Math.abs(dy)>6){ perfDrag.moved=true; perfTapT[i]=0; }   // ドラッグはダブルタップ計測に含めない
+    const dx=e.clientX-perfDrag.x0;                       // 右で増加
+    if(!perfDrag.moved && Math.abs(dx)>6){ perfDrag.moved=true; perfTapT[i]=0; }   // ドラッグはダブルタップ計測に含めない
     if(!perfDrag.moved) return;
     const t=tracks[i], spec=PLOCKS[perfDrag.param];
     const prop=PERF_BASE[perfDrag.param];
@@ -2423,8 +2423,8 @@ PADS.forEach((p,i)=>{
       if(perfDrag.param==="filter" && t.filter==="off") t.filter="lp";   // 音が出るようLPに（解放時に復帰）
     }
     let v;
-    if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let lv=Math.log(perfDrag.orig)+(dy/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv); }
-    else { v=perfDrag.orig+(dy/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); }
+    if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let lv=Math.log(perfDrag.orig)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv); }
+    else { v=perfDrag.orig+(dx/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); }
     if(perfDrag.param==="pitch"||perfDrag.param==="level") t[prop]=Math.round(v);
     else t[prop]=v;                                       // filter(cutoff) / delay / reverb は連続値
     perfFillPad(i, perfDrag.param);                       // このパッドのフィルを更新（発音なし）
@@ -3171,9 +3171,9 @@ function paintStepStrip(){
         const val=lk[activeLock];
         let norm=spec.log?(Math.log(val)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min)):(val-spec.min)/(spec.max-spec.min);
         norm=Math.max(0,Math.min(1,norm));
-        el._fill.style.height=(norm*100).toFixed(1)+"%"; el._fill.style.background="rgb("+spec.color+")";
+        el._fill.style.width=(norm*100).toFixed(1)+"%"; el._fill.style.background="rgb("+spec.color+")";
         el._lv.textContent=spec.fmt(val);
-      } else { el._fill.style.height="0%"; el._lv.textContent=""; }
+      } else { el._fill.style.width="0%"; el._lv.textContent=""; }
     }
   }
   _stripCurStep=cur;   // moveCursors(再生中の差分更新)とカーソルキャッシュを同期
@@ -4420,7 +4420,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.23";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.24";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

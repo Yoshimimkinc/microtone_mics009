@@ -364,3 +364,10 @@ JS発音は0.07msで問題なし＝残りは音声スレッド負荷由来のレ
 - `loadSSM`：サンプル群(g0/g1=PAD上段)は SSM2044 worklet を作らず `grpInputNode=grpOut` で直結バイパス。ドラム群(g2/g3)のみ SSM2044。worklet数 4→2＝音声スレッドCPU半減。
 - g0/g1 は元々ほぼ素通し設定(高cut/低res)なので聴感の変化は最小。spDynOpenはg2のみ(dyn>0)なので影響なし。biquadフォールバック時もg0/g1はbiquad(軽量native)のまま。
 - verify(1194×834)：ssm-2044 worklet生成 4→**2**、サンプルPAD/ドラムPADとも発音（バイパス経路で音は出る）、0 errors。
+
+## 38. 【v0.3.24】P-LOCKを操作・見た目とも水平に統一
+パッド(基本値)ドラッグが縦・ステップのフィルが縦でバラバラだったのを、全て水平に統一。
+- パッド perfDrag：`y0/clientY`(縦) → `x0/clientX`(横)。右で増加。
+- ステップ `.sfill`：`bottom/width:100%/height`(縦バー) → `top/bottom/width`(横バー)。`paintStepStrip` の `_fill.style.height` → `width`。
+- パッドのフィル(.lockfill)は元々 width(横)。→ パッドもステップも「横ドラッグ＝横バー」で一致。
+- verify(1194×834)：step fill width 87.5%(横)/pad横ドラッグでPITCH +8。**perf回帰チェック（毎デプロイ実施ルール）：warm発音0.077ms・別パッド連打0.09ms＝回帰なし**、0 errors。
