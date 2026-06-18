@@ -390,3 +390,9 @@ iPhone横(844×390)は幅768超でperfが出るが高さ390で潰れて酷い。
 - `#phoneRotate` オーバーレイ＋`@media (orientation:landscape) and (max-height:500px)`：横向き短画面で `.unit`/`#splash` を隠し「↻ 縦にしてください」を全画面表示。
 - 判定はCSSメディアクエリのみ（JS不要）。iPad横は高さ≥768>500なので非対象＝perf維持。iPhone縦(高さ844)も非対象＝通常表示。
 - verify：iPhone横=overlay表示/unit非表示、iPhone縦=通常、iPad横=影響なし。CSSのみ＝音声/JS経路に変更なし＝perf不変。
+
+## 42. 【v0.3.28】右下のSTART/STOPボタンを廃止
+`#padPlay`(.big-play)はヘッダ ▶PLAY を呼ぶだけのプロキシ＝重複だったので削除。
+- HTML `#padTransport`/`#padPlay` 除去。JS参照2箇所（再生トグルのSTART⇔STOP同期／クリック配線 `()=>playBtn.click()`）も除去。
+- 再生/停止はヘッダ ▶PLAY ＋スペースキーで継続。perfでは元々非表示で影響なし。残CSS(.padTransport/.big-play)はdead（無害）。
+- verify(1194×834)：padPlay消去・ヘッダPLAYでトグルOK・0 errors。perf回帰チェック：連打0.52ms＝回帰なし。

@@ -903,7 +903,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.27</div>
+  <div class="s-ver" id="splashVer">v0.3.28</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1178,10 +1178,7 @@
       <!-- 16 pads (主役)：4×4固定（8×2レイアウトは廃止） -->
       <div class="pads" id="pads"></div>
 
-      <!-- start/stop (S2400風・4×4スプリット時に右下表示) -->
-      <div class="padTransport" id="padTransport">
-        <button class="big-play" id="padPlay">▶ START</button>
-      </div>
+      <!-- 右下START/STOPは廃止（v0.3.28）。再生/停止はヘッダ ▶PLAY ＋スペースキー -->
 
       <!-- 常時表示の16ステップ列：選択トラックの打ち込み（1画面化 v0.3.0） -->
       <div class="stepstrip" id="stepStrip" aria-label="ステップ（選択トラック）"></div>
@@ -3033,9 +3030,6 @@ playBtn.addEventListener("click",async()=>{
   playing=!playing;
   playBtn.classList.toggle("on",playing);
   playBtn.textContent=playing?"■ Stop":"▶ Play";
-  // S2400風の右下START/STOPも同期
-  const pp=document.getElementById("padPlay");
-  if(pp){pp.classList.toggle("on",playing);pp.textContent=playing?"■ STOP":"▶ START";}
   if(playing){
     stepIdx=0; playStep=0; drawQueue.length=0;
     playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
@@ -3051,7 +3045,6 @@ playBtn.addEventListener("click",async()=>{
     tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
   }
 });
-document.getElementById("padPlay").addEventListener("click",()=>playBtn.click());
 const recBtn=document.getElementById("rec");
 // GRID時は「打ち込み(STEP)」、REAL時は「録音(REC)」とラベルで役割を分ける（赤●=録音 と混同しないように）
 function updateRecBtnLabel(){
@@ -4431,7 +4424,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.27";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.28";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
