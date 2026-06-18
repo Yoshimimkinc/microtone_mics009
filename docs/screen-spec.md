@@ -412,3 +412,10 @@ iPhone縦のtransportバーがぐちゃっとしていた問題を解消。「PL
 - **不具合修正**：`#rec{min-width:96px}`（旧「●Rec/■Step」用の固定幅、IDセレクタ=高詳細度でmobile override(min-width:0)に勝ち、RECだけ96pxで不揃いだった）を削除。REC実装はアイコン1文字で●⇔■も幅不変＝固定不要。
 - スマホでは `#stepStrip` を `display:none`（SEQ画面があるので冗長）。
 - verify(390×844 mobile)：labels=[▶ ● ↩ COPY MUTE SOLO ⋮]、widths全て27px＝uniform:true・1行、stepStrip非表示、0 errors。perf回帰チェック：trigger median 0.1ms＝回帰なし。
+
+## 45. 【v0.3.31】スマホ：MUTE/SOLOを下段EDITの横へ（transportを5ボタンに）
+「MUTE SOLOは下のEDITの横でもOK」に対応。スマホ縦のtransportをさらに空けるため、MUTE/SOLOを下段に移動。
+- `relocateMuteSolo()`：同一DOMノード(`#holdMute`/`#holdSolo`)を親替えするだけ。スマホ(<600px)は`.msbar`(EDIT行)へ＝[MUTE SOLO EDIT]、それ以外はヘッダ`.transport`へ戻す。load/resizeで判定。
+- ID参照(arm配線・armed状態トグル)は不変＝機能影響なし。スマホはperf非該当なので、perf(ヘッダtransport依存)のMUTE/SOLOにも影響なし。
+- CSS：`#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;min-height:34px;...}`でEDITと均等3分割。
+- verify：スマホ=transport[▶ ● ↩ COPY ⋮]5個均等22px/1行、EDIT行[MUTE SOLO EDIT]均等47px/1行。デスクトップ=MUTE/SOLOはtransportに復帰(従来通り)、perfはmsbar非表示で従来通り。0 errors。perf回帰：trigger median 0.1ms＝回帰なし。
