@@ -286,10 +286,23 @@
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
     grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,1fr)!important;gap:10px;}
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
-  body.perf .perf-screen{grid-area:screen;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
-    background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:10px 16px;
-    font-size:12px;letter-spacing:.14em;color:var(--teal);font-variant-numeric:tabular-nums;
+  /* 情報窓＝コマンドライン風（複数行のターミナル表示で上段の空きを埋める） */
+  body.perf .perf-screen{grid-area:screen;display:flex;flex-direction:column;justify-content:center;gap:2px;
+    background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:9px 16px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;letter-spacing:.03em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
+  body.perf .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
+  body.perf .perf-screen .cl-head{justify-content:space-between;border-bottom:1px solid rgba(61,214,196,.2);padding-bottom:3px;margin-bottom:1px;}
+  body.perf .perf-screen .cl-brand{letter-spacing:.16em;font-size:10px;opacity:.65;}
+  body.perf .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
+  body.perf .perf-screen b{font-weight:700;}
+  body.perf .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
+  body.perf .perf-screen.playing .cl-state{color:#bafff4;}
+  body.perf .perf-screen .cl-prompt{font-size:11px;opacity:.9;}
+  body.perf .perf-screen .cl-prompt b{font-weight:400;}
+  body.perf .perf-screen .cl-caret{color:var(--amber);margin-right:5px;}
+  body.perf .perf-screen .cl-cur{margin-left:1px;animation:spblink 1.1s steps(2,start) infinite;}
   /* SEQ操作行：A-D / 小節1-4 / DUP / SELECT（パッド下の横一列） */
   body.perf .perf-pats{grid-area:pats;display:flex;gap:7px;align-items:stretch;flex-wrap:nowrap;}
   body.perf .perf-pats .perf-pat{flex:0 0 auto;min-width:40px;}
@@ -846,7 +859,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.5</div>
+  <div class="s-ver" id="splashVer">v0.3.6</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1136,9 +1149,16 @@
 
       <!-- Performance Mode（4×4横向き/PC・iPad）のガワ。通常は非表示、body.perf で表示 -->
       <div class="perf-screen" id="perfScreen">
-        <span id="perfBpm">100.0 BPM</span>
-        <span id="perfPat">PAT A</span>
-        <span id="perfSel">01 KICK</span>
+        <div class="cl-row cl-head"><span class="cl-brand">MICS009 // PERFORM</span><span class="cl-state" id="clState">■ STOP</span></div>
+        <div class="cl-row">
+          <span><i>BPM</i><b id="perfBpm">94.5</b></span>
+          <span><i>SWG</i><b id="clSwing">50%</b></span>
+          <span><i>PAT</i><b id="perfPat">A</b></span>
+          <span><i>BAR</i><b id="clBar">1</b></span>
+          <span><i>STEP</i><b id="clStep">--</b></span>
+        </div>
+        <div class="cl-row"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
+        <div class="cl-row cl-prompt"><span class="cl-caret">&gt;</span><b id="clMsg">ready</b><span class="cl-cur">_</span></div>
       </div>
       <div class="perf-seclbl" id="perfLblPad">PAD</div>
       <div class="perf-seclbl" id="perfLblSeq">SEQ</div>
@@ -2470,6 +2490,11 @@ function curStepFor(){ return (playing && editPat===displayPat && editBar===disp
 function paintSteps(){
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID中はPADのステップ表示も更新（再生ヘッド追従）
   if(typeof paintStepStrip==="function") paintStepStrip();             // 常時表示の16ステップ列（1画面化）を毎回同期（早期returnより前）
+  if(document.body.classList.contains("perf")){                        // 情報窓のSTEP/STATEをライブ更新（軽量）
+    const _cs=document.getElementById("clStep"); if(_cs) _cs.textContent=playing?(String(playStep+1).padStart(2,"0")+"/16"):"--";
+    const _ct=document.getElementById("clState"); if(_ct) _ct.textContent=playing?(perfRecArm?"● REC":"▶ PLAY"):"■ STOP";
+    const _sc=document.querySelector(".perf-screen"); if(_sc) _sc.classList.toggle("playing",playing);
+  }
   if(!viewSeqEl.classList.contains("active")) return;   // SEQ非表示なら重い16×16グリッド更新は不要（毎ステップの負荷を削減）
   if(melodicMode){ paintMelodic(); return; }
   const cs=curStepFor();
@@ -3690,9 +3715,16 @@ function paintPerf(){
   if(!document.body.classList.contains("perf")) return;
   const $=id=>document.getElementById(id);
   const bv=(typeof bpmVal!=="undefined"?bpmVal:100), ep=(typeof editPat!=="undefined"?editPat:0);
-  if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1)+" BPM";
-  if($("perfPat")) $("perfPat").textContent="PAT "+"ABCD"[ep];
+  if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1);
+  if($("clSwing")) $("clSwing").textContent=(typeof swingPct!=="undefined"?swingPct:50)+"%";
+  if($("perfPat")) $("perfPat").textContent="ABCD"[ep];
+  if($("clBar")) $("clBar").textContent=String((typeof editBar!=="undefined"?editBar:0)+1);
+  const _pl=(typeof playing!=="undefined"&&playing);
+  if($("clStep")) $("clStep").textContent=_pl?(String((typeof playStep!=="undefined"?playStep:0)+1).padStart(2,"0")+"/16"):"--";
+  if($("clState")) $("clState").textContent=_pl?(perfRecArm?"● REC":"▶ PLAY"):"■ STOP";
+  const _scr=document.querySelector(".perf-screen"); if(_scr) _scr.classList.toggle("playing",_pl);
   if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
+  if($("clMsg")){ const m=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):""; $("clMsg").textContent=m||"ready"; }
   // パターン：現在=on、再生中の予約=queued
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{
     const p=+b.dataset.p;
@@ -4211,7 +4243,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.5";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.6";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
