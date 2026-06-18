@@ -890,7 +890,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.20</div>
+  <div class="s-ver" id="splashVer">v0.3.21</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2441,6 +2441,17 @@ function flashPad(i,accent){
   if(accent) el.classList.add("hit-acc");
   setTimeout(()=>{el.classList.remove("hit");el.classList.remove("hit-acc");},110);
 }
+let _selHeavyRAF=0;
+function selectPadHeavy(){   // selectPad の重いUI同期（エディタ/ステップ列/波形）。演奏タップ時は rAF で集約して呼ぶ。
+  const i=selected;
+  refreshSeqMode();
+  if(isMelodic(i) && typeof sampNameEl!=="undefined" && sampNameEl)
+    sampNameEl.textContent="♪ "+PADS[i].name+"：ホーム行 A〜; ＝音階キー（"+tracks[i].scale+"）";
+  if(typeof syncEditor==="function") syncEditor();
+  if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
+  if(typeof paintStepStrip==="function") paintStepStrip();             // 16ステップ列を選択トラックへ追従
+  if(typeof applyWaveStrip==="function") applyWaveStrip();             // 下段ステップ列の波形を選択トラックへ
+}
 function selectPad(i, light){
   const changed = selected!==i;
   selected=i;
@@ -2449,17 +2460,15 @@ function selectPad(i, light){
   document.getElementById("trackName").textContent=String(i+1).padStart(2,"0")+" "+PADS[i].name;
   document.getElementById("vol").value=tracks[i].vol;
   document.getElementById("volVal").textContent=tracks[i].vol;
-  // 重い更新（波形/エディタ/GRID再描画）：手叩き(light)で同じパッド連打なら無駄なのでスキップ＝引っかかり解消。
-  // 内容が変わる呼び出し（undo/load/applyChop等）はlight無しで常に最新化。
+  // 同じパッド連打は重い更新を完全スキップ
   if(light && !changed) return;
-  refreshSeqMode();
-  // 音階パッドを選んだら鍵盤の使い方を一度提示（discoverability）
-  if(changed && isMelodic(i) && typeof sampNameEl!=="undefined" && sampNameEl)
-    sampNameEl.textContent="♪ "+PADS[i].name+"：ホーム行 A〜; ＝音階キー（"+tracks[i].scale+"）";
-  if(typeof syncEditor==="function") syncEditor();
-  if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
-  if(typeof paintStepStrip==="function") paintStepStrip();             // 16ステップ列を選択トラックへ追従
-  if(typeof applyWaveStrip==="function") applyWaveStrip();             // 下段ステップ列の薄い波形を選択トラックへ
+  if(light){   // 演奏タップ（指弾き）：重いUI同期は次フレームに1回だけ集約＝連打しても発音が軽い
+    if(!_selHeavyRAF) _selHeavyRAF=requestAnimationFrame(()=>{ _selHeavyRAF=0; selectPadHeavy(); });
+    return;
+  }
+  // 編集系の選択（undo/load/SELECT/Alt等）は即同期。保留中のrAFがあれば破棄。
+  if(_selHeavyRAF){ cancelAnimationFrame(_selHeavyRAF); _selHeavyRAF=0; }
+  selectPadHeavy();
 }
 
 // column numbers (1..16)
@@ -4405,7 +4414,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.20";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.21";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
