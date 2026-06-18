@@ -208,6 +208,14 @@
   /* pads */
   .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:540px;}
   .pads .pad{aspect-ratio:1;}
+  /* 常時表示の16ステップ列（選択トラックの打ち込み）。1画面化(v0.3.0) */
+  .stepstrip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px;width:100%;align-self:end;}
+  .stepbtn{height:32px;border:1px solid var(--line);border-radius:5px;background:var(--pad);
+    cursor:pointer;padding:0;transition:.08s;-webkit-tap-highlight-color:transparent;touch-action:none;}
+  .stepbtn.beat{border-color:var(--edge);background:linear-gradient(180deg,var(--pad),var(--panel));}  /* 4分割の頭を強調 */
+  .stepbtn.on{background:var(--teal);border-color:var(--teal);box-shadow:0 0 8px rgba(61,214,196,.45);}
+  .stepbtn.acc{background:#ff5db0;border-color:#ff5db0;box-shadow:0 0 9px rgba(255,93,176,.55);}
+  .stepbtn.cur{outline:2px solid var(--ink);outline-offset:1px;}
   /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
@@ -215,14 +223,16 @@
   #viewPads.split.active{
     display:grid;
     grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
-    grid-template-rows:auto auto 1fr;
+    grid-template-rows:auto auto 1fr auto;
     grid-template-areas:
       "pads strip"
       "pads msbar"
-      "pads transport";
+      "pads transport"
+      "steps steps";
     gap:14px 20px;
     align-items:start;
   }
+  #viewPads.split .stepstrip{grid-area:steps;}
   #viewPads.split .strip{grid-area:strip;margin-bottom:0;}
   #viewPads.split .msbar{grid-area:msbar;margin:0;}
   #viewPads.split .pads{grid-area:pads;max-width:none;align-self:start;}
@@ -242,10 +252,11 @@
   body.perf #viewPads.split.active{
     display:grid;
     grid-template-columns:minmax(128px,176px) minmax(0,1fr) minmax(128px,176px);
-    grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-rows:auto minmax(0,1fr) auto auto;
     grid-template-areas:
       "screen screen screen"
       "msbar  pads    pats"
+      "steps  steps   steps"
       "plk    plk     plk";
     gap:9px 16px; align-items:stretch; height:100%;
   }
@@ -716,6 +727,7 @@
     .strip-head .stepnav{padding:6px 7px;}
     /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
     #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
+    #viewPads>.stepstrip{order:5;flex:0 0 auto;}   /* 16ステップ列は最下段 */
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
     .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
     .pads .pad{aspect-ratio:auto!important;min-height:0!important;padding:6px!important;}
@@ -795,7 +807,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.2.30</div>
+  <div class="s-ver" id="splashVer">v0.3.0</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1079,6 +1091,9 @@
       <div class="padTransport" id="padTransport">
         <button class="big-play" id="padPlay">▶ START</button>
       </div>
+
+      <!-- 常時表示の16ステップ列：選択トラックの打ち込み（1画面化 v0.3.0） -->
+      <div class="stepstrip" id="stepStrip" aria-label="ステップ（選択トラック）"></div>
 
       <!-- Performance Mode（4×4横向き/PC・iPad）のガワ。通常は非表示、body.perf で表示 -->
       <div class="perf-screen" id="perfScreen">
@@ -2339,6 +2354,7 @@ function selectPad(i, light){
     sampNameEl.textContent="♪ "+PADS[i].name+"：ホーム行 A〜; ＝音階キー（"+tracks[i].scale+"）";
   if(typeof syncEditor==="function") syncEditor();
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
+  if(typeof paintStepStrip==="function") paintStepStrip();             // 16ステップ列を選択トラックへ追従
 }
 
 // column numbers (1..16)
@@ -2400,6 +2416,7 @@ let _seqCurStep=-1, _padCurStep=-1;
 function curStepFor(){ return (playing && editPat===displayPat && editBar===displayBar) ? playStep : -1; }
 function paintSteps(){
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID中はPADのステップ表示も更新（再生ヘッド追従）
+  if(typeof paintStepStrip==="function") paintStepStrip();             // 常時表示の16ステップ列（1画面化）を毎回同期（早期returnより前）
   if(!viewSeqEl.classList.contains("active")) return;   // SEQ非表示なら重い16×16グリッド更新は不要（毎ステップの負荷を削減）
   if(melodicMode){ paintMelodic(); return; }
   const cs=curStepFor();
@@ -2899,6 +2916,36 @@ function toggleStepAt(s, accent){
   if(nv===0) clearLockEdit(selected, s);   // OFFにしたらそのステップのp-lockも消す
   paintStepPads(); if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
 }
+// ===== 常時表示の16ステップ列：選択トラックの打ち込み（1画面化 v0.3.0）=====
+// パッド＝トラック選択／発音、この列＝そのトラックの現在パターン(editPat)・小節(editBar)のステップ。
+// 既存の toggleStepAt / getPattern / curStepFor をそのまま流用＝状態の二重管理なし。
+const stepStripEl=document.getElementById("stepStrip");
+const stepBtns=[];
+if(stepStripEl){
+  for(let s=0;s<STEPS;s++){
+    const b=document.createElement("button");
+    b.className="stepbtn"+((s%4===0)?" beat":"");
+    b.dataset.s=s; b.type="button";
+    stepStripEl.appendChild(b); stepBtns.push(b);
+  }
+  stepStripEl.addEventListener("pointerdown",e=>{
+    const b=e.target.closest(".stepbtn"); if(!b) return;
+    e.preventDefault();
+    toggleStepAt(+b.dataset.s, e.shiftKey);   // Shift=アクセント（SEQと同じ操作）
+  });
+}
+function paintStepStrip(){
+  if(!stepStripEl) return;
+  const pat=getPattern(selected);
+  const cur=(typeof curStepFor==="function")?curStepFor():-1;
+  for(let s=0;s<STEPS;s++){
+    const v=pat[s]||0, el=stepBtns[s]; if(!el) continue;
+    el.classList.toggle("on", v>0);
+    el.classList.toggle("acc", v===2);
+    el.classList.toggle("cur", s===cur);
+  }
+}
+paintStepStrip();   // ボタン生成直後の初期描画（起動時の最初のpaintStepsはこの行より前に走るため）
 // p-lock ツールバー（1つだけ点灯／再押しで解除）
 (function(){
   const row=document.getElementById("plockRow"); if(!row) return;
@@ -4087,7 +4134,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.2.30";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.0";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
