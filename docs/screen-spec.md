@@ -371,3 +371,10 @@ JS発音は0.07msで問題なし＝残りは音声スレッド負荷由来のレ
 - ステップ `.sfill`：`bottom/width:100%/height`(縦バー) → `top/bottom/width`(横バー)。`paintStepStrip` の `_fill.style.height` → `width`。
 - パッドのフィル(.lockfill)は元々 width(横)。→ パッドもステップも「横ドラッグ＝横バー」で一致。
 - verify(1194×834)：step fill width 87.5%(横)/pad横ドラッグでPITCH +8。**perf回帰チェック（毎デプロイ実施ルール）：warm発音0.077ms・別パッド連打0.09ms＝回帰なし**、0 errors。
+
+## 39. 【v0.3.25】下段16ステップをSEQ画面とデザイン統一（頭拍アクセント）
+PADモード下段ストリップを、SEQ画面(16×16)と同じ見た目に。
+- OFFガイド：拍内4ステップを暗→明グラデ（`nth-child(4n+1)`=頭拍=#353a42暗 … `4n`=拍尻=#aab1bc明）。頭拍(1/5/9/13)に `border-left:2px` の区切り線＝頭拍アクセント。
+- ON=`var(--amber)`、アクセント(acc.on)=白（SEQと同色）。旧teal/pink・中央ドットは廃止。
+- 波形(ONセル)・再生ヘッド枠・P-LOCK横フィルは維持。
+- verify(1194×834)：頭拍border-left 2px／拍尻#aab1bc／ON amber、**perf回帰チェック：別パッド連打0.26ms＝回帰なし**、0 errors。
