@@ -251,32 +251,35 @@
   .perf-screen,.perf-rotate,.perf-pats,.perf-plk,.perf-rec{display:none;}
   body.perf #viewPads.split.active{
     display:grid;
-    grid-template-columns:minmax(128px,176px) minmax(0,1fr) minmax(128px,176px);
-    grid-template-rows:auto auto minmax(0,1fr) auto;
+    grid-template-columns:repeat(8,1fr);
+    grid-template-rows:auto auto minmax(0,1fr) auto auto;
     grid-template-areas:
-      "screen screen screen"
-      "plk    plk     plk"
-      "msbar  pads    pats"
-      "steps  steps   steps";
-    gap:9px 16px; align-items:stretch; height:100%;
+      "screen screen screen screen screen screen screen screen"
+      "plk    plk    plk    plk    plk    plk    plk    plk"
+      "pads   pads   pads   pads   pads   pads   pads   pads"
+      "msbar  msbar  pats   pats   pats   pats   pats   pats"
+      "steps  steps  steps  steps  steps  steps  steps  steps";
+    gap:9px 10px; align-items:stretch; height:100%;
   }
-  body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:8px;}
-  body.perf .perf-plk .perf-plkbtn{flex:1 1 0;font-size:13px;padding:11px 4px;min-height:46px;letter-spacing:.06em;}  /* P-LOCK文字を大きく */
+  body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:7px;}
+  body.perf .perf-plk .perf-plkbtn{flex:1 1 0;font-size:12px;padding:11px 3px;min-height:46px;letter-spacing:.04em;}
   body.perf .perf-plk .perf-plk-label{flex:0 0 auto;font-size:11px;letter-spacing:.2em;color:var(--dim);}
   body.perf .perf-rec{display:block;flex:0 0 auto;min-width:88px;font-size:12px;}
   body.perf #viewPads.split>.padTransport{display:none;}   /* 大きいSTARTは撤去（PLAY/STOPは上部スクリーン＋スペースキー） */
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
-  body.perf #viewPads.split>.msbar{grid-area:msbar;display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0;}
-  body.perf #viewPads.split>.msbar .msbtn{min-width:0;flex:0 0 auto;}
+  body.perf #viewPads.split>.msbar{grid-area:msbar;display:flex;flex-direction:row;align-items:stretch;gap:8px;margin:0;}
+  body.perf #viewPads.split>.msbar .msbtn{min-width:0;flex:1 1 0;}
+  body.perf #viewPads.split>.msbar #holdEdit{display:none;}   /* EDITはパラメータ行へ移動（重複回避） */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
-    grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr);gap:12px;}
+    grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,1fr)!important;gap:10px;}
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
   body.perf .perf-screen{grid-area:screen;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
     background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:10px 16px;
     font-size:12px;letter-spacing:.14em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
-  /* 右上：パターン A-D（2×2） */
-  body.perf .perf-pats{grid-area:pats;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;}
+  /* パターン A-D（パッド下の横一列） */
+  body.perf .perf-pats{grid-area:pats;display:flex;gap:8px;align-items:stretch;}
+  body.perf .perf-pats .perf-pat{flex:1 1 0;}
   /* デバイス調ボタン（パターンA-D） */
   .perf-pat{background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:16px;
@@ -297,6 +300,12 @@
   .perf-plkbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
   .perf-plkbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
   .perf-plkbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
+  .perf-plkbtn[data-lock="nudge"]{color:#ff965a;}
+  .perf-plkbtn[data-lock="nudge"].on{background:#ff965a;color:#2a1205;border-color:#ff965a;}
+  .perf-plkbtn[data-lock="comp"]{color:#ffd25a;}
+  .perf-plkbtn[data-lock="comp"].on{background:#ffd25a;color:#2a2105;border-color:#ffd25a;}
+  .perf-plkbtn[data-lock="edit"]{color:#e8e4d8;}
+  .perf-plkbtn[data-lock="edit"].on{background:#e8e4d8;color:#1a1a1a;border-color:#e8e4d8;}
   .perf-rec{background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--dim);
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;letter-spacing:.1em;
     padding:8px;min-height:42px;transition:.08s;}
@@ -807,7 +816,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.1</div>
+  <div class="s-ver" id="splashVer">v0.3.2</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1111,13 +1120,14 @@
       <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
       <!-- 下：P-LOCK 5つ均等（GRIDと同じ並び）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
       <div class="perf-plk" id="perfPlk">
-        <span class="perf-plk-label">P-LOCK</span>
         <button class="perf-plkbtn" data-lock="pitch">PITCH</button>
         <button class="perf-plkbtn" data-lock="level">LEVEL</button>
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-rec" id="perfRec">● REC</button>
+        <button class="perf-plkbtn perf-mode" data-lock="comp" id="perfComp">COMP</button>
+        <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
+        <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
 
       <!-- hidden legacy vol sync -->
@@ -3640,8 +3650,11 @@ function paintPerf(){
     b.classList.toggle("on", p===ep);
     b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
   });
-  // P-LOCK選択（activeLock）と REC-arm を反映
-  document.querySelectorAll("#perfPlk .perf-plkbtn").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
+  // P-LOCK選択（activeLock）を反映（comp/edit はモードボタンなので除外）
+  document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
+  // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
+  if($("perfComp")) $("perfComp").classList.toggle("on", typeof compOn!=="undefined" && compOn);
+  if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
 }
 // P-LOCKパラメータ・ページ：選択中は16パッドを「効果量のフィル」表示（発音せず）、キー解放で元値へ復帰
@@ -3689,12 +3702,22 @@ function perfLockApply(prev){
 (function(){
   const $=id=>document.getElementById(id);
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
-  // P-LOCK選択：既存 #plockRow を proxy（activeLock共有）＋パラメータ・ページのスナップ/復帰
-  document.querySelectorAll("#perfPlk .perf-plkbtn").forEach(b=>b.addEventListener("click",()=>{
+  // P-LOCK選択：既存 #plockRow を proxy（activeLock共有）＋パラメータ・ページのスナップ/復帰。
+  // comp/edit は P-LOCK ではなくモードボタン（.perf-mode）なので除外し、専用配線で既存の真へproxy。
+  document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
     const prev=activeLock;
     const src=document.querySelector('#plockRow .plockbtn[data-lock="'+b.dataset.lock+'"]'); if(src) src.click();
     perfLockApply(prev); paintPerf();
   }));
+  // COMP：マスターコンプの有効/バイパスをトグル（既存 setCompBypass/compOn の単一状態）
+  if($("perfComp")) $("perfComp").addEventListener("click",()=>{
+    if(typeof setCompBypass==="function") setCompBypass(!compOn);
+    const cm=$("compToggle"); if(cm) cm.classList.toggle("on", compOn);
+    sampNameEl.textContent = compOn ? "COMP ON（マスターコンプ）" : "COMP OFF（バイパス）";
+    paintPerf();
+  });
+  // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
+  if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
     sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：演奏のみ（離すと戻る）"; });
 })();
@@ -4134,7 +4157,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.1";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.2";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

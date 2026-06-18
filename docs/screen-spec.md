@@ -228,3 +228,15 @@ Model:Samples/S2400流の「1枚縛り」へ向けた第一歩。Performance Mod
 - 操作モデル確定：**パッド＝トラック選択/発音、下の16ステップ＝そのトラックの打ち込み**（ユーザー指示どおり）。
 - 旧 SEQ(16×16)画面はフォールバックとして残置（Phase 3 で撤去予定）。
 - 残タスク：Phase 2＝パッド8×2化／パラメータ行に COMP・NUDGE・EDIT 追加／トランスポート行（● ▶ ■ UNDO）／情報窓のコマンドライン化。Phase 3＝SEQ撤去・完全1枚化。
+
+## 18. 【1画面化 v0.3.2 / Phase 2a】モック準拠：パッド8×2＋パラメータ行8ボタン＋全幅化
+Performance Mode を Excel モックの全幅1カラム・縦積みに再構成。
+- グリッド：`repeat(8,1fr)` の全幅。行＝screen(情報) / plk(パラメータ8) / pads(8×2) / [msbar(M/S) ＋ pats(A-D)] / steps。
+- パッド：perf で `repeat(8,1fr)×repeat(2,1fr)`＝8×2（モック準拠）。非perf/モバイルは従来4×4のまま。
+- パラメータ行(8)：PITCH/LEVEL/FILTER/DELAY/REVERB/**COMP**/NUDGE/**EDIT**。
+  - 6つ(pitch〜nudge)＝既存P-LOCKを `#plockRow` へproxy（activeLock共有）。
+  - COMP＝`setCompBypass(!compOn)` で master comp トグル（単一状態）。EDIT＝`#holdEdit` をproxy（armモード共有＝EDIT+PADで中身編集）。`.perf-mode` 印で P-LOCK proxy から除外。
+  - 旧 `● REC`(perfRec) はパラメータ行から撤去（RECはヘッダ ●Rec／transport 側）。msbar の EDIT は perf で非表示（パラメータ行へ集約）。
+- A-D は2×2→横一列。M/S は msbar(横並び)で温存（モックには無いが機能維持＝暫定）。
+- 残：パターン行に BAR(1-4)＋DUP、情報窓のコマンドライン化、トランスポート行化。SEQ(16×16)は俯瞰打ち込み用に残置（ユーザー方針）。
+- verify(1280×800)：pad 8col×2row / param 8ボタン(順序一致) / COMPトグル / EDIT arm / 0 page errors。
