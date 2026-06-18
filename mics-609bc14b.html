@@ -248,28 +248,33 @@
   .padTransport .big-play.on{background:linear-gradient(180deg,#5a2230,#3a1620);color:var(--red);border-color:var(--red);}
 
   /* ===== Performance Mode（4×4・横向き・PC/iPad）：中央=大パッド / 左右=操作列。ガワはダークなデバイス調 ===== */
-  .perf-screen,.perf-rotate,.perf-pats,.perf-plk,.perf-rec{display:none;}
+  .perf-screen,.perf-rotate,.perf-pats,.perf-plk,.perf-rec,.perf-seclbl{display:none;}
   body.perf #viewPads.split.active{
     display:grid;
     grid-template-columns:repeat(8,1fr);
-    grid-template-rows:auto auto minmax(0,1fr) auto auto;
+    grid-template-rows:auto auto auto minmax(0,1fr) auto auto auto;
     grid-template-areas:
       "screen screen screen screen screen screen screen screen"
+      "padlbl padlbl padlbl padlbl padlbl padlbl padlbl padlbl"
       "plk    plk    plk    plk    plk    plk    plk    plk"
       "pads   pads   pads   pads   pads   pads   pads   pads"
-      "msbar  msbar  pats   pats   pats   pats   pats   pats"
+      "seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl"
+      "pats   pats   pats   pats   pats   pats   pats   pats"
       "steps  steps  steps  steps  steps  steps  steps  steps";
-    gap:9px 10px; align-items:stretch; height:100%;
+    gap:6px 10px; align-items:stretch; height:100%;
   }
+  /* セクション見出し PAD / SEQ */
+  body.perf .perf-seclbl{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
+    letter-spacing:.22em;color:var(--dim);border-top:1px solid var(--edge);padding-top:3px;}
+  body.perf .perf-seclbl::before{content:"";width:3px;height:11px;background:var(--teal);border-radius:2px;}
+  body.perf #perfLblPad{grid-area:padlbl;} body.perf #perfLblSeq{grid-area:seqlbl;}
   body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:7px;}
   body.perf .perf-plk .perf-plkbtn{flex:1 1 0;font-size:12px;padding:11px 3px;min-height:46px;letter-spacing:.04em;}
   body.perf .perf-plk .perf-plk-label{flex:0 0 auto;font-size:11px;letter-spacing:.2em;color:var(--dim);}
   body.perf .perf-rec{display:block;flex:0 0 auto;min-width:88px;font-size:12px;}
   body.perf #viewPads.split>.padTransport{display:none;}   /* 大きいSTARTは撤去（PLAY/STOPは上部スクリーン＋スペースキー） */
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
-  body.perf #viewPads.split>.msbar{grid-area:msbar;display:flex;flex-direction:row;align-items:stretch;gap:8px;margin:0;}
-  body.perf #viewPads.split>.msbar .msbtn{min-width:0;flex:1 1 0;}
-  body.perf #viewPads.split>.msbar #holdEdit{display:none;}   /* EDITはパラメータ行へ移動（重複回避） */
+  body.perf #viewPads.split>.msbar{display:none;}   /* MUTE/SOLOはトランスポート行へ移設予定→perfでは一旦非表示 */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
     grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,1fr)!important;gap:10px;}
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
@@ -277,10 +282,20 @@
     background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:10px 16px;
     font-size:12px;letter-spacing:.14em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
-  /* パターン A-D ＋ SELECT（パッド下の横一列） */
-  body.perf .perf-pats{grid-area:pats;display:flex;gap:8px;align-items:stretch;}
-  body.perf .perf-pats .perf-pat{flex:1 1 0;}
-  .perf-sel{flex:1.3 1 0;margin-left:auto;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+  /* SEQ操作行：A-D / 小節1-4 / DUP / SELECT（パッド下の横一列） */
+  body.perf .perf-pats{grid-area:pats;display:flex;gap:7px;align-items:stretch;flex-wrap:nowrap;}
+  body.perf .perf-pats .perf-pat{flex:0 0 auto;min-width:40px;}
+  .perf-bar{flex:0 0 auto;min-width:32px;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:14px;
+    padding:10px 4px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
+  .perf-bar:active{transform:translateY(1px);}
+  .perf-bar.on{background:linear-gradient(180deg,#2a6f66,#15433d);color:#bafff4;border-color:var(--teal);}
+  .perf-bar.barsep{margin-left:12px;}   /* A-D と小節群の間に余白 */
+  .perf-dup{flex:0 0 auto;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:12px;
+    letter-spacing:.05em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
+  .perf-dup:active{transform:translateY(1px);}
+  .perf-sel{flex:0 0 auto;margin-left:auto;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:13px;
     letter-spacing:.12em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
   .perf-sel:active{transform:translateY(1px);}
@@ -823,7 +838,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.3</div>
+  <div class="s-ver" id="splashVer">v0.3.4</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1117,11 +1132,16 @@
         <span id="perfPat">PAT A</span>
         <span id="perfSel">01 KICK</span>
       </div>
+      <div class="perf-seclbl" id="perfLblPad">PAD</div>
+      <div class="perf-seclbl" id="perfLblSeq">SEQ</div>
       <div class="perf-rotate" id="perfRotate"><div>↻<br>横向きにしてください<br><small>演奏モード（4×4）</small></div></div>
       <!-- 右上：パターンA-Dライブ切替 -->
       <div class="perf-pats" id="perfPats">
         <button class="perf-pat" data-p="0">A</button><button class="perf-pat" data-p="1">B</button>
         <button class="perf-pat" data-p="2">C</button><button class="perf-pat" data-p="3">D</button>
+        <button class="perf-bar barsep" data-b="0">1</button><button class="perf-bar" data-b="1">2</button>
+        <button class="perf-bar" data-b="2">3</button><button class="perf-bar" data-b="3">4</button>
+        <button class="perf-dup" id="perfDup" title="今の小節を次へ複写して伸ばす">DUP►</button>
         <button class="perf-sel" id="holdSelect" title="押した後にパッドを触ると選択のみ（発音なし）">SELECT</button>
       </div>
       <!-- 左：BPM / Swing -->
@@ -3663,6 +3683,8 @@ function paintPerf(){
     b.classList.toggle("on", p===ep);
     b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
   });
+  // 小節1-4：現在の editBar を反映
+  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("on", +b.dataset.b===(typeof editBar!=="undefined"?editBar:0)));
   // P-LOCK選択（activeLock）を反映（comp/edit はモードボタンなので除外）
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
   // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
@@ -3715,6 +3737,9 @@ function perfLockApply(prev){
 (function(){
   const $=id=>document.getElementById(id);
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
+  // 小節(1-4)＋DUP（SEQ操作行）：既存 setEditBar / dupBarNext を再利用
+  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditBar==="function") setEditBar(+b.dataset.b); paintPerf(); }));
+  if($("perfDup")) $("perfDup").addEventListener("click",()=>{ if(typeof dupBarNext==="function") dupBarNext(); paintPerf(); });
   // P-LOCK選択：既存 #plockRow を proxy（activeLock共有）＋パラメータ・ページのスナップ/復帰。
   // comp/edit は P-LOCK ではなくモードボタン（.perf-mode）なので除外し、専用配線で既存の真へproxy。
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
@@ -4170,7 +4195,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.3";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.4";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
