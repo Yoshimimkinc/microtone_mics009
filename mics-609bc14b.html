@@ -371,6 +371,8 @@
   .perf-plkbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
   .perf-plkbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
   .perf-plkbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
+  /* 空きスロット（COMP撤去跡）：ボタンの枠だけ残す・無効 */
+  .perf-plkbtn.perf-spare{opacity:.3;cursor:default;pointer-events:none;}
   .perf-plkbtn[data-lock="nudge"]{color:#ff965a;}
   .perf-plkbtn[data-lock="nudge"].on{background:#ff965a;color:#2a1205;border-color:#ff965a;}
   .perf-plkbtn[data-lock="comp"]{color:#ffd25a;}
@@ -887,7 +889,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.15</div>
+  <div class="s-ver" id="splashVer">v0.3.16</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1205,7 +1207,7 @@
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-mode" data-lock="comp" id="perfComp">COMP</button>
+        <button class="perf-plkbtn perf-spare" id="perfSpare" aria-label="空きスロット" title="空きスロット（COMP撤去跡・将来用）"></button>
         <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
         <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
@@ -2322,10 +2324,8 @@ PADS.forEach((p,i)=>{
       try{ d.setPointerCapture(e.pointerId); }catch(_){}
       return;
     }
-    if(armMode==="edit"){                  // EDIT中：タップ=編集モーダル / ドラッグ=並べ替え（移動）/ 長押し→ドラッグ=コピー
+    if(armMode==="edit"){                  // EDIT中：タップ=編集モーダル / ドラッグ=並べ替え（移動）/ 長押し→ドラッグ=コピー（発音なし）
       e.preventDefault();
-      if(AC.state!=="running"){ try{ await AC.resume(); }catch(_){} }
-      trigger(i);                          // 触った瞬間に発音（どのスライスか耳で確認）
       editDrag={pad:i, x0:e.clientX, y0:e.clientY, moved:false, copy:false, over:-1, timer:0};
       d.classList.add("dragsrc");
       try{ d.setPointerCapture(e.pointerId); }catch(_){}
@@ -3854,7 +3854,6 @@ function paintPerf(){
   // P-LOCK選択（activeLock）を反映（comp/edit はモードボタンなので除外）
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
   // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
-  if($("perfComp")) $("perfComp").classList.toggle("on", typeof compOn!=="undefined" && compOn);
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
 }
@@ -3913,13 +3912,6 @@ function perfLockApply(prev){
     const src=document.querySelector('#plockRow .plockbtn[data-lock="'+b.dataset.lock+'"]'); if(src) src.click();
     perfLockApply(prev); paintPerf();
   }));
-  // COMP：マスターコンプの有効/バイパスをトグル（既存 setCompBypass/compOn の単一状態）
-  if($("perfComp")) $("perfComp").addEventListener("click",()=>{
-    if(typeof setCompBypass==="function") setCompBypass(!compOn);
-    const cm=$("compToggle"); if(cm) cm.classList.toggle("on", compOn);
-    sampNameEl.textContent = compOn ? "COMP ON（マスターコンプ）" : "COMP OFF（バイパス）";
-    paintPerf();
-  });
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
@@ -4361,7 +4353,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.15";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.16";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
