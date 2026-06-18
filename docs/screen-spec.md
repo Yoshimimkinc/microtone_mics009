@@ -378,3 +378,9 @@ PADモード下段ストリップを、SEQ画面(16×16)と同じ見た目に。
 - ON=`var(--amber)`、アクセント(acc.on)=白（SEQと同色）。旧teal/pink・中央ドットは廃止。
 - 波形(ONセル)・再生ヘッド枠・P-LOCK横フィルは維持。
 - verify(1194×834)：頭拍border-left 2px／拍尻#aab1bc／ON amber、**perf回帰チェック：別パッド連打0.26ms＝回帰なし**、0 errors。
+
+## 40. 【v0.3.26】iPhone(モバイル縦)でパッド右に空きができる問題を修正
+原因：`.split` を常時付与しているため、デスクトップ分割用の `#viewPads.split .pads{align-self:start}` がモバイルの flex 縦でも効き、パッドが幅いっぱいに伸びず右に空きができていた（#pads 339px / 利用可 364px）。
+- モバイルメディアクエリの `#viewPads>.pads` に `align-self:stretch!important`（`.split .pads` の方が特異度が高いため!important で上書き）。
+- 結果(iPhone 390×844)：#pads 339→364px、pad右の空き 38→13px（＝全要素共通の端margin）＝右の空き解消。
+- perf回帰チェック：別パッド連打0.26ms＝回帰なし、0 errors。
