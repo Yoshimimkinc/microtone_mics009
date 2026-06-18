@@ -140,7 +140,6 @@
   .who-wrap{display:flex;align-items:center;gap:8px;min-width:0;}
   .stepnav{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;min-width:0;}
   .strip-head .who{flex:0 0 130px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  #rec{min-width:96px;}   /* ●Rec/■Step で幅が変わらないよう固定 */
   /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
   /* ビュー切替ドット（既定=PCでは非表示。スマホのmedia queryで表示） */
   /* 画面モード：●PADS 〇SEQ 〇MIX を画面幅いっぱいに均等表示してスワイプを促す */
@@ -769,12 +768,10 @@
     .brand .model{display:none;}
     .top{padding-bottom:8px;margin-bottom:8px;gap:7px;flex:0 0 auto;}
     button.t{padding:6px 8px;font-size:10px;min-width:0;}
-    .transport{gap:6px;}
+    .transport{gap:5px;flex-wrap:nowrap;}
     .transport .ctrl{font-size:9px;}
-    /* PLAYは押しやすいよう約2個分の幅。文字サイズは4つとも統一（UNDOも収まる大きさ） */
-    .transport button.t{font-size:12px;letter-spacing:.06em;padding-left:4px;padding-right:4px;}
-    .transport .play{flex:2 1 0;min-height:46px;}
-    .transport .rec,.transport #tap,.transport #undoBtn{flex:1 1 0;min-height:46px;}
+    /* スマホ：transportの全ボタンを等幅で美しく整列（1行）。PLAY/RECはアイコンのみ */
+    .transport button.t{flex:1 1 0;min-width:0;font-size:11px;letter-spacing:.02em;padding:0 3px;min-height:46px;white-space:nowrap;overflow:hidden;text-overflow:clip;}
     #bpm{max-width:84px;}
     .modebar-row{margin:8px 0 8px;gap:12px;}
     /* TEMPO/SWINGは2行目に（スライダーを広く） */
@@ -814,7 +811,7 @@
     .strip-head .stepnav{padding:6px 7px;}
     /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
     #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
-    #viewPads>.stepstrip{order:5;flex:0 0 auto;}   /* 16ステップ列は最下段 */
+    #viewPads>.stepstrip{display:none!important;}   /* スマホは下段ステップ非表示（打ち込みはSEQ画面で） */
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
     .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
     .pads .pad{aspect-ratio:auto!important;min-height:0!important;padding:6px!important;}
@@ -905,7 +902,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.29</div>
+  <div class="s-ver" id="splashVer">v0.3.30</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -914,9 +911,9 @@
       <div class="logo">micro<b>tone</b></div>
     </div>
     <div class="transport">
-      <button class="t play" id="play">▶ Play</button>
-      <button class="t rec" id="rec">● Rec</button>
-      <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩ Undo</button>
+      <button class="t play" id="play" aria-label="Play/Stop">▶</button>
+      <button class="t rec" id="rec" aria-label="Rec">●</button>
+      <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩</button>
       <button class="t arm copy" id="holdCopy" title="押した後パッドで音色コピー">COPY</button>
       <button class="t arm mute" id="holdMute" title="押した後パッドでミュート">MUTE</button>
       <button class="t arm solo" id="holdSolo" title="押した後パッドでソロ">SOLO</button>
@@ -3063,7 +3060,7 @@ playBtn.addEventListener("click",async()=>{
   if(AC.state!=="running") await AC.resume();
   playing=!playing;
   playBtn.classList.toggle("on",playing);
-  playBtn.textContent=playing?"■ Stop":"▶ Play";
+  playBtn.textContent=playing?"■":"▶";   // アイコンのみ（文字なし）
   if(playing){
     stepIdx=0; playStep=0; drawQueue.length=0;
     playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
@@ -3082,8 +3079,8 @@ playBtn.addEventListener("click",async()=>{
 const recBtn=document.getElementById("rec");
 // GRID時は「打ち込み(STEP)」、REAL時は「録音(REC)」とラベルで役割を分ける（赤●=録音 と混同しないように）
 function updateRecBtnLabel(){
-  if(recMode==="grid"){ recBtn.textContent = stepMode ? "■ Step" : "▦ Step"; recBtn.classList.toggle("on",stepMode); }
-  else { recBtn.textContent = recording ? "■ Rec" : "● Rec"; recBtn.classList.toggle("on",recording); }
+  if(recMode==="grid"){ recBtn.textContent = stepMode ? "■" : "▦"; recBtn.classList.toggle("on",stepMode); }
+  else { recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); }   // アイコンのみ
 }
 recBtn.addEventListener("click",()=>{
   if(recMode==="grid"){ setStepMode(!stepMode); return; }   // GRID：Recでステップ入力ON/OFF
@@ -4455,7 +4452,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.29";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.30";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
