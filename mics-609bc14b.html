@@ -887,7 +887,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.13</div>
+  <div class="s-ver" id="splashVer">v0.3.14</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2299,7 +2299,9 @@ PADS.forEach((p,i)=>{
   d.setAttribute("role","button");
   d.setAttribute("aria-label", p.name+" pad");
   d.addEventListener("pointerdown",async(e)=>{
-    if(armMode==="select" || (e.shiftKey && !stepMode)){ e.preventDefault(); selectPad(i); return; }   // SELECT / SHIFT+PAD：選択のみ・発音なし（打ち込み対象の切替）
+    if(armMode==="select"){ e.preventDefault(); selectPad(i); arm("select",false); return; }   // SELECT＝ワンショット：1パッド選択でトグル消費＆自動解除
+    if(e.altKey){ e.preventDefault(); selectPad(i); return; }                                  // Alt+PAD＝選択のみ・発音なし（Ctrlはブラウザ衝突のためAlt）
+    if(e.shiftKey && !stepMode){ e.preventDefault(); tracks[i].mute=!tracks[i].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }   // Shift+PAD＝ミュート（既定）
     // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
     if(document.body.classList.contains("perf") && activeLock && PERF_BASE[activeLock]){
       e.preventDefault();
@@ -3607,10 +3609,14 @@ window.addEventListener("keydown",async(e)=>{
   if(ae && (ae.tagName==="TEXTAREA" || ae.tagName==="SELECT" ||
             (ae.tagName==="INPUT" && (ae.type||"").toLowerCase()!=="range"))) return;
   if(e.code==="Space"){e.preventDefault();playBtn.click();return;}
-  // Shift+パッドキー = そのパッドを選択のみ（発音せず）。クリックの SHIFT+PAD と統一。MUTEは専用ボタンへ。
+  // Alt+パッドキー = 選択のみ（発音せず）。Shift+パッドキー = ミュート（既定）。
+  if(e.altKey){
+    const ai=CODEMAP.indexOf(e.code);
+    if(ai>=0){ e.preventDefault(); selectPad(ai); return; }
+  }
   if(e.shiftKey){
     const mi=CODEMAP.indexOf(e.code);
-    if(mi>=0){ e.preventDefault(); selectPad(mi); return; }
+    if(mi>=0){ e.preventDefault(); tracks[mi].mute=!tracks[mi].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }
   }
   const k=e.key.toLowerCase();
   // 最下段16ステップをキーボードで打ち込み（A-K=1-8 / Z-,=9-16）。Shift=アクセント。スケール鍵盤より優先。
@@ -3824,13 +3830,13 @@ function paintPerf(){
   if($("clHint")){
     const am=(typeof armMode!=="undefined")?armMode:null;
     let h;
-    if(am==="select") h="SELECT中：パッド=選択のみ（無音）";
+    if(am==="select") h="SELECT中：パッドを1つ選ぶと選択（無音）→自動で解除";
     else if(am==="mute") h="MUTE中：パッド=消音トグル";
     else if(am==="solo") h="SOLO中：パッド=ソロトグル";
     else if(am==="edit") h="EDIT中：パッド=中身編集 / ドラッグ=入替 / 長押し=コピー";
     else if(am==="chop") h="COPY中：① コピー元パッド → ② コピー先パッド";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右=基本値 / 下段ステップ左右=そのステップだけ(P-LOCK)";
-    else h="PAD=選択+発音 / 下段16=打ち込み(A-K,Z-,) / SHIFT+PAD=選択";
+    else h="PAD=選択+発音 / 下段16=打ち込み(A-K,Z-,) / 選択のみ=SELECT or Alt+PAD / Shift+PAD=MUTE";
     $("clHint").textContent=h;
   }
   // パターン：現在=on、再生中の予約=queued
@@ -4355,7 +4361,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.13";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.14";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
