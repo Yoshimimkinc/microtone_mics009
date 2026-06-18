@@ -280,7 +280,8 @@
   /* 画面いっぱいフィット（タブレット/PC横）：PADS/SEQ どちらでも縦が変わらないよう
      body.perf ではなく「サイズ＋横向き」で適用＝ビュー切替で高さがジャンプしない */
   @media (min-width:768px) and (orientation:landscape){
-    body{height:100dvh;overflow:hidden;}
+    html{height:100%;overflow:hidden;}                              /* htmlのスクロールも止める（iOSは html が動く） */
+    body{height:100dvh;overflow:hidden;overscroll-behavior:none;padding:0;}   /* ラバーバンド抑止＋paddingでのはみ出しを無くす */
     .unit{height:100%;max-height:100%;display:flex;flex-direction:column;}
     .body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
     .body>.view.active{flex:1 1 auto;min-height:0;}
@@ -889,7 +890,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.16</div>
+  <div class="s-ver" id="splashVer">v0.3.17</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4353,7 +4354,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.16";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.17";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
