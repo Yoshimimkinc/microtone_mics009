@@ -384,3 +384,9 @@ PADモード下段ストリップを、SEQ画面(16×16)と同じ見た目に。
 - モバイルメディアクエリの `#viewPads>.pads` に `align-self:stretch!important`（`.split .pads` の方が特異度が高いため!important で上書き）。
 - 結果(iPhone 390×844)：#pads 339→364px、pad右の空き 38→13px（＝全要素共通の端margin）＝右の空き解消。
 - perf回帰チェック：別パッド連打0.26ms＝回帰なし、0 errors。
+
+## 41. 【v0.3.27】iPhoneは縦に一本化（横向きは回転プロンプト）
+iPhone横(844×390)は幅768超でperfが出るが高さ390で潰れて酷い。「どっちかでOK」につき縦に固定。
+- `#phoneRotate` オーバーレイ＋`@media (orientation:landscape) and (max-height:500px)`：横向き短画面で `.unit`/`#splash` を隠し「↻ 縦にしてください」を全画面表示。
+- 判定はCSSメディアクエリのみ（JS不要）。iPad横は高さ≥768>500なので非対象＝perf維持。iPhone縦(高さ844)も非対象＝通常表示。
+- verify：iPhone横=overlay表示/unit非表示、iPhone縦=通常、iPad横=影響なし。CSSのみ＝音声/JS経路に変更なし＝perf不変。
