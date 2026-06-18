@@ -404,3 +404,11 @@ COPYボタン(chop armモード)を、要素を問わず「元→先」でコピ
 - 配線：perf-pat/perf-bar・SEQ patSeg/barSeg のクリック先頭で copyTap 割り込み（COPY時のみ）。
 - **DUP廃止**：COPYの小節→小節がDUP(今の小節を次へ)を内包＝冗長。perfDup/dupBar/gDupBar のボタン＋配線を撤去。
 - verify(1194×834)：DUP消去、COPY元ハイライト、パターンA→Cコピー成功(onA=onC=3)、perf回帰チェック0.68ms＝回帰なし、0 errors。
+
+## 44. 【v0.3.30】スマホtransport整列＋PLAY/REC/UNDOアイコン化
+iPhone縦のtransportバーがぐちゃっとしていた問題を解消。「PLAY/RECは文字不要」「ボタンの大きさは美しくそろう」に対応。
+- PLAY=▶/■、REC=●/■、UNDO=↩ のアイコンのみ表記（テキスト撤去）。
+- スマホ(`@media max-width:600px`)で `.transport button.t{flex:1 1 0;min-width:0;...}` ＝7ボタン等幅1行。
+- **不具合修正**：`#rec{min-width:96px}`（旧「●Rec/■Step」用の固定幅、IDセレクタ=高詳細度でmobile override(min-width:0)に勝ち、RECだけ96pxで不揃いだった）を削除。REC実装はアイコン1文字で●⇔■も幅不変＝固定不要。
+- スマホでは `#stepStrip` を `display:none`（SEQ画面があるので冗長）。
+- verify(390×844 mobile)：labels=[▶ ● ↩ COPY MUTE SOLO ⋮]、widths全て27px＝uniform:true・1行、stepStrip非表示、0 errors。perf回帰チェック：trigger median 0.1ms＝回帰なし。
