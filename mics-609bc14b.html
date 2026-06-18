@@ -890,7 +890,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.18</div>
+  <div class="s-ver" id="splashVer">v0.3.19</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2730,11 +2730,12 @@ function buildTrackWave(i){
 // セルに「全波形の 1/16 スライス」を CSS背景で割り当て（drawImageせず＝軽い）
 function setCellWave(el, url, s){
   if(!el) return;
-  if(url){ el.style.backgroundImage="url("+url+")"; el.style.backgroundSize="1600% 100%";
-    el.style.backgroundPosition=(s/(STEPS-1)*100).toFixed(2)+"% center"; el.style.backgroundRepeat="no-repeat"; }
+  // 各セル＝そのトラックの再生範囲(start..end)の全波形を丸ごと表示（演奏用PADと同じ）。16分割スライスではない。
+  if(url){ el.style.backgroundImage="url("+url+")"; el.style.backgroundSize="100% 100%";
+    el.style.backgroundPosition="center"; el.style.backgroundRepeat="no-repeat"; }
   else el.style.backgroundImage="none";
 }
-function applyWaveSEQ(){   // 16×16グリッド：行=トラック、その波形を16セルに跨いで薄く
+function applyWaveSEQ(){   // 16×16グリッド：各セルにそのトラックの全波形(再生範囲)を薄く（演奏用PADと同じ）
   if(typeof rowEls==="undefined") return;
   for(let i=0;i<rowEls.length;i++){ const url=trackWaveURL[i]||""; for(let s=0;s<STEPS;s++) setCellWave(rowEls[i][s], url, s); }
 }
@@ -4394,7 +4395,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.18";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.19";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
