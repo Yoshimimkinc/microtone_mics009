@@ -252,12 +252,12 @@
   body.perf #viewPads.split.active{
     display:grid;
     grid-template-columns:minmax(128px,176px) minmax(0,1fr) minmax(128px,176px);
-    grid-template-rows:auto minmax(0,1fr) auto auto;
+    grid-template-rows:auto auto minmax(0,1fr) auto;
     grid-template-areas:
       "screen screen screen"
+      "plk    plk     plk"
       "msbar  pads    pats"
-      "steps  steps   steps"
-      "plk    plk     plk";
+      "steps  steps   steps";
     gap:9px 16px; align-items:stretch; height:100%;
   }
   body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:8px;}
@@ -807,7 +807,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.0</div>
+  <div class="s-ver" id="splashVer">v0.3.1</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4134,7 +4134,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.0";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.1";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
