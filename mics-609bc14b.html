@@ -884,15 +884,26 @@
     text-transform:uppercase;animation:spblink 1.4s ease-in-out infinite;}
   @keyframes spblink{0%,100%{opacity:.35}50%{opacity:1}}
   #splash.hide{opacity:0;pointer-events:none;transition:opacity .35s ease;}
+  /* スマホ横向き（短い画面）＝縦に促す。アプリ本体とsplashを隠してプロンプトのみ。iPad横は高さ大なので非対象 */
+  #phoneRotate{display:none;}
+  @media (orientation:landscape) and (max-height:500px){
+    .unit,#splash{display:none!important;}
+    #phoneRotate{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;text-align:center;
+      background:radial-gradient(1200px 600px at 50% 40%,#1d2127 0%,var(--bg) 72%);color:var(--ink);
+      font-size:18px;font-weight:600;letter-spacing:.14em;line-height:1.9;-webkit-tap-highlight-color:transparent;}
+    #phoneRotate small{color:var(--dim);font-size:11px;font-weight:400;letter-spacing:.08em;}
+  }
 </style>
 </head>
 <body>
+<!-- スマホ横向き（短い画面）＝縦に促すオーバーレイ。CSSメディアクエリのみで表示（iPad横は高さ大なので非対象） -->
+<div id="phoneRotate"><div>↻<br>縦にしてください<br><small>microtone はスマホでは縦向き</small></div></div>
 <!-- 起動スプラッシュ：最初のタップで全画面＋音声起動（アプリ風の没入） -->
 <div id="splash">
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.26</div>
+  <div class="s-ver" id="splashVer">v0.3.27</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4420,7 +4431,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.26";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.27";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
