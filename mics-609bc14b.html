@@ -213,19 +213,19 @@
   .pads .pad{aspect-ratio:1;}
   /* 常時表示の16ステップ列（選択トラックの打ち込み）。1画面化(v0.3.0) */
   .stepstrip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px;width:100%;align-self:end;}
-  .stepbtn{height:32px;border:1px solid var(--line);border-radius:5px;background:#15191d;position:relative;
+  .stepbtn{height:32px;border:1px solid var(--line);border-radius:4px;background:#1a1e23;position:relative;
     cursor:pointer;padding:0;transition:.08s;-webkit-tap-highlight-color:transparent;touch-action:none;}
-  /* 空ステップにも薄いドット＝16スロットが常に見える（打ち込み箇所の判別補助） */
-  .stepbtn::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;
-    transform:translate(-50%,-50%);background:var(--line);opacity:.7;transition:.08s;}
-  .stepbtn.beat{border-color:var(--edge);background:#1b2025;}  /* 4分割の頭を強調 */
-  .stepbtn.on{background:var(--teal);border-color:var(--teal);box-shadow:0 0 8px rgba(61,214,196,.45);}
-  .stepbtn.on::after{background:#06201d;opacity:.9;width:5px;height:5px;}   /* 打ち込み済み＝はっきりドット */
-  .stepbtn.acc{background:#ff5db0;border-color:#ff5db0;box-shadow:0 0 9px rgba(255,93,176,.55);}
-  .stepbtn.acc::after{background:#2a0a1e;}
-  /* 再生ヘッド＝明るいアンバーの枠（以前の「枠」表示）。再生中どこを鳴らしてるか一目で分かる */
-  .stepbtn.cur{outline:2px solid var(--amber);outline-offset:1px;box-shadow:0 0 12px rgba(255,180,80,.7);z-index:1;}
-  /* P-LOCK（per-step automation）：選択パラメータの値をフィル＋数値で表示。ドラッグで設定 */
+  /* SEQ画面と同じデザイン：拍内4ステップを暗→明グラデ＋頭拍(1,5,9,13)に区切り線＝頭拍アクセント（OFFガイド／ONはテーマ色） */
+  .stepbtn:nth-child(4n+1):not(.on){background:#353a42;}   /* 頭拍 1,5,9,13: 暗 */
+  .stepbtn:nth-child(4n+2):not(.on){background:#5c636d;}
+  .stepbtn:nth-child(4n+3):not(.on){background:#838a95;}
+  .stepbtn:nth-child(4n):not(.on){background:#aab1bc;}     /* 拍尻: 明 */
+  .stepbtn:nth-child(4n+1){border-left:2px solid #4a525c;}  /* 頭拍の区切り線 */
+  .stepbtn.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
+  .stepbtn.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}   /* アクセント＝白（SEQと同じ） */
+  /* 再生ヘッド＝明るいアンバーの枠 */
+  .stepbtn.cur{outline:2px solid var(--amber);outline-offset:1px;box-shadow:0 0 12px rgba(255,180,80,.7);z-index:2;}
+  /* P-LOCK（per-step automation）：横バーのフィル＋数値 */
   .stepbtn .sfill{position:absolute;left:0;top:0;bottom:0;width:0;opacity:.5;pointer-events:none;border-radius:4px 0 0 4px;transition:width .04s;}
   .stepbtn .slv{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:8px;line-height:1;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none;}
   .stepbtn.plk{border-color:#fff;}
@@ -892,7 +892,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.24</div>
+  <div class="s-ver" id="splashVer">v0.3.25</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4420,7 +4420,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.24";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.25";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
