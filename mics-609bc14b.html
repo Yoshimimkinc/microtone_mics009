@@ -892,7 +892,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.22</div>
+  <div class="s-ver" id="splashVer">v0.3.23</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1676,6 +1676,9 @@ registerProcessor('ssm-2044', SSM2044);`;
   AC.audioWorklet.addModule(url).then(()=>{
     try{
       for(let g=0;g<4;g++){
+        // 上物（サンプル群 g0/g1＝PAD上段）は SSM2044 をバイパス＝直結。
+        // 音声スレッドの worklet を 4→2 に半減し、低レイテンシ化（ドラム群 g2/g3 のみ SSM2044）。
+        if(g<2){ grpInputNode[g]=grpOut[g]; continue; }
         const cfg=SP_CH[g];
         const n=new AudioWorkletNode(AC,'ssm-2044',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
         n.parameters.get('cutoff').value=cfg.cut;
@@ -1684,7 +1687,7 @@ registerProcessor('ssm-2044', SSM2044);`;
         n.connect(grpOut[g]);
         ssmNode[g]=n; grpInputNode[g]=n;        // 入口を SSM2044 に差し替え
       }
-      applySpChFilter();                         // groupBus → SSM2044 へ再ルーティング
+      applySpChFilter();                         // groupBus → (g2/g3=SSM2044 / g0/g1=直結) へ再ルーティング
     }catch(e){ /* 失敗時は biquad のまま */ }
     URL.revokeObjectURL(url);
   }).catch(()=>{ URL.revokeObjectURL(url); });
@@ -4417,7 +4420,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.22";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.23";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
