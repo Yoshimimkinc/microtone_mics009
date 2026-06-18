@@ -264,13 +264,22 @@
       "seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl"
       "pats   pats   pats   pats   pats   pats   pats   pats"
       "steps  steps  steps  steps  steps  steps  steps  steps";
-    gap:6px 10px; align-items:stretch; height:100%;
+    gap:9px 10px; align-items:stretch; height:100%;
   }
   /* perf（タブレット/PC横）：筐体を画面高いっぱいに＝パッド/行が縦に伸びてバランス改善（iPad 4:3対策） */
   body.perf{height:100dvh;overflow:hidden;}
   body.perf .unit{height:100%;max-height:100%;display:flex;flex-direction:column;}
   body.perf .body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
   body.perf #viewPads.split.active{flex:1 1 auto;min-height:0;}
+  /* perf：上段チャム（ロゴ/タブ）の余白を削って下段(パッド/SEQ)へ高さを回す＝上スカスカ/下ぎゅうぎゅう解消 */
+  body.perf .top{padding-bottom:6px;margin-bottom:6px;gap:8px;}
+  body.perf .brand .logo{font-size:17px;}
+  body.perf .brand .model{font-size:9px;padding:2px 5px;letter-spacing:.18em;}
+  body.perf .modebar-row{margin:4px 0 6px;gap:12px;}
+  body.perf .modebar{margin:0;}
+  body.perf .modebtn{padding:5px 12px;font-size:11px;min-height:0;}
+  body.perf .perf-screen{padding:7px 14px;gap:1px;}
+  body.perf .perf-screen .cl-row{line-height:1.4;}
   /* セクション見出し PAD / SEQ */
   body.perf .perf-seclbl{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
     letter-spacing:.22em;color:var(--dim);border-top:1px solid var(--edge);padding-top:3px;}
@@ -859,7 +868,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.6</div>
+  <div class="s-ver" id="splashVer">v0.3.7</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4243,7 +4252,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.6";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.7";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
