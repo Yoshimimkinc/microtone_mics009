@@ -358,3 +358,9 @@ SEQ画面の barSeg/patSeg は `.playing` 枠があったが、perf(1画面)の 
 - `updateBarIndicator`/`updatePatIndicator`/`clear*` に `#perfPats .perf-bar` / `.perf-pat` を追加（displayBar/displayPat に追従、停止でクリア）。
 - CSS：`.perf-bar.playing`/`.perf-pat.playing` ＝ アンバーの枠（編集中の緑 `.on` とは別物・最前面）。
 - verify(1194×834)：再生中 bar1/PatA に playing 枠、停止で全クリア、0 errors。
+
+## 37. 【v0.3.23】レイテンシ対策：上物(サンプル群g0/g1)のSSM2044をバイパス
+JS発音は0.07msで問題なし＝残りは音声スレッド負荷由来のレイテンシ。SSM2044を4グループ×2倍オーバーサンプリングで回していた負荷を削減。
+- `loadSSM`：サンプル群(g0/g1=PAD上段)は SSM2044 worklet を作らず `grpInputNode=grpOut` で直結バイパス。ドラム群(g2/g3)のみ SSM2044。worklet数 4→2＝音声スレッドCPU半減。
+- g0/g1 は元々ほぼ素通し設定(高cut/低res)なので聴感の変化は最小。spDynOpenはg2のみ(dyn>0)なので影響なし。biquadフォールバック時もg0/g1はbiquad(軽量native)のまま。
+- verify(1194×834)：ssm-2044 worklet生成 4→**2**、サンプルPAD/ドラムPADとも発音（バイパス経路で音は出る）、0 errors。
