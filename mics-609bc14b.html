@@ -890,7 +890,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.17</div>
+  <div class="s-ver" id="splashVer">v0.3.18</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1912,6 +1912,7 @@ function restoreState(s){
   if(typeof paintPatBar==="function") paintPatBar();
   if(typeof applyPadCategory==="function") for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
+  if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // ステップ波形を再キャッシュ（読込/復元時）
 }
 function pushUndo(){ undoStack.push(snapshotState()); if(undoStack.length>40) undoStack.shift(); }
 function doUndo(){ const s=undoStack.pop(); if(!s) return; restoreState(s); }
@@ -2458,6 +2459,7 @@ function selectPad(i, light){
   if(typeof syncEditor==="function") syncEditor();
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
   if(typeof paintStepStrip==="function") paintStepStrip();             // 16ステップ列を選択トラックへ追従
+  if(typeof applyWaveStrip==="function") applyWaveStrip();             // 下段ステップ列の薄い波形を選択トラックへ
 }
 
 // column numbers (1..16)
@@ -2631,6 +2633,7 @@ function refreshPadDisplay(i){
   const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
   if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
   drawPadWave(i);
+  if(typeof buildTrackWave==="function"){ buildTrackWave(i); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip(); }  // 音色変更でステップ波形を再キャッシュ
 }
 
 function assignMS(i){
@@ -2704,6 +2707,42 @@ function drawPadWave(i, ink){
   ctx.stroke();
 }
 function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink); }
+
+// ===== ステップキーの薄い波形（軽量：トラック毎に1回 data-URL 化してキャッシュ→CSS背景。再生中は再描画しない）=====
+const trackWaveURL=[];   // trackWaveURL[i] = そのトラック波形(start..end)の透明PNG data-URL
+function buildTrackWave(i){
+  const t=tracks[i], buf=t&&t.buffer;
+  if(!buf){ trackWaveURL[i]=""; return; }
+  const data=buf.getChannelData(0);
+  const s0=Math.floor((t.start||0)*data.length), e0=Math.floor((t.end??1)*data.length);
+  const len=Math.max(1,e0-s0);
+  const W=384,H=48, c=document.createElement("canvas"); c.width=W; c.height=H;
+  const ctx=c.getContext("2d"); ctx.clearRect(0,0,W,H);   // 透明背景＝セルの on/off 色を潰さない
+  ctx.strokeStyle=padWaveInk(); ctx.globalAlpha=0.5; ctx.lineWidth=1; ctx.beginPath();
+  const bin=Math.max(1,Math.floor(len/W)), mid=H/2;
+  for(let x=0;x<W;x++){ let mn=1,mx=-1; const o=s0+x*bin;
+    for(let k=0;k<bin;k++){ const v=data[o+k]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
+    ctx.moveTo(x+0.5, mid-mx*mid*0.92); ctx.lineTo(x+0.5, mid-mn*mid*0.92);
+  }
+  ctx.stroke();
+  trackWaveURL[i]=c.toDataURL();
+}
+// セルに「全波形の 1/16 スライス」を CSS背景で割り当て（drawImageせず＝軽い）
+function setCellWave(el, url, s){
+  if(!el) return;
+  if(url){ el.style.backgroundImage="url("+url+")"; el.style.backgroundSize="1600% 100%";
+    el.style.backgroundPosition=(s/(STEPS-1)*100).toFixed(2)+"% center"; el.style.backgroundRepeat="no-repeat"; }
+  else el.style.backgroundImage="none";
+}
+function applyWaveSEQ(){   // 16×16グリッド：行=トラック、その波形を16セルに跨いで薄く
+  if(typeof rowEls==="undefined") return;
+  for(let i=0;i<rowEls.length;i++){ const url=trackWaveURL[i]||""; for(let s=0;s<STEPS;s++) setCellWave(rowEls[i][s], url, s); }
+}
+function applyWaveStrip(){ // 下段16ステップ列：選択トラックの波形
+  if(typeof stepBtns==="undefined" || !stepBtns.length) return;
+  const url=trackWaveURL[selected]||""; for(let s=0;s<STEPS;s++) setCellWave(stepBtns[s], url, s);
+}
+function buildAllTrackWaves(){ for(let i=0;i<PADS.length;i++) buildTrackWave(i); applyWaveSEQ(); applyWaveStrip(); }
 
 // drawWave / positionHandles / プレイヘッド / ハンドルドラッグ は窓波形撤去により全廃。
 // START/END/LOOP編集と試聴は EDIT+パッド→編集モーダルへ集約。
@@ -4326,7 +4365,7 @@ async function applyProject(proj){
     }
     editPat=0; editBar=0;
     for(let i=0;i<PADS.length;i++) applyPadCategory(i);
-    selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves();
+    selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves();
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
@@ -4345,6 +4384,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
     document.body.classList.remove("t-ak","t-sp","t-rl");
     document.body.classList.add("t-"+th);
     if(typeof drawAllPadWaves==="function") drawAllPadWaves();
+    if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // テーマ変更でink色が変わるので波形も再生成
     [...seg.children].forEach(b=>b.classList.toggle("on",b.dataset.th===th));
     try{ localStorage.setItem(KEY,th); }catch(e){}
   }
@@ -4354,7 +4394,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.17";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.18";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
