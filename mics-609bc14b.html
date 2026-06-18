@@ -800,8 +800,10 @@
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:0;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
     #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin-top:6px;}   /* パッドから少しだけ下に離す */
-    /* スマホ：EDITボタンは行幅を均等に分けてフィル */
-    #viewPads>.msbar .msbtn{flex:1 1 0;min-width:0;padding-left:6px;padding-right:6px;}
+    /* スマホ：EDIT行（MUTE/SOLO/EDIT）を均等3分割でフィル */
+    #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:6px;padding-right:6px;}
+    /* 移設したMUTE/SOLO(.t.arm)もEDITと同じ高さ・並びに揃える */
+    #viewPads>.msbar .ms-in-edit{min-height:34px;font-size:10px;letter-spacing:.04em;}
     /* スマホ：strip-headを1行に収める（トラック名は省略、LOAD/SMPLは折返さない） */
     .strip-head{gap:6px;}
     .who-wrap{flex:1 1 auto;min-width:0;}
@@ -902,7 +904,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.30</div>
+  <div class="s-ver" id="splashVer">v0.3.31</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1168,7 +1170,8 @@
         </div>
       </div>
 
-      <!-- MUTE/SOLO/COPY はトランスポート行へ移設（v0.3.5）。EDITは非perf用にここへ残置 -->
+      <!-- MUTE/SOLO/COPY はトランスポート行へ移設（v0.3.5）。EDITは非perf用にここへ残置。
+           スマホ(<600px)のみ relocateMuteSolo() が MUTE/SOLO をこの行に親替え＝[MUTE SOLO EDIT]（v0.3.31） -->
       <div class="msbar">
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
       </div>
@@ -3906,6 +3909,24 @@ window.addEventListener("resize", lockViewHeight);
 window.addEventListener("load", lockViewHeight);
 setTimeout(lockViewHeight, 400);
 
+// ===== スマホ：MUTE/SOLO を下段 EDIT の横へ（transportを5ボタンに圧縮）。
+//   同一DOMノードを親替えするだけ＝armed状態/配線(ID参照)はそのまま。
+//   スマホ(<600px)はperf非該当なのでperf(ヘッダtransport依存)に影響なし。
+function relocateMuteSolo(){
+  const mute=document.getElementById("holdMute"), solo=document.getElementById("holdSolo");
+  const tr=document.querySelector(".transport"), msbar=document.querySelector(".msbar"), edit=document.getElementById("holdEdit"), menu=document.getElementById("menuBtn");
+  if(!mute||!solo||!tr||!msbar) return;
+  const mobile=window.innerWidth<=600;
+  if(mobile){
+    if(mute.parentNode!==msbar && edit){ msbar.insertBefore(mute,edit); msbar.insertBefore(solo,edit); mute.classList.add("ms-in-edit"); solo.classList.add("ms-in-edit"); }
+  } else {
+    if(mute.parentNode!==tr && menu){ tr.insertBefore(mute,menu); tr.insertBefore(solo,menu); mute.classList.remove("ms-in-edit"); solo.classList.remove("ms-in-edit"); }
+  }
+}
+window.addEventListener("load", relocateMuteSolo);
+window.addEventListener("resize", relocateMuteSolo);
+relocateMuteSolo();
+
 // ===== Performance Mode：4×4 × 横向き × PC/iPad幅(≥768) で発動。縦向き(4×4)は回転オーバーレイ =====
 function landscapeMode(){ return !(window.matchMedia && window.matchMedia("(orientation:landscape)").matches===false); }
 function perfFourUp(){ return viewPadsEl.classList.contains("split") && viewPadsEl.classList.contains("active") && window.innerWidth>=768; }
@@ -4452,7 +4473,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.30";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.31";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
