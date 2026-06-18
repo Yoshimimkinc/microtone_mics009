@@ -340,6 +340,10 @@
   body.select-arm #pads .pad{cursor:pointer;}
   body.select-arm #pads .pad.sel{outline:2px solid var(--amber);outline-offset:-2px;}
   /* デバイス調ボタン（パターンA-D） */
+  /* 中身あり＝右上にドット（A-D / 小節1-4 共通）。アンバーで点灯/非点灯どちらの背景でも視認 */
+  .perf-pat,.perf-bar{position:relative;}
+  .perf-pat.has::after,.perf-bar.has::after{content:"";position:absolute;top:4px;right:5px;width:5px;height:5px;
+    border-radius:50%;background:var(--amber);box-shadow:0 0 5px rgba(255,180,80,.8);}
   .perf-pat{background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:16px;
     letter-spacing:.1em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
@@ -875,7 +879,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.9</div>
+  <div class="s-ver" id="splashVer">v0.3.10</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3032,6 +3036,7 @@ function toggleStepAt(s, accent){
   pat[s]=nv;
   if(nv===0) clearLockEdit(selected, s);   // OFFにしたらそのステップのp-lockも消す
   paintStepPads(); if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
+  if(typeof paintPerf==="function") paintPerf();   // A-D/小節の「中身あり」ドットを更新
 }
 // ===== 常時表示の16ステップ列：選択トラックの打ち込み（1画面化 v0.3.0）=====
 // パッド＝トラック選択／発音、この列＝そのトラックの現在パターン(editPat)・小節(editBar)のステップ。
@@ -3755,6 +3760,9 @@ setTimeout(lockViewHeight, 400);
 // ===== Performance Mode：4×4 × 横向き × PC/iPad幅(≥768) で発動。縦向き(4×4)は回転オーバーレイ =====
 function landscapeMode(){ return !(window.matchMedia && window.matchMedia("(orientation:landscape)").matches===false); }
 function perfFourUp(){ return viewPadsEl.classList.contains("split") && viewPadsEl.classList.contains("active") && window.innerWidth>=768; }
+// 中身（打ち込み）の有無：パターンp（全トラック・全小節）／小節b（パターンp・全トラック）
+function barHasContent(p,b){ for(let i=0;i<tracks.length;i++){ const arr=tracks[i].patterns[p]&&tracks[i].patterns[p][b]; if(arr){ for(let s=0;s<arr.length;s++) if(arr[s]>0) return true; } } return false; }
+function patHasContent(p){ for(let i=0;i<tracks.length;i++){ const pat=tracks[i].patterns[p]; if(!pat) continue; for(let b=0;b<pat.length;b++){ const arr=pat[b]; if(arr){ for(let s=0;s<arr.length;s++) if(arr[s]>0) return true; } } } return false; }
 function paintPerf(){
   if(!document.body.classList.contains("perf")) return;
   const $=id=>document.getElementById(id);
@@ -3786,9 +3794,13 @@ function paintPerf(){
     const p=+b.dataset.p;
     b.classList.toggle("on", p===ep);
     b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
+    b.classList.toggle("has", patHasContent(p));   // 中身あり＝ドット表示
   });
-  // 小節1-4：現在の editBar を反映
-  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("on", +b.dataset.b===(typeof editBar!=="undefined"?editBar:0)));
+  // 小節1-4：現在の editBar を反映＋中身あり＝ドット（今のパターンの各小節）
+  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>{
+    b.classList.toggle("on", +b.dataset.b===(typeof editBar!=="undefined"?editBar:0));
+    b.classList.toggle("has", barHasContent(ep, +b.dataset.b));
+  });
   // P-LOCK選択（activeLock）を反映（comp/edit はモードボタンなので除外）
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
   // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
@@ -4299,7 +4311,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.9";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.10";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
