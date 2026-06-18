@@ -868,7 +868,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.7</div>
+  <div class="s-ver" id="splashVer">v0.3.8</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -879,34 +879,37 @@
     <div class="transport">
       <button class="t play" id="play">▶ Play</button>
       <button class="t rec" id="rec">● Rec</button>
-      <button class="t" id="tap">Tap</button>
       <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩ Undo</button>
       <button class="t arm copy" id="holdCopy" title="押した後パッドで音色コピー">COPY</button>
       <button class="t arm mute" id="holdMute" title="押した後パッドでミュート">MUTE</button>
       <button class="t arm solo" id="holdSolo" title="押した後パッドでソロ">SOLO</button>
-      <div class="tempo-row">
-      <div class="ctrl">Tempo
-        <input type="range" id="bpm" min="60" max="180" step="0.5" value="100">
-        <div class="readout" id="bpmRead">100.0</div>
-      </div>
-      <div class="ctrl">Swing
-        <select class="t" id="swing" style="padding:6px 8px;">
-          <option value="50" selected>50%</option>
-          <option value="54">54%</option>
-          <option value="58">58%</option>
-          <option value="63">63%</option>
-          <option value="67">67%</option>
-          <option value="71">71%</option>
-        </select>
-        <span class="val" id="swingVal"></span>
-      </div>
-      </div>
       <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog">⋮</button>
     </div>
     <!-- メニュー（SKIN / プロジェクト操作） -->
     <div class="modal-backdrop" id="menuModal" style="display:none;">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
         <div class="modal-head"><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
+        <div class="modal-sec">
+          <div class="modal-label">Tempo / Swing</div>
+          <div class="tempo-row" style="flex-wrap:wrap;align-items:center;gap:14px;">
+            <div class="ctrl">Tempo
+              <input type="range" id="bpm" min="60" max="180" step="0.5" value="100">
+              <div class="readout" id="bpmRead">100.0</div>
+            </div>
+            <div class="ctrl">Swing
+              <select class="t" id="swing" style="padding:6px 8px;">
+                <option value="50" selected>50%</option>
+                <option value="54">54%</option>
+                <option value="58">58%</option>
+                <option value="63">63%</option>
+                <option value="67">67%</option>
+                <option value="71">71%</option>
+              </select>
+              <span class="val" id="swingVal"></span>
+            </div>
+            <button class="t" id="tap">TAP</button>
+          </div>
+        </div>
         <div class="modal-sec">
           <div class="modal-label">Skin</div>
           <div class="seg" id="themeSeg">
@@ -3430,7 +3433,7 @@ function applyChop(){
 // tempo / swing / vol
 const bpm=document.getElementById("bpm"),bpmRead=document.getElementById("bpmRead");
 bpm.addEventListener("pointerdown",()=>pushUndo());
-bpm.addEventListener("input",()=>{bpmVal=+bpm.value;bpmRead.textContent=bpmVal.toFixed(1);if(typeof setDelayTempo==="function")setDelayTempo();});
+bpm.addEventListener("input",()=>{bpmVal=+bpm.value;bpmRead.textContent=bpmVal.toFixed(1);if(typeof setDelayTempo==="function")setDelayTempo();if(typeof paintPerf==="function")paintPerf();});
 const swing=document.getElementById("swing"),swingVal=document.getElementById("swingVal");
 swing.addEventListener("pointerdown",()=>pushUndo());
 swing.addEventListener("change",()=>{
@@ -3438,6 +3441,7 @@ swing.addEventListener("change",()=>{
   const eff=effectiveSwing();
   // 24PPQ丸めの実効値が選択値と違うときだけ→表示（SPの粗さの可視化）
   swingVal.textContent = (Math.abs(eff-swingPct)>0.5) ? ("→"+eff+"%") : "";
+  if(typeof paintPerf==="function") paintPerf();
 });
 
 // tap tempo: 直近4タップの平均間隔。2秒空いたらリセット
@@ -4252,7 +4256,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.7";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.8";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
