@@ -336,6 +336,8 @@
     padding:10px 4px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
   .perf-bar:active{transform:translateY(1px);}
   .perf-bar.on{background:linear-gradient(180deg,#2a6f66,#15433d);color:#bafff4;border-color:var(--teal);}
+  /* 現在再生中の小節/パターン＝アンバーの枠（編集中の緑とは別物・最前面） */
+  .perf-bar.playing,.perf-pat.playing{box-shadow:0 0 0 2px var(--amber), 0 0 10px rgba(255,180,80,.55)!important;position:relative;z-index:3;}
   .perf-bar.barsep{margin-left:12px;}   /* A-D と小節群の間に余白 */
   .perf-dup{flex:0 0 auto;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:12px;
@@ -890,7 +892,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.21</div>
+  <div class="s-ver" id="splashVer">v0.3.22</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4048,10 +4050,11 @@ document.getElementById("gDupBar").addEventListener("click",dupBarNext);
 // 再生中＝外枠 / 予約中＝点滅 / 中身あり＝ドット
 function updatePatIndicator(p){
   [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
+  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{ const on=+b.dataset.p===p; b.classList.toggle("playing",on); if(on) b.classList.remove("queued"); });
 }
-function clearPatIndicator(){ [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); }
-function updateBarIndicator(bar){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); }
-function clearBarIndicator(){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); }
+function clearPatIndicator(){ [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.classList.remove("playing","queued")); }
+function updateBarIndicator(bar){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("playing",+b.dataset.b===bar)); }
+function clearBarIndicator(){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.remove("playing")); }
 // 編集状態・中身ドット・予約点滅・ループ外小節をまとめて反映
 function paintPatBar(){
   [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
@@ -4414,7 +4417,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.21";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.22";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
