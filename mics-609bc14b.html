@@ -768,10 +768,10 @@
     .brand .model{display:none;}
     .top{padding-bottom:8px;margin-bottom:8px;gap:7px;flex:0 0 auto;}
     button.t{padding:6px 8px;font-size:10px;min-width:0;}
-    .transport{gap:5px;flex-wrap:nowrap;}
+    /* スマホ：transportはロゴと別行＝全幅。5ボタンを均等割りで大きく押しやすく */
+    .transport{gap:6px;flex-wrap:nowrap;flex-basis:100%;width:100%;}
     .transport .ctrl{font-size:9px;}
-    /* スマホ：transportの全ボタンを等幅で美しく整列（1行）。PLAY/RECはアイコンのみ */
-    .transport button.t{flex:1 1 0;min-width:0;font-size:11px;letter-spacing:.02em;padding:0 3px;min-height:46px;white-space:nowrap;overflow:hidden;text-overflow:clip;}
+    .transport button.t{flex:1 1 0;min-width:0;font-size:13px;letter-spacing:.02em;padding:0 4px;min-height:50px;white-space:nowrap;overflow:hidden;text-overflow:clip;}
     #bpm{max-width:84px;}
     .modebar-row{margin:8px 0 8px;gap:12px;}
     /* TEMPO/SWINGは2行目に（スライダーを広く） */
@@ -904,7 +904,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.31</div>
+  <div class="s-ver" id="splashVer">v0.3.32</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4473,7 +4473,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.31";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.32";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

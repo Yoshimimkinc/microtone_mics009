@@ -419,3 +419,8 @@ iPhone縦のtransportバーがぐちゃっとしていた問題を解消。「PL
 - ID参照(arm配線・armed状態トグル)は不変＝機能影響なし。スマホはperf非該当なので、perf(ヘッダtransport依存)のMUTE/SOLOにも影響なし。
 - CSS：`#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;min-height:34px;...}`でEDITと均等3分割。
 - verify：スマホ=transport[▶ ● ↩ COPY ⋮]5個均等22px/1行、EDIT行[MUTE SOLO EDIT]均等47px/1行。デスクトップ=MUTE/SOLOはtransportに復帰(従来通り)、perfはmsbar非表示で従来通り。0 errors。perf回帰：trigger median 0.1ms＝回帰なし。
+
+## 46. 【v0.3.32】スマホtransportを全幅・均等割りに（押しやすく）
+v0.3.31でボタンが各22pxまで潰れて押しにくかった。原因＝`.top`でロゴ「microtone」が幅を食い、transportが残り半分しか使えていなかった。
+- スマホ`.transport{flex-basis:100%;width:100%}`＝ロゴと別行に落として全幅化。5ボタンを`flex:1 1 0`で均等割り→各**68px**(22px→約3倍)・高さ50px＝指で押しやすい。COPYの文字切れも解消。
+- verify(390×844)：transport 5個=68px均等/1行、0 errors。perf回帰：trigger median 0.1ms＝回帰なし。desktop/perfは影響なし。
