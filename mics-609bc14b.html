@@ -225,6 +225,11 @@
   .stepbtn.acc::after{background:#2a0a1e;}
   /* 再生ヘッド＝明るいアンバーの枠（以前の「枠」表示）。再生中どこを鳴らしてるか一目で分かる */
   .stepbtn.cur{outline:2px solid var(--amber);outline-offset:1px;box-shadow:0 0 12px rgba(255,180,80,.7);z-index:1;}
+  /* P-LOCK（per-step automation）：選択パラメータの値をフィル＋数値で表示。ドラッグで設定 */
+  .stepbtn .sfill{position:absolute;left:0;bottom:0;width:100%;height:0;opacity:.5;pointer-events:none;border-radius:0 0 4px 4px;transition:height .04s;}
+  .stepbtn .slv{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:8px;line-height:1;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none;}
+  .stepbtn.plk{border-color:#fff;}
+  .stepbtn.haslock::before{content:"";position:absolute;top:2px;right:3px;width:3px;height:3px;border-radius:50%;background:var(--amber);z-index:2;}
   /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
@@ -879,7 +884,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.10</div>
+  <div class="s-ver" id="splashVer">v0.3.11</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -928,14 +933,6 @@
             <button data-th="sp">SP</button>
             <button data-th="rl">TR</button>
           </div>
-        </div>
-        <div class="modal-sec">
-          <div class="modal-label">Rec Mode</div>
-          <div class="seg" id="recModeSeg">
-            <button data-rm="real">REAL</button>
-            <button data-rm="grid" class="on">GRID</button>
-          </div>
-          <div style="font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:.02em;">REAL=リアルタイム録音 / GRID=16PADでステップ入力（Digitakt式）</div>
         </div>
         <div class="modal-sec">
           <div class="modal-label">Master</div>
@@ -1776,8 +1773,8 @@ let playStep = 0;
 let recording = false;
 let editPat = 0;       // 編集中パターン 0-3 (A-D)
 let editBar = 0;       // 編集中の小節 0-3 (1-4)
-let recMode = "grid";  // "real"=リアルタイム録音 / "grid"=16PADステップ入力（Digitakt式）。既定=grid
-let stepMode = false;  // GRIDステップ入力モードの状態
+let recMode = "real";  // リアルタイム録音のみ。16PADステップ入力(grid/stepMode)は廃止＝下段の16ステップ列に統合（v0.3.11）
+let stepMode = false;  // 廃止済み（常にfalse）。dead branchガード用に残置
 let activeLock = null; // 選択中のp-lockパラメータ（null=ON/OFFトグル）
 let stepDrag = null;   // GRIDでのパッドドラッグ状態
 let editDrag = null;   // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）
@@ -3043,28 +3040,72 @@ function toggleStepAt(s, accent){
 // 既存の toggleStepAt / getPattern / curStepFor をそのまま流用＝状態の二重管理なし。
 const stepStripEl=document.getElementById("stepStrip");
 const stepBtns=[];
+let stripDrag=null;
 if(stepStripEl){
   for(let s=0;s<STEPS;s++){
     const b=document.createElement("button");
     b.className="stepbtn"+((s%4===0)?" beat":"");
     b.dataset.s=s; b.type="button";
+    const fill=document.createElement("div"); fill.className="sfill"; b.appendChild(fill); b._fill=fill;   // P-LOCK値フィル
+    const lv=document.createElement("div"); lv.className="slv"; b.appendChild(lv); b._lv=lv;               // P-LOCK値の数値
     stepStripEl.appendChild(b); stepBtns.push(b);
   }
+  // P-LOCK選択中：ステップを左右ドラッグ＝そのステップだけの値(per-step automation) / タップ＝ON-OFF。未選択時：タップ＝ON-OFF。
   stepStripEl.addEventListener("pointerdown",e=>{
     const b=e.target.closest(".stepbtn"); if(!b) return;
     e.preventDefault();
-    toggleStepAt(+b.dataset.s, e.shiftKey);   // Shift=アクセント（SEQと同じ操作）
+    const s=+b.dataset.s;
+    if(activeLock && PLOCKS[activeLock]){
+      const spec=PLOCKS[activeLock], lk=getLockEdit(selected,s);
+      const startVal=(lk&&lk[activeLock]!=null)?lk[activeLock]:spec.def;
+      stripDrag={s, x0:e.clientX, moved:false, startVal, undone:false};
+      try{ stepStripEl.setPointerCapture(e.pointerId); }catch(_){}
+    } else {
+      toggleStepAt(s, e.shiftKey);
+    }
   });
+  stepStripEl.addEventListener("pointermove",e=>{
+    if(!stripDrag || !activeLock || !PLOCKS[activeLock]) return;
+    const dx=e.clientX-stripDrag.x0;
+    if(!stripDrag.moved && Math.abs(dx)>5) stripDrag.moved=true;
+    if(stripDrag.moved){
+      if(!stripDrag.undone){ pushUndo(); stripDrag.undone=true; }
+      const spec=PLOCKS[activeLock]; let v;
+      if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let l=Math.log(stripDrag.startVal)+(dx/180)*(lmax-lmin); l=Math.max(lmin,Math.min(lmax,l)); v=Math.exp(l); }
+      else { v=stripDrag.startVal+(dx/180)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); if(activeLock==="pitch"||activeLock==="level"||activeLock==="nudge") v=Math.round(v); }
+      const pat=getPattern(selected); if(!(pat[stripDrag.s]>0)) pat[stripDrag.s]=1;   // 値を入れたら自動ON
+      setLockEdit(selected, stripDrag.s, activeLock, v);
+      paintStepStrip();
+      sampNameEl.textContent="STEP "+String(stripDrag.s+1).padStart(2,"0")+" "+activeLock.toUpperCase()+" "+spec.fmt(v)+"  · "+stepTrackName();
+    }
+  });
+  const stripEnd=e=>{ if(!stripDrag) return; if(!stripDrag.moved) toggleStepAt(stripDrag.s, e&&e.shiftKey); stripDrag=null; };
+  stepStripEl.addEventListener("pointerup",stripEnd);
+  stepStripEl.addEventListener("pointercancel",()=>{ stripDrag=null; });
 }
 function paintStepStrip(){
   if(!stepStripEl) return;
   const pat=getPattern(selected);
   const cur=(typeof curStepFor==="function")?curStepFor():-1;
+  const spec=activeLock?PLOCKS[activeLock]:null;
   for(let s=0;s<STEPS;s++){
     const v=pat[s]||0, el=stepBtns[s]; if(!el) continue;
     el.classList.toggle("on", v>0);
     el.classList.toggle("acc", v===2);
     el.classList.toggle("cur", s===cur);
+    const lk=getLockEdit(selected,s);
+    el.classList.toggle("haslock", !!(lk && Object.keys(lk).length) && v>0);
+    const lockedActive=!!(spec && lk && lk[activeLock]!=null && v>0);
+    el.classList.toggle("plk", lockedActive);
+    if(el._fill && el._lv){
+      if(lockedActive){
+        const val=lk[activeLock];
+        let norm=spec.log?(Math.log(val)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min)):(val-spec.min)/(spec.max-spec.min);
+        norm=Math.max(0,Math.min(1,norm));
+        el._fill.style.height=(norm*100).toFixed(1)+"%"; el._fill.style.background="rgb("+spec.color+")";
+        el._lv.textContent=spec.fmt(val);
+      } else { el._fill.style.height="0%"; el._lv.textContent=""; }
+    }
   }
   _stripCurStep=cur;   // moveCursors(再生中の差分更新)とカーソルキャッシュを同期
 }
@@ -3785,7 +3826,7 @@ function paintPerf(){
     else if(am==="solo") h="SOLO中：パッド=ソロトグル";
     else if(am==="edit") h="EDIT中：パッド=中身編集 / ドラッグ=入替 / 長押し=コピー";
     else if(am==="chop") h="COPY中：① コピー元パッド → ② コピー先パッド";
-    else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：発音パッドを左右ドラッグで基本値を変更";
+    else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右=基本値 / 下段ステップ左右=そのステップだけ(P-LOCK)";
     else h="PAD=選択+発音 / 下段16=打ち込み(A-K,Z-,) / SHIFT+PAD=選択";
     $("clHint").textContent=h;
   }
@@ -4311,7 +4352,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.10";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.11";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
