@@ -890,7 +890,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.19</div>
+  <div class="s-ver" id="splashVer">v0.3.20</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2509,6 +2509,8 @@ PADS.forEach((p,i)=>{
         if(nv===0) clearLockEdit(i, s);                         // OFFにしたらp-lockも消す
       }
       paintSteps(); paintPatBar();   // 中身ドット・小節長を更新
+      if(typeof applyWaveSEQ==="function") applyWaveSEQ();   // 発音セルのみ波形を更新
+      if(typeof applyWaveStrip==="function") applyWaveStrip();
     });
     row.appendChild(st);cells.push(st);
   }
@@ -2735,13 +2737,15 @@ function setCellWave(el, url, s){
     el.style.backgroundPosition="center"; el.style.backgroundRepeat="no-repeat"; }
   else el.style.backgroundImage="none";
 }
-function applyWaveSEQ(){   // 16×16グリッド：各セルにそのトラックの全波形(再生範囲)を薄く（演奏用PADと同じ）
+function applyWaveSEQ(){   // 16×16グリッド：発音セル(ON)だけにそのトラックの全波形を表示
   if(typeof rowEls==="undefined") return;
-  for(let i=0;i<rowEls.length;i++){ const url=trackWaveURL[i]||""; for(let s=0;s<STEPS;s++) setCellWave(rowEls[i][s], url, s); }
+  for(let i=0;i<rowEls.length;i++){ const url=trackWaveURL[i]||"", pat=getPattern(i);
+    for(let s=0;s<STEPS;s++) setCellWave(rowEls[i][s], (pat[s]>0)?url:"", s); }
 }
-function applyWaveStrip(){ // 下段16ステップ列：選択トラックの波形
+function applyWaveStrip(){ // 下段16ステップ列：選択トラックの発音セル(ON)だけ波形
   if(typeof stepBtns==="undefined" || !stepBtns.length) return;
-  const url=trackWaveURL[selected]||""; for(let s=0;s<STEPS;s++) setCellWave(stepBtns[s], url, s);
+  const url=trackWaveURL[selected]||"", pat=getPattern(selected);
+  for(let s=0;s<STEPS;s++) setCellWave(stepBtns[s], (pat[s]>0)?url:"", s);
 }
 function buildAllTrackWaves(){ for(let i=0;i<PADS.length;i++) buildTrackWave(i); applyWaveSEQ(); applyWaveStrip(); }
 
@@ -3080,6 +3084,11 @@ function toggleStepAt(s, accent){
   if(nv===0) clearLockEdit(selected, s);   // OFFにしたらそのステップのp-lockも消す
   paintStepPads(); if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
   if(typeof paintPerf==="function") paintPerf();   // A-D/小節の「中身あり」ドットを更新
+  if(typeof setCellWave==="function"){              // 発音セルのみ波形：変わった1セルだけ更新（軽量）
+    const _u=(trackWaveURL[selected]||"");
+    if(typeof rowEls!=="undefined" && rowEls[selected]) setCellWave(rowEls[selected][s], (nv>0)?_u:"", s);
+    if(typeof stepBtns!=="undefined" && stepBtns[s]) setCellWave(stepBtns[s], (nv>0)?_u:"", s);
+  }
 }
 // ===== 常時表示の16ステップ列：選択トラックの打ち込み（1画面化 v0.3.0）=====
 // パッド＝トラック選択／発音、この列＝そのトラックの現在パターン(editPat)・小節(editBar)のステップ。
@@ -3993,12 +4002,13 @@ document.getElementById("meloExit").addEventListener("click",()=>{
 });
 
 // パターン/小節選択：SEQとGRIDで共有
+function refreshStepWaves(){ if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip(); }  // パターン/小節切替で発音セルの波形を更新
 function setEditPat(p){
   editPat=p;
   if(playing) queuedPat = (p===displayPat) ? null : p;  // 今のを再タップ＝予約キャンセル
-  paintSteps(); paintPatBar();
+  paintSteps(); paintPatBar(); refreshStepWaves();
 }
-function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); }
+function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves(); }
 function dupBarNext(){
   if(editBar>=3) return;   // 最大4小節
   pushUndo();
@@ -4014,7 +4024,7 @@ function dupBarNext(){
     }
   }
   editBar=dst;             // 複写先の小節を編集対象に
-  paintSteps(); paintPatBar();
+  paintSteps(); paintPatBar(); refreshStepWaves();
 }
 const gPatSeg=document.getElementById("gPatSeg");
 const gBarSeg=document.getElementById("gBarSeg");
@@ -4395,7 +4405,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.19";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.20";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
