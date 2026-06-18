@@ -277,9 +277,16 @@
     background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:10px 16px;
     font-size:12px;letter-spacing:.14em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
-  /* パターン A-D（パッド下の横一列） */
+  /* パターン A-D ＋ SELECT（パッド下の横一列） */
   body.perf .perf-pats{grid-area:pats;display:flex;gap:8px;align-items:stretch;}
   body.perf .perf-pats .perf-pat{flex:1 1 0;}
+  .perf-sel{flex:1.3 1 0;margin-left:auto;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:13px;
+    letter-spacing:.12em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
+  .perf-sel:active{transform:translateY(1px);}
+  .perf-sel.armed{background:linear-gradient(180deg,#5a4a22,#3a2e14);color:var(--amber);border-color:var(--amber);box-shadow:0 0 14px rgba(255,180,80,.45);}
+  body.select-arm #pads .pad{cursor:pointer;}
+  body.select-arm #pads .pad.sel{outline:2px solid var(--amber);outline-offset:-2px;}
   /* デバイス調ボタン（パターンA-D） */
   .perf-pat{background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:16px;
@@ -816,7 +823,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.2</div>
+  <div class="s-ver" id="splashVer">v0.3.3</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1115,6 +1122,7 @@
       <div class="perf-pats" id="perfPats">
         <button class="perf-pat" data-p="0">A</button><button class="perf-pat" data-p="1">B</button>
         <button class="perf-pat" data-p="2">C</button><button class="perf-pat" data-p="3">D</button>
+        <button class="perf-sel" id="holdSelect" title="押した後にパッドを触ると選択のみ（発音なし）">SELECT</button>
       </div>
       <!-- 左：BPM / Swing -->
       <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
@@ -2216,6 +2224,7 @@ PADS.forEach((p,i)=>{
   d.setAttribute("role","button");
   d.setAttribute("aria-label", p.name+" pad");
   d.addEventListener("pointerdown",async(e)=>{
+    if(armMode==="select"){ e.preventDefault(); selectPad(i); return; }   // SELECT最優先：選択のみ・発音なし（ステップ打ち込み対象の切替）
     // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
     if(document.body.classList.contains("perf") && activeLock && PERF_BASE[activeLock]){
       e.preventDefault();
@@ -2463,7 +2472,7 @@ function moveCursors(){
 }
 
 // ---------- mute / solo ----------
-let armMode = null;  // null | "mute" | "solo" | "chop" | "edit"（chop＝COPY統合：複製/スライス）
+let armMode = null;  // null | "mute" | "solo" | "chop" | "edit" | "select"（chop＝COPY統合：複製/スライス、select＝選択のみ発音なし）
 let copySrc = null;  // chop armed時の選択状態（paintPadStatesのハイライト用）
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
 // CHOPPYスライスの基準名（末尾の連番は剥がす＝再チョップでも増殖しない）
@@ -2538,9 +2547,12 @@ function arm(mode,on){
   document.getElementById("holdMute").classList.toggle("armed",armMode==="mute");
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
+  const _selBtn=document.getElementById("holdSelect"); if(_selBtn) _selBtn.classList.toggle("armed",armMode==="select");
   document.body.classList.toggle("edit-arm",armMode==="edit");
+  document.body.classList.toggle("select-arm",armMode==="select");
   // EDITの隠れジェスチャを初回だけ案内（タップ=編集 / ドラッグ=入替 / 長押し=コピー）
   if(armMode==="edit" && !_editHintShown){ _editHintShown=true; sampNameEl.textContent="EDIT: タップ=編集 / ドラッグ=入替 / 長押し=コピー"; }
+  if(armMode==="select") sampNameEl.textContent="SELECT：パッドを選ぶだけ（発音なし）";
   paintPadStates();
 }
 function bindHold(btnId,mode){
@@ -2554,6 +2566,7 @@ function bindHold(btnId,mode){
 bindHold("holdMute","mute");
 bindHold("holdSolo","solo");
 bindHold("holdEdit","edit");
+bindHold("holdSelect","select");
 // （トグル式のため自動解除は行わない。ESCで全モード解除）
 window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&armMode) arm(armMode,false); });
 
@@ -4157,7 +4170,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.2";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.3";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
