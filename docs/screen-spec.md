@@ -396,3 +396,11 @@ iPhone横(844×390)は幅768超でperfが出るが高さ390で潰れて酷い。
 - HTML `#padTransport`/`#padPlay` 除去。JS参照2箇所（再生トグルのSTART⇔STOP同期／クリック配線 `()=>playBtn.click()`）も除去。
 - 再生/停止はヘッダ ▶PLAY ＋スペースキーで継続。perfでは元々非表示で影響なし。残CSS(.padTransport/.big-play)はdead（無害）。
 - verify(1194×834)：padPlay消去・ヘッダPLAYでトグルOK・0 errors。perf回帰チェック：連打0.52ms＝回帰なし。
+
+## 43. 【v0.3.29】COPYを汎用化（PAD/パターン/小節）＋DUP廃止
+COPYボタン(chop armモード)を、要素を問わず「元→先」でコピーする汎用ツールに。
+- `copyArm={type,idx}`（type: pad/pat/bar）。`copyTap(type,idx)` が COPY中のタップを処理（1つ目=元、同種2つ目=実行、同一=取消、別種=元取り直し）。元は黄リング(.copysrc)。
+- **PAD**＝`copyPadSound`（音色＋FX：filter/cutoff/reso/delaySend/reverbSend 等も含む＝エフェクト設定コピーも兼ねる）。**パターンA-D**＝`copyPattern`（全小節＋p-lock）。**小節1-4**＝`copyBar`（現パターン内、DUPの汎用版）。
+- 配線：perf-pat/perf-bar・SEQ patSeg/barSeg のクリック先頭で copyTap 割り込み（COPY時のみ）。
+- **DUP廃止**：COPYの小節→小節がDUP(今の小節を次へ)を内包＝冗長。perfDup/dupBar/gDupBar のボタン＋配線を撤去。
+- verify(1194×834)：DUP消去、COPY元ハイライト、パターンA→Cコピー成功(onA=onC=3)、perf回帰チェック0.68ms＝回帰なし、0 errors。
