@@ -647,6 +647,10 @@
   .pad.sel>.pad-wave{opacity:.85;}
   /* 編集モーダル */
   .modal.pe{width:min(440px,94vw);}
+  /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
+  .pe-sample{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
+  .pe-sample .loadbtn{font-size:12px;padding:8px 14px;}
+  .pe-sample-hint{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-left:auto;}
   /* 波形＝発光するLCD窓（沈ませて窓だけが点いて見える。外向きグローは使わずinsetで軽量） */
   .pe-wave{position:relative;background:#0a0d10;border:1px solid var(--edge);border-radius:8px;
     height:128px;overflow:hidden;margin-bottom:0;touch-action:none;cursor:ew-resize;
@@ -915,7 +919,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.34</div>
+  <div class="s-ver" id="splashVer">v0.3.35</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1000,10 +1004,38 @@
         </div>
       </div>
     </div>
+    <!-- ステータストースト＋サンプリング/抽出オーバーレイ（.stripの外＝perfでも表示。position:fixed） -->
+    <div id="sampName" class="toast" role="status" aria-live="polite"></div>
+    <div class="rec-overlay" id="recOverlay">
+      <div class="rec-panel">
+        <div class="rec-choose" id="recChoose">
+          <button class="t" id="recTab">Tab Audio</button>
+          <button class="t" id="recMic">Mic</button>
+          <button class="t" id="recCancel">✕</button>
+        </div>
+        <div class="rec-active" id="recActive" style="display:none;">
+          <span class="rec-dot">●</span> <span id="recTime">0.0s</span>
+          <button class="t" id="recStop" style="background:var(--red);color:#fff;">STOP</button>
+        </div>
+      </div>
+    </div>
+    <div class="rec-overlay" id="extractOverlay">
+      <div class="rec-panel" style="flex-direction:column;gap:8px;">
+        <button class="t" id="extractGo" style="background:var(--red);color:#fff;padding:10px 16px;">▶ 動画から音声を抽出</button>
+        <span id="extractMsg" style="font-size:10px;color:var(--dim);">タップで再生して音を取り込みます</span>
+      </div>
+    </div>
+
     <!-- サンプル編集モーダル（EDIT＋パッドで対象を開く / モック） -->
     <div class="modal-backdrop" id="padEditModal" style="display:none;">
       <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
         <div class="modal-head"><span id="peTitle">EDIT PAD</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+        <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
+        <div class="pe-sample">
+          <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
+          <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SMPL</span>
+          <span class="pe-sample-hint">音源を読み込み / 録音</span>
+        </div>
         <div class="pe-wave">
           <canvas id="peWave"></canvas>
           <div class="shade" id="peShadeL"></div>
@@ -1099,28 +1131,7 @@
             <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
-        <!-- ステータスはバーに常駐させず、必要時だけ出る一時トースト（Loaded/Sampled/エラー用） -->
-        <div id="sampName" class="toast" role="status" aria-live="polite"></div>
-        <!-- 窓波形は撤去。サンプル編集は EDIT+パッド→モーダルへ集約。サンプリング/抽出オーバーレイは浮遊パネルとして存続 -->
-        <div class="rec-overlay" id="recOverlay">
-            <div class="rec-panel">
-              <div class="rec-choose" id="recChoose">
-                <button class="t" id="recTab">Tab Audio</button>
-                <button class="t" id="recMic">Mic</button>
-                <button class="t" id="recCancel">✕</button>
-              </div>
-              <div class="rec-active" id="recActive" style="display:none;">
-                <span class="rec-dot">●</span> <span id="recTime">0.0s</span>
-                <button class="t" id="recStop" style="background:var(--red);color:#fff;">STOP</button>
-              </div>
-            </div>
-          </div>
-          <div class="rec-overlay" id="extractOverlay">
-            <div class="rec-panel" style="flex-direction:column;gap:8px;">
-              <button class="t" id="extractGo" style="background:var(--red);color:#fff;padding:10px 16px;">▶ 動画から音声を抽出</button>
-              <span id="extractMsg" style="font-size:10px;color:var(--dim);">タップで再生して音を取り込みます</span>
-            </div>
-          </div>
+        <!-- ステータス/録音/抽出オーバーレイは .strip の外（position:fixed）へ移設＝perfで .strip を隠してもサンプリングUIが出る（v0.3.35） -->
         <!-- compact controls row -->
         <div class="strip-ctrls">
           <label class="toggle" id="loopToggle"><span class="sw"></span><span>Loop</span></label>
@@ -3410,6 +3421,11 @@ function renderPeWave(i){
   const shL=document.getElementById("peShadeL"), shR=document.getElementById("peShadeR");
   shL.style.left="0"; shL.style.width=sx+"px"; shR.style.left=ex+"px"; shR.style.width=(W-ex)+"px";
 }
+// EDITモーダルが開いていて、取り込み先がその編集パッドなら波形/タイトルを更新
+function refreshOpenPadEdit(i){
+  const pem=document.getElementById("padEditModal");
+  if(pem && pem.style.display==="flex" && i===peTarget) openPadEdit(i);
+}
 function openPadEdit(i){
   peTarget=i;
   const t=tracks[i];
@@ -3696,6 +3712,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     padsEl.children[target].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
     selectPad(target);   // 取り込み先パッドへフォーカスを移す（抽出中に別パッドを触っていても結果が見える）
     drawPadWave(target);
+    refreshOpenPadEdit(target);   // EDITモーダルから読込んだ場合は波形/タイトルを更新
   }catch(err){
     const m=(err&&err.message)?err.message:String(err);
     show("✕ "+m);
@@ -4205,11 +4222,18 @@ const recChoose=document.getElementById("recChoose");
 const recActiveEl=document.getElementById("recActive");
 let recStream=null, recorder=null, recChunks=[], recStartMs=0, recTimerId=null;
 
-document.getElementById("sampleBtn").addEventListener("click",()=>{
+function openSampleOverlay(){
   recOverlay.classList.add("show");
   recChoose.style.display="flex"; recActiveEl.style.display="none";
   sampNameEl.textContent="→ PAD "+String(selected+1).padStart(2,"0")+" に取り込み";   // 取り込み先を明示
-});
+}
+document.getElementById("sampleBtn").addEventListener("click",openSampleOverlay);
+// EDITモーダル内の LOAD / ● SMPL：編集中パッド(peTarget)を取り込み先にして既存フローを再利用
+(function(){
+  const pl=document.getElementById("peLoadBtn"), ps=document.getElementById("peSmplBtn");
+  if(pl) pl.addEventListener("click",()=>{ selected=peTarget; document.getElementById("samp").click(); });
+  if(ps) ps.addEventListener("click",()=>{ selected=peTarget; openSampleOverlay(); });
+})();
 document.getElementById("recCancel").addEventListener("click",()=>{ stopRec(true); });
 document.getElementById("recTab").addEventListener("click",async()=>{
   try{
@@ -4289,6 +4313,7 @@ async function finalizeRec(){
     sampNameEl.textContent="Sampled! → PAD "+String(selected+1).padStart(2,"0")+" ("+((blob.size/1024)|0)+"KB)";
     drawPadWave(selected);
     if(typeof syncEditor==="function") syncEditor();
+    refreshOpenPadEdit(selected);   // EDITモーダルから録音した場合は波形/タイトルを更新
   }catch(e){
     sampNameEl.textContent="デコード失敗: "+e.message;
   }
@@ -4484,7 +4509,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.34";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.35";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
