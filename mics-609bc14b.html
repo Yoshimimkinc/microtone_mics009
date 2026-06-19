@@ -915,7 +915,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.33</div>
+  <div class="s-ver" id="splashVer">v0.3.34</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2669,7 +2669,7 @@ function copyTap(type,idx){
   if(armMode!=="chop") return false;
   if(!copyArm){ copyArm={type,idx}; sampNameEl.textContent="COPY元 "+COPY_LABEL[type]+" "+copyName(type,idx)+" → コピー先をタップ"; }
   else if(copyArm.type===type && copyArm.idx===idx){ copyArm=null; sampNameEl.textContent="COPY 取消"; }
-  else if(copyArm.type===type){ const s=copyArm.idx; doCopy(type,s,idx); sampNameEl.textContent="COPY "+COPY_LABEL[type]+" "+copyName(type,s)+"→"+copyName(type,idx)+"  ↩で戻せる"; copyArm=null; refreshAfterCopy(type); }
+  else if(copyArm.type===type){ const s=copyArm.idx; doCopy(type,s,idx); sampNameEl.textContent="COPY "+COPY_LABEL[type]+" "+copyName(type,s)+"→"+copyName(type,idx)+"  ↩で戻せる"; copyArm=null; refreshAfterCopy(type); arm("chop",false); return true; }  /* 元→先 完了でCOPYをトグル消費＝自動オフ */
   else { copyArm={type,idx}; sampNameEl.textContent="COPY元 "+COPY_LABEL[type]+" "+copyName(type,idx)+" → コピー先をタップ"; }
   paintCopyHL();
   return true;
@@ -4484,7 +4484,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.33";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.34";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
