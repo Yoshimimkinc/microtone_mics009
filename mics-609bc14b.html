@@ -280,7 +280,7 @@
      body.perf ではなく「サイズ＋横向き」で適用＝ビュー切替で高さがジャンプしない */
   @media (min-width:768px) and (orientation:landscape){
     html{height:100%;overflow:hidden;}                              /* htmlのスクロールも止める（iOSは html が動く） */
-    body{height:100dvh;overflow:hidden;overscroll-behavior:none;padding:0;}   /* ラバーバンド抑止＋paddingでのはみ出しを無くす */
+    body{height:100dvh;overflow:hidden;overscroll-behavior:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}   /* ラバーバンド抑止＋セーフエリア回避 */
     .unit{height:100%;max-height:100%;display:flex;flex-direction:column;}
     .body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
     .body>.view.active{flex:1 1 auto;min-height:0;}
@@ -758,9 +758,11 @@
 
   /* responsive */
   @media(max-width:600px){
-    body{padding:6px;}
+    /* セーフエリア（ノッチ/ステータスバー/ホームバー）を避ける＝ロゴが時刻に重ならない */
+    body{padding:calc(6px + env(safe-area-inset-top)) calc(6px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));}
     /* === スマホはアプリ全体を画面の高さに収める（PADSは縦スクロールさせない） === */
     html,body{height:100%;}
+    html{overflow:hidden;}   /* iOS Safariはbody:hiddenでもhtmlが動く→明示ロックしないとスクロールする */
     body,html:fullscreen body,html:-webkit-full-screen body{
       display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden;}
     html:fullscreen,html:-webkit-full-screen{overflow:hidden;}
@@ -811,7 +813,7 @@
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
-    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden;}
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:0;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
     #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin-top:6px;}   /* パッドから少しだけ下に離す */
@@ -819,12 +821,12 @@
     #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:6px;padding-right:6px;}
     /* 移設したMUTE/SOLO(.t.arm)もEDITと同じ高さ・並びに揃える */
     #viewPads>.msbar .ms-in-edit{min-height:34px;font-size:10px;letter-spacing:.04em;}
-    /* スマホ：strip-headを1行に収める（トラック名は省略、LOAD/SMPLは折返さない） */
-    .strip-head{gap:6px;}
-    .who-wrap{flex:1 1 auto;min-width:0;}
+    /* スマホ：strip-headを横幅いっぱいに。ファイル名は自然幅・LOAD/●SMPLが残り全部を埋めて右端まで */
+    .strip-head{gap:6px;width:100%;}
+    .who-wrap{flex:0 1 auto;min-width:0;}
     .strip-head .who{overflow:hidden;text-overflow:ellipsis;min-width:0;}
-    .strip-actions{flex:0 0 auto;gap:6px;}
-    .strip-actions .loadbtn{padding:5px 8px;font-size:10px;white-space:nowrap;}
+    .strip-actions{flex:1 1 auto;gap:6px;}
+    .strip-actions .loadbtn{flex:1 1 0;text-align:center;padding:8px 6px;font-size:11px;white-space:nowrap;min-height:38px;display:flex;align-items:center;justify-content:center;}
     .strip-head .stepnav{padding:6px 7px;}
     /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
     #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
@@ -871,7 +873,7 @@
     .colnums .cn{font-size:7px;}
   }
   @media(max-width:400px){
-    body{padding:4px;}
+    body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
     .unit{padding:10px 8px 12px;}
     .brand .logo{font-size:18px;}
     .modebtn{padding:6px 12px;font-size:12px;letter-spacing:.12em;}
@@ -919,7 +921,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.35</div>
+  <div class="s-ver" id="splashVer">v0.3.36</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4509,7 +4511,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.35";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.36";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
