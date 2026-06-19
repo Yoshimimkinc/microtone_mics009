@@ -774,6 +774,17 @@
     .transport button.t{flex:1 1 0;min-width:0;font-size:13px;letter-spacing:.02em;padding:0 4px;min-height:50px;white-space:nowrap;overflow:hidden;text-overflow:clip;}
     #bpm{max-width:84px;}
     .modebar-row{margin:8px 0 8px;gap:12px;}
+    /* スマホ：MENUモーダルの設定行は縦積み・スライダー全幅（横並びだと潰れてラベルとスライダーが重なる） */
+    .modal .tempo-row{flex-direction:column;align-items:stretch!important;gap:14px!important;}
+    .modal .tempo-row .ctrl{width:100%;justify-content:space-between;}
+    .modal .tempo-row .ctrl input[type=range]{max-width:none;}
+    .modal .tempo-row #bpm{max-width:none;}
+    .modal .tempo-row #tap{align-self:stretch;min-height:40px;}
+    .modal .master-bar{flex-direction:column;align-items:stretch;gap:14px;min-width:0;}
+    .modal .master-bar .master-vu-wrap{width:100%!important;flex:0 0 auto;}
+    .modal .master-bar .master-ctrls{align-items:stretch;}
+    .modal .master-ctrls{flex-direction:column;align-items:stretch;gap:16px;}
+    .modal .master-ctrls .knob{flex:1 1 auto!important;max-width:none!important;width:100%;}
     /* TEMPO/SWINGは2行目に（スライダーを広く） */
     .tempo-row{display:flex;flex-basis:100%;width:100%;order:2;gap:12px;align-items:center;margin-top:4px;}
     .tempo-row .ctrl:first-child{flex:1;}
@@ -904,7 +915,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.32</div>
+  <div class="s-ver" id="splashVer">v0.3.33</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4473,7 +4484,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.32";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.33";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
