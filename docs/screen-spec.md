@@ -432,3 +432,9 @@ v0.3.31でボタンが各22pxまで潰れて押しにくかった。原因＝`.t
   - `.modal .master-bar{flex-direction:column}`＝VUメーター全幅＋ノブ全幅。`.modal .master-ctrls{flex-direction:column}` で COMP/THRESHOLD/DRIVE を各全幅。
   - `.modal .master-ctrls .knob{flex:1 1 auto;max-width:none;width:100%}`。
 - verify(390×844)：全セクションが縦に整列・スライダー全幅・重なりなし、0 errors。perf回帰：trigger median 0.1ms＝回帰なし。CSSのみ＝音声/JS経路不変。
+
+## 48. 【v0.3.34】COPYは「元→先」完了でトグル消費＝自動オフ
+COPYで元→先のコピーを実行したら、COPY armモードを自動解除（ボタンOFF）。連続コピーの誤爆を防ぎ、1回1動作で完結。
+- `copyTap()` のコピー実行ブランチ末尾に `arm("chop",false)` を追加（copyArmリセット＋ボタンの.armed解除＋armMode=null）。
+- 取消（同一を再タップ）や元の取り直しは従来通り（armは維持）。実行時のみ消費。
+- verify：COPYボタンclick→armed、copyTap(pad,0)=元、copyTap(pad,1)=実行→ボタンarmed:false・copyArm:null、0 errors。perf回帰：trigger median 0.1ms＝回帰なし。
