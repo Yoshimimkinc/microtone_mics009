@@ -424,3 +424,11 @@ iPhone縦のtransportバーがぐちゃっとしていた問題を解消。「PL
 v0.3.31でボタンが各22pxまで潰れて押しにくかった。原因＝`.top`でロゴ「microtone」が幅を食い、transportが残り半分しか使えていなかった。
 - スマホ`.transport{flex-basis:100%;width:100%}`＝ロゴと別行に落として全幅化。5ボタンを`flex:1 1 0`で均等割り→各**68px**(22px→約3倍)・高さ50px＝指で押しやすい。COPYの文字切れも解消。
 - verify(390×844)：transport 5個=68px均等/1行、0 errors。perf回帰：trigger median 0.1ms＝回帰なし。desktop/perfは影響なし。
+
+## 47. 【v0.3.33】スマホ：MENUモーダルの崩れ修正（設定行を縦積み）
+スマホ縦でMENU(⋮)の TEMPO/MASTER/COMP 行が横並びのまま潰れ、ラベルとスライダーが重なっていた。
+- `.modal` スコープで縦積み化（specificityでグローバル `.tempo-row` を上書き）：
+  - `.modal .tempo-row{flex-direction:column;align-items:stretch}` ＋ TEMPO/SWING/TAP を全幅、bpmスライダー `max-width:none`。
+  - `.modal .master-bar{flex-direction:column}`＝VUメーター全幅＋ノブ全幅。`.modal .master-ctrls{flex-direction:column}` で COMP/THRESHOLD/DRIVE を各全幅。
+  - `.modal .master-ctrls .knob{flex:1 1 auto;max-width:none;width:100%}`。
+- verify(390×844)：全セクションが縦に整列・スライダー全幅・重なりなし、0 errors。perf回帰：trigger median 0.1ms＝回帰なし。CSSのみ＝音声/JS経路不変。
