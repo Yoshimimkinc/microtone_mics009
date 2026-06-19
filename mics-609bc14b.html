@@ -921,7 +921,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.36</div>
+  <div class="s-ver" id="splashVer">v0.3.37</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4257,7 +4257,12 @@ document.getElementById("recTab").addEventListener("click",async()=>{
   startRec();
 });
 document.getElementById("recMic").addEventListener("click",async()=>{
-  try{ recStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+  try{
+    // 通話用処理(AEC/オートゲイン/ノイズ抑制)は必ずOFF。
+    // ONだとブラウザが「通話中」とみなしスピーカー出力全体をダッキング＝全体音量が落ちる。
+    // サンプラーは生信号が欲しいので3つとも無効化（録り音もクリーン）。
+    recStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,autoGainControl:false,noiseSuppression:false}});
+  }
   catch(e){
     sampNameEl.textContent="Mic取得失敗";
     recOverlay.classList.remove("show"); return;
@@ -4511,7 +4516,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.36";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.37";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
