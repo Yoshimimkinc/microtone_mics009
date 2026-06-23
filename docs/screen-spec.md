@@ -468,3 +468,10 @@ v0.3.37のAEC OFFで録り音は正常化（harness実測 peak≈1.0/50273smp）
 - **CHOP行**：`.pe-chop`を`flex-wrap:nowrap`にし、セグ(TIME/ATK・2/4/8/16)を圧縮(padding 6px)、Applyボタンを`flex:1 1 auto`で残り幅にフィット。ラベルを「CHOP → 09–16 (8)」→「CHOP 09–16」に短縮(個数はセグ選択で自明)。393/375で範囲まで全表示、≤360はellipsisで安全側(折返さない)。
 - **Pitch/Level全幅**：`.pe-basic`を再構成。Loop＋Scaleを上段、Pitch・Levelを各々`.pe-row.pe-full`＋`.knob.mini.pe-wide`(max-width解除)でスライダー横幅一杯に。狭幅(≤380)グリッドでも`pe-full`は1カラムで全幅維持。
 - verify：modal 393/375 で CHOP 1行(クリップなし)・Pitch/Level幅=行幅・0 errors。
+
+## 54. 【v0.3.40】録音オーバーレイをモーダルと重ねても崩れない中央ダイアログに
+EDITモーダルからSMPLを開くと、`.rec-overlay`/`.toast`が`top:84px`固定でモーダルヘッダーに重なって見切れていた。
+- `.rec-overlay`を`inset:0`の中央寄せ＋`::before`背面ディマー（z-index 9995＝modal 9990より上）に変更。
+- `.rec-panel`を縦並びの自立パネル(bg/border/影)化。取り込み先ラベルを浮きトースト(sampName)からパネル内`#recTarget`へ移動＝モーダルと重ならない。
+- extractOverlayも同経路で中央化。録音フロー(メイン/モーダル両方)・録音結果は不変。
+- verify：modal上でpanel中央(centerY一致)・z 9995・録音1サイクル peak1.07/type=sample・0 errors。
