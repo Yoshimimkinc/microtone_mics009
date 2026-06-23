@@ -463,3 +463,8 @@ getDisplayMedia(screen録音)側はAEC無関係なので変更なし。
 v0.3.37のAEC OFFで録り音は正常化（harness実測 peak≈1.0/50273smp）。加えて保険を追加:
 - 録音デコード後に `isSilent`(閾0.0009) を判定。無音なら **pushUndo前にreturn** して既存パッドを潰さず、「録音が無音でした（マイク権限・入力レベルを確認）」を表示。
 - finalizeRecに `selectPad(selected)` を追加（ファイル読込と挙動を統一＝録音先へフォーカス）。
+
+## 53. 【v0.3.39】EDITモーダル：CHOP行を1行化＋Pitch/Levelを全幅
+- **CHOP行**：`.pe-chop`を`flex-wrap:nowrap`にし、セグ(TIME/ATK・2/4/8/16)を圧縮(padding 6px)、Applyボタンを`flex:1 1 auto`で残り幅にフィット。ラベルを「CHOP → 09–16 (8)」→「CHOP 09–16」に短縮(個数はセグ選択で自明)。393/375で範囲まで全表示、≤360はellipsisで安全側(折返さない)。
+- **Pitch/Level全幅**：`.pe-basic`を再構成。Loop＋Scaleを上段、Pitch・Levelを各々`.pe-row.pe-full`＋`.knob.mini.pe-wide`(max-width解除)でスライダー横幅一杯に。狭幅(≤380)グリッドでも`pe-full`は1カラムで全幅維持。
+- verify：modal 393/375 で CHOP 1行(クリップなし)・Pitch/Level幅=行幅・0 errors。
