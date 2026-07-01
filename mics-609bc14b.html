@@ -933,7 +933,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.45</div>
+  <div class="s-ver" id="splashVer">v0.3.46</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1585,17 +1585,40 @@ bypassGain.gain.value = 0;
 spOut.connect(bypassGain);
 bypassGain.connect(tapeDelay);  // bypass経路もテープを通す
 
+// ライブ叩き（fromSeq=false）の瞬間はコンプを自動バイパス＝先読み遅延(約6ms)を回避。
+// 手が止まって1.5s後に滑らかに復帰。経路は常時両接続なのでゲインのフェードだけ＝クリックなし
+let _liveDuck=false, _liveDuckT=null;
+function _rampCompRouting(on, tc){
+  const t=AC.currentTime;
+  if(on){
+    comp.threshold.setTargetAtTime(compThreshold, t, tc);
+    makeupGain.gain.setTargetAtTime(compMakeup, t, tc);
+    bypassGain.gain.setTargetAtTime(0, t, tc);
+  } else {
+    comp.threshold.setTargetAtTime(0, t, tc);      // 閾値0dB＝実質かからない
+    makeupGain.gain.setTargetAtTime(0, t, tc);
+    bypassGain.gain.setTargetAtTime(1.0, t, tc);   // ON時の平均メイクアップ相当＝A/B音量差を縮める
+  }
+}
+function liveCompDuck(){
+  if(!compOn) return;                                   // ユーザーがCOMP OFFなら関与しない
+  if(!_liveDuck){ _liveDuck=true; _rampCompRouting(false, 0.004); }   // 叩いた瞬間に速く切る
+  clearTimeout(_liveDuckT);
+  _liveDuckT=setTimeout(()=>{ _liveDuck=false; if(compOn) _rampCompRouting(true, 0.05); }, 1500);   // ゆっくり復帰
+}
 function setCompBypass(on){
   compOn = on;
+  clearTimeout(_liveDuckT); _liveDuck=false;   // 手動切替はライブ自動バイパスの予約より優先
+  const t=AC.currentTime;
+  comp.threshold.cancelScheduledValues(t); makeupGain.gain.cancelScheduledValues(t); bypassGain.gain.cancelScheduledValues(t);
   if(on){
-    comp.threshold.value = compThreshold;
-    makeupGain.gain.value = compMakeup;
-    bypassGain.gain.value = 0;
+    comp.threshold.setValueAtTime(compThreshold, t);
+    makeupGain.gain.setValueAtTime(compMakeup, t);
+    bypassGain.gain.setValueAtTime(0, t);
   } else {
-    // コンプ経路をミュート、バイパス経路を開く
-    comp.threshold.value = 0;  // 閾値0dBで実質かからない
-    makeupGain.gain.value = 0;
-    bypassGain.gain.value = 1.0;  // ON時の平均メイクアップに近づけ、ON/OFFのA/B音量差を縮める
+    comp.threshold.setValueAtTime(0, t);
+    makeupGain.gain.setValueAtTime(0, t);
+    bypassGain.gain.setValueAtTime(1.0, t);
   }
 }
 let compThreshold = -12;
@@ -2118,6 +2141,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   if(!t.buffer) return;
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
   if(fromSeq && !audible(i)) return;
+  if(!fromSeq) liveCompDuck();   // ライブ叩きはコンプ先読み(約6ms)をリアルタイムに回避（1.5s後に自動復帰）
 
   stopVoices(t, when);
   chokeGroup(t.choke, i, when);
@@ -4557,7 +4581,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.45";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.46";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
