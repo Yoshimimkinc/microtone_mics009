@@ -479,3 +479,11 @@ EDITモーダルからSMPLを開くと、`.rec-overlay`/`.toast`が`top:84px`固
 ## 55. 【v0.3.41】モバイル：選択矢印(◀▶)とLOAD/SMPLの重なり修正＋レトロ文書
 `.strip-head .who{flex:0 0 130px}`（固定幅・縮まない）＋`.strip-actions`にmin-width:0が無い（flex既定min-width:auto＝nowrapテキスト以下に縮めない）→狭幅・長い名前で重なり。
 モバイルで .who を flex:1 1 auto + min-width:0 + ellipsis（名前側が譲る）、actions/loadbtn に min-width:0 を付与。320pxで最長名でも重なりゼロを実測。docs/issues-retrospective.md 追加。
+
+## 56. 【v0.3.42】録音を生PCM直採りに全面書き換え（実機の録音不能対策）
+MediaRecorder→Blob→decodeAudioData の3段はコーデック/デコードがブラウザ依存（iOS Safariで沈黙する報告が続いた）。
+→ createMediaStreamSource→ScriptProcessor(4096)で Float32 を直接収集し AC.createBuffer に積む方式へ。
+- デコード工程ゼロ＝「録れたのに変換で死ぬ」が原理的に消える。SRも常にAC.sampleRateで一致
+- iOS対策：録音開始/終了で AC.resume()（マイク取得時のオーディオセッション切替でACが止まり全体無音になる問題）
+- 60s安全上限（メモリ保護）、ゼロゲインでtap駆動＝ハウリング防止
+- 完了トーストはKB→秒表示。Tab Audio も同経路

@@ -931,7 +931,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.41</div>
+  <div class="s-ver" id="splashVer">v0.3.42</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4240,7 +4240,8 @@ extractOverlayEl.addEventListener("pointerdown",e=>e.stopPropagation());
 const recChoose=document.getElementById("recChoose");
 const recActiveEl=document.getElementById("recActive");
 const recTargetEl=document.getElementById("recTarget");
-let recStream=null, recorder=null, recChunks=[], recStartMs=0, recTimerId=null;
+let recStream=null, recStartMs=0, recTimerId=null;
+let pcmSrc=null, pcmTap=null, pcmMute=null, pcmChunks=[], pcmLen=0;   // 生PCM直採り（MediaRecorder/デコード非依存）
 
 function openSampleOverlay(){
   recOverlay.classList.add("show");
@@ -4289,20 +4290,21 @@ document.getElementById("recMic").addEventListener("click",async()=>{
 });
 function startRec(){
   recChoose.style.display="none"; recActiveEl.style.display="flex";
-  recChunks=[]; recStartMs=performance.now();
-  try{
-    // mimeTypeはブラウザに任せる（指定すると非対応で落ちる）
-    recorder=new MediaRecorder(recStream);
-  }catch(e){
-    sampNameEl.textContent="MediaRecorder非対応: "+e.message;
-    stopRec(true); return;
-  }
-  recorder.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
-  recorder.onstop=async()=>{ await finalizeRec(); };
-  try{ recorder.start(); }catch(e){
-    sampNameEl.textContent="録音開始失敗: "+e.message;
-    stopRec(true); return;
-  }
+  pcmChunks=[]; pcmLen=0; recStartMs=performance.now();
+  // iOS: マイク取得でオーディオセッションが切替わりACがsuspended/interruptedになることがある
+  try{ AC.resume(); }catch(_){}
+  try{ pcmSrc=AC.createMediaStreamSource(recStream); }
+  catch(e){ sampNameEl.textContent="入力接続失敗: "+e.message; stopRec(true); return; }
+  // MediaRecorder/decodeAudioDataを使わず生PCMをWeb Audioで直接取る
+  // ＝コーデック/デコードのブラウザ依存ゼロ（iOS Safariの録音不能対策）。SRも常にAC.sampleRateで一致
+  pcmTap=AC.createScriptProcessor(4096,1,1);
+  pcmTap.onaudioprocess=ev=>{
+    pcmChunks.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+    pcmLen+=4096;
+    if(pcmLen>AC.sampleRate*60) stopRec(false);   // 60s安全上限（メモリ保護）
+  };
+  pcmMute=AC.createGain(); pcmMute.gain.value=0;   // tapを駆動しつつモニタは無音＝ハウリング防止
+  pcmSrc.connect(pcmTap); pcmTap.connect(pcmMute); pcmMute.connect(AC.destination);
   recTimerId=setInterval(()=>{
     const s=((performance.now()-recStartMs)/1000).toFixed(1);
     document.getElementById("recTime").textContent=s+"s";
@@ -4311,23 +4313,28 @@ function startRec(){
 document.getElementById("recStop").addEventListener("click",()=>stopRec(false));
 function stopRec(cancel){
   clearInterval(recTimerId);
-  if(recorder&&recorder.state==="recording"){ if(cancel){recorder.ondataavailable=null;recorder.onstop=null;} recorder.stop(); }
+  try{ if(pcmSrc)pcmSrc.disconnect(); if(pcmTap){pcmTap.onaudioprocess=null;pcmTap.disconnect();} if(pcmMute)pcmMute.disconnect(); }catch(_){}
+  pcmSrc=pcmTap=pcmMute=null;
   if(recStream){recStream.getTracks().forEach(t=>t.stop());recStream=null;}
   recOverlay.classList.remove("show");
-  if(cancel){recorder=null;recChunks=[];}
+  try{ AC.resume(); }catch(_){}   // iOS: 録音後ACがinterruptedのままだと全体が無音になる
+  if(cancel){ pcmChunks=[]; pcmLen=0; }
+  else finalizeRec();
 }
 async function finalizeRec(){
-  if(recChunks.length===0){
+  const n=pcmChunks.reduce((a,c)=>a+c.length,0);
+  if(n===0){
     sampNameEl.textContent="録音データなし";
-    recorder=null;recChunks=[]; return;
+    pcmChunks=[]; pcmLen=0; return;
   }
-  const blob=new Blob(recChunks);
   try{
-    const arr=await blob.arrayBuffer();
-    const buf=await decodeAudio(arr);
+    const buf=AC.createBuffer(1,n,AC.sampleRate);
+    const d=buf.getChannelData(0); let o=0;
+    for(const c of pcmChunks){ d.set(c,o); o+=c.length; }
+    pcmChunks=[]; pcmLen=0;
     if(isSilent(buf)){   // 無音録音で既存パッドを潰さない＆原因を伝える（マイク権限/AEC/入力レベル）
       sampNameEl.textContent="録音が無音でした（マイク権限・入力レベルを確認）";
-      recorder=null;recChunks=[]; return;
+      return;
     }
     pushUndo();
     tracks[selected].rawBuffer=buf;
@@ -4339,15 +4346,14 @@ async function finalizeRec(){
     tracks[selected].name="REC";
     const nm="REC "+String(selected+1).padStart(2,"0");
     padsEl.children[selected].querySelector(".nm").textContent=nm;
-    sampNameEl.textContent="Sampled! → PAD "+String(selected+1).padStart(2,"0")+" ("+((blob.size/1024)|0)+"KB)";
+    sampNameEl.textContent="Sampled! → PAD "+String(selected+1).padStart(2,"0")+" ("+(n/AC.sampleRate).toFixed(1)+"s)";
     selectPad(selected);   // 録音先パッドへフォーカス（読込時と挙動を揃える）
     drawPadWave(selected);
     if(typeof syncEditor==="function") syncEditor();
-    refreshOpenPadEdit(selected);   // EDITモーダルから録音した場合は波形/タイトルを更新
+    openPadEdit(selected);   // 取り込み後は即EDIT＝波形で範囲(STRT/END)を指定→TRIMできる
   }catch(e){
-    sampNameEl.textContent="デコード失敗: "+e.message;
+    sampNameEl.textContent="取り込み失敗: "+e.message;
   }
-  recorder=null;recChunks=[];
 }
 
 // ===== SAVE / LOAD =====
@@ -4539,7 +4545,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.41";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.42";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
