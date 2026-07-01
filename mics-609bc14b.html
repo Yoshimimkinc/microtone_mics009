@@ -931,7 +931,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.42</div>
+  <div class="s-ver" id="splashVer">v0.3.43</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3731,7 +3731,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     padsEl.children[target].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
     selectPad(target);   // 取り込み先パッドへフォーカスを移す（抽出中に別パッドを触っていても結果が見える）
     drawPadWave(target);
-    refreshOpenPadEdit(target);   // EDITモーダルから読込んだ場合は波形/タイトルを更新
+    openPadEdit(target);   // 取り込み後は即EDIT＝波形で範囲(STRT/END)を指定→TRIMできる
   }catch(err){
     const m=(err&&err.message)?err.message:String(err);
     show("✕ "+m);
@@ -4545,7 +4545,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.42";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.43";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
