@@ -933,7 +933,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.44</div>
+  <div class="s-ver" id="splashVer">v0.3.45</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1345,7 +1345,10 @@ const MELO_KEYS = ["a","s","d","f","g","h","j","k","l",";"];
 // 各ヒット = 1 AudioBufferSourceNode（使い切りだが正しい使い方=リークしない）。
 // チョークグループで前のボイスを止める。プリセット音は起動時にオフラインレンダリングして焼き込む。
 
-const AC = new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"});
+const AC = (()=>{  // latencyHint:0＝取り得る最小バッファを要求（Chrome系で"interactive"より短くなる。Safariは無視＝無害）
+  try{ return new (window.AudioContext||window.webkitAudioContext)({latencyHint:0}); }
+  catch(_){ return new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"}); }
+})();
 // 音声デコード：Promise版で失敗したら旧コールバック版で再試行（iOSのmp4/mov・webm等の互換対策）
 // 注意: decodeAudioData は渡した ArrayBuffer を detach（中身を空に）する。
 // そのため各試行に必ずコピー(slice)を渡し、フォールバックが空データを受け取らないようにする。
@@ -2092,6 +2095,7 @@ function pitchBufferNN(buf, ratio){
 // 半音キーでピッチ済みバッファをキャッシュ（同音程の連打で毎回生成しない＝負荷増を防ぐ）。
 // t.bufferが差し替わったら自動でキャッシュ破棄（録音/読込/CHOPPY/再12bit化に追従）。
 function getPitchedBuffer(t, semi){
+  if(!semi) return t.buffer;   // 等倍(ratio=1)は恒等コピー＝焼き込み不要。初回ヒットの全長コピー(＝発音前の数ms)を丸ごと省く
   if(t._pcacheBuf !== t.buffer){ t._pcache = {}; t._pcacheKeys = []; t._pcacheBuf = t.buffer; }
   let b = t._pcache[semi];
   if(!b){
@@ -2101,6 +2105,12 @@ function getPitchedBuffer(t, semi){
     while(t._pcacheKeys.length > 16){ const old=t._pcacheKeys.shift(); if(old!==semi) delete t._pcache[old]; }
   }
   return b;
+}
+// tune変更後にピッチ焼き込みを先回り＝次の発音時の全長コピーを発音前に済ませる（連続ドラッグはdebounce）
+const _warmT={};
+function warmPitch(i){
+  clearTimeout(_warmT[i]);
+  _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.buffer&&t.tune) try{ getPitchedBuffer(t,t.tune); }catch(_){ } },150);
 }
 // 1ヒット発音
 function playVoice(i, when, accent, fromSeq, noteSemi, plock){
@@ -2911,7 +2921,7 @@ function bindKnob(id,valId,fmt,apply){
   k.addEventListener("keydown",e=>{ if(/Arrow|Page|Home|End/.test(e.key)) pushUndo(); });
   k.addEventListener("input",()=>{apply(+k.value);v.textContent=fmt(+k.value);});
 }
-bindKnob("kTune","vTune",x=>x+" st",x=>tracks[selected].tune=x);
+bindKnob("kTune","vTune",x=>x+" st",x=>{tracks[selected].tune=x; warmPitch(selected);});
 bindKnob("kCut","vCut",x=>(x/1000).toFixed(1)+"k",x=>tracks[selected].cutoff=x);
 bindKnob("kRes","vRes",x=>x.toFixed(1),x=>tracks[selected].reso=x);
 bindKnob("kLvl","vLvl",x=>x+" dB",x=>{tracks[selected].vol=x;
@@ -3539,7 +3549,7 @@ function openPadEdit(i){
     k.addEventListener("keydown",e=>{ if(/Arrow|Page|Home|End/.test(e.key)) pushUndo(); });
     k.addEventListener("input",()=>{ set(+k.value); v.textContent=fmt(+k.value); });
   }
-  bindPeKnob("pePitchR","pePitch",x=>x+" st", x=>tracks[peTarget].tune=x);
+  bindPeKnob("pePitchR","pePitch",x=>x+" st", x=>{tracks[peTarget].tune=x; warmPitch(peTarget);});
   bindPeKnob("peLevelR","peLevel",x=>x+" dB", x=>tracks[peTarget].vol=x);
   bindPeKnob("peCutR","peCut",  x=>(x/1000).toFixed(1)+"k", x=>tracks[peTarget].cutoff=x);
   bindPeKnob("peResR","peRes",  x=>x.toFixed(1), x=>tracks[peTarget].reso=x);
@@ -4547,7 +4557,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.44";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.45";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

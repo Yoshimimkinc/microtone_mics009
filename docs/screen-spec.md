@@ -495,3 +495,9 @@ MediaRecorder→Blob→decodeAudioData の3段はコーデック/デコードが
 ## 58. 【v0.3.44】EDITモーダル：全スライダーを1本＝1行の全幅に
 「レバーが短くて使いにくい」対応。モバイル(≤600)で #padEditModal 内の .knob(:not(.has-dial)) を flex:1 1 100%＋grid-column:1/-1（≤380のgrid化でも全幅）。
 Pitch/Level/Cutoff/Reso/Attack/Fade 全て308px(390px端末)＝従来比約2.5倍。モーダルはoverflow-y:autoなので縦伸びは安全。
+
+## 59. 【v0.3.45】レイテンシ改善：latencyHint:0＋等倍ショートカット＋pitch事前焼き込み
+- `AudioContext({latencyHint:0})`＝取り得る最小バッファを要求。Chrome系でbaseLatency 5.8ms→**2.9ms(半減)**。Safariはヒント無視＝無害（try/catchで"interactive"フォールバック）
+- `getPitchedBuffer(t,0)`は`t.buffer`を直返し（ratio=1の焼き込みは恒等コピー）＝チューン無しパッドの初回ヒットの全長コピー(実測3.2ms)を丸ごと省く
+- tune変更時に`warmPitch()`(150ms debounce)で先回り焼き込み＝変更後の初回ヒットも0ms
+- 実測: trigger median 0ms / 録音回帰なし / 0 errors。残る差はブラウザ出力段（outputLatency 9ms＋Safariの固定分）とCOMP ON時の先読み(約6ms)
