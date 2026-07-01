@@ -491,3 +491,7 @@ MediaRecorder→Blob→decodeAudioData の3段はコーデック/デコードが
 ## 57. 【v0.3.43】取り込み後に即EDIT＝範囲指定の導線
 録音・ファイル読込の完了後に openPadEdit(target) を自動で開く（従来はモーダルが既に開いている時だけ更新）。
 → 取り込み→波形のSTRT/ENDハンドルで範囲指定→TRIMで確定、が1つの流れに（「取り込みの時範囲を指定したい」）。
+
+## 58. 【v0.3.44】EDITモーダル：全スライダーを1本＝1行の全幅に
+「レバーが短くて使いにくい」対応。モバイル(≤600)で #padEditModal 内の .knob(:not(.has-dial)) を flex:1 1 100%＋grid-column:1/-1（≤380のgrid化でも全幅）。
+Pitch/Level/Cutoff/Reso/Attack/Fade 全て308px(390px端末)＝従来比約2.5倍。モーダルはoverflow-y:autoなので縦伸びは安全。

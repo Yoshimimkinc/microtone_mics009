@@ -819,6 +819,8 @@
     .strip{padding:9px;}
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
+    /* EDITモーダル：スライダー1本＝1行の全幅（レバーを最長化＝指で微調整できる）。grid化(≤380)でも全幅 */
+    #padEditModal .pe-row .knob:not(.has-dial){flex:1 1 100%;max-width:none;min-width:0;grid-column:1/-1;}
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
@@ -931,7 +933,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.43</div>
+  <div class="s-ver" id="splashVer">v0.3.44</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4545,7 +4547,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.43";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.44";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
