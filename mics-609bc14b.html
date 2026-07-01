@@ -830,12 +830,13 @@
     #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:6px;padding-right:6px;}
     /* 移設したMUTE/SOLO(.t.arm)もEDITと同じ高さ・並びに揃える */
     #viewPads>.msbar .ms-in-edit{min-height:34px;font-size:10px;letter-spacing:.04em;}
-    /* スマホ：strip-headを横幅いっぱいに。ファイル名は自然幅・LOAD/●SMPLが残り全部を埋めて右端まで */
+    /* スマホ：strip-headを横幅いっぱいに。ファイル名は縮む(ellipsis)＝矢印/LOADと絶対に重ねない */
     .strip-head{gap:6px;width:100%;}
-    .who-wrap{flex:0 1 auto;min-width:0;}
-    .strip-head .who{overflow:hidden;text-overflow:ellipsis;min-width:0;}
-    .strip-actions{flex:1 1 auto;gap:6px;}
-    .strip-actions .loadbtn{flex:1 1 0;text-align:center;padding:8px 6px;font-size:11px;white-space:nowrap;min-height:38px;display:flex;align-items:center;justify-content:center;}
+    .who-wrap{flex:1 1 auto;min-width:0;}
+    .strip-head .who{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}   /* 固定130pxを解除＝名前側が譲る */
+    .strip-head .stepnav{flex:0 0 auto;}
+    .strip-actions{flex:0 1 auto;min-width:0;gap:6px;}
+    .strip-actions .loadbtn{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:8px 10px;font-size:11px;white-space:nowrap;min-height:38px;display:flex;align-items:center;justify-content:center;}
     .strip-head .stepnav{padding:6px 7px;}
     /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
     #viewPads>.padTransport{order:4;margin:0;flex:0 0 auto;}
@@ -930,7 +931,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.40</div>
+  <div class="s-ver" id="splashVer">v0.3.41</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4538,7 +4539,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.40";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.41";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

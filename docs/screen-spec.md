@@ -475,3 +475,7 @@ EDITモーダルからSMPLを開くと、`.rec-overlay`/`.toast`が`top:84px`固
 - `.rec-panel`を縦並びの自立パネル(bg/border/影)化。取り込み先ラベルを浮きトースト(sampName)からパネル内`#recTarget`へ移動＝モーダルと重ならない。
 - extractOverlayも同経路で中央化。録音フロー(メイン/モーダル両方)・録音結果は不変。
 - verify：modal上でpanel中央(centerY一致)・z 9995・録音1サイクル peak1.07/type=sample・0 errors。
+
+## 55. 【v0.3.41】モバイル：選択矢印(◀▶)とLOAD/SMPLの重なり修正＋レトロ文書
+`.strip-head .who{flex:0 0 130px}`（固定幅・縮まない）＋`.strip-actions`にmin-width:0が無い（flex既定min-width:auto＝nowrapテキスト以下に縮めない）→狭幅・長い名前で重なり。
+モバイルで .who を flex:1 1 auto + min-width:0 + ellipsis（名前側が譲る）、actions/loadbtn に min-width:0 を付与。320pxで最長名でも重なりゼロを実測。docs/issues-retrospective.md 追加。
