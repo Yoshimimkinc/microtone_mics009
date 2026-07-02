@@ -508,3 +508,10 @@ DynamicsCompressorの先読み(約6ms)はライブ演奏のレイテンシに直
 - 経路は常時両接続＝ゲインだけの切替でクリックなし
 - SEQ由来の発音では切らない／ユーザーがCOMP OFFなら関与しない／手動切替(setCompBypass)は自動予約より優先(cancelScheduledValues)
 - verify: live→byp1 / 2s後→byp0・mk1.2復帰 / seq→不変 / OFF中→不干渉 / 0 errors
+
+## 61. 【v0.3.47】音源5点（6ロールレビュー・音源担当分）
+1. チョーク/再トリガのクリック音: stopVoicesのcancelScheduledValuesがフェード予約中に直前peakへ跳ねる仕様罠→cancelAndHoldAtTime優先＋現在値ホールドのフォールバック
+2. スウィング縮退: 24PPQ整数丸めで54%=50%、63%=67%だった→分数tick化（6段階が全て生きる。MPC60の96PPQ相当の解像度）
+3. 最終段ソフトクリッパ: tape/echo/reverbの3系統をfinalClip(|x|<0.7透過→tanhで±0.93漸近, 2xオーバーサンプル)経由に。実測: COMP OFF+ドラム8発アクセント連打でピーク0.901＝デジタルクリップ消滅
+4. loopZeroSnap既定ON（トグルHTML初期もon）＝設定なしでループ継ぎ目のプツ抑制
+5. アクセント=音量+3dBだけ→spDynOpenにaccent連動(1.5倍開く)＋g3にdyn:1500付与＝「大きい」でなく「強い」音

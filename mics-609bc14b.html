@@ -933,7 +933,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.46</div>
+  <div class="s-ver" id="splashVer">v0.3.47</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1005,7 +1005,7 @@
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>DAC 2段ローファイ（OFF=1段）</span></label>
             <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP チャンネルフィルター（出力ch別の丸み）</span></label>
-            <label class="toggle" id="loopSnapToggle"><span class="sw"></span><span>ループ点ゼロ交差スナップ</span></label>
+            <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点ゼロ交差スナップ</span></label>
           </div>
         </div>
         <div class="modal-sec">
@@ -1426,7 +1426,7 @@ const SP_DAC_RATE = 26040;
 const spOut = AC.createGain();   // DAC出力ノード（このノードから先へ全アウトボードを接続）
 masterGain.connect(spOut);       // 既定は素通り。worklet成功時に masterGain→DAC→spOut へ差し替え
 let spDacNode=null;              // A/Bトグルで bypass を送るため参照を保持
-let loopZeroSnap=false;          // A/B: ループ点を最近傍ゼロ交差にスナップ（既定OFF=任意点）
+let loopZeroSnap=true;           // ループ点を最近傍ゼロ交差にスナップ（既定ON＝設定なしで継ぎ目のプツを抑える。A/BでOFF可）
 // 最近傍のゼロ交差サンプル位置を返す（±win以内、符号反転点）。見つからなければ元のidx
 function nearestZeroCross(data, idx, win){
   idx=Math.max(1,Math.min(data.length-1,idx|0));
@@ -1576,7 +1576,17 @@ spOut.connect(comp);
 comp.connect(saturator);
 saturator.connect(makeupGain);
 makeupGain.connect(tapeDelay);
-tapeDelay.connect(AC.destination);
+// 最終段ソフトクリッパ：|x|<0.7は完全透過（傾き1）、以降tanhで±0.93に漸近。
+// 4系統(テープ/エコー/リバーブ)の生加算がブラウザの無慈悲なデジタルクリップに当たるのを防ぎ、
+// フルパターン＋アクセントでも「テープが潰れる」方向に歪む＝安心して音量を突っ込める
+const finalClip = AC.createWaveShaper();
+finalClip.oversample = "2x";
+finalClip.curve = (()=>{ const N=4096, c=new Float32Array(N);
+  for(let i=0;i<N;i++){ const x=(i/(N-1))*2-1, a=Math.abs(x);
+    c[i]=Math.sign(x)*(a<=0.7 ? a : 0.7+0.3*Math.tanh((a-0.7)/0.3)); }
+  return c; })();
+finalClip.connect(AC.destination);
+tapeDelay.connect(finalClip);
 
 // バイパス経路（OFF時）もテープを通す
 let compOn = true;
@@ -1651,7 +1661,7 @@ const SP_CH = [
   {cut:15000, poles:1, q:0.5,  res:0.15, drive:0.9,  dyn:0},     // g0 SMP1-4 : bright（ザラつき/明るさ残す）
   {cut:12000, poles:1, q:0.6,  res:0.30, drive:1.0,  dyn:0},     // g1 SMP5-8 : やや丸め
   {cut:5200,  poles:2, q:0.95, res:1.35, drive:1.5,  dyn:3800},  // g2 DR9-12 : 4極で丸め＋発音毎ダイナミック開閉
-  {cut:6200,  poles:2, q:0.85, res:1.05, drive:1.25, dyn:0},     // g3 DR13-16: 4極固定で丸め
+  {cut:6200,  poles:2, q:0.85, res:1.05, drive:1.25, dyn:1500},  // g3 DR13-16: 4極丸め＋小さめのダイナミック開閉（スネア/パーカスのアクセントが立つ）
 ];
 const grpOut=[0,1,2,3].map(()=>{ const g=AC.createGain(); g.connect(masterGain); return g; });  // 安定末端→master（フィルタ実体を差し替えても不変）
 const grpBiquad=[];     // フォールバック用 biquad 直列配列（[0]=ダイナミック自動化対象）
@@ -1680,14 +1690,14 @@ function applySpChFilter(){
 }
 applySpChFilter();
 // 発音毎にカットオフを開いて閉じる（SSM2044のエンベロープ駆動ダイナミックフィルター）。ssm優先・無ければbiquad。
-function spDynOpen(g, when){
+function spDynOpen(g, when, accent){
   if(!spChFilterOn) return;
   const cfg=SP_CH[g]; if(!(cfg.dyn>0)) return;
   const p = ssmNode[g] ? ssmNode[g].parameters.get('cutoff')
           : (grpBiquad[g] && grpBiquad[g][0]) ? grpBiquad[g][0].frequency : null;
   if(!p) return;
   p.cancelScheduledValues(when);
-  p.setValueAtTime(cfg.cut+cfg.dyn, when);        // アタックで開く
+  p.setValueAtTime(cfg.cut+cfg.dyn*(accent?1.5:1), when);   // アタックで開く。アクセントは1.5倍開く＝「大きい」でなく「強い」音に
   p.setTargetAtTime(cfg.cut, when+0.004, 0.06);   // 60ms時定数で閉じる（クリック無し）
 }
 // ===== SSM2044 worklet ロード（非同期。成功で biquad → 非線形OTAラダー へ差し替え）=====
@@ -1786,7 +1796,7 @@ const echoLfoDepth = AC.createGain(); echoLfoDepth.gain.value=0.0018;
 echoLfo.connect(echoLfoDepth); echoLfoDepth.connect(tapeEcho.delayTime); echoLfo.start();
 delaySend.connect(tapeEcho);
 tapeEcho.connect(echoFbLP); echoFbLP.connect(echoFbHP); echoFbHP.connect(echoSat); echoSat.connect(echoFb); echoFb.connect(tapeEcho); // フィードバックループ(Delay内包で合法)
-tapeEcho.connect(echoWet); echoWet.connect(AC.destination);
+tapeEcho.connect(echoWet); echoWet.connect(finalClip);   // 最終段クリッパ経由
 // テンポ追従（4分3連 = (60/bpm)*2/3）
 function setDelayTempo(){
   const beat=60/((typeof bpmVal!=="undefined")?bpmVal:100);
@@ -1808,7 +1818,7 @@ const reverb = AC.createConvolver();
 const reverbPre = AC.createDelay(0.1); reverbPre.delayTime.value=0.02;   // プリディレイ
 const reverbLP  = AC.createBiquadFilter(); reverbLP.type="lowpass"; reverbLP.frequency.value=6500; // 空気感
 const reverbWet = AC.createGain(); reverbWet.gain.value=0.9;
-reverbSend.connect(reverbPre); reverbPre.connect(reverb); reverb.connect(reverbLP); reverbLP.connect(reverbWet); reverbWet.connect(AC.destination);
+reverbSend.connect(reverbPre); reverbPre.connect(reverb); reverb.connect(reverbLP); reverbLP.connect(reverbWet); reverbWet.connect(finalClip);   // 最終段クリッパ経由
 
 // マスター最終段(tapeDelay)からFXへ送る
 tapeDelay.connect(delaySend);
@@ -2076,7 +2086,10 @@ function chokeGroup(group, exceptPad, when){
 function stopVoices(t, when){
   t.activeVoices.forEach(v=>{
     try{
-      v.env.gain.cancelScheduledValues(when);
+      // cancelScheduledValuesはフェード予約中だと直前イベント値(=peak)へ瞬時に跳ねる仕様＝チョーク時の「プチッ」の原因。
+      // cancelAndHoldAtTimeなら現在値を保持したまま切れる（非対応ブラウザは現在値を明示セットで近似）
+      if(v.env.gain.cancelAndHoldAtTime) v.env.gain.cancelAndHoldAtTime(when);
+      else { const cur=v.env.gain.value; v.env.gain.cancelScheduledValues(when); v.env.gain.setValueAtTime(cur, when); }
       v.env.gain.setTargetAtTime(0, when, 0.005); // 5ms フェードで切る
       v.src.stop(when+0.03);
     }catch(e){}
@@ -2176,7 +2189,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   const baseVol = (plock && plock.level!=null) ? plock.level : t.vol;
   const peak = dbToGain(baseVol + (accent?3:0));
   head.connect(env); env.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→[SSM2044]→masterGain
-  spDynOpen(GROUP_OF[i], when);   // SSM2044ダイナミックフィルター：発音毎にカットオフが開いて閉じる（ch1-2相当）
+  spDynOpen(GROUP_OF[i], when, accent);   // SSM2044ダイナミックフィルター：発音毎に開閉。アクセントはより開く＝強打の説得力
 
   // DELAY/REVERBセンド：p-lock(そのステップ)が優先、無ければ per-pad ベース送り(t.delaySend/reverbSend)
   let dSend=null, rSend=null;
@@ -3033,7 +3046,9 @@ const PPQ = 24;
 const TICKS_PER_16TH = PPQ/4; // 6
 function tickDur(){ return (60/bpmVal)/PPQ; }      // 1tickの長さ（秒）
 function swingDelayTicks(){
-  return Math.round((2*swingPct/100 - 1) * TICKS_PER_16TH);
+  // 分数tickのまま返す（Math.roundすると54%→0=50%と同一、63%と67%→同2tickに縮退し6段階中2つが死ぬ。
+  // 元ネタMPC60は96PPQで54/58/63/67/71がほぼ整数tickに乗る＝24PPQ丸めは本来の解像度を壊していた）
+  return (2*swingPct/100 - 1) * TICKS_PER_16TH;
 }
 function effectiveSwing(){
   return Math.round((0.5 + swingDelayTicks()/TICKS_PER_16TH/2)*1000)/10; // %
@@ -4581,7 +4596,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.46";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.47";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
