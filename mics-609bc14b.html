@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="microtone">
 <link rel="manifest" href="manifest.json">
-<title>microtone - MICS009 beta v0.1</title>
+<title>microtone MICS009</title>
 <style>
   :root{
     --bg:#121417;        /* graphite body */
@@ -28,11 +28,13 @@
     --red:#ff4d4d;
     --pad:#2b3038;
     --pad-face:#343b44;
+    --hit-c2:#c25e22; --hit-glow-a:255,138,61; --hit-ink:#2a1405;   /* 点灯LEDの色（スキンで差し替え） */
   }
   /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL）。背景はどれも黒 ===== */
   /* Akai MPC3000風：黒地 + 暖色グレー本体 + 緑の蛍光LCD + Akaiレッド + クリーム文字 */
   body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;
-    --ink:#2b2720;--dim:#6e695c;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;}
+    --ink:#2b2720;--dim:#6e695c;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
+    --hit-c2:#8f2318;--hit-glow-a:207,58,44;--hit-ink:#f6efe3;}
   /* AK=MPC3000は明色（クリーム本体・グレーボタン）。暗いインセットだけ明色化し、波形はLCDとして暗いまま残す */
   body.t-ak .unit{background:#d2ccba;}
   body.t-ak #splash{background:#d6d0c0;}
@@ -40,12 +42,14 @@
   body.t-ak .modebtn .led{background:#9a958a;box-shadow:0 0 0 1px #8f8a7c inset;}
   /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
   body.t-sp{--bg:#14151a;--panel:#5f6368;--panel2:#4d5156;--edge:#26282c;--line:#42464c;
-    --ink:#f0f2f4;--dim:#aab0b6;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;}
+    --ink:#f0f2f4;--dim:#aab0b6;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;
+    --hit-c2:#93291c;--hit-glow-a:214,69,47;--hit-ink:#fdece7;}
   /* SP-1200の質感：グレー本体＋青いセクションライン＋緑LCD寄りの画面＋赤アクセント */
   body.t-sp .label{color:#3f86d6;}
   /* Roland TR-808風：黒地 + チャコール本体 + オレンジ/黄アクセント */
   body.t-rl{--bg:#0e0f11;--panel:#2c2f34;--panel2:#373c43;--edge:#121316;--line:#474d56;
-    --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#33373d;--pad-face:#3e444c;}
+    --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#33373d;--pad-face:#3e444c;
+    --hit-c2:#b34e12;--hit-glow-a:255,122,45;--hit-ink:#2a1405;}
   /* TR-808：枠をオレンジのグラデに（拍内で暗→明・OFF時のみ）。空セル=共通の灰グラデ、充填=共通のアンバー */
   body.t-rl .step:nth-child(4n+2):not(.on){border-color:#6e3310;}  /* 拍内1: 暗オレンジ */
   body.t-rl .step:nth-child(4n+3):not(.on){border-color:#a85a18;}  /* 拍内2 */
@@ -123,12 +127,12 @@
   }
   button.t:hover{border-color:var(--dim);}
   button.t.play.on{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 14px rgba(61,214,196,.4);}
-  button.t#tap.on{background:var(--amber);color:#2a1405;border-color:var(--amber);}
+  button.t#tap.on{background:var(--amber);color:var(--hit-ink);border-color:var(--amber);}
   button.t.rec.on{background:var(--red);color:#2a0808;border-color:var(--red);}
   /* トランスポートのarmボタン（COPY/MUTE/SOLO）：armed=アンバー点灯 */
   button.t.arm{min-width:54px;padding:9px 11px;}
   button.t.arm.armed{background:var(--amber);color:#241400;border-color:var(--amber);box-shadow:0 0 12px rgba(255,180,80,.5);}
-  button.t.step.on{background:var(--amber);color:#2a1405;border-color:var(--amber);box-shadow:0 0 14px rgba(255,138,61,.4);}
+  button.t.step.on{background:var(--amber);color:var(--hit-ink);border-color:var(--amber);box-shadow:0 0 14px rgba(var(--hit-glow-a),.4);}
   /* STEP（Digitakt式）：ノブ行の枠を固定高さにし、中身をPAT/BAR+p-lockへ差し替え＝切替で高さが動かない */
   .gridctrls{display:none;align-items:center;gap:8px;flex-wrap:wrap;width:100%;}
   .gridctrls .patlabel{font-size:10px;color:var(--dim);letter-spacing:.12em;}
@@ -164,8 +168,8 @@
   body.step-on .pad.beathead{background:linear-gradient(180deg,#3b424b,#2f353d);}
   /* ステップON */
   /* !important＝perfモードの高詳細度パッド背景(#viewPads)に勝たせ、ONを必ず塗りつぶす（valbarと同方針） */
-  body.step-on .pad.stepon{background:linear-gradient(180deg,var(--amber),#c25e22)!important;box-shadow:0 0 14px rgba(255,138,61,.5)!important;}
-  body.step-on .pad.stepon .stepn{color:#2a1405;}
+  body.step-on .pad.stepon{background:linear-gradient(180deg,var(--amber),var(--hit-c2))!important;box-shadow:0 0 14px rgba(var(--hit-glow-a),.5)!important;}
+  body.step-on .pad.stepon .stepn{color:var(--hit-ink);}
   body.step-on .pad.stepacc{background:linear-gradient(180deg,#ffd08a,var(--amber))!important;}
   /* 再生中の現在ステップ */
   body.step-on .pad.stepcur{outline:5px solid var(--teal);outline-offset:-5px;
@@ -189,7 +193,7 @@
   /* p-lock 値バー（左→右の塗りで値を表現）＋数字 */
   .pad .lockfill{display:none;position:absolute;left:0;top:0;bottom:0;width:0%;z-index:0;pointer-events:none;}
   /* ベースは「音あり色」(アンバー)＝値0でもノートONが分かる。その上に各パラメータ色のバーを重ねる */
-  body.step-on .pad.valbar{background:linear-gradient(180deg,var(--amber),#c25e22)!important;box-shadow:0 0 14px rgba(255,138,61,.5)!important;overflow:hidden;}
+  body.step-on .pad.valbar{background:linear-gradient(180deg,var(--amber),var(--hit-c2))!important;box-shadow:0 0 14px rgba(var(--hit-glow-a),.5)!important;overflow:hidden;}
   body.step-on .pad.valbar .lockfill{display:block;}
   /* 値表示中はステップ番号を隠して数字の重なりを防ぐ（中央に値だけ大きく出す） */
   body.step-on .pad.valbar .stepn{display:none;}
@@ -220,7 +224,7 @@
   .stepbtn:nth-child(4n+3):not(.on){background:#838a95;}
   .stepbtn:nth-child(4n):not(.on){background:#aab1bc;}     /* 拍尻: 明 */
   .stepbtn:nth-child(4n+1){border-left:2px solid #4a525c;}  /* 頭拍の区切り線 */
-  .stepbtn.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
+  .stepbtn.on{background:var(--amber);border-color:color-mix(in srgb,var(--amber) 70%,#fff);box-shadow:0 0 8px rgba(var(--hit-glow-a),.35);}
   .stepbtn.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}   /* アクセント＝白（SEQと同じ） */
   /* 再生ヘッド＝明るいアンバーの枠 */
   .stepbtn.cur{outline:2px solid var(--amber);outline-offset:1px;box-shadow:0 0 12px rgba(255,180,80,.7);z-index:2;}
@@ -452,7 +456,7 @@
   /* パターンA-D：on＝常灯、queued＝予約ランプ（box-shadow点滅で滲ませる） */
   body.perf .perf-pat{box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 3px 7px rgba(0,0,0,.4);}
   body.perf .perf-pat.on{box-shadow:0 0 0 1px var(--teal) inset, 0 0 14px -2px rgba(61,214,196,.5), 0 3px 7px rgba(0,0,0,.4);}
-  body.perf .perf-pat.queued{box-shadow:0 0 0 1px var(--amber) inset, 0 0 12px -3px rgba(255,138,61,.55);}
+  body.perf .perf-pat.queued{box-shadow:0 0 0 1px var(--amber) inset, 0 0 12px -3px rgba(var(--hit-glow-a),.55);}
   /* P-LOCK 5色：rest＝消灯ランプ（下線で色予告）、on＝点灯グロー＋立体押下 */
   body.perf .perf-plkbtn{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));
     box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 3px 6px rgba(0,0,0,.4);}
@@ -508,10 +512,14 @@
     border-radius:9px 0 0 9px;background:var(--cat);opacity:.85;pointer-events:none;z-index:1;}
   .pad.pcat-empty::before{opacity:.35;}
   .pad.sel{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
-  .pad.hit{background:linear-gradient(180deg,var(--amber),#c25e22);
-    box-shadow:0 0 18px rgba(255,138,61,.55);}
-  .pad.hit.hit-acc{box-shadow:0 0 30px 3px rgba(255,138,61,.9);}  /* アクセント=より明るく点灯 */
-  .pad.hit .nm,.pad.hit .n{color:#2a1405;}
+  .pad.hit{background:linear-gradient(180deg,var(--amber),var(--hit-c2));
+    box-shadow:0 0 18px rgba(var(--hit-glow-a),.55);}
+  .pad.hit.hit-acc{box-shadow:0 0 30px 3px rgba(var(--hit-glow-a),.9);}  /* アクセント=より明るく点灯 */
+  .pad.hit .nm,.pad.hit .n{color:var(--hit-ink);}
+  /* 空パッド＝招待：中央に薄い「＋」（説明なしで「ここに入れる」が伝わる） */
+  .pad.pcat-empty::after{content:"＋";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:300;color:var(--dim);opacity:.35;pointer-events:none;}
+  .pad.pcat-empty .nm{opacity:.55;}
 
   /* sequencer — 16-row grid */
   .seq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;}
@@ -521,7 +529,7 @@
   .pat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
   .patbtn{position:relative;}
-  .patbtn.on{background:var(--amber);color:#2a1405;}
+  .patbtn.on{background:var(--amber);color:var(--hit-ink);}
   .patbtn.playing{box-shadow:0 0 0 2px var(--teal);position:relative;z-index:2;}  /* 現在再生中を外枠で・最前面 */
   .patbtn.queued{box-shadow:0 0 0 2px var(--teal);z-index:2;animation:spblink .8s ease-in-out infinite;}  /* 予約中＝点滅 */
   .patbtn.has::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:.85;}  /* 中身ありドット */
@@ -566,7 +574,7 @@
   .step:nth-child(4n):not(.on){background:#838a95;}    /* 拍内3 (3,7,11,15) */
   .step:nth-child(4n+1):not(.on){background:#aab1bc;}  /* 拍内4 (4,8,12,16): 明 */
   .step:nth-child(4n+2){border-left:2px solid #4a525c;}  /* 拍の区切り線 */
-  .step.on{background:var(--amber);border-color:#ffb27a;box-shadow:0 0 8px rgba(255,138,61,.35);}
+  .step.on{background:var(--amber);border-color:color-mix(in srgb,var(--amber) 70%,#fff);box-shadow:0 0 8px rgba(var(--hit-glow-a),.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
   .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
   .hint{font-size:10px;color:var(--dim);letter-spacing:.08em;margin-top:14px;line-height:1.7;}
@@ -725,7 +733,10 @@
   .rec-target{font-size:11px;letter-spacing:.06em;color:var(--ink);text-align:center;}
   .rec-target:empty{display:none;}
   .rec-choose,.rec-active{display:flex;gap:10px;align-items:center;justify-content:center;}
+  .rec-meter{flex:1 1 90px;min-width:70px;height:8px;background:#0d1013;border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+  .rec-meter i{display:block;height:100%;width:0%;background:var(--teal);transition:width .08s linear;}
   .rec-dot{color:var(--red);font-size:18px;animation:blink .6s infinite;}
+  .transport .t.rec-live{animation:blink .9s ease-in-out infinite;color:var(--red);border-color:var(--red);}   /* 録音中＝●が点滅 */
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
   .knob{display:flex;flex-direction:column;gap:5px;}
   .knob label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.16em;display:flex;justify-content:space-between;gap:8px;}
@@ -933,13 +944,14 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.47</div>
+  <div class="s-ver" id="splashVer">v0.3.48</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
   <div class="top">
     <div class="brand">
       <div class="logo">micro<b>tone</b></div>
+      <div class="model">MICS009</div>
     </div>
     <div class="transport">
       <button class="t play" id="play" aria-label="Play/Stop">▶</button>
@@ -1003,7 +1015,7 @@
         <div class="modal-sec">
           <div class="modal-label">Sound (A/B 試聴)</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
-            <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>DAC 2段ローファイ（OFF=1段）</span></label>
+            <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC — 2段変換（OFF=1段）</span></label>
             <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP チャンネルフィルター（出力ch別の丸み）</span></label>
             <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点ゼロ交差スナップ</span></label>
           </div>
@@ -1030,6 +1042,7 @@
         </div>
         <div class="rec-active" id="recActive" style="display:none;">
           <span class="rec-dot">●</span> <span id="recTime">0.0s</span>
+          <div class="rec-meter"><i id="recMeter"></i></div>
           <button class="t" id="recStop" style="background:var(--red);color:#fff;">STOP</button>
         </div>
       </div>
@@ -1148,7 +1161,7 @@
           </div>
           <div class="strip-actions">
             <span class="loadbtn" id="loadBtn">LOAD</span>
-            <span class="loadbtn" id="sampleBtn" style="color:var(--red);">● SMPL</span>
+            <span class="loadbtn" id="sampleBtn" style="color:var(--red);" title="声・音を録ってパッドに入れる">● SMPL</span>
             <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
@@ -2260,9 +2273,18 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
 }
 
 // ---------- trigger (UI/seq 共通入口) ----------
+let _emptyTapI=-1,_emptyTapT=0;   // 空パッド2度タップでEDITを開く用
 function trigger(i, time, accent=false){
   if(AC.state!=="running") AC.resume();
   const t=tracks[i];
+  // 空パッド＝無音の行き止まりにしない：招待トースト＋もう一度タップでEDIT（音を入れる導線へ直結）
+  if(time==null && PADS[i].type==="empty" && !t.buffer){
+    const nw=Date.now();
+    if(_emptyTapI===i && nw-_emptyTapT<1600){ _emptyTapI=-1; flashPad(i); openPadEdit(i); return; }
+    _emptyTapI=i; _emptyTapT=nw;
+    sampNameEl.textContent="空のパッド — もういちどタップで音を入れる";
+    flashPad(i); return;
+  }
   // ループ系は手叩きでトグル（ON→OFF→ON…）。発音中のトリガで止める＝短いノートも作れる
   if(time==null && t.loop){
     if(t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; flashPad(i); return; }
@@ -2474,7 +2496,7 @@ PADS.forEach((p,i)=>{
   d.addEventListener("pointermove",(e)=>{
     if(!editDrag || editDrag.pad!==i) return;
     const dx=e.clientX-editDrag.x0, dy=e.clientY-editDrag.y0;
-    if(!editDrag.moved && Math.hypot(dx,dy)>8) editDrag.moved=true;
+    if(!editDrag.moved && Math.hypot(dx,dy)>(e.pointerType==="touch"?16:8)) editDrag.moved=true;   // 太い指の8pxは普通のタップ
     const tgt=padAtPoint(e.clientX,e.clientY);
     if(tgt!==editDrag.over){
       if(editDrag.over>=0 && padsEl.children[editDrag.over]) padsEl.children[editDrag.over].classList.remove("droptgt");
@@ -2801,7 +2823,7 @@ function arm(mode,on){
   document.body.classList.toggle("edit-arm",armMode==="edit");
   document.body.classList.toggle("select-arm",armMode==="select");
   // EDITの隠れジェスチャを初回だけ案内（タップ=編集 / ドラッグ=入替 / 長押し=コピー）
-  if(armMode==="edit" && !_editHintShown){ _editHintShown=true; sampNameEl.textContent="EDIT: タップ=編集 / ドラッグ=入替 / 長押し=コピー"; }
+  if(armMode==="edit"){ sampNameEl.textContent="EDIT: タップ=ひらく / ドラッグ=いれかえ / 長おし=コピー"; }   // 毎回表示（初回だけだと2回目のakiに無情報）
   if(armMode==="select") sampNameEl.textContent="SELECT：パッドを選ぶだけ（発音なし）";
   paintPadStates();
   if(typeof paintPerf==="function") paintPerf();   // 情報窓の解説行(clHint)をモードに追従
@@ -3174,12 +3196,13 @@ playBtn.addEventListener("click",async()=>{
 const recBtn=document.getElementById("rec");
 // GRID時は「打ち込み(STEP)」、REAL時は「録音(REC)」とラベルで役割を分ける（赤●=録音 と混同しないように）
 function updateRecBtnLabel(){
-  if(recMode==="grid"){ recBtn.textContent = stepMode ? "■" : "▦"; recBtn.classList.toggle("on",stepMode); }
-  else { recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); }   // アイコンのみ
+  if(recMode==="grid"){ recBtn.textContent = stepMode ? "■" : "▦"; recBtn.classList.toggle("on",stepMode); recBtn.classList.remove("rec-live"); }
+  else { recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording); }   // アイコンのみ
 }
 recBtn.addEventListener("click",()=>{
   if(recMode==="grid"){ setStepMode(!stepMode); return; }   // GRID：Recでステップ入力ON/OFF
   recording=!recording; if(recording) pushUndo(); updateRecBtnLabel();
+  if(recording&&!playing) sampNameEl.textContent="● 記録待機 — ▶を押すと演奏を記録";
 });
 
 // ===== GRID（Digitakt式）ステップ入力 =====
@@ -3352,7 +3375,7 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
   if(dac) dac.addEventListener("click",()=>{
     const on=!dac.classList.contains("on"); dac.classList.toggle("on",on);
     if(spDacNode) try{ spDacNode.port.postMessage({bypass:!on}); }catch(_){}   // ON=2段(DAC有効) / OFF=1段(素通り)
-    sampNameEl.textContent = on ? "DAC 2段ローファイ ON" : "DAC 1段（makeLofiのみ）";
+    sampNameEl.textContent = on ? "VINTAGE DAC ON（2段変換）" : "VINTAGE DAC OFF（1段）";
   });
   const spf=document.getElementById("spFilterToggle");
   if(spf) spf.addEventListener("click",()=>{
@@ -3739,6 +3762,7 @@ vol.addEventListener("input",()=>{tracks[selected].vol=+vol.value;volVal.textCon
 
 // LOADボタン → file inputを明示的に開く
 document.getElementById("loadBtn").addEventListener("click",()=>{
+  pickCaptureTarget();
   document.getElementById("samp").click();
 });
 
@@ -4292,14 +4316,21 @@ const recChoose=document.getElementById("recChoose");
 const recActiveEl=document.getElementById("recActive");
 const recTargetEl=document.getElementById("recTarget");
 let recStream=null, recStartMs=0, recTimerId=null;
-let pcmSrc=null, pcmTap=null, pcmMute=null, pcmChunks=[], pcmLen=0;   // 生PCM直採り（MediaRecorder/デコード非依存）
+let pcmSrc=null, pcmTap=null, pcmMute=null, pcmChunks=[], pcmLen=0;
+let pcmPeak=0, recTakeN=0;   // 録音レベルメーター＋テイク連番   // 生PCM直採り（MediaRecorder/デコード非依存）
 
+// ストリップからの録音/読込は「最後に叩いたパッド」を黙って潰さない：空きがあればそちらへ
+function pickCaptureTarget(){
+  if(PADS[selected].type==="empty") return;
+  const e=PADS.findIndex(p=>p.type==="empty");
+  if(e>=0) selectPad(e);
+}
 function openSampleOverlay(){
   recOverlay.classList.add("show");
   recChoose.style.display="flex"; recActiveEl.style.display="none";
   recTargetEl.textContent="→ PAD "+String(selected+1).padStart(2,"0")+" に取り込み";   // 取り込み先をパネル内に明示（浮きトーストでモーダルと重ねない）
 }
-document.getElementById("sampleBtn").addEventListener("click",openSampleOverlay);
+document.getElementById("sampleBtn").addEventListener("click",()=>{ pickCaptureTarget(); openSampleOverlay(); });
 // EDITモーダル内の LOAD / ● SMPL：編集中パッド(peTarget)を取り込み先にして既存フローを再利用
 (function(){
   const pl=document.getElementById("peLoadBtn"), ps=document.getElementById("peSmplBtn");
@@ -4311,12 +4342,12 @@ document.getElementById("recTab").addEventListener("click",async()=>{
   try{
     recStream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});
   }catch(e){
-    sampNameEl.textContent="Tab Audio取得失敗";
+    sampNameEl.textContent="NO SIGNAL — タブ音声を共有できなかった";
     recOverlay.classList.remove("show"); return;
   }
   // 音声トラックがあるか確認
   if(recStream.getAudioTracks().length===0){
-    sampNameEl.textContent="音声トラックなし（タブ音声を共有にチェック）";
+    sampNameEl.textContent="NO SIGNAL — タブ音声の共有にチェック";
     recStream.getTracks().forEach(t=>t.stop()); recStream=null;
     recOverlay.classList.remove("show"); return;
   }
@@ -4334,7 +4365,7 @@ document.getElementById("recMic").addEventListener("click",async()=>{
     recStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,autoGainControl:false,noiseSuppression:false}});
   }
   catch(e){
-    sampNameEl.textContent="Mic取得失敗";
+    sampNameEl.textContent="MIC OFFLINE — マイク権限を確認";
     recOverlay.classList.remove("show"); return;
   }
   startRec();
@@ -4345,12 +4376,15 @@ function startRec(){
   // iOS: マイク取得でオーディオセッションが切替わりACがsuspended/interruptedになることがある
   try{ AC.resume(); }catch(_){}
   try{ pcmSrc=AC.createMediaStreamSource(recStream); }
-  catch(e){ sampNameEl.textContent="入力接続失敗: "+e.message; stopRec(true); return; }
+  catch(e){ sampNameEl.textContent="INPUT ERROR — 入力をつなげなかった"; stopRec(true); return; }
   // MediaRecorder/decodeAudioDataを使わず生PCMをWeb Audioで直接取る
   // ＝コーデック/デコードのブラウザ依存ゼロ（iOS Safariの録音不能対策）。SRも常にAC.sampleRateで一致
   pcmTap=AC.createScriptProcessor(4096,1,1);
   pcmTap.onaudioprocess=ev=>{
-    pcmChunks.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+    const d=ev.inputBuffer.getChannelData(0);
+    let bp=0; for(let k=0;k<d.length;k+=8){ const a=Math.abs(d[k]); if(a>bp)bp=a; }
+    pcmPeak=bp;   // レベルメーター用（間引きpeak）
+    pcmChunks.push(new Float32Array(d));
     pcmLen+=4096;
     if(pcmLen>AC.sampleRate*60) stopRec(false);   // 60s安全上限（メモリ保護）
   };
@@ -4359,6 +4393,8 @@ function startRec(){
   recTimerId=setInterval(()=>{
     const s=((performance.now()-recStartMs)/1000).toFixed(1);
     document.getElementById("recTime").textContent=s+"s";
+    const m=document.getElementById("recMeter");
+    if(m){ m.style.width=Math.min(100,pcmPeak*140)+"%"; m.style.background=pcmPeak>0.9?"var(--red)":"var(--teal)"; }
   },100);
 }
 document.getElementById("recStop").addEventListener("click",()=>stopRec(false));
@@ -4375,7 +4411,7 @@ function stopRec(cancel){
 async function finalizeRec(){
   const n=pcmChunks.reduce((a,c)=>a+c.length,0);
   if(n===0){
-    sampNameEl.textContent="録音データなし";
+    sampNameEl.textContent="NO TAKE — 録音データが空だった";
     pcmChunks=[]; pcmLen=0; return;
   }
   try{
@@ -4384,7 +4420,7 @@ async function finalizeRec(){
     for(const c of pcmChunks){ d.set(c,o); o+=c.length; }
     pcmChunks=[]; pcmLen=0;
     if(isSilent(buf)){   // 無音録音で既存パッドを潰さない＆原因を伝える（マイク権限/AEC/入力レベル）
-      sampNameEl.textContent="録音が無音でした（マイク権限・入力レベルを確認）";
+      sampNameEl.textContent="SILENT TAKE — 入力レベルを確認";
       return;
     }
     pushUndo();
@@ -4394,16 +4430,16 @@ async function finalizeRec(){
     tracks[selected].loop=false;tracks[selected].loopStart=0;
     PADS[selected].type="sample";
     applyPadCategory(selected);
-    tracks[selected].name="REC";
-    const nm="REC "+String(selected+1).padStart(2,"0");
-    padsEl.children[selected].querySelector(".nm").textContent=nm;
-    sampNameEl.textContent="Sampled! → PAD "+String(selected+1).padStart(2,"0")+" ("+(n/AC.sampleRate).toFixed(1)+"s)";
+    const tn="TAKE "+(++recTakeN);   // 録るたびに名前が育つ（REC固定だとテイクの記憶が残らない）
+    tracks[selected].name=tn;
+    padsEl.children[selected].querySelector(".nm").textContent=tn;
+    sampNameEl.textContent="Sampled! "+tn+" → PAD "+String(selected+1).padStart(2,"0")+" ("+(n/AC.sampleRate).toFixed(1)+"s)";
     selectPad(selected);   // 録音先パッドへフォーカス（読込時と挙動を揃える）
     drawPadWave(selected);
     if(typeof syncEditor==="function") syncEditor();
     openPadEdit(selected);   // 取り込み後は即EDIT＝波形で範囲(STRT/END)を指定→TRIMできる
   }catch(e){
-    sampNameEl.textContent="取り込み失敗: "+e.message;
+    sampNameEl.textContent="IMPORT ERROR — 取り込めなかった";
   }
 }
 
@@ -4492,7 +4528,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
   const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
   a.href=url; a.download="mics009-"+stamp+".mics"; a.click();
   URL.revokeObjectURL(url);
-  sampNameEl.textContent="Saved!";
+  sampNameEl.textContent="Saved → mics009-"+stamp+".mics";
 });
 
 // LOAD
@@ -4596,7 +4632,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.47";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.48";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
