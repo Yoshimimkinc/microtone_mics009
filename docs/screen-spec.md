@@ -515,3 +515,14 @@ DynamicsCompressorの先読み(約6ms)はライブ演奏のレイテンシに直
 3. 最終段ソフトクリッパ: tape/echo/reverbの3系統をfinalClip(|x|<0.7透過→tanhで±0.93漸近, 2xオーバーサンプル)経由に。実測: COMP OFF+ドラム8発アクセント連打でピーク0.901＝デジタルクリップ消滅
 4. loopZeroSnap既定ON（トグルHTML初期もon）＝設定なしでループ継ぎ目のプツ抑制
 5. アクセント=音量+3dBだけ→spDynOpenにaccent連動(1.5倍開く)＋g3にdyn:1500付与＝「大きい」でなく「強い」音
+
+## 62. 【v0.3.48】操作感＋感性9点（6ロールレビュー・feel/artware分）
+- 空パッド: 招待の「＋」透かし＋タップで案内トースト→もう一度タップでEDIT（無音の行き止まり解消）
+- ●REC: 停止中に押すと「● 記録待機 — ▶を押すと演奏を記録」、録音中は●点滅(.rec-live)
+- 録音中レベルメーター（rec-meter、ScriptProcessorのpeak間引き→100ms描画、>0.9で赤）
+- ストリップのSMPL/LOADは選択パッドが非空なら最初の空きパッドへ自動振替（上書き事故防止。EDITモーダル内は明示対象なので従来通り）
+- EDITドラッグ閾値: touch時8→16px（誤入替防止）＋ヒントを毎回表示
+- LED色のスキン変数化: --hit-c2/--hit-glow-a/--hit-ink。AK=Akaiレッド/TR=808オレンジ/SP=現状。step LED系8箇所も一括変数化
+- ヘッダーに機種銘板「MICS009」（CSSは既製）＋titleをv0.1表記から修正
+- エラー文言を機材コンソール調に統一（NO SIGNAL/MIC OFFLINE/SILENT TAKE 等 — 英ステータス+日ヒント）
+- 録音名をREC固定→TAKE連番、Savedトーストにファイル名表示、DACトグルを銘板語化
