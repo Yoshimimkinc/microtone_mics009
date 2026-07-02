@@ -526,3 +526,10 @@ DynamicsCompressorの先読み(約6ms)はライブ演奏のレイテンシに直
 - ヘッダーに機種銘板「MICS009」（CSSは既製）＋titleをv0.1表記から修正
 - エラー文言を機材コンソール調に統一（NO SIGNAL/MIC OFFLINE/SILENT TAKE 等 — 英ステータス+日ヒント）
 - 録音名をREC固定→TAKE連番、Savedトーストにファイル名表示、DACトグルを銘板語化
+
+## 63. 【v0.3.49】UI4点（6ロールレビュー・UI担当分）
+- デスクトップsplitグリッド一式を@media(min-width:601px)に隔離＝「デスクトップCSSのモバイル漏れ」の発生源を根絶（レトロB系の構造対策）
+- I6: SEQの7px/8pxを排除。行名10px・列番号9px＋拍頭(1,5,9,13)のみ表示、行名列32→44px
+- on状態のteal/red直書き(perf-pat/perf-bar/big-play/vd-dot)をcolor-mixでスキン追従に
+- --dimのコントラスト改善: root #8b919a / AK #5a5546 / SP #c8cdd2（全スキンでWCAG 4.5:1超）
+- 未着手として持ち越し: モバイルPADSの現在地表示(mob-now)、601-767pxの谷間ゾーン、makeLofiの小数位相S&H

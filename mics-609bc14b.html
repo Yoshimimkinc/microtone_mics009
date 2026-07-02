@@ -21,7 +21,7 @@
     --edge:#0a0c0e;
     --line:#32383f;
     --ink:#e8e4d8;        /* off-white silkscreen */
-    --dim:#7b8088;
+    --dim:#8b919a;
     --amber:#ff8a3d;      /* lit-pad amber */
     --amber-dim:#7a4a26;
     --teal:#3dd6c4;       /* active step / accent */
@@ -33,7 +33,7 @@
   /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL）。背景はどれも黒 ===== */
   /* Akai MPC3000風：黒地 + 暖色グレー本体 + 緑の蛍光LCD + Akaiレッド + クリーム文字 */
   body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;
-    --ink:#2b2720;--dim:#6e695c;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
+    --ink:#2b2720;--dim:#5a5546;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
     --hit-c2:#8f2318;--hit-glow-a:207,58,44;--hit-ink:#f6efe3;}
   /* AK=MPC3000は明色（クリーム本体・グレーボタン）。暗いインセットだけ明色化し、波形はLCDとして暗いまま残す */
   body.t-ak .unit{background:#d2ccba;}
@@ -42,7 +42,7 @@
   body.t-ak .modebtn .led{background:#9a958a;box-shadow:0 0 0 1px #8f8a7c inset;}
   /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
   body.t-sp{--bg:#14151a;--panel:#5f6368;--panel2:#4d5156;--edge:#26282c;--line:#42464c;
-    --ink:#f0f2f4;--dim:#aab0b6;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;
+    --ink:#f0f2f4;--dim:#c8cdd2;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;
     --hit-c2:#93291c;--hit-glow-a:214,69,47;--hit-ink:#fdece7;}
   /* SP-1200の質感：グレー本体＋青いセクションライン＋緑LCD寄りの画面＋赤アクセント */
   body.t-sp .label{color:#3f86d6;}
@@ -153,7 +153,7 @@
     font-size:11px;letter-spacing:.12em;font-weight:700;color:var(--dim);transition:color .15s;}
   .viewdots .vdot .vd-dot{width:9px;height:9px;border-radius:50%;background:var(--line);transition:.15s;}
   .viewdots .vdot.on{color:var(--ink);}
-  .viewdots .vdot.on .vd-dot{background:var(--teal);box-shadow:0 0 8px rgba(61,214,196,.6);}
+  .viewdots .vdot.on .vd-dot{background:var(--teal);box-shadow:0 0 8px color-mix(in srgb,var(--teal) 60%,transparent);}
   /* STEP中は並び順を1..16の順送りに（:nth-child(n)で詳細度を上げ、MPC配列のorderルールに確実に勝つ） */
   body.step-on .pads .pad:nth-child(n){order:0!important;}
   body.step-on .pads .pad .nm{display:none;}
@@ -237,6 +237,8 @@
 
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
   /* .active も必須にして、SEQ/MIX表示中にPADSが残らないようにする */
+  /* デスクトップ専用のS2400 splitグリッド。601px以上に隔離＝モバイルへの漏れ（!important戦争の発生源）を根絶 */
+  @media(min-width:601px){
   #viewPads.split.active{
     display:grid;
     grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
@@ -254,6 +256,7 @@
   #viewPads.split .msbar{grid-area:msbar;margin:0;}
   #viewPads.split .pads{grid-area:pads;max-width:none;align-self:start;}
   #viewPads.split .padTransport{grid-area:transport;align-self:end;display:flex;justify-content:flex-end;}
+  }
   .padTransport{display:none;}
   .padTransport .big-play{
     width:100%;padding:18px 20px;font-size:15px;font-weight:700;letter-spacing:.18em;
@@ -262,7 +265,7 @@
     box-shadow:0 4px 10px rgba(0,0,0,.4);transition:.08s;
   }
   .padTransport .big-play:active{transform:translateY(1px);}
-  .padTransport .big-play.on{background:linear-gradient(180deg,#5a2230,#3a1620);color:var(--red);border-color:var(--red);}
+  .padTransport .big-play.on{background:linear-gradient(180deg,color-mix(in srgb,var(--red) 32%,#141014),color-mix(in srgb,var(--red) 16%,#141014));color:var(--red);border-color:var(--red);}
 
   /* ===== Performance Mode（4×4・横向き・PC/iPad）：中央=大パッド / 左右=操作列。ガワはダークなデバイス調 ===== */
   .perf-screen,.perf-rotate,.perf-pats,.perf-plk,.perf-rec,.perf-seclbl{display:none;}
@@ -338,7 +341,7 @@
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:14px;
     padding:10px 4px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
   .perf-bar:active{transform:translateY(1px);}
-  .perf-bar.on{background:linear-gradient(180deg,#2a6f66,#15433d);color:#bafff4;border-color:var(--teal);}
+  .perf-bar.on{background:linear-gradient(180deg,color-mix(in srgb,var(--teal) 42%,#0e1114),color-mix(in srgb,var(--teal) 20%,#0e1114));color:color-mix(in srgb,var(--teal) 70%,#fff);border-color:var(--teal);}
   /* 現在再生中の小節/パターン＝アンバーの枠（編集中の緑とは別物・最前面） */
   .perf-bar.playing,.perf-pat.playing{box-shadow:0 0 0 2px var(--amber), 0 0 10px rgba(255,180,80,.55)!important;position:relative;z-index:3;}
   .perf-bar.barsep{margin-left:12px;}   /* A-D と小節群の間に余白 */
@@ -362,7 +365,7 @@
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:16px;
     letter-spacing:.1em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
   .perf-pat:active{transform:translateY(1px);}
-  .perf-pat.on{background:linear-gradient(180deg,#2a6f66,#15433d);color:#bafff4;border-color:var(--teal);}
+  .perf-pat.on{background:linear-gradient(180deg,color-mix(in srgb,var(--teal) 42%,#0e1114),color-mix(in srgb,var(--teal) 20%,#0e1114));color:color-mix(in srgb,var(--teal) 70%,#fff);border-color:var(--teal);}
   .perf-pat.queued{border-color:var(--amber);color:var(--amber);animation:spblink 1s ease-in-out infinite;}
   /* P-LOCK行（演奏中いじり）。色は既存plockbtnと統一 */
   .perf-plkbtn{background:var(--pad);border:1px solid var(--line);border-radius:8px;cursor:pointer;
@@ -388,7 +391,7 @@
   .perf-rec{background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--dim);
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;letter-spacing:.1em;
     padding:8px;min-height:42px;transition:.08s;}
-  .perf-rec.on{background:linear-gradient(180deg,#5a2230,#3a1620);color:var(--red);border-color:var(--red);box-shadow:0 0 14px rgba(255,77,77,.45);}
+  .perf-rec.on{background:linear-gradient(180deg,color-mix(in srgb,var(--red) 32%,#141014),color-mix(in srgb,var(--red) 16%,#141014));color:var(--red);border-color:var(--red);box-shadow:0 0 14px rgba(255,77,77,.45);}
   /* P-LOCKページ：選択中のパッドは発音せず「効果量」を横フィルで表示（GRIDのlockfill流儀） */
   body.perf-plock #viewPads.split>.pads .pad{overflow:hidden;}
   body.perf-plock #viewPads.split>.pads .pad .lockfill{display:block;opacity:.85;}
@@ -455,7 +458,7 @@
   body.perf .perf-screen #perfSel{font-size:12px;opacity:.85;margin-left:auto;}
   /* パターンA-D：on＝常灯、queued＝予約ランプ（box-shadow点滅で滲ませる） */
   body.perf .perf-pat{box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 3px 7px rgba(0,0,0,.4);}
-  body.perf .perf-pat.on{box-shadow:0 0 0 1px var(--teal) inset, 0 0 14px -2px rgba(61,214,196,.5), 0 3px 7px rgba(0,0,0,.4);}
+  body.perf .perf-pat.on{box-shadow:0 0 0 1px var(--teal) inset, 0 0 14px -2px color-mix(in srgb,var(--teal) 50%,transparent), 0 3px 7px rgba(0,0,0,.4);}
   body.perf .perf-pat.queued{box-shadow:0 0 0 1px var(--amber) inset, 0 0 12px -3px rgba(var(--hit-glow-a),.55);}
   /* P-LOCK 5色：rest＝消灯ランプ（下線で色予告）、on＝点灯グロー＋立体押下 */
   body.perf .perf-plkbtn{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));
@@ -890,10 +893,11 @@
     .colnums,.grid{min-width:0;}
     .grid{flex:none;height:auto;}
     .row{flex:0 0 auto;}
-    .colnums,.row{grid-template-columns:32px repeat(16,1fr);gap:2px;}
+    .colnums,.row{grid-template-columns:44px repeat(16,1fr);gap:2px;}
     .step{height:30px;}
-    .row .rn{font-size:8px;padding:2px 3px;}
-    .colnums .cn{font-size:7px;}
+    .row .rn{font-size:10px;padding:2px 2px;letter-spacing:0;}
+    .colnums .cn{font-size:9px;}
+    .colnums .cn:not(:nth-child(4n+2)){visibility:hidden;}   /* 拍頭1,5,9,13だけ表示＝位置把握には十分で読める大きさに */
   }
   @media(max-width:400px){
     body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
@@ -944,7 +948,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.48</div>
+  <div class="s-ver" id="splashVer">v0.3.49</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4632,7 +4636,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.48";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.49";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
