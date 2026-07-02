@@ -533,3 +533,9 @@ DynamicsCompressorの先読み(約6ms)はライブ演奏のレイテンシに直
 - on状態のteal/red直書き(perf-pat/perf-bar/big-play/vd-dot)をcolor-mixでスキン追従に
 - --dimのコントラスト改善: root #8b919a / AK #5a5546 / SP #c8cdd2（全スキンでWCAG 4.5:1超）
 - 未着手として持ち越し: モバイルPADSの現在地表示(mob-now)、601-767pxの谷間ゾーン、makeLofiの小数位相S&H
+
+## 64. 【v0.3.50】録音後に低音が減る問題（iOSオーディオセッション対策）＝バグフィックスループ#1
+実測でアプリ内DSPは無罪を証明（makeLofi 60Hz通過率1.000、再生チェーン全体で60Hzは1kHz比+1.5dB）。
+正体はiOS：マイク使用でセッションが通話モードに切替→解放後もレシーバ出力(低音の出ない経路)に残る。
+→録音終了時にAC.suspend()→resume()で出力経路を再交渉。iOS/iPadOS限定ゲート（Chromiumは不要＝リスクゼロ）。
+Chromium回帰実測: KICK再生 baseline 0.311 = 録音後 0.311 = 追加サイクル後 0.322＝無影響。

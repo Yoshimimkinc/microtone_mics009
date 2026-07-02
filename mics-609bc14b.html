@@ -948,7 +948,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.49</div>
+  <div class="s-ver" id="splashVer">v0.3.50</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4408,7 +4408,12 @@ function stopRec(cancel){
   pcmSrc=pcmTap=pcmMute=null;
   if(recStream){recStream.getTracks().forEach(t=>t.stop());recStream=null;}
   recOverlay.classList.remove("show");
-  try{ AC.resume(); }catch(_){}   // iOS: 録音後ACがinterruptedのままだと全体が無音になる
+  // iOS: マイク解放後もオーディオセッションが「通話モード」(レシーバ出力/低音の出ない経路)に残ることがある
+  // ＝録音後に全体の低音が消え音質が薄くなる正体（アプリ内DSPは実測60Hz通過率1.000＝低音損失ゼロ）。
+  // suspend→resumeのサイクルで出力経路をスピーカーへ再交渉させる（必要なのはiOSのみ＝iOS限定でリスク最小化）
+  if(/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1)){
+    (async()=>{ try{ await AC.suspend(); await AC.resume(); }catch(_){ try{ AC.resume(); }catch(__){} } })();
+  } else { try{ AC.resume(); }catch(_){} }
   if(cancel){ pcmChunks=[]; pcmLen=0; }
   else finalizeRec();
 }
@@ -4636,7 +4641,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.49";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.50";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
