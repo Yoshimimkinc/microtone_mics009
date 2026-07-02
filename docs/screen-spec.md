@@ -539,3 +539,10 @@ DynamicsCompressorの先読み(約6ms)はライブ演奏のレイテンシに直
 正体はiOS：マイク使用でセッションが通話モードに切替→解放後もレシーバ出力(低音の出ない経路)に残る。
 →録音終了時にAC.suspend()→resume()で出力経路を再交渉。iOS/iPadOS限定ゲート（Chromiumは不要＝リスクゼロ）。
 Chromium回帰実測: KICK再生 baseline 0.311 = 録音後 0.311 = 追加サイクル後 0.322＝無影響。
+
+## 65. 【v0.3.51】バグフィックス10回ループの結果
+系統的に10領域を検査。R1のみ実バグ（iOSセッション→v0.3.50）、R2-R10は全てクリーンを実測で確認:
+R2 SAVE/LOAD往復(16項目完全復元) / R3 CHOP(8連続スライス+choke+undo) / R4 P-LOCK配送(pitch/level/filter) /
+R5 スキン(切替・LED変数・永続化) / R6 キーボード(a行/z行マップ) / R7 TRIM(誤差ゼロ+raw+undo) /
+R8 パターン予約A→B(境界切替・音漏れなし) / R9 COPY pad/pat/bar / R10 メニュートグル・FX・スモーク。
+掃除: favicon 404をdata-URI SVG(4パッドアイコン)で解消、CLAUDE.mdの古いchainLen記述をpatLength導出に更新。
