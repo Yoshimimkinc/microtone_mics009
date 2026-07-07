@@ -668,6 +668,8 @@
     height:128px;overflow:hidden;margin-bottom:0;touch-action:none;cursor:ew-resize;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.65),inset 0 0 0 1px rgba(61,214,196,.05);}
   .pe-wave canvas{display:block;width:100%;height:100%;}
+  .pe-zoombar{position:absolute;left:0;right:0;bottom:0;height:3px;pointer-events:none;z-index:3;display:none;background:rgba(0,0,0,.4);}
+  .pe-zoombar i{position:absolute;top:0;height:100%;background:var(--teal);opacity:.65;border-radius:2px;}
   .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;touch-action:none;cursor:ew-resize;z-index:2;}
   .pe-wave .handle::before{content:"";position:absolute;top:0;bottom:0;left:-11px;right:-11px;}  /* 見た目2pxのままタッチ判定だけ拡張 */
   .pe-wave .handle.start{background:var(--teal);}
@@ -949,7 +951,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.51</div>
+  <div class="s-ver" id="splashVer">v0.3.52</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1077,6 +1079,7 @@
           <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
           <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
           <div class="handle end" id="peEnd"><span class="cap">END</span></div>
+          <div class="pe-zoombar" id="peZoomBar"><i></i></div>
         </div>
         <div class="pe-transport">
           <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PLAY</button>
@@ -3428,6 +3431,7 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
 let peTarget=0;
+let peV0=0, peV1=1;   // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
 // 選択範囲[start,end]でバッファを切り出し、外側を破棄。バッファ差替でピッチキャッシュは自動破棄。
 function cropBufferToSelection(t){
   const buf=t.buffer; if(!buf) return;
@@ -3469,8 +3473,9 @@ function pePlayheadRun(when, startSec, endSec, lsSec, dur, loop){
       if(el<span) posSec=startSec+el;
       else { const lp=Math.max(0.0001, endSec-lsSec); posSec=lsSec+((el-span)%lp); }
     }
-    ph.style.left=((posSec/dur)*wrap.clientWidth)+"px";
-    ph.style.opacity="1";
+    const px=(((posSec/dur)-peV0)/((peV1-peV0)||1))*wrap.clientWidth;
+    if(px<0||px>wrap.clientWidth){ ph.style.opacity="0"; }
+    else { ph.style.left=px+"px"; ph.style.opacity="1"; }
     pePlayRAF=requestAnimationFrame(tick);
   };
   tick();
@@ -3491,10 +3496,12 @@ function renderPeWave(i){
   const amber=(cs.getPropertyValue("--amber").trim())||"#ffb84d";
   if(buf){
     const data=buf.getChannelData(0);
-    const step=Math.max(1,Math.floor(data.length/W));
+    const i0=Math.floor(peV0*data.length), i1=Math.max(i0+2, Math.ceil(peV1*data.length));
+    const spanS=i1-i0;
     const top=new Float32Array(W), bot=new Float32Array(W);
-    for(let x=0;x<W;x++){ let mn=1,mx=-1; const o=x*step;
-      for(let n=0;n<step;n++){ const v=data[o+n]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
+    for(let x=0;x<W;x++){ let mn=1,mx=-1;
+      const a=i0+Math.floor(x*spanS/W), b2=Math.max(a+1, i0+Math.floor((x+1)*spanS/W));
+      for(let n=a;n<b2 && n<i1;n++){ const v=data[n]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
       top[x]=mid-mx*mid*0.92; bot[x]=mid-mn*mid*0.92; }
     ctx.beginPath(); ctx.moveTo(0,top[0]);
     for(let x=1;x<W;x++) ctx.lineTo(x,top[x]);
@@ -3509,15 +3516,21 @@ function renderPeWave(i){
   if(buf && i===chopTarget && chopBounds.length>2){
     ctx.strokeStyle=amber;
     ctx.lineWidth=1.5;
-    for(let k=1;k<chopBounds.length-1;k++){ const x=chopBounds[k]*W; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for(let k=1;k<chopBounds.length-1;k++){ const x=((chopBounds[k]-peV0)/((peV1-peV0)||1))*W; if(x<-2||x>W+2) continue; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
   }
   // ハンドル/シェード位置（start/end/loop）
-  const t=tracks[i], sx=(t.start||0)*W, ex=(t.end??1)*W, lx=(t.loopStart||0)*W;
+  const t=tracks[i], zs=(peV1-peV0)||1, nx=v=>((v-peV0)/zs)*W;
+  const sx=nx(t.start||0), ex=nx(t.end??1), lx=nx(t.loopStart||0);
   document.getElementById("peStart").style.left=sx+"px";
   document.getElementById("peEnd").style.left=ex+"px";
   const pl=document.getElementById("peLoop"); pl.style.left=lx+"px"; pl.style.display=t.loop?"block":"none";
   const shL=document.getElementById("peShadeL"), shR=document.getElementById("peShadeR");
-  shL.style.left="0"; shL.style.width=sx+"px"; shR.style.left=ex+"px"; shR.style.width=(W-ex)+"px";
+  const sxc=Math.max(0,Math.min(W,sx)), exc=Math.max(0,Math.min(W,ex));
+  shL.style.left="0"; shL.style.width=sxc+"px"; shR.style.left=exc+"px"; shR.style.width=(W-exc)+"px";
+  const zb=document.getElementById("peZoomBar");
+  if(zb){ const zi=zb.firstElementChild;
+    if(zs>0.999){ zb.style.display="none"; }
+    else { zb.style.display="block"; zi.style.left=(peV0*100)+"%"; zi.style.width=(zs*100)+"%"; } }
 }
 // EDITモーダルが開いていて、取り込み先がその編集パッドなら波形/タイトルを更新
 function refreshOpenPadEdit(i){
@@ -3525,6 +3538,7 @@ function refreshOpenPadEdit(i){
   if(pem && pem.style.display==="flex" && i===peTarget) openPadEdit(i);
 }
 function openPadEdit(i){
+  if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
   const t=tracks[i];
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
@@ -3571,7 +3585,7 @@ function openPadEdit(i){
   // 波形ストリップ全体をドラッグ対象に＝細いハンドルを狙わなくても、近い方のSTRT/END/LOOPが動く（掴みやすさ優先）
   const peWaveEl=document.getElementById("peWave").parentElement;
   let dragKind=null;
-  const peNorm=(clientX)=>{ const r=peWaveEl.getBoundingClientRect(); return Math.max(0,Math.min(1,(clientX-r.left)/r.width)); };
+  const peNorm=(clientX)=>{ const r=peWaveEl.getBoundingClientRect(); return Math.max(0,Math.min(1, peV0+((clientX-r.left)/r.width)*(peV1-peV0) )); };
   const pickHandle=(n)=>{
     const t=tracks[peTarget];
     const cands=[["start",t.start||0],["end",t.end??1]];
@@ -3590,6 +3604,7 @@ function openPadEdit(i){
   peWaveEl.addEventListener("pointerdown",e=>{
     if(!tracks[peTarget]||!tracks[peTarget].buffer) return;   // 空パッドは無視
     e.preventDefault();
+    const tt=tracks[peTarget]; dragPrev={s:tt.start||0, e:tt.end??1, l:tt.loopStart||0};   // ピンチ/ダブルタップ時の復元用
     const n=peNorm(e.clientX); dragKind=pickHandle(n); pushUndo();
     try{ peWaveEl.setPointerCapture(e.pointerId); }catch(_){}
     peApply(n);
@@ -3601,6 +3616,62 @@ function openPadEdit(i){
     if(wasStart){ snapStartToOnset(peTarget); renderPeWave(peTarget); if(typeof drawPadWave==="function") drawPadWave(peTarget); }
   };
   peWaveEl.addEventListener("pointerup",peUp); peWaveEl.addEventListener("pointercancel",peUp);
+  // ===== 波形ズーム：ホイール(縦)=カーソル支点ズーム / 横=パン / 2本指ピンチ=ズーム&パン / ダブルタップ=全体 =====
+  let dragPrev=null, peLastTap=0, peTapPrev=null;
+  const pePtrs=new Map();
+  const peZoomTo=(v0,v1)=>{
+    let sp=Math.max(0.004, Math.min(1, v1-v0));   // 最大250倍ズーム
+    v0=Math.max(0, Math.min(1-sp, v0));
+    peV0=v0; peV1=v0+sp; renderPeWave(peTarget);
+  };
+  peWaveEl.addEventListener("wheel",e=>{
+    if(!tracks[peTarget]||!tracks[peTarget].buffer) return;
+    e.preventDefault();
+    const r=peWaveEl.getBoundingClientRect(), sp=peV1-peV0;
+    if(Math.abs(e.deltaX)>Math.abs(e.deltaY)){        // 横＝パン
+      const d=(e.deltaX/r.width)*sp; peZoomTo(peV0+d, peV0+d+sp);
+    } else {                                          // 縦＝ズーム（カーソル位置を支点）
+      const anchor=peV0+((e.clientX-r.left)/r.width)*sp;
+      const ns=sp*(e.deltaY<0?0.75:1/0.75);
+      peZoomTo(anchor-(anchor-peV0)*(ns/sp), anchor+(peV1-anchor)*(ns/sp));
+    }
+  },{passive:false});
+  peWaveEl.addEventListener("pointerdown",e=>{
+    if(!tracks[peTarget]||!tracks[peTarget].buffer) return;
+    pePtrs.set(e.pointerId,{x:e.clientX, x0:e.clientX});
+    if(pePtrs.size===2){
+      // 2本目の指＝ピンチ開始。1本目のタップで動いたハンドルは元に戻す
+      if(dragPrev){ const t=tracks[peTarget]; t.start=dragPrev.s; t.end=dragPrev.e; t.loopStart=dragPrev.l; dragPrev=null; }
+      dragKind=null; renderPeWave(peTarget); return;
+    }
+    const now2=performance.now();
+    if(now2-peLastTap<320){                            // ダブルタップ＝全体表示（タップで動いた分も復元）
+      if(peTapPrev){ const t=tracks[peTarget]; t.start=peTapPrev.s; t.end=peTapPrev.e; t.loopStart=peTapPrev.l; }
+      dragKind=null; peLastTap=0; peZoomTo(0,1); return;
+    }
+    peLastTap=now2; peTapPrev=dragPrev;
+  });
+  peWaveEl.addEventListener("pointermove",e=>{
+    if(!pePtrs.has(e.pointerId)) return;
+    const prev=[...pePtrs.values()];
+    const rec=pePtrs.get(e.pointerId);
+    pePtrs.set(e.pointerId,{x:e.clientX, x0:rec.x0});
+    if(pePtrs.size===2){                               // ピンチ＝ズーム＋パン（中点支点）
+      const cur=[...pePtrs.values()];
+      const r=peWaveEl.getBoundingClientRect(), sp=peV1-peV0;
+      const d0=Math.abs(prev[0].x-prev[1].x)||1, d1=Math.abs(cur[0].x-cur[1].x)||1;
+      const m0=(prev[0].x+prev[1].x)/2, m1=(cur[0].x+cur[1].x)/2;
+      const anchor=peV0+((m0-r.left)/r.width)*sp;
+      const ns=Math.max(0.004, Math.min(1, sp*(d0/d1)));
+      const v0=anchor-(anchor-peV0)*(ns/sp) - ((m1-m0)/r.width)*ns;
+      peZoomTo(v0, v0+ns);
+    }
+  });
+  const pePtrUp=e=>{
+    const rec=pePtrs.get(e.pointerId);
+    if(rec && Math.abs(e.clientX-rec.x0)>6) peLastTap=0;   // ドラッグはタップに数えない（ドラッグ直後の誤ダブルタップ防止）
+    pePtrs.delete(e.pointerId); if(pePtrs.size===0) dragPrev=null; };
+  peWaveEl.addEventListener("pointerup",pePtrUp); peWaveEl.addEventListener("pointercancel",pePtrUp);
   // TRIM：STRT〜ENDの範囲でバッファを実際に切り出す（外側を破棄）→start=0/end=1にリセット
   document.getElementById("peTrunc").addEventListener("click",()=>{
     const t=tracks[peTarget]; if(!t.buffer) return;
@@ -4642,7 +4713,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.51";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.52";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
