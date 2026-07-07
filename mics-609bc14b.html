@@ -951,7 +951,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.52</div>
+  <div class="s-ver" id="splashVer">v0.3.53</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3582,16 +3582,19 @@ function openPadEdit(i){
     const open=document.getElementById("peAdv").classList.toggle("show");
     e.currentTarget.textContent = open ? "ADV ▴" : "ADV ▾";
   });
-  // 波形ストリップ全体をドラッグ対象に＝細いハンドルを狙わなくても、近い方のSTRT/END/LOOPが動く（掴みやすさ優先）
+  // ハンドルは「±26pxで掴んだ時だけ」動く（どこでもタップ＝移動は廃止：ピンチ1本目や誤タップでSTRT/ENDが飛ぶため）。
+  // 何もない場所の1本指ドラッグはズーム中のパン。精密配置はズームで＝掴みやすさはズームが担う
   const peWaveEl=document.getElementById("peWave").parentElement;
-  let dragKind=null;
+  let dragKind=null, dragOff=0, panLast=null;
   const peNorm=(clientX)=>{ const r=peWaveEl.getBoundingClientRect(); return Math.max(0,Math.min(1, peV0+((clientX-r.left)/r.width)*(peV1-peV0) )); };
   const pickHandle=(n)=>{
     const t=tracks[peTarget];
+    const r=peWaveEl.getBoundingClientRect();
+    const thr=(26/Math.max(1,r.width))*(peV1-peV0);   // 画面上26px以内だけ「掴んだ」扱い（ズーム倍率に自動追従）
     const cands=[["start",t.start||0],["end",t.end??1]];
     if(t.loop) cands.push(["loop",t.loopStart||0]);
-    let best="start", bd=Infinity;
-    for(const [k,v] of cands){ const d=Math.abs(v-n); if(d<bd){ bd=d; best=k; } }
+    let best=null, bd=thr;
+    for(const [k,v] of cands){ const d=Math.abs(v-n); if(d<=bd){ bd=d; best=k; } }
     return best;
   };
   const peApply=(n)=>{
@@ -3604,14 +3607,29 @@ function openPadEdit(i){
   peWaveEl.addEventListener("pointerdown",e=>{
     if(!tracks[peTarget]||!tracks[peTarget].buffer) return;   // 空パッドは無視
     e.preventDefault();
-    const tt=tracks[peTarget]; dragPrev={s:tt.start||0, e:tt.end??1, l:tt.loopStart||0};   // ピンチ/ダブルタップ時の復元用
-    const n=peNorm(e.clientX); dragKind=pickHandle(n); pushUndo();
+    const tt=tracks[peTarget];
+    const n=peNorm(e.clientX); dragKind=pickHandle(n);
+    if(dragKind){
+      dragPrev={s:tt.start||0, e:tt.end??1, l:tt.loopStart||0};   // ピンチ開始時の復元用
+      dragOff=({start:tt.start||0, end:tt.end??1, loop:tt.loopStart||0})[dragKind]-n;   // 掴んだ瞬間に跳ねない
+      pushUndo();
+    } else if(peV1-peV0<0.999){
+      panLast=e.clientX;   // ズーム中の何もない場所＝1本指パン
+    }
     try{ peWaveEl.setPointerCapture(e.pointerId); }catch(_){}
-    peApply(n);
   });
-  peWaveEl.addEventListener("pointermove",e=>{ if(dragKind) peApply(peNorm(e.clientX)); });
+  peWaveEl.addEventListener("pointermove",e=>{
+    if(pePtrs.size>=2) return;   // ピンチ中はズーム側に任せる
+    if(dragKind){ peApply(peNorm(e.clientX)+dragOff); return; }
+    if(panLast!=null){
+      const r=peWaveEl.getBoundingClientRect(), sp=peV1-peV0;
+      const d=((panLast-e.clientX)/r.width)*sp; panLast=e.clientX;
+      peZoomTo(peV0+d, peV0+d+sp);
+    }
+  });
   // 開始点は離した瞬間に最寄りのアタックへ吸着（±12ms）。CLAUDE.md「Start point snaps to attack transients」
   const peUp=()=>{
+    panLast=null;
     const wasStart=(dragKind==="start"); dragKind=null;
     if(wasStart){ snapStartToOnset(peTarget); renderPeWave(peTarget); if(typeof drawPadWave==="function") drawPadWave(peTarget); }
   };
@@ -3641,8 +3659,8 @@ function openPadEdit(i){
     pePtrs.set(e.pointerId,{x:e.clientX, x0:e.clientX});
     if(pePtrs.size===2){
       // 2本目の指＝ピンチ開始。1本目のタップで動いたハンドルは元に戻す
-      if(dragPrev){ const t=tracks[peTarget]; t.start=dragPrev.s; t.end=dragPrev.e; t.loopStart=dragPrev.l; dragPrev=null; }
-      dragKind=null; renderPeWave(peTarget); return;
+      if(dragKind && dragPrev){ const t=tracks[peTarget]; t.start=dragPrev.s; t.end=dragPrev.e; t.loopStart=dragPrev.l; dragPrev=null; }
+      dragKind=null; panLast=null; renderPeWave(peTarget); return;
     }
     const now2=performance.now();
     if(now2-peLastTap<320){                            // ダブルタップ＝全体表示（タップで動いた分も復元）
@@ -4713,7 +4731,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.52";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.53";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
