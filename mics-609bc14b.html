@@ -493,7 +493,7 @@
   body.perf-plock #viewPads.split>.pads .pad .lockfill{opacity:.9;box-shadow:0 0 12px -2px currentColor;}
 
   .pad{
-    position:relative;border-radius:9px;cursor:pointer;
+    position:relative;border-radius:9px;overflow:hidden;cursor:pointer;   /* 角丸で中身をクリップ＝左端カラーバーのズレ解消 */
     background:linear-gradient(180deg,var(--pad-face),var(--pad));
     border:1px solid var(--edge);
     box-shadow:0 2px 0 #11141800 inset,0 4px 8px rgba(0,0,0,.4);
@@ -513,7 +513,7 @@
   .pad.pcat-sample{--cat:var(--teal);}
   .pad.pcat-empty{--cat:var(--line);}
   .pad::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
-    border-radius:9px 0 0 9px;background:var(--cat);opacity:.85;pointer-events:none;z-index:1;}
+    background:var(--cat);opacity:.85;pointer-events:none;z-index:1;}   /* 角丸は親のoverflowでクリップ（3px幅に9px角丸→潰れて線がズレていた） */
   .pad.pcat-empty::before{opacity:.35;}
   .pad.sel{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
   .pad.hit{background:linear-gradient(180deg,var(--amber),var(--hit-c2));
@@ -951,7 +951,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.53</div>
+  <div class="s-ver" id="splashVer">v0.3.54</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3516,7 +3516,10 @@ function renderPeWave(i){
   if(buf && i===chopTarget && chopBounds.length>2){
     ctx.strokeStyle=amber;
     ctx.lineWidth=1.5;
-    for(let k=1;k<chopBounds.length-1;k++){ const x=((chopBounds[k]-peV0)/((peV1-peV0)||1))*W; if(x<-2||x>W+2) continue; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    ctx.fillStyle=amber;
+    for(let k=1;k<chopBounds.length-1;k++){ const x=((chopBounds[k]-peV0)/((peV1-peV0)||1))*W; if(x<-2||x>W+2) continue;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,7,3.2,0,Math.PI*2); ctx.fill(); }   // 上端ドット＝掴めるサイン
   }
   // ハンドル/シェード位置（start/end/loop）
   const t=tracks[i], zs=(peV1-peV0)||1, nx=v=>((v-peV0)/zs)*W;
@@ -3593,12 +3596,19 @@ function openPadEdit(i){
     const thr=(26/Math.max(1,r.width))*(peV1-peV0);   // 画面上26px以内だけ「掴んだ」扱い（ズーム倍率に自動追従）
     const cands=[["start",t.start||0],["end",t.end??1]];
     if(t.loop) cands.push(["loop",t.loopStart||0]);
+    if(peTarget===chopTarget && chopBounds.length>2)   // CHOPの内側の線（両端はSTRT/ENDが担当）
+      for(let k=1;k<chopBounds.length-1;k++) cands.push(["chop:"+k, chopBounds[k]]);
     let best=null, bd=thr;
     for(const [k,v] of cands){ const d=Math.abs(v-n); if(d<=bd){ bd=d; best=k; } }
     return best;
   };
   const peApply=(n)=>{
     const t=tracks[peTarget];
+    if(dragKind && dragKind.indexOf("chop:")===0){
+      const k=+dragKind.slice(5);
+      chopBounds[k]=Math.max(chopBounds[k-1]+0.002, Math.min(chopBounds[k+1]-0.002, n));
+      renderPeWave(peTarget); return;
+    }
     if(dragKind==="start")    t.start=Math.min(n,(t.end??1)-0.002);
     else if(dragKind==="end") t.end=Math.max(n,(t.start||0)+0.002);
     else                      t.loopStart=Math.max(0,Math.min(n,(t.end??1)));
@@ -3610,8 +3620,11 @@ function openPadEdit(i){
     const tt=tracks[peTarget];
     const n=peNorm(e.clientX); dragKind=pickHandle(n);
     if(dragKind){
-      dragPrev={s:tt.start||0, e:tt.end??1, l:tt.loopStart||0};   // ピンチ開始時の復元用
-      dragOff=({start:tt.start||0, end:tt.end??1, loop:tt.loopStart||0})[dragKind]-n;   // 掴んだ瞬間に跳ねない
+      dragPrev={s:tt.start||0, e:tt.end??1, l:tt.loopStart||0,
+        cb:(peTarget===chopTarget&&chopBounds.length>2)?chopBounds.slice():null};   // ピンチ開始時の復元用
+      const gv=dragKind.indexOf("chop:")===0 ? chopBounds[+dragKind.slice(5)]
+             : ({start:tt.start||0, end:tt.end??1, loop:tt.loopStart||0})[dragKind];
+      dragOff=gv-n;   // 掴んだ瞬間に跳ねない
       pushUndo();
     } else if(peV1-peV0<0.999){
       panLast=e.clientX;   // ズーム中の何もない場所＝1本指パン
@@ -3659,7 +3672,7 @@ function openPadEdit(i){
     pePtrs.set(e.pointerId,{x:e.clientX, x0:e.clientX});
     if(pePtrs.size===2){
       // 2本目の指＝ピンチ開始。1本目のタップで動いたハンドルは元に戻す
-      if(dragKind && dragPrev){ const t=tracks[peTarget]; t.start=dragPrev.s; t.end=dragPrev.e; t.loopStart=dragPrev.l; dragPrev=null; }
+      if(dragKind && dragPrev){ const t=tracks[peTarget]; t.start=dragPrev.s; t.end=dragPrev.e; t.loopStart=dragPrev.l; if(dragPrev.cb) chopBounds=dragPrev.cb.slice(); dragPrev=null; }
       dragKind=null; panLast=null; renderPeWave(peTarget); return;
     }
     const now2=performance.now();
@@ -3749,7 +3762,10 @@ function openPadEdit(i){
   document.getElementById("edChopSens").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
     chopSens=b.dataset.s; chopTarget=peTarget; syncChopSeg("edChopSens","s",chopSens); computeChopBounds(); renderPeWave(peTarget);
   });
-  document.getElementById("edChopApply").addEventListener("click",()=>{ chopTarget=peTarget; computeChopBounds(); applyChop(); });
+  document.getElementById("edChopApply").addEventListener("click",()=>{
+    if(chopTarget!==peTarget || chopBounds.length<3){ chopTarget=peTarget; computeChopBounds(); }   // 手動調整済みの線は再計算で潰さない
+    applyChop();
+  });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
 })();
 
@@ -4731,7 +4747,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.53";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.54";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
