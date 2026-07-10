@@ -668,8 +668,14 @@
     height:128px;overflow:hidden;margin-bottom:0;touch-action:none;cursor:ew-resize;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.65),inset 0 0 0 1px rgba(61,214,196,.05);}
   .pe-wave canvas{display:block;width:100%;height:100%;}
-  .pe-zoombar{position:absolute;left:0;right:0;bottom:0;height:3px;pointer-events:none;z-index:3;display:none;background:rgba(0,0,0,.4);}
-  .pe-zoombar i{position:absolute;top:0;height:100%;background:var(--teal);opacity:.65;border-radius:2px;}
+  /* 概観レーン（全体波形＋表示窓）：窓ドラッグ=スクロール / 端をつまむ=ズーム / 外タップ=ジャンプ（Serato/TwistedWave系2レーン） */
+  .pe-over{position:relative;height:36px;background:#0a0d10;border:1px solid var(--edge);border-radius:6px;
+    margin-bottom:6px;overflow:hidden;touch-action:none;cursor:grab;}
+  .pe-over canvas{display:block;width:100%;height:100%;}
+  .pe-over-win{position:absolute;top:0;bottom:0;border:1px solid var(--teal);background:rgba(61,214,196,.14);
+    border-radius:4px;box-sizing:border-box;pointer-events:none;}
+  .pe-over-win::before,.pe-over-win::after{content:"";position:absolute;top:4px;bottom:4px;width:3px;border-radius:2px;background:var(--teal);}
+  .pe-over-win::before{left:-1px;} .pe-over-win::after{right:-1px;}
   .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;touch-action:none;cursor:ew-resize;z-index:2;}
   .pe-wave .handle::before{content:"";position:absolute;top:0;bottom:0;left:-11px;right:-11px;}  /* 見た目2pxのままタッチ判定だけ拡張 */
   .pe-wave .handle.start{background:var(--teal);}
@@ -951,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.54</div>
+  <div class="s-ver" id="splashVer">v0.3.55</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1071,6 +1077,10 @@
           <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SMPL</span>
           <span class="pe-sample-hint">音源を読み込み / 録音</span>
         </div>
+        <div class="pe-over" id="peOver">
+          <canvas id="peOverCv"></canvas>
+          <div class="pe-over-win" id="peOverWin"></div>
+        </div>
         <div class="pe-wave">
           <canvas id="peWave"></canvas>
           <div class="shade" id="peShadeL"></div>
@@ -1079,7 +1089,6 @@
           <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
           <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
           <div class="handle end" id="peEnd"><span class="cap">END</span></div>
-          <div class="pe-zoombar" id="peZoomBar"><i></i></div>
         </div>
         <div class="pe-transport">
           <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PLAY</button>
@@ -3480,6 +3489,45 @@ function pePlayheadRun(when, startSec, endSec, lsSec, dur, loop){
   };
   tick();
 }
+let _ovCache=null;
+function renderPeOver(i){
+  const cv=document.getElementById("peOverCv"); if(!cv) return;
+  const wrap=cv.parentElement, W=wrap.clientWidth, H=wrap.clientHeight;
+  if(!W||!H) return;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const buf=tracks[i]&&tracks[i].buffer; if(!buf) return;
+  const mid=H/2;
+  const cs=getComputedStyle(document.body);
+  const acc=(cs.getPropertyValue("--teal").trim())||"#3dd6c4";
+  const amber=(cs.getPropertyValue("--amber").trim())||"#ffb84d";
+  if(!_ovCache || _ovCache.buf!==buf || _ovCache.W!==W){   // 全長スキャンはバッファ替え/リサイズ時だけ
+    const data=buf.getChannelData(0), step=Math.max(1,Math.floor(data.length/W));
+    const top=new Float32Array(W), bot=new Float32Array(W);
+    for(let x=0;x<W;x++){ let mn=1,mx=-1; const o=x*step;
+      for(let n=0;n<step;n++){ const v=data[o+n]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
+      top[x]=mx; bot[x]=mn; }
+    _ovCache={buf, W, top, bot};
+  }
+  const {top,bot}=_ovCache;
+  ctx.beginPath(); ctx.moveTo(0,mid-top[0]*mid*0.85);
+  for(let x=1;x<W;x++) ctx.lineTo(x,mid-top[x]*mid*0.85);
+  for(let x=W-1;x>=0;x--) ctx.lineTo(x,mid-bot[x]*mid*0.85);
+  ctx.closePath(); ctx.globalAlpha=.45; ctx.fillStyle=acc; ctx.fill(); ctx.globalAlpha=1;
+  if(i===chopTarget && chopBounds.length>2){   // CHOPティック（全体の中の刻み位置）
+    ctx.strokeStyle=amber; ctx.lineWidth=1;
+    for(let k=1;k<chopBounds.length-1;k++){ const x=chopBounds[k]*W;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  }
+}
+function syncPeOverWin(){
+  const win=document.getElementById("peOverWin"), wrap=document.getElementById("peOver");
+  if(!win||!wrap) return;
+  const W=wrap.clientWidth;
+  win.style.left=(peV0*W)+"px"; win.style.width=Math.max(10,(peV1-peV0)*W)+"px";
+}
 function renderPeWave(i){
   const cv=document.getElementById("peWave"); if(!cv) return;
   const wrap=cv.parentElement, W=wrap.clientWidth, H=wrap.clientHeight;
@@ -3530,10 +3578,7 @@ function renderPeWave(i){
   const shL=document.getElementById("peShadeL"), shR=document.getElementById("peShadeR");
   const sxc=Math.max(0,Math.min(W,sx)), exc=Math.max(0,Math.min(W,ex));
   shL.style.left="0"; shL.style.width=sxc+"px"; shR.style.left=exc+"px"; shR.style.width=(W-exc)+"px";
-  const zb=document.getElementById("peZoomBar");
-  if(zb){ const zi=zb.firstElementChild;
-    if(zs>0.999){ zb.style.display="none"; }
-    else { zb.style.display="block"; zi.style.left=(peV0*100)+"%"; zi.style.width=(zs*100)+"%"; } }
+  renderPeOver(i); syncPeOverWin();
 }
 // EDITモーダルが開いていて、取り込み先がその編集パッドなら波形/タイトルを更新
 function refreshOpenPadEdit(i){
@@ -3698,6 +3743,34 @@ function openPadEdit(i){
       peZoomTo(v0, v0+ns);
     }
   });
+  // ===== 概観レーン操作：窓ドラッグ=スクロール / 端±14px=ズーム / 外タップ=ジャンプ =====
+  const ovEl=document.getElementById("peOver");
+  let ovMode=null, ovGrab=0;
+  const ovN=x=>{ const r=ovEl.getBoundingClientRect(); return Math.max(0,Math.min(1,(x-r.left)/r.width)); };
+  ovEl.addEventListener("pointerdown",e=>{
+    if(!tracks[peTarget]||!tracks[peTarget].buffer) return;
+    e.preventDefault();
+    const r=ovEl.getBoundingClientRect(), n=ovN(e.clientX), sp=peV1-peV0;
+    const px=e.clientX-r.left, pxL=peV0*r.width, pxR=peV1*r.width;
+    if(Math.abs(px-pxL)<=14 && Math.abs(px-pxL)<=Math.abs(px-pxR)) ovMode="l";   // 全体表示中も端をつまめる＝最初のズーム入口
+    else if(Math.abs(px-pxR)<=14) ovMode="r";
+    else if(n>=peV0 && n<=peV1){ ovMode="pan"; ovGrab=n-peV0; }
+    else {   // 窓の外＝そこへジャンプ（全体表示中は半分幅の窓を作る＝1タップでズーム開始）
+      const nsp=(sp<0.999)?sp:0.5;
+      ovMode="pan"; ovGrab=nsp/2;
+      peZoomTo(n-nsp/2, n+nsp/2);
+    }
+    try{ ovEl.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  ovEl.addEventListener("pointermove",e=>{
+    if(!ovMode) return;
+    const n=ovN(e.clientX), sp=peV1-peV0;
+    if(ovMode==="pan") peZoomTo(n-ovGrab, n-ovGrab+sp);
+    else if(ovMode==="l") peZoomTo(Math.min(n, peV1-0.004), peV1);
+    else if(ovMode==="r") peZoomTo(peV0, Math.max(n, peV0+0.004));
+  });
+  const ovUp=()=>{ ovMode=null; };
+  ovEl.addEventListener("pointerup",ovUp); ovEl.addEventListener("pointercancel",ovUp);
   const pePtrUp=e=>{
     const rec=pePtrs.get(e.pointerId);
     if(rec && Math.abs(e.clientX-rec.x0)>6) peLastTap=0;   // ドラッグはタップに数えない（ドラッグ直後の誤ダブルタップ防止）
@@ -4747,7 +4820,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.54";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.55";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
