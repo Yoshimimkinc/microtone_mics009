@@ -580,3 +580,11 @@ R8 パターン予約A→B(境界切替・音漏れなし) / R9 COPY pad/pat/bar
 - 下：拡大ビュー＝ハンドル/CHOP線の掴み専用（v0.3.53の±26pxグラブ）。ピンチ/ダブルタップ/1本指パンは併存
 - 旧3pxズームバーは撤去（概観レーンが継承）
 - verify: 端ズーム0→0.4 / 窓パンspan維持 / 外タップジャンプ / 左端縮小 / CHOP線ドラッグ / ダブルタップ復帰、全pass・0 errors
+
+## 70. 【v0.3.56】競合ギャップP1：WAV書き出し・リサンプル・リバース・メトロノーム
+docs/roadmap-competitive.md 参照（Koala/SP-404MK2/EP-133/Digitakt比の計画）。
+- WAV書き出し: メニューProject「WAV ↓」＝編集中パターンを頭から1ループ、finalClipを実時間キャプチャ→bufToWav。頭の無音自動トリム＋0.6sテール
+- リサンプル: 録音ダイアログに「Resample」＝マスター出力を専用タップ(Gain)経由でpcm直採り（SP-404流）。verify: 実捕音peak0.387
+- リバース: EDITに「⇄ REV」＝破壊的反転(undo可)。start/end鏡映・新バッファ＝キャッシュ自動無効化。verify: サンプル鏡映一致
+- メトロノーム: メニューSoundのトグル＝拍頭クリック(小節頭アクセント)。destination直結＝FX/lofi/書き出しに乗らない
+- verify: 4機能全pass・mic録音回帰なし・0 errors
