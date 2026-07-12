@@ -17,6 +17,11 @@
   .logo{font-size:20px;font-weight:800;}
   .logo b{color:#c73e2e;font-weight:800;}
   .model{font-size:10px;color:var(--dim);letter-spacing:.28em;text-transform:uppercase;}
+  /* トーン切替（弦の材質） */
+  .tones{display:flex;gap:8px;margin-bottom:8px;}
+  .tn{flex:1;min-height:36px;border:1px solid var(--line);border-radius:8px;background:#0d1013;
+    color:var(--dim);font:inherit;font-size:11px;letter-spacing:.18em;cursor:pointer;}
+  .tn.on{color:var(--teal);border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.3);}
   /* コードボタン */
   .chords{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;}
   .ch{min-height:52px;border:1px solid var(--line);border-radius:9px;background:linear-gradient(180deg,#343b44,#2b3038);
@@ -39,6 +44,10 @@
     <div class="logo">micro<b>tone</b> GTR</div>
     <div class="model">STRUM SIM · Karplus-Strong</div>
   </div>
+  <div class="tones" id="tones">
+    <button class="tn on" data-t="steel">STEEL</button>
+    <button class="tn" data-t="nylon">NYLON</button>
+  </div>
   <div class="chords" id="chords"></div>
   <div class="strings" id="zone">
     <div class="hint">↕ なぞってストローク / タップで単音</div>
@@ -57,22 +66,33 @@ const body1=AC.createBiquadFilter(); body1.type="lowpass"; body1.frequency.value
 master.connect(body1); body1.connect(AC.destination);
 
 // ===== Karplus-Strong：1弦ぶんの撥弦をバッファに合成（リアルタイム負荷ゼロ＝再生はBufferSource） =====
-function pluckBuffer(freq, sustain, bright){
+// 弦の材質：STEEL=ピック弾きの明るさ / NYLON=指弾きの丸さ（励起LP・高域早減衰・ピックノイズ無し・暖かい胴）
+const TONES={
+  steel:{blend:0.55, damp:0.996,  pick:0.25, exciteLP:1.0,  body:5200},
+  nylon:{blend:0.20, damp:0.9945, pick:0.05, exciteLP:0.30, body:3300},
+};
+let toneName="steel";
+function pluckBuffer(freq, sustain, tone){
+  const T=TONES[tone]||TONES.steel;
   const sr=AC.sampleRate, dur=Math.min(3.5, sustain), n=Math.round(sr*dur);
   const buf=AC.createBuffer(1,n,sr), d=buf.getChannelData(0);
   const N=Math.max(2, Math.round(sr/freq));
-  const damp=0.996;                       // 弦の減衰
-  const blend=bright;                     // 高域の残り＝ピッキングの明るさ(0.4-0.7)
   const ring=new Float32Array(N+1);
-  for(let i=0;i<=N;i++) ring[i]=Math.random()*2-1;    // ノイズバースト＝ピック
+  for(let i=0;i<=N;i++) ring[i]=Math.random()*2-1;    // ノイズバースト＝弾く瞬間
+  if(T.exciteLP<1){                                   // ナイロン：励起を一次LPで丸める＝指の腹で弾く感触
+    let pv=0;
+    for(let i=0;i<=N;i++){ pv+=T.exciteLP*(ring[i]-pv); ring[i]=pv; }
+  }
   let a=0;
   for(let i=0;i<n;i++){
     const b=(a+1)%(N+1);
-    const v=damp*( blend*ring[a] + (1-blend)*0.5*(ring[a]+ring[b]) );
+    const v=T.damp*( T.blend*ring[a] + (1-T.blend)*0.5*(ring[a]+ring[b]) );
     ring[a]=v; d[i]=v; a=b;
   }
-  // 頭にピックのアタックノイズを少し
-  for(let i=0;i<64 && i<n;i++) d[i]+=(Math.random()*2-1)*0.25*(1-i/64);
+  for(let i=0;i<64 && i<n;i++) d[i]+=(Math.random()*2-1)*T.pick*(1-i/64);   // ピック/爪のアタック
+  // 材質でレベル感が変わるため軽く正規化
+  let pk=0; for(let i=0;i<n;i++){ const x=Math.abs(d[i]); if(x>pk)pk=x; }
+  if(pk>0.001){ const g=0.9/pk; for(let i=0;i<n;i++) d[i]*=g; }
   return buf;
 }
 
@@ -92,8 +112,14 @@ const CHORDS={
 let cur="E", bufs=[];   // 現コードの6弦バッファ
 function buildChord(name){
   cur=name;
-  bufs=CHORDS[name].map(f=>f?pluckBuffer(f, 3.2, 0.55):null);
+  bufs=CHORDS[name].map(f=>f?pluckBuffer(f, 3.2, toneName):null);
   document.querySelectorAll(".ch").forEach(b=>b.classList.toggle("on",b.dataset.c===name));
+}
+function setTone(t){
+  toneName=t;
+  body1.frequency.value=(TONES[t]||TONES.steel).body;   // 胴鳴りも材質に合わせる
+  document.querySelectorAll(".tn").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  buildChord(cur);
 }
 
 // ===== 弦の発音（弦ごとに直前の音をチョーク＝同じ弦は1音） =====
@@ -169,6 +195,7 @@ Object.keys(CHORDS).forEach(name=>{
   b.addEventListener("pointerdown",()=>{ if(AC.state!=="running") AC.resume(); buildChord(name); });
   cw.appendChild(b);
 });
+document.querySelectorAll(".tn").forEach(b=>b.addEventListener("pointerdown",()=>{ if(AC.state!=="running") AC.resume(); setTone(b.dataset.t); }));
 buildChord("E");
 requestAnimationFrame(draw);
 </script>
