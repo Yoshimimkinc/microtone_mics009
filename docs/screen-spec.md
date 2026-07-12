@@ -623,3 +623,8 @@ Karplus-Strongの材質パラメータ化：NYLON=励起ノイズを一次LP(0.3
 ## 77. 【v0.3.61】GTRボタンにキャッシュバスター
 guitar-strum.htmlには本体のversion.json更新検知が無く、iPhoneのキャッシュで旧版が出続ける（NYLONが見えない報告）。
 → メニューのGTRボタンは ?v=APP_VERSION 付きで開く＝本体更新のたびにGTRも必ず最新。直接URLの場合は?任意文字列で回避。
+
+## 78. 【v0.3.62】GTR: STEEL/NYLONの差を拡大（57倍）
+「あんまり音の差ない」→ steel blend0.70/damp0.9975/pick0.35/胴6500（ピックの煌めき・長サステイン）、
+nylon blend0.12/damp0.992/pick0.02/励起LP0.18/仕上げpostLP0.22(≈2kHz)/胴2600。
+実測: 高域率 steel 0.629 vs nylon 0.011＝57倍差（旧4.5倍）。GTRキャッシュバスト用に本体版番も更新。

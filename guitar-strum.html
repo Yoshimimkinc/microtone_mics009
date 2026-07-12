@@ -68,8 +68,8 @@ master.connect(body1); body1.connect(AC.destination);
 // ===== Karplus-Strong：1弦ぶんの撥弦をバッファに合成（リアルタイム負荷ゼロ＝再生はBufferSource） =====
 // 弦の材質：STEEL=ピック弾きの明るさ / NYLON=指弾きの丸さ（励起LP・高域早減衰・ピックノイズ無し・暖かい胴）
 const TONES={
-  steel:{blend:0.55, damp:0.996,  pick:0.25, exciteLP:1.0,  body:5200},
-  nylon:{blend:0.20, damp:0.9945, pick:0.05, exciteLP:0.30, body:3300},
+  steel:{blend:0.70, damp:0.9975, pick:0.35, exciteLP:1.0,  postLP:1.0,  body:6500},   // ピックの煌めき・長いサステイン
+  nylon:{blend:0.12, damp:0.992,  pick:0.02, exciteLP:0.18, postLP:0.22, body:2600},   // 指弾きの丸さ・早い減衰・仕上げLPで太い基音
 };
 let toneName="steel";
 function pluckBuffer(freq, sustain, tone){
@@ -90,6 +90,10 @@ function pluckBuffer(freq, sustain, tone){
     ring[a]=v; d[i]=v; a=b;
   }
   for(let i=0;i<64 && i<n;i++) d[i]+=(Math.random()*2-1)*T.pick*(1-i/64);   // ピック/爪のアタック
+  if(T.postLP<1){   // ナイロン：バッファ全体を一次LPで仕上げ＝どの帯域でも確実に丸く（約2kHz相当）
+    let pv=0;
+    for(let i=0;i<n;i++){ pv+=T.postLP*(d[i]-pv); d[i]=pv; }
+  }
   // 材質でレベル感が変わるため軽く正規化
   let pk=0; for(let i=0;i<n;i++){ const x=Math.abs(d[i]); if(x>pk)pk=x; }
   if(pk>0.001){ const g=0.9/pk; for(let i=0;i<n;i++) d[i]*=g; }
