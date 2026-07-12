@@ -594,3 +594,9 @@ docs/roadmap-competitive.md 参照（Koala/SP-404MK2/EP-133/Digitakt比の計画
 - Save(.mics)はクリック＝ユーザー操作中なのでそのまま共有シート
 - WAVはキャプチャ完了がジェスチャ外＝share不可のため2タップ方式：1タップ目=書き出し→ボタンが「↑ 共有 / 保存」に→2タップ目=共有シート
 - verify: フォールバックDL(.mics/.wav 224KB)・2タップ遷移・ボタン復帰・0 errors
+
+## 72. 【v0.3.58】iPhoneマイク録音が小さい/変 → テイク自動ノーマライズ
+v0.3.37でAGCを切った(ダッキング対策)ため生マイク＝レベル小。さらに小信号の12bit量子化はザラつく（「変」の正体）。
+→ finalizeRecでピークを-1dBFS(0.9)へ自動増幅（上限+30dB・SILENT TAKEガードは増幅前に判定＝無音は増幅しない）。
+Resampleは「聴こえたままの音量」が正なので対象外（_lastRecWasResample判定）。
+verify: 0.05→0.900正規化 / Resample0.3維持 / 無音ガード維持・0 errors

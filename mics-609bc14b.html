@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.57</div>
+  <div class="s-ver" id="splashVer">v0.3.58</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4534,7 +4534,8 @@ const recTargetEl=document.getElementById("recTarget");
 let recStream=null, recStartMs=0, recTimerId=null;
 let pcmSrc=null, pcmTap=null, pcmMute=null, pcmChunks=[], pcmLen=0;
 let pcmPeak=0, recTakeN=0;   // 録音レベルメーター＋テイク連番
-let _resampling=false;       // Resample＝マスター出力(finalClip)を録る（SP-404流）   // 生PCM直採り（MediaRecorder/デコード非依存）
+let _resampling=false;       // Resample＝マスター出力(finalClip)を録る（SP-404流）
+let _lastRecWasResample=false;   // finalizeRecでの正規化判定用（Resampleは聴こえたままの音量が正）   // 生PCM直採り（MediaRecorder/デコード非依存）
 
 // ストリップからの録音/読込は「最後に叩いたパッド」を黙って潰さない：空きがあればそちらへ
 function pickCaptureTarget(){
@@ -4622,7 +4623,7 @@ document.getElementById("recStop").addEventListener("click",()=>stopRec(false));
 function stopRec(cancel){
   clearInterval(recTimerId);
   try{ if(_resampling && pcmSrc) finalClip.disconnect(pcmSrc); }catch(_){}
-  _resampling=false;
+  _lastRecWasResample=_resampling; _resampling=false;
   try{ if(pcmSrc)pcmSrc.disconnect(); if(pcmTap){pcmTap.onaudioprocess=null;pcmTap.disconnect();} if(pcmMute)pcmMute.disconnect(); }catch(_){}
   pcmSrc=pcmTap=pcmMute=null;
   if(recStream){recStream.getTracks().forEach(t=>t.stop());recStream=null;}
@@ -4650,6 +4651,16 @@ async function finalizeRec(){
     if(isSilent(buf)){   // 無音録音で既存パッドを潰さない＆原因を伝える（マイク権限/AEC/入力レベル）
       sampNameEl.textContent="SILENT TAKE — 入力レベルを確認";
       return;
+    }
+    // iOSはAGC無効(v0.3.37ダッキング対策)の生マイク＝レベルが小さい上、小信号の12bit化はザラつく。
+    // →ピークを-1dBFS(0.9)へ自動ノーマライズ（上限+30dB＝ノイズだけの増幅は防ぐ）。Resampleは聴こえたまま＝対象外
+    if(!_lastRecWasResample){
+      const d=buf.getChannelData(0); let pk=0;
+      for(let i=0;i<d.length;i++){ const a=Math.abs(d[i]); if(a>pk)pk=a; }
+      if(pk>0.0005 && pk<0.9){
+        const g=Math.min(0.9/pk, 31.6);
+        for(let i=0;i<d.length;i++) d[i]*=g;
+      }
     }
     pushUndo();
     tracks[selected].rawBuffer=buf;
@@ -4914,7 +4925,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.57";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.58";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
