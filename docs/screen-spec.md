@@ -588,3 +588,9 @@ docs/roadmap-competitive.md 参照（Koala/SP-404MK2/EP-133/Digitakt比の計画
 - リバース: EDITに「⇄ REV」＝破壊的反転(undo可)。start/end鏡映・新バッファ＝キャッシュ自動無効化。verify: サンプル鏡映一致
 - メトロノーム: メニューSoundのトグル＝拍頭クリック(小節頭アクセント)。destination直結＝FX/lofi/書き出しに乗らない
 - verify: 4機能全pass・mic録音回帰なし・0 errors
+
+## 71. 【v0.3.57】共有シート対応＝メンバーでやり取り（Web Share API）
+- shareOrDownload(): File+navigator.canShare→共有シート（iPhone=AirDrop/LINE等へ直接）。非対応/キャンセルはDLへフォールバック
+- Save(.mics)はクリック＝ユーザー操作中なのでそのまま共有シート
+- WAVはキャプチャ完了がジェスチャ外＝share不可のため2タップ方式：1タップ目=書き出し→ボタンが「↑ 共有 / 保存」に→2タップ目=共有シート
+- verify: フォールバックDL(.mics/.wav 224KB)・2タップ遷移・ボタン復帰・0 errors

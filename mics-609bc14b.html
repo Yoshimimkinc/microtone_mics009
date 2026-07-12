@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.56</div>
+  <div class="s-ver" id="splashVer">v0.3.57</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4749,19 +4749,34 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
   };
   const json=JSON.stringify(proj);
   const blob=new Blob([json],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  // ファイル名に日時を付与（複数プロジェクトを区別しやすく）: mics009-YYMMDD-HHMM.mics
+  // ファイル名に日時を付与: mics009-YYMMDD-HHMM.mics。共有シート（メンバーへ直接）→非対応はDL
   const d=new Date(), z=n=>String(n).padStart(2,"0");
   const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
-  a.href=url; a.download="mics009-"+stamp+".mics"; a.click();
-  URL.revokeObjectURL(url);
-  sampNameEl.textContent="Saved → mics009-"+stamp+".mics";
+  shareOrDownload(blob, "mics009-"+stamp+".mics");
 });
 
+// ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
+async function shareOrDownload(blob, name){
+  try{
+    const f=new File([blob], name, {type: blob.type||"application/octet-stream"});
+    if(navigator.canShare && navigator.canShare({files:[f]})){
+      await navigator.share({files:[f]});
+      sampNameEl.textContent="Shared → "+name;
+      return;
+    }
+  }catch(e){ if(e && e.name==="AbortError"){ sampNameEl.textContent="共有をキャンセル"; return; } }
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+  sampNameEl.textContent="Saved → "+name;
+}
 // ===== WAV書き出し：編集中パターンを頭から1ループ、マスター出力を実時間キャプチャ =====
-let _expBusy=false;
+let _expBusy=false, _expBlob=null, _expName=null;
 document.getElementById("exportWavBtn").addEventListener("click",async()=>{
+  if(_expBlob){   // 2タップ目＝共有（share()はユーザー操作中しか呼べないため）
+    const b2=_expBlob, n2=_expName; _expBlob=null; _expName=null;
+    document.getElementById("exportWavBtn").textContent="WAV ↓";
+    shareOrDownload(b2, n2); return;
+  }
   if(_expBusy) return; _expBusy=true;
   try{
     if(AC.state!=="running") await AC.resume();
@@ -4791,9 +4806,9 @@ document.getElementById("exportWavBtn").addEventListener("click",async()=>{
     const blob=new Blob([wav],{type:"audio/wav"});
     const dt=new Date(), z=x=>String(x).padStart(2,"0");
     const nm="mics009-"+String(dt.getFullYear()).slice(2)+z(dt.getMonth()+1)+z(dt.getDate())+"-"+z(dt.getHours())+z(dt.getMinutes())+".wav";
-    const url=URL.createObjectURL(blob); const a=document.createElement("a");
-    a.href=url; a.download=nm; a.click(); URL.revokeObjectURL(url);
-    sampNameEl.textContent="Exported → "+nm;
+    _expBlob=blob; _expName=nm;
+    document.getElementById("exportWavBtn").textContent="↑ 共有 / 保存";
+    sampNameEl.textContent="書き出し完了 — もう一度タップで共有/保存";
   }catch(e){ sampNameEl.textContent="EXPORT ERROR — 書き出せなかった"; }
   _expBusy=false;
 });
@@ -4899,7 +4914,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.56";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.57";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
