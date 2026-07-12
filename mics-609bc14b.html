@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.58</div>
+  <div class="s-ver" id="splashVer">v0.3.59</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1100,7 +1100,7 @@
         </div>
         <div class="pe-chop">
           <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATK</button></div>
-          <div class="seg" id="edChopDiv"><button data-n="2">2</button><button data-n="4">4</button><button class="on" data-n="8">8</button><button data-n="16">16</button></div>
+          <div class="seg" id="edChopDiv"><button class="on" data-n="0">OFF</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
           <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
           <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
         </div>
@@ -3627,7 +3627,7 @@ function openPadEdit(i){
   document.getElementById("peAdv").classList.remove("show");
   document.getElementById("peAdvToggle").textContent="ADV ▾";
   // CHOPプレビュー初期化（この編集パッドを対象に。既定 TIME / 8分割）
-  chopTarget=i; chopMode="time"; chopDivN=8; chopSens="mid";
+  chopTarget=i; chopMode="time"; chopDivN=0; chopSens="mid";   // 既定OFF＝開いた時は線を出さない（分割を選んだ瞬間だけ）
   syncChopSeg("edChopMode","mode",chopMode);
   syncChopSeg("edChopDiv","n",String(chopDivN));
   syncChopSeg("edChopSens","s",chopSens);
@@ -3869,7 +3869,8 @@ function openPadEdit(i){
     chopSens=b.dataset.s; chopTarget=peTarget; syncChopSeg("edChopSens","s",chopSens); computeChopBounds(); renderPeWave(peTarget);
   });
   document.getElementById("edChopApply").addEventListener("click",()=>{
-    if(chopTarget!==peTarget || chopBounds.length<3){ chopTarget=peTarget; computeChopBounds(); }   // 手動調整済みの線は再計算で潰さない
+    if(chopTarget!==peTarget){ chopTarget=peTarget; computeChopBounds(); }   // 手動調整済みの線は再計算で潰さない
+    if(chopBounds.length<3){ sampNameEl.textContent="CHOP — まず分割数（2/4/8/16 か ATK）を選ぶ"; return; }
     applyChop();
   });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
@@ -3901,6 +3902,11 @@ function detectOnsets(t,s,e,sens){
 }
 function computeChopBounds(){
   const t=tracks[chopTarget]; if(!t||!t.buffer){ chopBounds=[]; return; }
+  if(chopMode==="time" && chopDivN<2){   // OFF＝プレビューなし
+    chopBounds=[];
+    const b0=document.getElementById("edChopTxt"); if(b0) b0.textContent="CHOP";
+    return;
+  }
   const s=t.start||0, e=(t.end??1);
   let bs;
   if(chopMode==="time"){
@@ -4925,7 +4931,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.58";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.59";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
