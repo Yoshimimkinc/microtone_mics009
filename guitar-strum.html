@@ -50,7 +50,7 @@
   </div>
   <div class="chords" id="chords"></div>
   <div class="strings" id="zone">
-    <div class="hint">↕ なぞってストローク / タップで単音</div>
+    <div class="hint">↕ なぞる=ストローク（ゆっくり=アルペジオ） / 左=甘く 右=硬く / 指を置いたままなぞる=ミュート</div>
     <canvas id="cv"></canvas>
   </div>
   <div class="foot">
@@ -127,15 +127,23 @@ function setTone(t){
 }
 
 // ===== 弦の発音（弦ごとに直前の音をチョーク＝同じ弦は1音） =====
+// 奏法: x01=弾く位置(0=ネック側=甘い/1=ブリッジ側=硬い)、muted=ブラッシング（チャカ）
 const ringing=new Array(6).fill(null);
-function playString(i, vel){
+function playString(i, vel, x01, muted){
   const b=bufs[i]; if(!b) return;
   if(ringing[i]){ try{ ringing[i].g.gain.setTargetAtTime(0,AC.currentTime,0.008); ringing[i].s.stop(AC.currentTime+0.05); }catch(_){} }
   const s=AC.createBufferSource(); s.buffer=b;
+  const lp=AC.createBiquadFilter(); lp.type="lowpass"; lp.Q.value=0.6;
+  lp.frequency.value = 900 + Math.pow(x01==null?0.7:x01, 1.4)*8000;   // ピッキング位置＝明るさ
   const g=AC.createGain(); g.gain.value=Math.max(0.15,Math.min(1,vel))*0.55;
-  s.connect(g); g.connect(master); s.start();
+  s.connect(lp); lp.connect(g); g.connect(master); s.start();
+  if(muted){   // ブラッシング＝すぐ握って止める（チャカ）。少し暗く・短く
+    lp.frequency.value=Math.min(lp.frequency.value, 2800);
+    g.gain.setTargetAtTime(0, AC.currentTime+0.018, 0.014);
+    s.stop(AC.currentTime+0.15);
+  }
   ringing[i]={s,g};
-  flash[i]=1;
+  flash[i]=muted?0.5:1;
 }
 
 // ===== UI：6本の弦を描画、なぞりで発音 =====
@@ -165,26 +173,38 @@ function draw(){
 }
 // なぞり：ポインタが弦のYを跨いだ瞬間に発音（速度→強さ）
 const last=new Map();
+// 「置いたままの指」＝左手ミュート（120ms以上ほぼ動いていない他の指があればブラッシング）
+function hasRestingFinger(exceptId, now){
+  for(const [id,p] of last){
+    if(id===exceptId) continue;
+    if(now-p.t0>120 && p.moved<12) return true;
+  }
+  return false;
+}
 function onMove(e){
   const p=last.get(e.pointerId); if(!p) return;
   const r=zone.getBoundingClientRect();
   const y0=p.y-r.top, y1=e.clientY-r.top;
   const dt=Math.max(1, e.timeStamp-p.t);
   const vel=Math.min(1, Math.abs(y1-y0)/dt*2.2);
+  const x01=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  const muted=hasRestingFinger(e.pointerId, e.timeStamp);
   for(let i=0;i<6;i++){
     const sy=stringY(i);
-    if((y0-sy)*(y1-sy)<0) playString(i, 0.35+vel*0.65);   // 跨いだ
+    if((y0-sy)*(y1-sy)<0) playString(i, 0.35+vel*0.65, x01, muted);   // 跨いだ
   }
-  last.set(e.pointerId,{y:e.clientY,t:e.timeStamp});
+  const mv=p.moved+Math.abs(e.clientY-p.y)+Math.abs((e.clientX||0)-(p.x||e.clientX));
+  last.set(e.pointerId,{y:e.clientY,x:e.clientX,t:e.timeStamp,t0:p.t0,moved:mv});
 }
 zone.addEventListener("pointerdown",e=>{
   if(AC.state!=="running") AC.resume();
   e.preventDefault();
-  last.set(e.pointerId,{y:e.clientY,t:e.timeStamp});
-  // タップ＝一番近い弦を単音
+  last.set(e.pointerId,{y:e.clientY,x:e.clientX,t:e.timeStamp,t0:e.timeStamp,moved:0});
+  // タップ＝一番近い弦を単音（置き指ミュート中はチャカ）
   const r=zone.getBoundingClientRect(), y=e.clientY-r.top;
+  const x01=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   let bi=0,bd=1e9; for(let i=0;i<6;i++){ const d2=Math.abs(stringY(i)-y); if(d2<bd){bd=d2;bi=i;} }
-  if(bd<24) playString(bi,0.6);
+  if(bd<24) playString(bi,0.6,x01,hasRestingFinger(e.pointerId,e.timeStamp));
   try{ zone.setPointerCapture(e.pointerId); }catch(_){}
 });
 zone.addEventListener("pointermove",onMove);
