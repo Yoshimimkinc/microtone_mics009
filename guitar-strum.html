@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>microtone GTR — strum simulator</title>
+<style>
+  :root{ --bg:#121417; --panel:#1b1f24; --edge:#0a0c0e; --line:#32383f; --ink:#e8e4d8;
+    --dim:#8b919a; --amber:#ff8a3d; --teal:#3dd6c4; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;background:var(--bg);}
+  body{font-family:"DIN Alternate","Bahnschrift","Arial Narrow",system-ui,sans-serif;color:var(--ink);
+    letter-spacing:.04em;display:flex;flex-direction:column;
+    padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+    touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
+  .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
+  .logo{font-size:20px;font-weight:800;}
+  .logo b{color:#c73e2e;font-weight:800;}
+  .model{font-size:10px;color:var(--dim);letter-spacing:.28em;text-transform:uppercase;}
+  /* コードボタン */
+  .chords{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;}
+  .ch{min-height:52px;border:1px solid var(--line);border-radius:9px;background:linear-gradient(180deg,#343b44,#2b3038);
+    color:var(--ink);font:inherit;font-size:16px;font-weight:700;letter-spacing:.1em;cursor:pointer;}
+  .ch.on{background:linear-gradient(180deg,var(--amber),#c25e22);color:#2a1405;border-color:var(--amber);
+    box-shadow:0 0 14px rgba(255,138,61,.45);}
+  /* 弦エリア */
+  .strings{flex:1;min-height:0;position:relative;background:linear-gradient(180deg,#20160e,#171009);
+    border:1px solid var(--edge);border-radius:12px;overflow:hidden;touch-action:none;cursor:crosshair;
+    box-shadow:inset 0 2px 10px rgba(0,0,0,.6);}
+  .strings .hint{position:absolute;left:0;right:0;top:8px;text-align:center;font-size:11px;color:var(--dim);
+    letter-spacing:.14em;pointer-events:none;}
+  canvas{display:block;width:100%;height:100%;}
+  .foot{margin-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--dim);}
+  .foot a{color:var(--teal);text-decoration:none;}
+</style>
+</head>
+<body>
+  <div class="head">
+    <div class="logo">micro<b>tone</b> GTR</div>
+    <div class="model">STRUM SIM · Karplus-Strong</div>
+  </div>
+  <div class="chords" id="chords"></div>
+  <div class="strings" id="zone">
+    <div class="hint">↕ なぞってストローク / タップで単音</div>
+    <canvas id="cv"></canvas>
+  </div>
+  <div class="foot">
+    <span>気に入ったら MICS009 の Resample で録ってパッドへ</span>
+    <a href="mics-609bc14b.html">← MICS009</a>
+  </div>
+<script>
+"use strict";
+const AC=new (window.AudioContext||window.webkitAudioContext)({latencyHint:0});
+const master=AC.createGain(); master.gain.value=0.8;
+// ざっくり「箱鳴り」：軽いローパス＋わずかなショートディレイで胴の気配
+const body1=AC.createBiquadFilter(); body1.type="lowpass"; body1.frequency.value=5200; body1.Q.value=0.5;
+master.connect(body1); body1.connect(AC.destination);
+
+// ===== Karplus-Strong：1弦ぶんの撥弦をバッファに合成（リアルタイム負荷ゼロ＝再生はBufferSource） =====
+function pluckBuffer(freq, sustain, bright){
+  const sr=AC.sampleRate, dur=Math.min(3.5, sustain), n=Math.round(sr*dur);
+  const buf=AC.createBuffer(1,n,sr), d=buf.getChannelData(0);
+  const N=Math.max(2, Math.round(sr/freq));
+  const damp=0.996;                       // 弦の減衰
+  const blend=bright;                     // 高域の残り＝ピッキングの明るさ(0.4-0.7)
+  const ring=new Float32Array(N+1);
+  for(let i=0;i<=N;i++) ring[i]=Math.random()*2-1;    // ノイズバースト＝ピック
+  let a=0;
+  for(let i=0;i<n;i++){
+    const b=(a+1)%(N+1);
+    const v=damp*( blend*ring[a] + (1-blend)*0.5*(ring[a]+ring[b]) );
+    ring[a]=v; d[i]=v; a=b;
+  }
+  // 頭にピックのアタックノイズを少し
+  for(let i=0;i<64 && i<n;i++) d[i]+=(Math.random()*2-1)*0.25*(1-i/64);
+  return buf;
+}
+
+// ===== コード定義（開放コードの実音周波数。nullはミュート弦） =====
+const F={E2:82.41,F2:87.31,G2:98.0,A2:110.0,B2:123.47,C3:130.81,D3:146.83,E3:164.81,F3:174.61,
+  G3:196.0,Gs3:207.65,A3:220.0,B3:246.94,C4:261.63,Cs4:277.18,D4:293.66,E4:329.63,Fs4:369.99,F4:349.23,G4:392.0};
+const CHORDS={
+  C :[null,F.C3,F.E3,F.G3,F.C4,F.E4],
+  G :[F.G2,F.B2,F.D3,F.G3,F.B3,F.G4],
+  Am:[null,F.A2,F.E3,F.A3,F.C4,F.E4],
+  F :[F.F2,F.C3,F.F3,F.A3,F.C4,F.F4],
+  Em:[F.E2,F.B2,F.E3,F.G3,F.B3,F.E4],
+  D :[null,null,F.D3,F.A3,F.D4,F.Fs4],
+  A :[null,F.A2,F.E3,F.A3,F.Cs4,F.E4],
+  E :[F.E2,F.B2,F.E3,F.Gs3,F.B3,F.E4],
+};
+let cur="E", bufs=[];   // 現コードの6弦バッファ
+function buildChord(name){
+  cur=name;
+  bufs=CHORDS[name].map(f=>f?pluckBuffer(f, 3.2, 0.55):null);
+  document.querySelectorAll(".ch").forEach(b=>b.classList.toggle("on",b.dataset.c===name));
+}
+
+// ===== 弦の発音（弦ごとに直前の音をチョーク＝同じ弦は1音） =====
+const ringing=new Array(6).fill(null);
+function playString(i, vel){
+  const b=bufs[i]; if(!b) return;
+  if(ringing[i]){ try{ ringing[i].g.gain.setTargetAtTime(0,AC.currentTime,0.008); ringing[i].s.stop(AC.currentTime+0.05); }catch(_){} }
+  const s=AC.createBufferSource(); s.buffer=b;
+  const g=AC.createGain(); g.gain.value=Math.max(0.15,Math.min(1,vel))*0.55;
+  s.connect(g); g.connect(master); s.start();
+  ringing[i]={s,g};
+  flash[i]=1;
+}
+
+// ===== UI：6本の弦を描画、なぞりで発音 =====
+const zone=document.getElementById("zone"), cv=document.getElementById("cv");
+const ctx=cv.getContext("2d");
+const flash=new Array(6).fill(0);
+function stringY(i){ return cv.clientHeight*(0.14+0.72*i/5); }
+function draw(){
+  const W=zone.clientWidth, H=zone.clientHeight, dpr=window.devicePixelRatio||1;
+  if(cv.width!==W*dpr){ cv.width=W*dpr; cv.height=H*dpr; }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  for(let i=0;i<6;i++){
+    const y=stringY(i), muted=!CHORDS[cur][i];
+    const w=1+(5-i)*0.5;                          // 低音弦ほど太く
+    ctx.lineWidth=w+flash[i]*2;
+    ctx.strokeStyle=muted?"#3a3226":(flash[i]>0.05?`rgba(255,${170+Math.floor(60*flash[i])},90,1)`:"#b7a98a");
+    ctx.beginPath();
+    if(flash[i]>0.05){                            // 振動の揺れ
+      const amp=flash[i]*5;
+      for(let x=0;x<=W;x+=8) ctx.lineTo(x, y+Math.sin(x*0.09+performance.now()*0.05)*amp*Math.sin(Math.PI*x/W));
+    } else { ctx.moveTo(0,y); ctx.lineTo(W,y); }
+    ctx.stroke();
+    flash[i]*=0.93;
+  }
+  requestAnimationFrame(draw);
+}
+// なぞり：ポインタが弦のYを跨いだ瞬間に発音（速度→強さ）
+const last=new Map();
+function onMove(e){
+  const p=last.get(e.pointerId); if(!p) return;
+  const r=zone.getBoundingClientRect();
+  const y0=p.y-r.top, y1=e.clientY-r.top;
+  const dt=Math.max(1, e.timeStamp-p.t);
+  const vel=Math.min(1, Math.abs(y1-y0)/dt*2.2);
+  for(let i=0;i<6;i++){
+    const sy=stringY(i);
+    if((y0-sy)*(y1-sy)<0) playString(i, 0.35+vel*0.65);   // 跨いだ
+  }
+  last.set(e.pointerId,{y:e.clientY,t:e.timeStamp});
+}
+zone.addEventListener("pointerdown",e=>{
+  if(AC.state!=="running") AC.resume();
+  e.preventDefault();
+  last.set(e.pointerId,{y:e.clientY,t:e.timeStamp});
+  // タップ＝一番近い弦を単音
+  const r=zone.getBoundingClientRect(), y=e.clientY-r.top;
+  let bi=0,bd=1e9; for(let i=0;i<6;i++){ const d2=Math.abs(stringY(i)-y); if(d2<bd){bd=d2;bi=i;} }
+  if(bd<24) playString(bi,0.6);
+  try{ zone.setPointerCapture(e.pointerId); }catch(_){}
+});
+zone.addEventListener("pointermove",onMove);
+const end=e=>last.delete(e.pointerId);
+zone.addEventListener("pointerup",end); zone.addEventListener("pointercancel",end);
+
+// コードボタン
+const cw=document.getElementById("chords");
+Object.keys(CHORDS).forEach(name=>{
+  const b=document.createElement("button");
+  b.className="ch"; b.dataset.c=name; b.textContent=name;
+  b.addEventListener("pointerdown",()=>{ if(AC.state!=="running") AC.resume(); buildChord(name); });
+  cw.appendChild(b);
+});
+buildChord("E");
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
