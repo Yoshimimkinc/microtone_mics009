@@ -29,6 +29,7 @@
   .kv{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;
     letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-radius:8px;background:#171a1e;}
   .kv b{color:var(--amber);font-size:16px;}
+  .kb.on{color:var(--teal);border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.3);}
   /* 録音バー（MICS009埋め込み時のみ表示） */
   .recbar{display:none;gap:8px;margin-bottom:8px;}
   .rb{flex:1;min-height:44px;border:1px solid var(--red);border-radius:8px;background:#1a0d0d;
@@ -67,9 +68,11 @@
     <button class="kb" id="keyPrev">◀</button>
     <div class="kv">KEY <b id="keyName">C</b></div>
     <button class="kb" id="keyNext">▶</button>
+    <button class="kb" id="sevBtn" title="セブンスコード化（M7/m7/7）">7th</button>
   </div>
   <div class="recbar" id="recbar">
     <button class="rb" id="gtrRec">● 録音</button>
+    <button class="rb x" id="gtrBeat" title="MICS009のビートを再生/停止（録音には入らない）">▶ ビート</button>
     <button class="rb x" id="gtrClose">✕ 戻る</button>
   </div>
   <div class="main">
@@ -129,25 +132,47 @@ function pluckBuffer(freq, sustain, tone){
 // ===== コードシステム：12キー × ダイアトニック8コード（E型バレーの音程計算＝全キー対応） =====
 const OPEN=[82.41,110.0,146.83,196.0,246.94,329.63];   // E2 A2 D3 G3 B3 E4
 const NOTE=["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
-const SHAPE={maj:[0,2,2,1,0,0], min:[0,2,2,0,0,0], dom7:[0,2,0,1,0,0]};
+const SHAPE={maj:[0,2,2,1,0,0], min:[0,2,2,0,0,0], dom7:[0,2,0,1,0,0], maj7:[0,2,1,1,0,0], m7:[0,2,0,0,0,0]};
 const DEGREES=[  // ポップスで使う8つ: I IV V vi ii iii bVII V7
   {d:0,q:"maj",sfx:""},{d:5,q:"maj",sfx:""},{d:7,q:"maj",sfx:""},{d:9,q:"min",sfx:"m"},
   {d:2,q:"min",sfx:"m"},{d:4,q:"min",sfx:"m"},{d:10,q:"maj",sfx:""},{d:7,q:"dom7",sfx:"7"},
 ];
 let keyIdx=0;   // C
+let seventh=false;   // 7thモード：maj→maj7 / min→m7（V7はそのまま）＝シティポップ/ジャズの色
 function chordAt(i){
   const g=DEGREES[i], n=(keyIdx+g.d-4+12)%12;   // E型バレーのフレット位置（E=4）
-  return { label: NOTE[(keyIdx+g.d)%12]+g.sfx,
-    freqs: OPEN.map((f,si)=>f*Math.pow(2,(n+SHAPE[g.q][si])/12)) };
+  let q=g.q, sfx=g.sfx;
+  if(seventh){
+    if(q==="maj"){ q="maj7"; sfx="M7"; }
+    else if(q==="min"){ q="m7"; sfx="m7"; }
+  }
+  return { label: NOTE[(keyIdx+g.d)%12]+sfx,
+    freqs: OPEN.map((f,si)=>f*Math.pow(2,(n+SHAPE[q][si])/12)) };
 }
-let cur=0, bufs=[], curLabel="C";
+function mutedBuffer(freq){
+  const sr=AC.sampleRate, n=Math.round(sr*0.22);
+  const buf=AC.createBuffer(1,n,sr), d=buf.getChannelData(0);
+  const N=Math.max(2,Math.round(sr/freq));
+  const ring=new Float32Array(N+1);
+  for(let i=0;i<=N;i++) ring[i]=Math.random()*2-1;
+  let pv=0; for(let i=0;i<=N;i++){ pv+=0.5*(ring[i]-pv); ring[i]=pv; }
+  let a=0;
+  for(let i=0;i<n;i++){ const b2=(a+1)%(N+1);
+    const v=0.88*(0.25*ring[a]+0.375*(ring[a]+ring[b2]));   // 強ダンピング＝掌で触れた弦（音程の気配だけ）
+    ring[a]=v; d[i]=v; a=b2; }
+  for(let i=0;i<40&&i<n;i++) d[i]+=(Math.random()*2-1)*0.35*(1-i/40);   // 爪の「チッ」
+  let pk=0; for(let i=0;i<n;i++){const x=Math.abs(d[i]); if(x>pk)pk=x;}
+  if(pk>0.001){ const g=0.8/pk; for(let i=0;i<n;i++) d[i]*=g; }
+  return buf;
+}
+let cur=0, bufs=[], muteBufs=[], curLabel="C";
 const bufCache=new Map();   // key:chord:tone → 6弦バッファ（押下を即応にする）
 function buildChord(i){
   cur=i;
   const c=chordAt(i); curLabel=c.label;
-  const ck=keyIdx+":"+i+":"+toneName;
-  if(!bufCache.has(ck)) bufCache.set(ck, c.freqs.map(f=>pluckBuffer(f, 3.2, toneName)));
-  bufs=bufCache.get(ck);
+  const ck=keyIdx+":"+i+":"+toneName+":"+(seventh?7:0);
+  if(!bufCache.has(ck)) bufCache.set(ck, {o:c.freqs.map(f=>pluckBuffer(f, 3.2, toneName)), m:c.freqs.map(f=>mutedBuffer(f))});
+  const cc=bufCache.get(ck); bufs=cc.o; muteBufs=cc.m;
   document.querySelectorAll(".ch").forEach((b,bi)=>b.classList.toggle("on",bi===cur));
 }
 function paintChordLabels(){
@@ -175,17 +200,16 @@ function setTone(t){
 // 奏法: x01=弾く位置(0=ネック側=甘い/1=ブリッジ側=硬い)、muted=ブラッシング（チャカ）
 const ringing=new Array(6).fill(null);
 function playString(i, vel, x01, muted){
-  const b=bufs[i]; if(!b) return;
+  const b=muted?(muteBufs[i]||bufs[i]):bufs[i]; if(!b) return;
   if(ringing[i]){ try{ ringing[i].g.gain.setTargetAtTime(0,AC.currentTime,0.008); ringing[i].s.stop(AC.currentTime+0.05); }catch(_){} }
   const s=AC.createBufferSource(); s.buffer=b;
   const lp=AC.createBiquadFilter(); lp.type="lowpass"; lp.Q.value=0.6;
   lp.frequency.value = 900 + Math.pow(x01==null?0.7:x01, 1.4)*8000;   // ピッキング位置＝明るさ
   const g=AC.createGain(); g.gain.value=Math.max(0.15,Math.min(1,vel))*0.55;
   s.connect(lp); lp.connect(g); g.connect(master); s.start();
-  if(muted){   // ブラッシング＝すぐ握って止める（チャカ）。少し暗く・短く
-    lp.frequency.value=Math.min(lp.frequency.value, 2800);
-    g.gain.setTargetAtTime(0, AC.currentTime+0.018, 0.014);
-    s.stop(AC.currentTime+0.15);
+  if(muted){   // 専用モデルの自然減衰に任せる（ゲート切りは廃止）
+    lp.frequency.value=Math.min(lp.frequency.value, 3500);
+    g.gain.value*=0.85;
   }
   ringing[i]={s,g};
   flash[i]=muted?0.5:1;
@@ -271,6 +295,11 @@ for(let i=0;i<8;i++){
   b.addEventListener("pointerup",up); b.addEventListener("pointercancel",up);
   cw.appendChild(b);
 }
+document.getElementById("sevBtn").addEventListener("pointerdown",()=>{
+  seventh=!seventh;
+  document.getElementById("sevBtn").classList.toggle("on",seventh);
+  paintChordLabels(); buildChord(cur);
+});
 document.getElementById("keyPrev").addEventListener("pointerdown",()=>setKey(keyIdx-1));
 document.getElementById("keyNext").addEventListener("pointerdown",()=>setKey(keyIdx+1));
 document.querySelectorAll(".tn").forEach(b=>b.addEventListener("pointerdown",()=>{ if(AC.state!=="running") AC.resume(); setTone(b.dataset.t); }));
@@ -306,6 +335,9 @@ if(/[?&]embed=1/.test(location.search)){
     capMute=AC.createGain(); capMute.gain.value=0;
     body1.connect(cap); cap.connect(capMute); capMute.connect(AC.destination);   // 聴こえている音（胴鳴り込み）を録る
     capOn=true; rb.textContent="■ 完了"; rb.classList.add("rec");
+  });
+  document.getElementById("gtrBeat").addEventListener("pointerdown",()=>{
+    parent.postMessage({type:"gtr-beat"}, location.origin);   // ビートは親側ACで鳴る＝この録音には混ざらない
   });
   document.getElementById("gtrClose").addEventListener("pointerdown",()=>{
     stopCap(false);
