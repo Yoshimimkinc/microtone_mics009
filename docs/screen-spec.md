@@ -639,3 +639,12 @@ nylon blend0.12/damp0.992/pick0.02/励起LP0.18/仕上げpostLP0.22(≈2kHz)/胴
 - 2カラム化: 左84px=コード縦1列（左手親指の可動域に8個・flexで全高フィル）/ 右=ストローク面（右手）
 - 低い弦を手前(下)に反転＝構えたギターを覗き込んだ見え方。弦名ラベル(E A D G B e、下=低E)追加
 - ストローク/ミュート/位置トーン全て回帰OK。本体版番はGTRキャッシュバスト用に更新
+
+## 81. 【v0.3.65】Guitar→パッド録音の導線＋GTR大幅強化
+ユーザー設計の導線を実装:「空きパッド＋→音源を選ぶ(Mic/読込/Resample/Guitar)→Guitarは演奏画面で●録音→演奏→■→パッドに入って波形編集」
+- MICS009: 録音ダイアログに「Guitar 🎸」→GTRを同一オリジンiframeで全画面表示（画面遷移なし＝ビート保持）。
+  PCMはpostMessage(transferable)で受領→pcmChunks経由でfinalizeRec共通経路（makeLofi→パッド→EDITモーダル）→名前「GTR <コード名>」
+- GTR: ?embed=1で●録音バー表示（body1出力をSPで捕音・60s上限・■完了でpost・✕でキャンセル）
+- GTR: 12キー×ダイアトニック8コード（I IV V vi ii iii bVII V7）＝E型バレーの音程計算で全キー。◀KEY▶で切替、コード名自動表示。バッファはキャッシュ＝押下即応
+- GTR: コードは「押さえている間だけ実音」離すと全弦ミュート（押弦の物理）。左手を離した状態のストロークはブラッシング
+- verify: keyC=C F G Am Dm Em Bb G7 / keyG転調正確 / hold実音0.995→離すと残響0 / e2e: pad6に「GTR C」peak0.824・EDITモーダル自動オープン・iframe撤去・0 errors
