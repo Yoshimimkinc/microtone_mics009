@@ -22,6 +22,20 @@
   .tn{flex:1;min-height:36px;border:1px solid var(--line);border-radius:8px;background:#0d1013;
     color:var(--dim);font:inherit;font-size:11px;letter-spacing:.18em;cursor:pointer;}
   .tn.on{color:var(--teal);border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.3);}
+  /* キー選択 */
+  .keyrow{display:flex;gap:8px;margin-bottom:8px;align-items:stretch;}
+  .kb{flex:0 0 56px;min-height:38px;border:1px solid var(--line);border-radius:8px;background:#0d1013;
+    color:var(--ink);font:inherit;font-size:14px;cursor:pointer;}
+  .kv{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;
+    letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-radius:8px;background:#171a1e;}
+  .kv b{color:var(--amber);font-size:16px;}
+  /* 録音バー（MICS009埋め込み時のみ表示） */
+  .recbar{display:none;gap:8px;margin-bottom:8px;}
+  .rb{flex:1;min-height:44px;border:1px solid var(--red);border-radius:8px;background:#1a0d0d;
+    color:var(--red);font:inherit;font-size:13px;font-weight:700;letter-spacing:.12em;cursor:pointer;}
+  .rb.rec{animation:rblink .8s ease-in-out infinite;background:var(--red);color:#fff;}
+  .rb.x{flex:0 0 84px;border-color:var(--line);color:var(--dim);background:#0d1013;}
+  @keyframes rblink{0%,100%{opacity:1;}50%{opacity:.55;}}
   /* 2カラム: 左手親指=コード列 / 右手=ストローク面（GarageBand/Real Guitar系の構え） */
   .main{flex:1;min-height:0;display:flex;gap:8px;}
   .chords{display:flex;flex-direction:column;gap:6px;width:84px;flex:0 0 84px;}
@@ -48,6 +62,15 @@
   <div class="tones" id="tones">
     <button class="tn on" data-t="steel">STEEL</button>
     <button class="tn" data-t="nylon">NYLON</button>
+  </div>
+  <div class="keyrow">
+    <button class="kb" id="keyPrev">◀</button>
+    <div class="kv">KEY <b id="keyName">C</b></div>
+    <button class="kb" id="keyNext">▶</button>
+  </div>
+  <div class="recbar" id="recbar">
+    <button class="rb" id="gtrRec">● 録音</button>
+    <button class="rb x" id="gtrClose">✕ 戻る</button>
   </div>
   <div class="main">
     <div class="chords" id="chords"></div>
@@ -103,24 +126,43 @@ function pluckBuffer(freq, sustain, tone){
   return buf;
 }
 
-// ===== コード定義（開放コードの実音周波数。nullはミュート弦） =====
-const F={E2:82.41,F2:87.31,G2:98.0,A2:110.0,B2:123.47,C3:130.81,D3:146.83,E3:164.81,F3:174.61,
-  G3:196.0,Gs3:207.65,A3:220.0,B3:246.94,C4:261.63,Cs4:277.18,D4:293.66,E4:329.63,Fs4:369.99,F4:349.23,G4:392.0};
-const CHORDS={
-  C :[null,F.C3,F.E3,F.G3,F.C4,F.E4],
-  G :[F.G2,F.B2,F.D3,F.G3,F.B3,F.G4],
-  Am:[null,F.A2,F.E3,F.A3,F.C4,F.E4],
-  F :[F.F2,F.C3,F.F3,F.A3,F.C4,F.F4],
-  Em:[F.E2,F.B2,F.E3,F.G3,F.B3,F.E4],
-  D :[null,null,F.D3,F.A3,F.D4,F.Fs4],
-  A :[null,F.A2,F.E3,F.A3,F.Cs4,F.E4],
-  E :[F.E2,F.B2,F.E3,F.Gs3,F.B3,F.E4],
-};
-let cur="E", bufs=[];   // 現コードの6弦バッファ
-function buildChord(name){
-  cur=name;
-  bufs=CHORDS[name].map(f=>f?pluckBuffer(f, 3.2, toneName):null);
-  document.querySelectorAll(".ch").forEach(b=>b.classList.toggle("on",b.dataset.c===name));
+// ===== コードシステム：12キー × ダイアトニック8コード（E型バレーの音程計算＝全キー対応） =====
+const OPEN=[82.41,110.0,146.83,196.0,246.94,329.63];   // E2 A2 D3 G3 B3 E4
+const NOTE=["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
+const SHAPE={maj:[0,2,2,1,0,0], min:[0,2,2,0,0,0], dom7:[0,2,0,1,0,0]};
+const DEGREES=[  // ポップスで使う8つ: I IV V vi ii iii bVII V7
+  {d:0,q:"maj",sfx:""},{d:5,q:"maj",sfx:""},{d:7,q:"maj",sfx:""},{d:9,q:"min",sfx:"m"},
+  {d:2,q:"min",sfx:"m"},{d:4,q:"min",sfx:"m"},{d:10,q:"maj",sfx:""},{d:7,q:"dom7",sfx:"7"},
+];
+let keyIdx=0;   // C
+function chordAt(i){
+  const g=DEGREES[i], n=(keyIdx+g.d-4+12)%12;   // E型バレーのフレット位置（E=4）
+  return { label: NOTE[(keyIdx+g.d)%12]+g.sfx,
+    freqs: OPEN.map((f,si)=>f*Math.pow(2,(n+SHAPE[g.q][si])/12)) };
+}
+let cur=0, bufs=[], curLabel="C";
+const bufCache=new Map();   // key:chord:tone → 6弦バッファ（押下を即応にする）
+function buildChord(i){
+  cur=i;
+  const c=chordAt(i); curLabel=c.label;
+  const ck=keyIdx+":"+i+":"+toneName;
+  if(!bufCache.has(ck)) bufCache.set(ck, c.freqs.map(f=>pluckBuffer(f, 3.2, toneName)));
+  bufs=bufCache.get(ck);
+  document.querySelectorAll(".ch").forEach((b,bi)=>b.classList.toggle("on",bi===cur));
+}
+function paintChordLabels(){
+  document.querySelectorAll(".ch").forEach((b,bi)=>{ b.textContent=chordAt(bi).label; });
+  document.getElementById("keyName").textContent=NOTE[keyIdx];
+}
+function setKey(k){
+  keyIdx=(k+12)%12;
+  paintChordLabels(); buildChord(cur);
+}
+// 左手を離したらミュート（押弦を離す＝音が止まる）。押さえていない時のストロークはブラッシング
+let chordHeld=false;
+function muteAll(){
+  const now=AC.currentTime;
+  ringing.forEach((v,i)=>{ if(v){ try{ v.g.gain.setTargetAtTime(0,now,0.02); v.s.stop(now+0.12); }catch(_){} ringing[i]=null; } });
 }
 function setTone(t){
   toneName=t;
@@ -160,7 +202,7 @@ function draw(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
   for(let i=0;i<6;i++){
-    const y=stringY(i), muted=!CHORDS[cur][i];
+    const y=stringY(i), muted=false;
     const w=1+(5-i)*0.5;                          // 低音弦ほど太く
     ctx.lineWidth=w+flash[i]*2;
     ctx.strokeStyle=muted?"#3a3226":(flash[i]>0.05?`rgba(255,${170+Math.floor(60*flash[i])},90,1)`:"#b7a98a");
@@ -194,7 +236,7 @@ function onMove(e){
   const dt=Math.max(1, e.timeStamp-p.t);
   const vel=Math.min(1, Math.abs(y1-y0)/dt*2.2);
   const x01=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-  const muted=hasRestingFinger(e.pointerId, e.timeStamp);
+  const muted=hasRestingFinger(e.pointerId, e.timeStamp) || !chordHeld;   // 置き指 or 左手を離している＝ブラッシング
   for(let i=0;i<6;i++){
     const sy=stringY(i);
     if((y0-sy)*(y1-sy)<0) playString(i, 0.35+vel*0.65, x01, muted);   // 跨いだ
@@ -210,23 +252,67 @@ zone.addEventListener("pointerdown",e=>{
   const r=zone.getBoundingClientRect(), y=e.clientY-r.top;
   const x01=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   let bi=0,bd=1e9; for(let i=0;i<6;i++){ const d2=Math.abs(stringY(i)-y); if(d2<bd){bd=d2;bi=i;} }
-  if(bd<24) playString(bi,0.6,x01,hasRestingFinger(e.pointerId,e.timeStamp));
+  if(bd<24) playString(bi,0.6,x01,hasRestingFinger(e.pointerId,e.timeStamp)||!chordHeld);
   try{ zone.setPointerCapture(e.pointerId); }catch(_){}
 });
 zone.addEventListener("pointermove",onMove);
 const end=e=>last.delete(e.pointerId);
 zone.addEventListener("pointerup",end); zone.addEventListener("pointercancel",end);
 
-// コードボタン
+// コードボタン: 押さえている間だけ実音（離す=ミュート）。ダイアトニック8個
 const cw=document.getElementById("chords");
-Object.keys(CHORDS).forEach(name=>{
+for(let i=0;i<8;i++){
   const b=document.createElement("button");
-  b.className="ch"; b.dataset.c=name; b.textContent=name;
-  b.addEventListener("pointerdown",()=>{ if(AC.state!=="running") AC.resume(); buildChord(name); });
+  b.className="ch";
+  b.addEventListener("pointerdown",e=>{ e.preventDefault(); if(AC.state!=="running") AC.resume();
+    buildChord(i); chordHeld=true;
+    try{ b.setPointerCapture(e.pointerId); }catch(_){} });
+  const up=()=>{ chordHeld=false; muteAll(); };
+  b.addEventListener("pointerup",up); b.addEventListener("pointercancel",up);
   cw.appendChild(b);
-});
+}
+document.getElementById("keyPrev").addEventListener("pointerdown",()=>setKey(keyIdx-1));
+document.getElementById("keyNext").addEventListener("pointerdown",()=>setKey(keyIdx+1));
 document.querySelectorAll(".tn").forEach(b=>b.addEventListener("pointerdown",()=>{ if(AC.state!=="running") AC.resume(); setTone(b.dataset.t); }));
-buildChord("E");
+
+// ===== MICS009埋め込み（?embed=1）：●録音→演奏→■完了でPCMを親へpostMessage＝パッドに入る =====
+if(/[?&]embed=1/.test(location.search)){
+  document.getElementById("recbar").style.display="flex";
+  const ft=document.querySelector(".foot"); if(ft) ft.style.display="none";
+  let cap=null, capMute=null, capChunks=[], capOn=false;
+  const rb=document.getElementById("gtrRec");
+  function stopCap(post){
+    if(!capOn) return;
+    capOn=false;
+    try{ body1.disconnect(cap); cap.disconnect(); capMute.disconnect(); }catch(_){}
+    cap.onaudioprocess=null;
+    rb.textContent="● 録音"; rb.classList.remove("rec");
+    if(!post) return;
+    const n=capChunks.reduce((a,c)=>a+c.length,0);
+    const full=new Float32Array(n); let o=0;
+    for(const c of capChunks){ full.set(c,o); o+=c.length; }
+    capChunks=[];
+    parent.postMessage({type:"gtr-take", sr:AC.sampleRate, label:"GTR "+curLabel, pcm:full.buffer}, location.origin, [full.buffer]);
+  }
+  rb.addEventListener("pointerdown",()=>{
+    if(AC.state!=="running") AC.resume();
+    if(capOn){ stopCap(true); return; }
+    capChunks=[];
+    cap=AC.createScriptProcessor(4096,1,1);
+    cap.onaudioprocess=ev=>{
+      capChunks.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+      if(capChunks.length*4096 > AC.sampleRate*60) stopCap(true);   // 60s上限
+    };
+    capMute=AC.createGain(); capMute.gain.value=0;
+    body1.connect(cap); cap.connect(capMute); capMute.connect(AC.destination);   // 聴こえている音（胴鳴り込み）を録る
+    capOn=true; rb.textContent="■ 完了"; rb.classList.add("rec");
+  });
+  document.getElementById("gtrClose").addEventListener("pointerdown",()=>{
+    stopCap(false);
+    parent.postMessage({type:"gtr-cancel"}, location.origin);
+  });
+}
+paintChordLabels(); buildChord(0);
 requestAnimationFrame(draw);
 </script>
 </body>

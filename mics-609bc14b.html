@@ -744,7 +744,7 @@
     border-radius:12px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.6);min-width:240px;max-width:90vw;}
   .rec-target{font-size:11px;letter-spacing:.06em;color:var(--ink);text-align:center;}
   .rec-target:empty{display:none;}
-  .rec-choose,.rec-active{display:flex;gap:10px;align-items:center;justify-content:center;}
+  .rec-choose,.rec-active{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;}
   .rec-meter{flex:1 1 90px;min-width:70px;height:8px;background:#0d1013;border:1px solid var(--line);border-radius:4px;overflow:hidden;}
   .rec-meter i{display:block;height:100%;width:0%;background:var(--teal);transition:width .08s linear;}
   .rec-dot{color:var(--red);font-size:18px;animation:blink .6s infinite;}
@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.64</div>
+  <div class="s-ver" id="splashVer">v0.3.65</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1055,6 +1055,7 @@
           <button class="t" id="recTab">Tab Audio</button>
           <button class="t" id="recMic">Mic</button>
           <button class="t" id="recResmp" title="鳴っている音をそのまま録る">Resample</button>
+          <button class="t" id="recGtr" title="ギターを演奏して録る">Guitar 🎸</button>
           <button class="t" id="recCancel">✕</button>
         </div>
         <div class="rec-active" id="recActive" style="display:none;">
@@ -4563,6 +4564,43 @@ document.getElementById("sampleBtn").addEventListener("click",()=>{ pickCaptureT
   if(ps) ps.addEventListener("click",()=>{ selected=peTarget; openSampleOverlay(); });
 })();
 document.getElementById("recResmp").addEventListener("click",()=>{ _resampling=true; startRec(); });
+// ===== Guitar（GTR）から録る：同一オリジンiframeで演奏→PCMをpostMessageで受領（画面遷移なし＝ビートを失わない） =====
+let _gtrFrame=null;
+function closeGtrFrame(){ if(_gtrFrame){ _gtrFrame.remove(); _gtrFrame=null; } }
+document.getElementById("recGtr").addEventListener("click",()=>{
+  recOverlay.classList.remove("show");
+  const wrap=document.createElement("div");
+  wrap.style.cssText="position:fixed;inset:0;z-index:10001;background:#121417;";
+  const f=document.createElement("iframe");
+  f.src="guitar-strum.html?embed=1&v="+APP_VERSION;
+  f.style.cssText="border:0;width:100%;height:100%;";
+  f.setAttribute("allow","autoplay");
+  wrap.appendChild(f); document.body.appendChild(wrap);
+  _gtrFrame=wrap;
+});
+window.addEventListener("message", async(e)=>{
+  if(e.origin!==location.origin || !e.data) return;
+  if(e.data.type==="gtr-cancel"){ closeGtrFrame(); return; }
+  if(e.data.type!=="gtr-take") return;
+  closeGtrFrame();
+  try{
+    let pcm=new Float32Array(e.data.pcm);
+    if(e.data.sr && Math.abs(e.data.sr-AC.sampleRate)>1){   // AC間のSR差は線形リサンプルで吸収（通常は同一）
+      const ratio=AC.sampleRate/e.data.sr, m=Math.floor(pcm.length*ratio), out=new Float32Array(m);
+      for(let i=0;i<m;i++){ const x=i/ratio, k=Math.floor(x), fr=x-k; out[i]=(pcm[k]||0)*(1-fr)+(pcm[k+1]||0)*fr; }
+      pcm=out;
+    }
+    pcmChunks=[pcm]; pcmLen=pcm.length; _lastRecWasResample=true;   // 合成音＝聴こえたまま（正規化しない）
+    await finalizeRec();   // 共通経路：makeLofi→パッド→EDITモーダル（波形編集）へ
+    const t=tracks[selected];
+    if(t && t.buffer){
+      t.name=(e.data.label||"GTR").slice(0,10);
+      padsEl.children[selected].querySelector(".nm").textContent=t.name;
+      sampNameEl.textContent="Sampled! "+t.name+" → PAD "+String(selected+1).padStart(2,"0");
+      refreshOpenPadEdit(selected);
+    }
+  }catch(_){ sampNameEl.textContent="IMPORT ERROR — GTRから受け取れなかった"; }
+});
 document.getElementById("recCancel").addEventListener("click",()=>{ stopRec(true); });
 document.getElementById("recTab").addEventListener("click",async()=>{
   try{
@@ -4934,7 +4972,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.64";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.65";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
