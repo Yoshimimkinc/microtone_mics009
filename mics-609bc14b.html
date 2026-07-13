@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.65</div>
+  <div class="s-ver" id="splashVer">v0.3.66</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1041,6 +1041,7 @@
             <button class="t" id="loadProjBtn">Load</button>
             <button class="t" id="exportWavBtn">WAV ↓</button>
             <button class="t" id="gtrBtn" title="ギターストロークシミュレーター（新しいタブで開く）">GTR 🎸</button>
+            <button class="t" id="scrBtn" title="DJスクラッチ（新しいタブで開く）">SCR 💿</button>
             <input type="file" id="projFile" accept=".mics,.json" style="display:none;">
           </div>
         </div>
@@ -4581,6 +4582,7 @@ document.getElementById("recGtr").addEventListener("click",()=>{
 window.addEventListener("message", async(e)=>{
   if(e.origin!==location.origin || !e.data) return;
   if(e.data.type==="gtr-cancel"){ closeGtrFrame(); return; }
+  if(e.data.type==="gtr-beat"){ playBtn.click(); return; }   // GTR画面からビート再生/停止（オーバーダブ用モニター）
   if(e.data.type!=="gtr-take") return;
   closeGtrFrame();
   try{
@@ -4812,7 +4814,8 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
 });
 
 // GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）
-document.getElementById("gtrBtn").addEventListener("click",()=>{ window.open("guitar-strum.html?v="+APP_VERSION,"_blank"); });   // 版番号でキャッシュバスト＝常に最新のGTRを開く
+document.getElementById("gtrBtn").addEventListener("click",()=>{ window.open("guitar-strum.html?v="+APP_VERSION,"_blank"); });
+document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj-scratch.html?v="+APP_VERSION,"_blank"); });   // 版番号でキャッシュバスト＝常に最新のGTRを開く
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
   try{
@@ -4972,7 +4975,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.65";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.66";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
