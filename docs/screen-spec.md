@@ -654,3 +654,9 @@ nylon blend0.12/damp0.992/pick0.02/励起LP0.18/仕上げpostLP0.22(≈2kHz)/胴
 - ミュート音を物理モデル化: 強ダンピングKS(0.88)+丸め励起+爪の「チッ」=専用0.22sバッファ（ゲート切り廃止）
 - ▶ビート: GTR埋め込み中にpostMessageで親トランスポート操作＝ビートを聴きながらギター録音（別ACなので録音にビートは混ざらない）
 - dj-scratch.html: テープヘッド方式（posを指へのバネ追従、逆再生自在）。素材はフォルマント合成の「アー」＋ハット。メニューにSCR💿
+
+## 83. 【v0.3.67】Web MIDI入力（USB鍵盤/パッドコントローラー対応）
+requestMIDIAccessで全入力を購読＋statechangeでホットプラグ。Note Onのみ処理（Note Off無視＝画面パッドと同じ挙動）。
+- 60-75(C4=中央のド=パッド1)→trigger(パッド1-16)、vel>=100でアクセント
+- それ以外→playVoice(selected, semi=note-60)＝選択パッドを半音演奏。SCALE設定はnoteSemi経由で有効
+- 接続時トースト表示。iOS SafariはWeb MIDI非対応（PC/Mac Chrome・Edge・Android Chromeで動作）
