@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.66</div>
+  <div class="s-ver" id="splashVer">v0.3.67</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -4816,6 +4816,29 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
 // GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）
 document.getElementById("gtrBtn").addEventListener("click",()=>{ window.open("guitar-strum.html?v="+APP_VERSION,"_blank"); });
 document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj-scratch.html?v="+APP_VERSION,"_blank"); });   // 版番号でキャッシュバスト＝常に最新のGTRを開く
+// ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
+// ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
+// 対応: PC/MacのChrome・Edge、Android Chrome。iOS SafariはWeb MIDI非対応
+(function initMIDI(){
+  if(!navigator.requestMIDIAccess) return;
+  navigator.requestMIDIAccess().then(ma=>{
+    const hook=inp=>{ inp.onmidimessage=ev=>{
+      const st=ev.data[0]&0xF0, note=ev.data[1], vel=ev.data[2];
+      if(st!==0x90 || !vel) return;   // Note On のみ（Note Offは無視＝パッドと同じワンショット/ループトグル）
+      if(AC.state!=="running") AC.resume();
+      if(note>=60 && note<=75) trigger(note-60, null, vel>=100);   // C4(中央のド)=パッド1
+      else { playVoice(selected, AC.currentTime, vel>=100, false, note-60); flashPad(selected); }   // それ以外=選択パッドを半音演奏
+    }; };
+    ma.inputs.forEach(hook);
+    ma.onstatechange=e=>{
+      if(e.port && e.port.type==="input" && e.port.state==="connected"){
+        hook(e.port); sampNameEl.textContent="MIDI: "+(e.port.name||"device")+" 接続";
+      }
+    };
+    if(ma.inputs.size) sampNameEl.textContent="MIDI READY — "+[...ma.inputs.values()].map(x=>x.name).join(", ");
+  }).catch(()=>{});
+})();
+
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
   try{
@@ -4975,7 +4998,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.66";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.67";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
