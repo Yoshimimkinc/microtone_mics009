@@ -660,3 +660,7 @@ requestMIDIAccessで全入力を購読＋statechangeでホットプラグ。Note
 - 60-75(C4=中央のド=パッド1)→trigger(パッド1-16)、vel>=100でアクセント
 - それ以外→playVoice(selected, semi=note-60)＝選択パッドを半音演奏。SCALE設定はnoteSemi経由で有効
 - 接続時トースト表示。iOS SafariはWeb MIDI非対応（PC/Mac Chrome・Edge・Android Chromeで動作）
+
+## 84. 【v0.3.68】空パッド：「＋」タップ＝ワンタップで音入れ（案1・Koala流）
+パッド中央40%×40%の「＋」ゾーンをタップ→即EDITモーダル（音源選択）。端のタップは選択＋案内トーストのみ。
+従来のダブルタップも併存（寛容）。＋の視認性を強化(30px/opacity .5)。

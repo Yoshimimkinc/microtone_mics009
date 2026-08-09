@@ -522,7 +522,7 @@
   .pad.hit .nm,.pad.hit .n{color:var(--hit-ink);}
   /* 空パッド＝招待：中央に薄い「＋」（説明なしで「ここに入れる」が伝わる） */
   .pad.pcat-empty::after{content:"＋";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-size:26px;font-weight:300;color:var(--dim);opacity:.35;pointer-events:none;}
+    font-size:30px;font-weight:300;color:var(--dim);opacity:.5;pointer-events:none;}   /* ＋＝押せるボタンとして少し主張 */
   .pad.pcat-empty .nm{opacity:.55;}
 
   /* sequencer — 16-row grid */
@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.67</div>
+  <div class="s-ver" id="splashVer">v0.3.68</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2306,7 +2306,7 @@ function trigger(i, time, accent=false){
     const nw=Date.now();
     if(_emptyTapI===i && nw-_emptyTapT<1600){ _emptyTapI=-1; flashPad(i); openPadEdit(i); return; }
     _emptyTapI=i; _emptyTapT=nw;
-    sampNameEl.textContent="空のパッド — もういちどタップで音を入れる";
+    sampNameEl.textContent="空のパッド — まんなかの「＋」をタップで音を入れる";
     flashPad(i); return;
   }
   // ループ系は手叩きでトグル（ON→OFF→ON…）。発音中のトリガで止める＝短いノートも作れる
@@ -2487,6 +2487,12 @@ PADS.forEach((p,i)=>{
     if(armMode==="chop"){ copyTap("pad", i); return; }   // COPY：元→先でパッド(音色+FX)をコピー（発音なし）
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     if(AC.state!=="running")await AC.resume();
+    // 空パッドの「＋」(中央40%)タップ＝ワンタップで音入れ（Koala流・案1）。端のタップは選択＋案内のみ
+    if(PADS[i].type==="empty" && !tracks[i].buffer){
+      const r=d.getBoundingClientRect();
+      const nx=(e.clientX-r.left)/r.width, ny=(e.clientY-r.top)/r.height;
+      if(nx>0.3&&nx<0.7&&ny>0.3&&ny<0.7){ selectPad(i); flashPad(i); openPadEdit(i); return; }
+    }
     trigger(i);selectPad(i,true);
   });
   d.addEventListener("pointermove",(e)=>{
@@ -4998,7 +5004,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.67";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.68";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
