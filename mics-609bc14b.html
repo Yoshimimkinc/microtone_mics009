@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.68</div>
+  <div class="s-ver" id="splashVer">v0.3.69</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2297,15 +2297,11 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
 }
 
 // ---------- trigger (UI/seq 共通入口) ----------
-let _emptyTapI=-1,_emptyTapT=0;   // 空パッド2度タップでEDITを開く用
 function trigger(i, time, accent=false){
   if(AC.state!=="running") AC.resume();
   const t=tracks[i];
-  // 空パッド＝無音の行き止まりにしない：招待トースト＋もう一度タップでEDIT（音を入れる導線へ直結）
+  // 空パッド：発音なし＝案内のみ。音入れは中央「＋」ワンタップに一本化（ダブルタップ遷移は廃止 v0.3.69）
   if(time==null && PADS[i].type==="empty" && !t.buffer){
-    const nw=Date.now();
-    if(_emptyTapI===i && nw-_emptyTapT<1600){ _emptyTapI=-1; flashPad(i); openPadEdit(i); return; }
-    _emptyTapI=i; _emptyTapT=nw;
     sampNameEl.textContent="空のパッド — まんなかの「＋」をタップで音を入れる";
     flashPad(i); return;
   }
@@ -5004,7 +5000,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.68";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.69";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
