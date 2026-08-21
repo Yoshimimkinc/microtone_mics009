@@ -676,3 +676,12 @@ D&D仕様（旧§86）はユーザー判断で中止・削除。理由: 既存CO
 - ノートコピーは値＋P-LOCK全パラメータ引き継ぎ（doCopy noteブランチ・pushUndo・別トラック行も可）
 - パッド/パターン/BARは既存のまま＝これで4種すべて同じ操作
 - 同一セル2度タップ=取消（note座標比較）。トースト表記「05·3」=トラック·ステップ
+
+## 87. 【v0.3.71】マルチアウト：パッドごとに OUT A/B（外部ミキサー2系統）
+KO Sidekick等の4ch以上USB出力機器向け。destination.maxChannelCount>=4でChannelMerger(4)に差し替え:
+- OUT A = ch1/2 ＝ 従来のマスター経路（SSM/コンプ/テープFX込み）
+- OUT B = ch3/4 ＝ ドライ送り（12bit/パッドフィルター/エンベロープ後、グループFX前）＝外部ミキサーで処理する前提。FXセンドも送らない
+- 最終段をmainOut集約（finalClip/ヒス/メトロノームclick）＝差し替え点を1箇所に
+- EDITモーダルADVに「OUT A|B」セグ。未接続時も設定可（トーストで「現在はAで出力」と明示）。.micsに保存(outBus)
+- ステレオ機器では全パッドA＝従来どおり。実測: フォールバック発音/保存往復/UI同期 pass・0 errors
+- 実機確認事項: Sidekick接続のChrome(PC/Mac)でch3/4分離・levels
