@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.70</div>
+  <div class="s-ver" id="splashVer">v0.3.71</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1145,6 +1145,10 @@
                 <option value="0">OFF</option><option>1</option><option>2</option><option>3</option>
                 <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
               </select></div>
+          </div>
+          <div class="modal-label" style="margin-top:14px;">OUT <span class="pe-hint">外部ミキサー2系統（4ch出力機器でBが有効）</span></div>
+          <div class="pe-row">
+            <div class="seg" id="peOutSeg"><button class="on" data-o="A">A</button><button data-o="B">B</button></div>
           </div>
           <div class="modal-label" style="margin-top:14px;">ATTACK · FADE</div>
           <div class="pe-row">
@@ -1577,7 +1581,10 @@ hissGain.gain.value = isMobileHiss ? 0.0002 : 0.0006;
 const hissLp = AC.createBiquadFilter();
 hissLp.type = "lowpass"; hissLp.frequency.value = 8500;
 hissNode.connect(hissHp); hissHp.connect(hissLp); hissLp.connect(hissGain);
-hissGain.connect(AC.destination);
+// ===== 最終段 mainOut：通常はステレオでdestinationへ。4ch機器接続時はch1/2(OUT A)へ差し替え =====
+const mainOut=AC.createGain();
+mainOut.connect(AC.destination);
+hissGain.connect(mainOut);
 hissNode.start();
 
 // ===== 低域倍音エンハンサー（固定・常時ON）=====
@@ -1622,7 +1629,28 @@ finalClip.curve = (()=>{ const N=4096, c=new Float32Array(N);
   for(let i=0;i<N;i++){ const x=(i/(N-1))*2-1, a=Math.abs(x);
     c[i]=Math.sign(x)*(a<=0.7 ? a : 0.7+0.3*Math.tanh((a-0.7)/0.3)); }
   return c; })();
-finalClip.connect(AC.destination);
+finalClip.connect(mainOut);
+// ===== OUT B（外部ミキサー2系統目＝ch3/4）：KO Sidekick等の4ch以上出力機器で有効 =====
+// OUT Bはドライ送り（12bit/パッドフィルター/エンベロープ後、グループFX・コンプ・テープの前）＝外部ミキサー側で処理する前提
+const outBGain=AC.createGain();
+let multiOut=false;
+function initMultiOut(){
+  if(multiOut) return;
+  try{
+    if((AC.destination.maxChannelCount||2)<4) return;   // ステレオ機器＝従来どおり全てOUT A
+    AC.destination.channelCount=4;
+    AC.destination.channelCountMode="explicit";
+    AC.destination.channelInterpretation="discrete";
+    const mg=AC.createChannelMerger(4);
+    mainOut.disconnect(AC.destination);
+    mainOut.connect(mg,0,0); mainOut.connect(mg,0,1);     // OUT A = ch1/2（マスターFX込み）
+    outBGain.connect(mg,0,2); outBGain.connect(mg,0,3);   // OUT B = ch3/4（ドライ）
+    mg.connect(AC.destination);
+    multiOut=true;
+    sampNameEl.textContent="MULTI OUT — OUT B (ch3/4) 有効";
+  }catch(e){}
+}
+setTimeout(initMultiOut, 800);   // 機器のch数はAC作成後に確定するため起動後に判定
 tapeDelay.connect(finalClip);
 
 // バイパス経路（OFF時）もテープを通す
@@ -2225,15 +2253,18 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   // p-lock: level(dB) があれば音量を上書き
   const baseVol = (plock && plock.level!=null) ? plock.level : t.vol;
   const peak = dbToGain(baseVol + (accent?3:0));
-  head.connect(env); env.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→[SSM2044]→masterGain
+  const toB = multiOut && t.outBus==="B";
+  head.connect(env);
+  if(toB) env.connect(outBGain);   // OUT B＝ドライ直行（グループFX/マスターを通らない）
+  else env.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→[SSM2044]→masterGain
   spDynOpen(GROUP_OF[i], when, accent);   // SSM2044ダイナミックフィルター：発音毎に開閉。アクセントはより開く＝強打の説得力
 
   // DELAY/REVERBセンド：p-lock(そのステップ)が優先、無ければ per-pad ベース送り(t.delaySend/reverbSend)
   let dSend=null, rSend=null;
   const dAmt = (plock && plock.delay!=null) ? plock.delay : (t.delaySend||0);
   const rAmt = (plock && plock.reverb!=null) ? plock.reverb : (t.reverbSend||0);
-  if(dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; env.connect(dSend); dSend.connect(tapeEcho); }
-  if(rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; env.connect(rSend); rSend.connect(reverbPre); }
+  if(!toB && dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; env.connect(dSend); dSend.connect(tapeEcho); }
+  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; env.connect(rSend); rSend.connect(reverbPre); }
 
   // 頭=アタック(フェードイン)、終端=フェード(フェードアウト)。未設定はプツ音回避の既定値。
   const ATT  = Math.max(0.001, (t.attack||0)/1000);
@@ -3188,7 +3219,7 @@ function scheduleClick(when, acc){
   if(!clickHi){ clickHi=_clickBuf(1568,0.05); clickLo=_clickBuf(1046,0.04); }
   const s2=AC.createBufferSource(); s2.buffer=acc?clickHi:clickLo;
   const g=AC.createGain(); g.gain.value=0.7;
-  s2.connect(g); g.connect(AC.destination); s2.start(Math.max(when,AC.currentTime));
+  s2.connect(g); g.connect(mainOut); s2.start(Math.max(when,AC.currentTime));
 }
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、
@@ -3646,6 +3677,7 @@ function openPadEdit(i){
   const ck=Math.min(8,t.choke||0);
   document.getElementById("peChokeToggle").classList.toggle("on",ck>0);
   document.getElementById("peChokeSel").value=ck;
+  [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x.dataset.o===(t.outBus||"A")));
   document.getElementById("peAdv").classList.remove("show");
   document.getElementById("peAdvToggle").textContent="ADV ▾";
   // CHOPプレビュー初期化（この編集パッドを対象に。既定 TIME / 8分割）
@@ -3866,6 +3898,12 @@ function openPadEdit(i){
     if(f==="lp" && t.cutoff>=10000){ t.cutoff=3000; document.getElementById("peCutR").value=3000; document.getElementById("peCut").textContent="3.0k"; }
     if(f==="hp" && t.cutoff>=10000){ t.cutoff=700;  document.getElementById("peCutR").value=700;  document.getElementById("peCut").textContent="0.7k"; }
     [...b.parentElement.children].forEach(x=>x.classList.toggle("on",x===b));
+  });
+  document.getElementById("peOutSeg").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    pushUndo(); tracks[peTarget].outBus=b.dataset.o;
+    [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x===b));
+    sampNameEl.textContent="OUT "+b.dataset.o+(multiOut?"":"（4ch機器未接続＝現在はAで出力）");
   });
   document.getElementById("peChokeSel").addEventListener("change",e=>{
     pushUndo(); const g=+e.target.value; tracks[peTarget].choke=g;
@@ -4817,7 +4855,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
         loopStart: crop?crop.loopStart:t.loopStart,
         filter:t.filter, cutoff:t.cutoff, reso:t.reso,
         choke:t.choke, mute:t.mute, solo:t.solo,
-        attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0,
+        attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A",
         patterns:t.patterns,
         locks:t.locks||{},
         audio: crop ? uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp)) : null,
@@ -4961,7 +4999,7 @@ async function applyProject(proj){
       t.start=pt.start??t.start??0; t.end=pt.end??t.end??1;   // 未指定はプリセットの自動トリム値を保持
       t.loop=pt.loop??t.loop??false; t.loopStart=pt.loopStart??t.loopStart??0;   // 未指定はプリセット既定を保持
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
-      t.attack=pt.attack??0; t.fade=pt.fade??3; t.delaySend=pt.delaySend??0; t.reverbSend=pt.reverbSend??0;
+      t.attack=pt.attack??0; t.fade=pt.fade??3; t.delaySend=pt.delaySend??0; t.reverbSend=pt.reverbSend??0; t.outBus=pt.outBus||"A";
       t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
       // パターン読込（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
       if(pt.patterns) for(let p=0;p<4;p++){
@@ -5017,7 +5055,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.70";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.71";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
