@@ -706,3 +706,28 @@ S2400等に「合わせる」作業自体を消す。verify: OFF時無視 / 147B
 → パラレルコンプ方式へ: 閾値は動かさず（コンプの効きは保つ）ドライを LIVE_DRY=0.35 だけ混ぜる。
 アタックはドライ経路から先に届くので先読み遅延の体感は消えるまま、段差は **実測-1.0dB**（約1/4）。
 ramp 25ms in / 180ms out・hold 1200ms。復帰は実測0.00dB（完全に戻る）。
+
+## 90. 【v0.3.75】敵対的UIレビュー（UI/操作感/感性の3隊）→ P0一括修正
+3隊が独立に同じ場所を指した収束点: ①メニュー「Sound (A/B 試聴)」に音色/編集/クリック/出力配線/MIDIが同居＝増築の歪み
+②GTR🎸/SCR💿がProject（自分のデータの列）に混在＋ファイル中カラー絵文字はこの3個だけ ③SYNCトーストの毎秒連発。
+
+**採用・修正（13件）**
+- outBusが swapPads/copyPadSound/snapshotState/restoreState に無い＝UNDOが嘘をつき、OUT B設定が別パッドに取り残される → 4経路に追加
+- MIDI入力が既定ON（§88の教訓がMIDIに未適用）＋ストームガード45notes/sは通常ビート(8notes/s)を素通り → **既定OFF**に
+- `if(!midiEnabled) return;` がクロック処理より前＝MIDI入力OFF/ストーム自動OFFでSYNCも黙って死ぬ（点灯が嘘） → 順序を入替えSYNCを独立
+- SYNCトーストが毎秒上書き（唯一のフィードバック窓を潰す） → 初回1回だけ告知、BPM表示は静かに追従＋paintPerf()
+- BPMスライダー min60/max180 vs SYNC追従域40-250＝黙ってクランプ→次に触ると飛ぶ → 40-250に統一
+- GTR全画面に親側の✕とESCが無い＝iframeが死ぬと操作不能（beforeunload無し＝リロードで全消失） → ✕とESCを追加
+- multiOutToggleがOFFにできない（押せないスイッチ＝嘘・プロジェクト規約「全モードはトグル」違反） → merger付け外しで実際にOFF可能に（channelCountには触らない）
+- WAV書き出し/OUT Bのパッドが無警告で欠落 → 書き出し中だけ outBGain→finalClip 合流
+- peOutSegが multiOut=false でもB点灯＝100%嘘 → `.inert`表示＋`→A`バッジ＋ヒント文を動的化。無変更pushUndoも抑止
+- トースト `white-space:nowrap`+`max-width:80vw`＝390px端末で約24文字、MIDI STORM(約510px必要)等が構造的に読めない → 折返し可・文字数連動表示時間
+- OSのalert()でデバッグダンプ（MIME/バイト数/decodeNG）を客に見せていた2箇所 → console.warnへ落とし機材語トースト1行に
+- paintCopyHLが#perfPats（横向き専用）しか塗らない＝スマホでCOPY元が完全に不可視。`.patbtn.copysrc`のCSSはあるのに付与コードが存在しなかった → SEQ/GRIDのA-D・小節・ノートセルまで拡張
+- COPYの異種タップが無言で元を差し替え→次のタップでパッドを丸ごと上書きする破壊経路 → 拒否＋案内に変更。arm()はCOPY離脱時に必ず元をリセット
+- 空パッドの「＋」: 固定30pxグリフ vs 可変高さ40%判定の不一致 → 44px円の実体＋半径判定に統一。着地先のEDITも空パッド時はLOAD/SMPLの2枚だけに（v0.3.65設計と実装がようやく一致）
+- メニュー再編: Sound / Timing / I/O / Source / Project の5セクションへ。ラベルから括弧の言い訳を削除、絵文字ゼロ
+
+**却下（操作感隊の反対意見を採用）**: SPP対応等のSYNC高機能化（土台に位相補正が無い状態で積まない）／COPYへの種別追加（種別混在が事故源）／OUT BのFX経路選択肢（設定が増えるだけ）
+
+**次回への持ち越し**: MIDI SYNCの位相補正（現状はBPM推定のみ・小節頭は合わない）／Perf LCDのターミナル調（`//`・`> ready _`・常時ヒント・トースト二重表示）／Perf+P-LOCK中にパッドが鳴らない／Master VUが合成値／トグルのa11y（role=switch）／COPYボタンだけtransportに残る配置／メニューのGTRはembed無しで録音できない入口の不統一
