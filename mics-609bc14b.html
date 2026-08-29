@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.72</div>
+  <div class="s-ver" id="splashVer">v0.3.74</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1034,6 +1034,7 @@
             <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム（再生中にクリック）</span></label>
             <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>マルチアウト OUT B（4ch出力機器・要明示ON）</span></label>
             <label class="toggle on" id="midiToggle"><span class="sw"></span><span>MIDI入力（USB鍵盤/パッド）</span></label>
+            <label class="toggle" id="midiSyncToggle"><span class="sw"></span><span>MIDI SYNC（外部クロックにテンポ/再生を追従）</span></label>
           </div>
         </div>
         <div class="modal-sec">
@@ -1678,11 +1679,21 @@ function _rampCompRouting(on, tc){
     bypassGain.gain.setTargetAtTime(1.0, t, tc);   // ON時の平均メイクアップ相当＝A/B音量差を縮める
   }
 }
+// ライブ叩き時は「全バイパス」ではなく**パラレルコンプ**でドライを少し混ぜるだけ（v0.3.74）。
+// 旧実装は完全バイパス＝コンプが効いている瞬間に切替わると逆に+4dB近く持ち上がり「変なダッキング」に聞こえた。
+// ドライを混ぜれば、アタックはドライ経路から先に届く＝先読み遅延の体感は消えるのに、音量/質感の段差はほぼ無い。
+const LIVE_DRY=0.35;   // ドライ混合量（0=無効, 1=全バイパス）。レベル差は実測±1dB程度に収まる
 function liveCompDuck(){
   if(!compOn) return;                                   // ユーザーがCOMP OFFなら関与しない
-  if(!_liveDuck){ _liveDuck=true; _rampCompRouting(false, 0.004); }   // 叩いた瞬間に速く切る
+  if(!_liveDuck){
+    _liveDuck=true;
+    const t=AC.currentTime;
+    comp.threshold.setTargetAtTime(compThreshold, t, 0.02);        // 閾値は動かさない＝コンプの効き自体は保つ
+    makeupGain.gain.setTargetAtTime(compMakeup*(1-LIVE_DRY), t, 0.025);
+    bypassGain.gain.setTargetAtTime(LIVE_DRY, t, 0.025);           // 25ms＝段差を感じない速さ
+  }
   clearTimeout(_liveDuckT);
-  _liveDuckT=setTimeout(()=>{ _liveDuck=false; if(compOn) _rampCompRouting(true, 0.05); }, 1500);   // ゆっくり復帰
+  _liveDuckT=setTimeout(()=>{ _liveDuck=false; if(compOn) _rampCompRouting(true, 0.18); }, 1200);   // 180msでそっと戻す
 }
 function setCompBypass(on){
   compOn = on;
@@ -3481,6 +3492,12 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
       sampNameEl.textContent="MULTI OUT — 解除はページ再読み込みで（安全のため動作中の配線替えはしない）";
     }
   });
+  const ms2=document.getElementById("midiSyncToggle");
+  if(ms2) ms2.addEventListener("click",()=>{
+    midiSync=!ms2.classList.contains("on"); ms2.classList.toggle("on",midiSync);
+    _ckTimes=[];
+    sampNameEl.textContent = midiSync ? "MIDI SYNC ON — 外部機器のテンポ/スタートに追従" : "MIDI SYNC OFF";
+  });
   const mi=document.getElementById("midiToggle");
   if(mi) mi.addEventListener("click",()=>{
     midiEnabled=!mi.classList.contains("on"); mi.classList.toggle("on",midiEnabled);
@@ -4896,10 +4913,35 @@ document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
 // 対応: PC/MacのChrome・Edge、Android Chrome。iOS SafariはWeb MIDI非対応
 let midiEnabled=true;
+let midiSync=false;      // MIDI SYNC＝外部クロック追従（S2400等に合わせる）。要明示ON
+let _ckTimes=[], _ckUiT=0;
+function handleClock(b0){
+  if(b0===0xFA||b0===0xFB){ _ckTimes=[]; if(!playing) playBtn.click(); return; }   // Start/Continue＝頭から再生
+  if(b0===0xFC){ if(playing) playBtn.click(); return; }                            // Stop
+  if(b0!==0xF8) return;
+  const now=performance.now();
+  if(_ckTimes.length){
+    const dt=now-_ckTimes[_ckTimes.length-1];
+    if(dt<=0 || dt>200){ _ckTimes=[now]; return; }   // 途切れ・外れ値はリセット（40BPM相当=62.5msが下限側）
+  }
+  _ckTimes.push(now);
+  if(_ckTimes.length>49) _ckTimes.shift();
+  if(_ckTimes.length>=25){   // 1拍(24クロック)ぶん以上たまったら平均間隔からBPM推定
+    const span=_ckTimes[_ckTimes.length-1]-_ckTimes[0];
+    const bpm=60000/((span/(_ckTimes.length-1))*24);
+    if(bpm>=40 && bpm<=250 && Math.abs(bpm-bpmVal)>0.3){
+      bpmVal=Math.round(bpm*10)/10;
+      const bi=document.getElementById("bpm"); if(bi) bi.value=bpmVal;
+      const br=document.getElementById("bpmRead"); if(br) br.textContent=bpmVal.toFixed(1);
+      if(typeof setDelayTempo==="function") setDelayTempo();
+      if(now-_ckUiT>1000){ _ckUiT=now; sampNameEl.textContent="SYNC "+bpmVal.toFixed(1)+" BPM"; }
+    }
+  }
+}
 let _midiNoteTimes=[];   // 洪水ガード: 外部シーケンサー(S2400等)のノート連射で発音エンジンを潰さない
 function handleMIDI(data){
   if(!midiEnabled) return;
-  if(data[0]>=0xF8) return;   // クロック/アクティブセンシング等のリアルタイム系(毎秒48-120通)は即捨て
+  if(data[0]>=0xF8){ if(midiSync) handleClock(data[0]); return; }   // リアルタイム系: SYNC ON時のみ追従、他は即捨て
   const st=data[0]&0xF0, note=data[1], vel=data[2];
   if(st!==0x90 || !vel) return;   // Note On のみ
   const now=performance.now();
@@ -5088,7 +5130,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.72";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.74";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
