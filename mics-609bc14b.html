@@ -957,7 +957,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.71</div>
+  <div class="s-ver" id="splashVer">v0.3.72</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1032,6 +1032,8 @@
             <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP チャンネルフィルター（出力ch別の丸み）</span></label>
             <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点ゼロ交差スナップ</span></label>
             <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム（再生中にクリック）</span></label>
+            <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>マルチアウト OUT B（4ch出力機器・要明示ON）</span></label>
+            <label class="toggle on" id="midiToggle"><span class="sw"></span><span>MIDI入力（USB鍵盤/パッド）</span></label>
           </div>
         </div>
         <div class="modal-sec">
@@ -1650,7 +1652,8 @@ function initMultiOut(){
     sampNameEl.textContent="MULTI OUT — OUT B (ch3/4) 有効";
   }catch(e){}
 }
-setTimeout(initMultiOut, 800);   // 機器のch数はAC作成後に確定するため起動後に判定
+// 自動有効化は廃止（v0.3.72）: S2400等「USBオーディオ機器でもあるハード」接続時に
+// 起動時のchannelCount/discrete強制がドライバを巻き込みフリーズする事故があったため、メニューから明示ONのみ
 tapeDelay.connect(finalClip);
 
 // バイパス経路（OFF時）もテープを通す
@@ -3468,6 +3471,22 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
     if(typeof applySpChFilter==="function") applySpChFilter();
     sampNameEl.textContent = spChFilterOn ? "SP チャンネルフィルター ON（出力ch別の丸み）" : "SP チャンネルフィルター OFF（素通し）";
   });
+  const mot=document.getElementById("multiOutToggle");
+  if(mot) mot.addEventListener("click",()=>{
+    if(!multiOut){
+      initMultiOut();
+      mot.classList.toggle("on", multiOut);
+      if(!multiOut) sampNameEl.textContent="MULTI OUT — 4ch以上の出力機器が見つからない（OS出力を確認）";
+    } else {
+      sampNameEl.textContent="MULTI OUT — 解除はページ再読み込みで（安全のため動作中の配線替えはしない）";
+    }
+  });
+  const mi=document.getElementById("midiToggle");
+  if(mi) mi.addEventListener("click",()=>{
+    midiEnabled=!mi.classList.contains("on"); mi.classList.toggle("on",midiEnabled);
+    _midiNoteTimes=[];
+    sampNameEl.textContent = midiEnabled ? "MIDI入力 ON" : "MIDI入力 OFF（外部機器のノートを無視）";
+  });
   const mt=document.getElementById("metroToggle");
   if(mt) mt.addEventListener("click",()=>{
     metroOn=!mt.classList.contains("on"); mt.classList.toggle("on",metroOn);
@@ -4876,20 +4895,34 @@ document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
 // 対応: PC/MacのChrome・Edge、Android Chrome。iOS SafariはWeb MIDI非対応
+let midiEnabled=true;
+let _midiNoteTimes=[];   // 洪水ガード: 外部シーケンサー(S2400等)のノート連射で発音エンジンを潰さない
+function handleMIDI(data){
+  if(!midiEnabled) return;
+  if(data[0]>=0xF8) return;   // クロック/アクティブセンシング等のリアルタイム系(毎秒48-120通)は即捨て
+  const st=data[0]&0xF0, note=data[1], vel=data[2];
+  if(st!==0x90 || !vel) return;   // Note On のみ
+  const now=performance.now();
+  _midiNoteTimes.push(now);
+  while(_midiNoteTimes.length && now-_midiNoteTimes[0]>1000) _midiNoteTimes.shift();
+  if(_midiNoteTimes.length>45){   // 1秒に45ノート超＝人間の演奏ではない→自動OFF（フリーズ防止）
+    midiEnabled=false; _midiNoteTimes=[];
+    const mt2=document.getElementById("midiToggle"); if(mt2) mt2.classList.remove("on");
+    sampNameEl.textContent="MIDI STORM — 外部シーケンサーのノート連射を検出、MIDI入力をOFFにしました";
+    return;
+  }
+  if(AC.state!=="running") AC.resume();
+  if(note>=60 && note<=75) trigger(note-60, null, vel>=100);   // C4(中央のド)=パッド1
+  else { playVoice(selected, AC.currentTime, vel>=100, false, note-60); flashPad(selected); }
+}
 (function initMIDI(){
   if(!navigator.requestMIDIAccess) return;
   navigator.requestMIDIAccess().then(ma=>{
-    const hook=inp=>{ inp.onmidimessage=ev=>{
-      const st=ev.data[0]&0xF0, note=ev.data[1], vel=ev.data[2];
-      if(st!==0x90 || !vel) return;   // Note On のみ（Note Offは無視＝パッドと同じワンショット/ループトグル）
-      if(AC.state!=="running") AC.resume();
-      if(note>=60 && note<=75) trigger(note-60, null, vel>=100);   // C4(中央のド)=パッド1
-      else { playVoice(selected, AC.currentTime, vel>=100, false, note-60); flashPad(selected); }   // それ以外=選択パッドを半音演奏
-    }; };
+    const hook=inp=>{ inp.onmidimessage=ev=>handleMIDI(ev.data); };
     ma.inputs.forEach(hook);
     ma.onstatechange=e=>{
       if(e.port && e.port.type==="input" && e.port.state==="connected"){
-        hook(e.port); sampNameEl.textContent="MIDI: "+(e.port.name||"device")+" 接続";
+        hook(e.port); sampNameEl.textContent="MIDI: "+(e.port.name||"device")+" 接続（メニューでOFF可）";
       }
     };
     if(ma.inputs.size) sampNameEl.textContent="MIDI READY — "+[...ma.inputs.values()].map(x=>x.name).join(", ");
@@ -5055,7 +5088,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.71";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.72";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
