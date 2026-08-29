@@ -521,8 +521,10 @@
   .pad.hit.hit-acc{box-shadow:0 0 30px 3px rgba(var(--hit-glow-a),.9);}  /* アクセント=より明るく点灯 */
   .pad.hit .nm,.pad.hit .n{color:var(--hit-ink);}
   /* 空パッド＝招待：中央に薄い「＋」（説明なしで「ここに入れる」が伝わる） */
-  .pad.pcat-empty::after{content:"＋";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-size:30px;font-weight:300;color:var(--dim);opacity:.5;pointer-events:none;}   /* ＋＝押せるボタンとして少し主張 */
+  /* ＋は実体のある円＝見た目とタッチ判定を一致させる（44pxのタッチターゲット） */
+  .pad.pcat-empty::after{content:"＋";position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;
+    display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px dashed var(--line);
+    font-size:26px;line-height:1;font-weight:300;color:var(--dim);opacity:.55;pointer-events:none;}
   .pad.pcat-empty .nm{opacity:.55;}
 
   /* sequencer — 16-row grid */
@@ -626,6 +628,7 @@
   body.edit-arm .pads .pad::after{content:"";position:absolute;inset:0;border:1px dashed rgba(91,157,255,.55);border-radius:9px;pointer-events:none;}
   .pad.copysrc{box-shadow:0 0 0 2px #ffd24d inset,0 4px 8px rgba(0,0,0,.4);}
   /* COPY元（パターン/小節）＝黄リング（パッドと同じ） */
+  .stepbtn.copysrc,.step.copysrc,.seg button.copysrc,
   .perf-pat.copysrc,.perf-bar.copysrc,.patbtn.copysrc{box-shadow:0 0 0 2px #ffd24d inset, 0 0 10px rgba(255,210,77,.5)!important;z-index:3;}
   /* EDIT中のドラッグ並べ替え：掴み元(copyarm=コピー待機)とドロップ先(droptgt) */
   .pad.dragsrc{box-shadow:0 0 0 2px var(--teal) inset,0 6px 12px rgba(0,0,0,.5);opacity:.85;}
@@ -693,6 +696,8 @@
   .pe-row .knob{flex:1 1 84px;}
   .pe-row .toggle{align-self:flex-end;}   /* トグルとノブのベースライン統一 */
   .pe-hint{font-size:9px;color:var(--dim);letter-spacing:.04em;text-transform:none;margin-left:7px;}
+  #peOutSeg.inert{opacity:.45;}
+  #peOutSeg.inert button.on::after{content:"→A";font-size:8px;margin-left:3px;color:var(--amber);}   /* Bを選んでいるが今はAに落ちている */
   /* 機材然とした抑制トーン：ベタ塗りの巨大ボタンは廃止。ダーク＋細枠＋控えめアクセント */
   .pe-transport{display:flex;gap:8px;margin:10px 0 0;}
   .pe-chop{display:flex;gap:6px;margin:8px 0 0;align-items:center;flex-wrap:nowrap;}   /* 1行に収める */
@@ -714,6 +719,13 @@
   .pe-adv-toggle:hover{border-color:var(--edge);color:var(--ink);}
   .pe-adv{display:none;margin-top:12px;}
   .pe-adv.show{display:block;}
+  /* 空パッド＝音源を選ぶ画面。波形やパラメータは音が入ってから */
+  .pe-empty .pe-over,.pe-empty .pe-wave,.pe-empty .pe-transport,.pe-empty .pe-chop,
+  .pe-empty .pe-basic,.pe-empty .pe-adv-toggle,.pe-empty .pe-adv{display:none;}
+  .pe-empty .pe-sample{flex-direction:column;gap:10px;margin-top:6px;}
+  .pe-empty .pe-sample .loadbtn{width:100%;font-size:14px;min-height:54px;display:flex;
+    align-items:center;justify-content:center;border-radius:10px;}
+  .pe-empty .pe-sample-hint{margin:0;text-align:center;}
   .pe-adv.show .modal-label:first-child{margin-top:0;}
   .pe-row .knob.mini.pe-wide{flex:1 1 100%;max-width:none;min-width:0;}   /* Pitch/Level＝スライダーを横幅一杯に */
   @media(max-width:380px){ .pe-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;}
@@ -735,7 +747,7 @@
   .toast{position:fixed;left:50%;top:84px;transform:translateX(-50%) translateY(-6px);
     background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
     border-radius:10px;padding:9px 14px;color:var(--ink);font-size:11px;letter-spacing:.06em;
-    max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    max-width:min(88vw,420px);white-space:normal;line-height:1.5;text-align:center;
     opacity:0;pointer-events:none;z-index:9992;box-shadow:0 14px 40px rgba(0,0,0,.55);
     transition:opacity .18s,transform .18s;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -957,7 +969,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.74</div>
+  <div class="s-ver" id="splashVer">v0.3.75</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -983,7 +995,7 @@
           <div class="modal-label">Tempo / Swing</div>
           <div class="tempo-row" style="flex-wrap:wrap;align-items:center;gap:14px;">
             <div class="ctrl">Tempo
-              <input type="range" id="bpm" min="60" max="180" step="0.5" value="100">
+              <input type="range" id="bpm" min="40" max="250" step="0.5" value="100">
               <div class="readout" id="bpmRead">100.0</div>
             </div>
             <div class="ctrl">Swing
@@ -1026,15 +1038,32 @@
           </div>
         </div>
         <div class="modal-sec">
-          <div class="modal-label">Sound (A/B 試聴)</div>
+          <div class="modal-label">Sound</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
-            <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC — 2段変換（OFF=1段）</span></label>
-            <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP チャンネルフィルター（出力ch別の丸み）</span></label>
-            <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点ゼロ交差スナップ</span></label>
-            <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム（再生中にクリック）</span></label>
-            <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>マルチアウト OUT B（4ch出力機器・要明示ON）</span></label>
-            <label class="toggle on" id="midiToggle"><span class="sw"></span><span>MIDI入力（USB鍵盤/パッド）</span></label>
-            <label class="toggle" id="midiSyncToggle"><span class="sw"></span><span>MIDI SYNC（外部クロックにテンポ/再生を追従）</span></label>
+            <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC</span></label>
+            <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP CH FILTER</span></label>
+            <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点スナップ</span></label>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Timing</div>
+          <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム</span></label>
+            <label class="toggle" id="midiSyncToggle"><span class="sw"></span><span>MIDI SYNC — そとのテンポに合わせる</span></label>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">I/O</div>
+          <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <label class="toggle" id="midiToggle"><span class="sw"></span><span>そとの鍵盤で叩く</span></label>
+            <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>OUT B — ch3/4</span></label>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Source</div>
+          <div class="modal-btns">
+            <button class="t" id="gtrBtn" title="ギターを開く">GTR</button>
+            <button class="t" id="scrBtn" title="スクラッチを開く">SCR</button>
           </div>
         </div>
         <div class="modal-sec">
@@ -1043,8 +1072,6 @@
             <button class="t" id="saveBtn">Save</button>
             <button class="t" id="loadProjBtn">Load</button>
             <button class="t" id="exportWavBtn">WAV ↓</button>
-            <button class="t" id="gtrBtn" title="ギターストロークシミュレーター（新しいタブで開く）">GTR 🎸</button>
-            <button class="t" id="scrBtn" title="DJスクラッチ（新しいタブで開く）">SCR 💿</button>
             <input type="file" id="projFile" accept=".mics,.json" style="display:none;">
           </div>
         </div>
@@ -1059,7 +1086,7 @@
           <button class="t" id="recTab">Tab Audio</button>
           <button class="t" id="recMic">Mic</button>
           <button class="t" id="recResmp" title="鳴っている音をそのまま録る">Resample</button>
-          <button class="t" id="recGtr" title="ギターを演奏して録る">Guitar 🎸</button>
+          <button class="t" id="recGtr" title="ギターを演奏して録る">Guitar</button>
           <button class="t" id="recCancel">✕</button>
         </div>
         <div class="rec-active" id="recActive" style="display:none;">
@@ -1149,7 +1176,7 @@
                 <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
               </select></div>
           </div>
-          <div class="modal-label" style="margin-top:14px;">OUT <span class="pe-hint">外部ミキサー2系統（4ch出力機器でBが有効）</span></div>
+          <div class="modal-label" style="margin-top:14px;">OUT <span class="pe-hint" id="peOutHint">A=MASTER / B=DRY</span></div>
           <div class="pe-row">
             <div class="seg" id="peOutSeg"><button class="on" data-o="A">A</button><button data-o="B">B</button></div>
           </div>
@@ -1636,7 +1663,7 @@ finalClip.connect(mainOut);
 // ===== OUT B（外部ミキサー2系統目＝ch3/4）：KO Sidekick等の4ch以上出力機器で有効 =====
 // OUT Bはドライ送り（12bit/パッドフィルター/エンベロープ後、グループFX・コンプ・テープの前）＝外部ミキサー側で処理する前提
 const outBGain=AC.createGain();
-let multiOut=false;
+let multiOut=false, _outMerger=null;
 function initMultiOut(){
   if(multiOut) return;
   try{
@@ -1644,7 +1671,7 @@ function initMultiOut(){
     AC.destination.channelCount=4;
     AC.destination.channelCountMode="explicit";
     AC.destination.channelInterpretation="discrete";
-    const mg=AC.createChannelMerger(4);
+    const mg=_outMerger=AC.createChannelMerger(4);
     mainOut.disconnect(AC.destination);
     mainOut.connect(mg,0,0); mainOut.connect(mg,0,1);     // OUT A = ch1/2（マスターFX込み）
     outBGain.connect(mg,0,2); outBGain.connect(mg,0,3);   // OUT B = ch3/4（ドライ）
@@ -2036,7 +2063,7 @@ function snapshotState(){
     fxReverbOn:(typeof fxReverbOn!=="undefined"?fxReverbOn:true),
     tracks: tracks.map((t,i)=>({
       vol:t.vol,tune:t.tune,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,
-      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,delaySend:t.delaySend,reverbSend:t.reverbSend,
+      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,delaySend:t.delaySend,reverbSend:t.reverbSend,outBus:t.outBus||"A",
       mute:t.mute,solo:t.solo,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
@@ -2056,7 +2083,7 @@ function restoreState(s){
   tracks.forEach((t,i)=>{
     const x=s.tracks[i];
     t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
-    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;
+    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";
     t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
     PADS[i].type=x.type;PADS[i].voice=x.voice;
     t.patterns=x.patterns;
@@ -2465,7 +2492,7 @@ new MutationObserver(()=>{
   const t=(sampNameEl.textContent||"").trim(), has=!!t;
   sampNameEl.classList.toggle("show",has);
   if(_toastTimer){ clearTimeout(_toastTimer); _toastTimer=null; }
-  if(has){ _toastTimer=setTimeout(()=>{ sampNameEl.classList.remove("show"); _toastTimer=null; }, 2400); }
+  if(has){ _toastTimer=setTimeout(()=>{ sampNameEl.classList.remove("show"); _toastTimer=null; }, Math.min(6000, 2000+t.length*70)); }   // 長文ほど長く出す
   const cm=document.getElementById("clMsg"); if(cm) cm.textContent=t||"ready";   // コマンドライン窓に操作内容を逐次表示（どんどん出す）
 }).observe(sampNameEl,{childList:true,characterData:true,subtree:true});
 const viewPadsEl = document.getElementById("viewPads");
@@ -2531,8 +2558,9 @@ PADS.forEach((p,i)=>{
     // 空パッドの「＋」(中央40%)タップ＝ワンタップで音入れ（Koala流・案1）。端のタップは選択＋案内のみ
     if(PADS[i].type==="empty" && !tracks[i].buffer){
       const r=d.getBoundingClientRect();
-      const nx=(e.clientX-r.left)/r.width, ny=(e.clientY-r.top)/r.height;
-      if(nx>0.3&&nx<0.7&&ny>0.3&&ny<0.7){ selectPad(i); flashPad(i); openPadEdit(i); return; }
+      const dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
+      const rad=Math.min(24, r.height*0.45);   // 円の見た目と同じ判定。低いパッドでも破綻しない
+      if(Math.hypot(dx,dy)<=rad){ selectPad(i); flashPad(i); openPadEdit(i); return; }
     }
     trigger(i);selectPad(i,true);
   });
@@ -2795,7 +2823,7 @@ function copyPadSound(src,dst){
   d.tune=s.tune; d.start=s.start; d.end=s.end;
   d.loop=s.loop; d.loopStart=s.loopStart;
   d.filter=s.filter; d.cutoff=s.cutoff; d.reso=s.reso;
-  d.vol=s.vol; d.choke=s.choke; d.scale=s.scale; d.attack=s.attack; d.fade=s.fade; d.delaySend=s.delaySend; d.reverbSend=s.reverbSend;
+  d.vol=s.vol; d.choke=s.choke; d.scale=s.scale; d.attack=s.attack; d.fade=s.fade; d.delaySend=s.delaySend; d.reverbSend=s.reverbSend; d.outBus=s.outBus||"A";
   d.name=s.name;
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
@@ -2845,8 +2873,17 @@ function doCopy(type,src,dst){
 }
 function paintCopyHL(){
   paintPadStates();
-  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.classList.toggle("copysrc", !!copyArm && copyArm.type==="pat" && copyArm.idx===+b.dataset.p));
-  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("copysrc", !!copyArm && copyArm.type==="bar" && copyArm.idx===+b.dataset.b));
+  const hit=(sel,ty,key)=>document.querySelectorAll(sel).forEach(b=>
+    b.classList.toggle("copysrc", !!copyArm && copyArm.type===ty && copyArm.idx===+b.dataset[key]));
+  hit("#perfPats .perf-pat","pat","p"); hit("#perfPats .perf-bar","bar","b");
+  hit("#patSeg button,#gPatSeg button","pat","p");     // SEQ/GRID＝スマホの実画面（今まで塗られていなかった）
+  hit("#barSeg button,#gBarSeg button","bar","b");
+  const isNote=!!copyArm && copyArm.type==="note";
+  document.querySelectorAll("#stepStrip .stepbtn").forEach((b,si)=>
+    b.classList.toggle("copysrc", isNote && copyArm.idx.t===selected && copyArm.idx.s===si));
+  document.querySelectorAll("#grid .row").forEach((row,ti)=>
+    row.querySelectorAll(".step").forEach((c,si)=>
+      c.classList.toggle("copysrc", isNote && copyArm.idx.t===ti && copyArm.idx.s===si)));
 }
 function refreshAfterCopy(type){ if(type==="pad") return;   // pad は copyPadSound が描画
   if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
@@ -2858,7 +2895,8 @@ function copyTap(type,idx){
   if(!copyArm){ copyArm={type,idx}; sampNameEl.textContent="COPY元 "+COPY_LABEL[type]+" "+copyName(type,idx)+" → コピー先をタップ"; }
   else if(copyArm.type===type && (type==="note" ? (copyArm.idx.t===idx.t&&copyArm.idx.s===idx.s) : copyArm.idx===idx)){ copyArm=null; sampNameEl.textContent="COPY 取消"; }
   else if(copyArm.type===type){ const s=copyArm.idx; doCopy(type,s,idx); sampNameEl.textContent="COPY "+COPY_LABEL[type]+" "+copyName(type,s)+"→"+copyName(type,idx)+"  ↩で戻せる"; copyArm=null; refreshAfterCopy(type); arm("chop",false); return true; }  /* 元→先 完了でCOPYをトグル消費＝自動オフ */
-  else { copyArm={type,idx}; sampNameEl.textContent="COPY元 "+COPY_LABEL[type]+" "+copyName(type,idx)+" → コピー先をタップ"; }
+  else { // 種別が違うタップは「無言で元を差し替え」ない＝ノートを移すつもりでパッドを潰す事故を防ぐ
+    sampNameEl.textContent="COPY中は "+COPY_LABEL[copyArm.type]+" どうしを選ぶ — 種類を変えるならCOPYをもう一度押す"; }
   paintCopyHL();
   return true;
 }
@@ -2874,7 +2912,7 @@ function swapPads(a,b){
   if(a===b) return;
   pushUndo();
   const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend"]){
+  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus"]){
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   let t=PADS[a].type;  PADS[a].type=PADS[b].type;   PADS[b].type=t;
@@ -2901,7 +2939,7 @@ function assignMS(i){
 let _editHintShown=false;
 function arm(mode,on){
   armMode = on?mode:null;
-  if(!on){ copyArm=null; if(typeof paintCopyHL==="function") paintCopyHL(); } // 解除でCOPY元リセット
+  if(armMode!=="chop"){ copyArm=null; if(typeof paintCopyHL==="function") paintCopyHL(); }   // COPYから離れたら必ず元をリセット（他モードへ切替でも）
   document.getElementById("holdMute").classList.toggle("armed",armMode==="mute");
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
@@ -3474,7 +3512,7 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
   if(dac) dac.addEventListener("click",()=>{
     const on=!dac.classList.contains("on"); dac.classList.toggle("on",on);
     if(spDacNode) try{ spDacNode.port.postMessage({bypass:!on}); }catch(_){}   // ON=2段(DAC有効) / OFF=1段(素通り)
-    sampNameEl.textContent = on ? "VINTAGE DAC ON（2段変換）" : "VINTAGE DAC OFF（1段）";
+    sampNameEl.textContent = on ? "VINTAGE DAC ON" : "VINTAGE DAC OFF";
   });
   const spf=document.getElementById("spFilterToggle");
   if(spf) spf.addEventListener("click",()=>{
@@ -3487,15 +3525,21 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
     if(!multiOut){
       initMultiOut();
       mot.classList.toggle("on", multiOut);
-      if(!multiOut) sampNameEl.textContent="MULTI OUT — 4ch以上の出力機器が見つからない（OS出力を確認）";
-    } else {
-      sampNameEl.textContent="MULTI OUT — 解除はページ再読み込みで（安全のため動作中の配線替えはしない）";
+      if(!multiOut) sampNameEl.textContent="OUT B — 4ch出力が見つからない";
+    } else {   // OFF: channelCountには触らずマージャの付け外しだけ＝安全に戻せる
+      try{
+        mainOut.disconnect(_outMerger); outBGain.disconnect(_outMerger);
+        _outMerger.disconnect(); _outMerger=null;
+        mainOut.connect(AC.destination);
+        multiOut=false; mot.classList.remove("on");
+        sampNameEl.textContent="OUT B — OFF";
+      }catch(_){ sampNameEl.textContent="OUT B — 切替に失敗"; }
     }
   });
   const ms2=document.getElementById("midiSyncToggle");
   if(ms2) ms2.addEventListener("click",()=>{
     midiSync=!ms2.classList.contains("on"); ms2.classList.toggle("on",midiSync);
-    _ckTimes=[];
+    _ckTimes=[]; _ckUiT=0;
     sampNameEl.textContent = midiSync ? "MIDI SYNC ON — 外部機器のテンポ/スタートに追従" : "MIDI SYNC OFF";
   });
   const mi=document.getElementById("midiToggle");
@@ -3714,6 +3758,9 @@ function openPadEdit(i){
   document.getElementById("peChokeToggle").classList.toggle("on",ck>0);
   document.getElementById("peChokeSel").value=ck;
   [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x.dataset.o===(t.outBus||"A")));
+  document.getElementById("peOutSeg").classList.toggle("inert", !multiOut);
+  document.getElementById("peOutHint").textContent = multiOut ? "A=MASTER / B=DRY ch3/4" : "4ch機器なし — いまは全部Aから出ている";
+  document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
   document.getElementById("peAdv").classList.remove("show");
   document.getElementById("peAdvToggle").textContent="ADV ▾";
   // CHOPプレビュー初期化（この編集パッドを対象に。既定 TIME / 8分割）
@@ -3937,9 +3984,10 @@ function openPadEdit(i){
   });
   document.getElementById("peOutSeg").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b) return;
+    if(tracks[peTarget].outBus===b.dataset.o) return;   // 無変更でUndoスタックを埋めない
     pushUndo(); tracks[peTarget].outBus=b.dataset.o;
     [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x===b));
-    sampNameEl.textContent="OUT "+b.dataset.o+(multiOut?"":"（4ch機器未接続＝現在はAで出力）");
+    sampNameEl.textContent="OUT "+b.dataset.o+(multiOut?"":" — 4ch機器なし、いまはAから出る");
   });
   document.getElementById("peChokeSel").addEventListener("change",e=>{
     pushUndo(); const g=+e.target.value; tracks[peTarget].choke=g;
@@ -4093,7 +4141,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
   // 診断ログ（実機で何が起きたか確定させるため画面に出す）
   const dbg=["type="+(f.type||"?"), (f.size/1048576).toFixed(2)+"MB"];
   const show=m=>{ sampNameEl.textContent=m; };
-  show("読込中… "+dbg.join(" "));
+  show("LOADING…");   // 診断値(MIME/サイズ)は出さない
   try{
     if(!f.size) throw new Error("size=0 (iCloud DL未完了かも)");
     const arr = await f.arrayBuffer();
@@ -4127,8 +4175,10 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     openPadEdit(target);   // 取り込み後は即EDIT＝波形で範囲(STRT/END)を指定→TRIMできる
   }catch(err){
     const m=(err&&err.message)?err.message:String(err);
-    show("✕ "+m);
-    try{ alert("取り込み診断:\n"+m); }catch(_){}
+    show(/size=0/.test(m) ? "EMPTY FILE — ダウンロード待ちかも"
+       : /抽出不可|decodeNG/.test(m) ? "NO AUDIO — この形式は読めない"
+       : "LOAD FAILED — 読み込めなかった");
+    console.warn("[load]",m);   // 診断は開発者コンソールへ。客には機材語のトースト1行だけ
   }
 });
 
@@ -4661,6 +4711,7 @@ document.getElementById("recResmp").addEventListener("click",()=>{ _resampling=t
 // ===== Guitar（GTR）から録る：同一オリジンiframeで演奏→PCMをpostMessageで受領（画面遷移なし＝ビートを失わない） =====
 let _gtrFrame=null;
 function closeGtrFrame(){ if(_gtrFrame){ _gtrFrame.remove(); _gtrFrame=null; } }
+window.addEventListener("keydown",e=>{ if(e.key==="Escape" && _gtrFrame) closeGtrFrame(); });
 document.getElementById("recGtr").addEventListener("click",()=>{
   recOverlay.classList.remove("show");
   const wrap=document.createElement("div");
@@ -4669,7 +4720,12 @@ document.getElementById("recGtr").addEventListener("click",()=>{
   f.src="guitar-strum.html?embed=1&v="+APP_VERSION;
   f.style.cssText="border:0;width:100%;height:100%;";
   f.setAttribute("allow","autoplay");
-  wrap.appendChild(f); document.body.appendChild(wrap);
+  const x=document.createElement("button");
+  x.textContent="✕";
+  x.style.cssText="position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));"+
+    "z-index:2;width:40px;height:40px;border-radius:8px;border:1px solid #32383f;background:rgba(13,16,19,.85);color:#8b919a;font-size:16px;cursor:pointer;";
+  x.addEventListener("click",closeGtrFrame);   // iframeが読めない/固まっても必ず脱出できる
+  wrap.appendChild(f); wrap.appendChild(x); document.body.appendChild(wrap);
   _gtrFrame=wrap;
 });
 window.addEventListener("message", async(e)=>{
@@ -4912,7 +4968,7 @@ document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
 // 対応: PC/MacのChrome・Edge、Android Chrome。iOS SafariはWeb MIDI非対応
-let midiEnabled=true;
+let midiEnabled=false;   // ハードに触る機能は必ず明示ON（§88の教訓をMIDI入力にも適用）
 let midiSync=false;      // MIDI SYNC＝外部クロック追従（S2400等に合わせる）。要明示ON
 let _ckTimes=[], _ckUiT=0;
 function handleClock(b0){
@@ -4934,14 +4990,16 @@ function handleClock(b0){
       const bi=document.getElementById("bpm"); if(bi) bi.value=bpmVal;
       const br=document.getElementById("bpmRead"); if(br) br.textContent=bpmVal.toFixed(1);
       if(typeof setDelayTempo==="function") setDelayTempo();
-      if(now-_ckUiT>1000){ _ckUiT=now; sampNameEl.textContent="SYNC "+bpmVal.toFixed(1)+" BPM"; }
+      if(typeof paintPerf==="function") paintPerf();   // PerformanceのBPM表示が固まらないように
+      if(!_ckUiT){ _ckUiT=1; sampNameEl.textContent="SYNC — EXT CLOCK"; }   // 告知は最初の1回だけ。以後BPM表示だけ静かに追従
     }
   }
 }
 let _midiNoteTimes=[];   // 洪水ガード: 外部シーケンサー(S2400等)のノート連射で発音エンジンを潰さない
 function handleMIDI(data){
+  // クロックはノート入力のON/OFFと独立（MIDI入力OFFでもSYNCは生きる＝トグルの点灯が嘘をつかない）
+  if(data[0]>=0xF8){ if(midiSync) handleClock(data[0]); return; }
   if(!midiEnabled) return;
-  if(data[0]>=0xF8){ if(midiSync) handleClock(data[0]); return; }   // リアルタイム系: SYNC ON時のみ追従、他は即捨て
   const st=data[0]&0xF0, note=data[1], vel=data[2];
   if(st!==0x90 || !vel) return;   // Note On のみ
   const now=performance.now();
@@ -4950,7 +5008,7 @@ function handleMIDI(data){
   if(_midiNoteTimes.length>45){   // 1秒に45ノート超＝人間の演奏ではない→自動OFF（フリーズ防止）
     midiEnabled=false; _midiNoteTimes=[];
     const mt2=document.getElementById("midiToggle"); if(mt2) mt2.classList.remove("on");
-    sampNameEl.textContent="MIDI STORM — 外部シーケンサーのノート連射を検出、MIDI入力をOFFにしました";
+    sampNameEl.textContent="MIDI STORM — 連射を検出、入力を止めた";
     return;
   }
   if(AC.state!=="running") AC.resume();
@@ -4964,10 +5022,10 @@ function handleMIDI(data){
     ma.inputs.forEach(hook);
     ma.onstatechange=e=>{
       if(e.port && e.port.type==="input" && e.port.state==="connected"){
-        hook(e.port); sampNameEl.textContent="MIDI: "+(e.port.name||"device")+" 接続（メニューでOFF可）";
+        hook(e.port); sampNameEl.textContent="MIDI IN — "+((e.port.name||"DEVICE").toUpperCase())+(midiEnabled?"":"（メニューでONにすると鳴らせる）");
       }
     };
-    if(ma.inputs.size) sampNameEl.textContent="MIDI READY — "+[...ma.inputs.values()].map(x=>x.name).join(", ");
+    // 起動直後のトーストは出さない（機材はケーブルを挿しただけで喋らない）。接続はstatechangeでのみ知らせる
   }).catch(()=>{});
 })();
 
@@ -5000,6 +5058,7 @@ document.getElementById("exportWavBtn").addEventListener("click",async()=>{
     await new Promise(r=>setTimeout(r,80));
     const bars=patLength(editPat);
     const dur=bars*STEPS*TICKS_PER_16TH*tickDur() + 0.6;   // ＋ディレイ/リバーブのテール
+    if(multiOut) outBGain.connect(finalClip);   // 書き出し中だけOUT BをAへ合流＝Bのパッドが無言で欠落しない
     const tapG=AC.createGain(); finalClip.connect(tapG);
     const sp=AC.createScriptProcessor(4096,1,1);
     const chunks=[]; sp.onaudioprocess=ev=>chunks.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
@@ -5010,6 +5069,7 @@ document.getElementById("exportWavBtn").addEventListener("click",async()=>{
     await new Promise(r=>setTimeout(r, dur*1000));
     if(playing) playBtn.click();   // 停止
     sp.onaudioprocess=null;
+    try{ if(multiOut) outBGain.disconnect(finalClip); }catch(_){}
     try{ finalClip.disconnect(tapG); tapG.disconnect(); sp.disconnect(); mute.disconnect(); }catch(_){}
     const n=chunks.reduce((a,c)=>a+c.length,0);
     const full=new Float32Array(n); let o=0;
@@ -5109,8 +5169,8 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
     const proj=JSON.parse(await f.text());
     if(!proj.version||!proj.tracks) throw new Error("Invalid project file");
     await applyProject(proj);
-    sampNameEl.textContent="Loaded: "+f.name;
-  }catch(err){ alert("Load失敗: "+err.message); }
+    sampNameEl.textContent="LOADED — "+f.name.slice(0,12).toUpperCase();
+  }catch(err){ console.warn("[project load]",err); sampNameEl.textContent="LOAD FAILED — このファイルは読めない"; }
 });
 
 // ---------- skin（AK / SP / RL）テーマ切替・選択を記憶 ----------
@@ -5130,7 +5190,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.74";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.75";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
