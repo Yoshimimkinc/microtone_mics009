@@ -731,3 +731,12 @@ ramp 25ms in / 180ms out・hold 1200ms。復帰は実測0.00dB（完全に戻る
 **却下（操作感隊の反対意見を採用）**: SPP対応等のSYNC高機能化（土台に位相補正が無い状態で積まない）／COPYへの種別追加（種別混在が事故源）／OUT BのFX経路選択肢（設定が増えるだけ）
 
 **次回への持ち越し**: MIDI SYNCの位相補正（現状はBPM推定のみ・小節頭は合わない）／Perf LCDのターミナル調（`//`・`> ready _`・常時ヒント・トースト二重表示）／Perf+P-LOCK中にパッドが鳴らない／Master VUが合成値／トグルのa11y（role=switch）／COPYボタンだけtransportに残る配置／メニューのGTRはembed無しで録音できない入口の不統一
+
+## 91. 【v0.3.76】MIDIをプログラマブルに（ASSIGN学習）＋着信インジケーター
+- **ASSIGN学習**: EDITモーダルADVに「MIDI」行（ASSIGN / NOTE表示 / CLEAR）。ASSIGN→鍵盤を押す→`tracks[i].midiNote`に記憶。
+  学習中は発音しない。同じ鍵盤の二重割り当ては作らない（先に持っていたパッドを自動解除）。もう一度ASSIGNで取消。
+  **MIDI入力OFFでも学習できる**（明示操作なので驚きが無い）。割り当ては既定マッピング(60-75=パッド1-16)より優先。
+- **着信インジケーター**: ⋮ボタン右上のLED＋メニューI/Oの`MIDI IN <note>`モニタが130ms点灯。
+  **入力OFFでも光る**＝ケーブル/機器が生きているか目で分かる（クロックでは光らせない＝S2400接続時に点きっぱなしにしない）。
+- 状態同期は**最初から全経路**に通した（v0.3.75のoutBus事故の教訓）: swapPads/copyPadSound/snapshotState/restoreState/.mics保存/読込。
+- verify: LED点灯・消灯 / 学習(無発音・NOTE表示・トースト) / 割り当て優先 / 二重防止 / copy・swap・UNDO追従 / CLEAR / .mics往復 — 12+1項目pass・0 errors
