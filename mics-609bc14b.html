@@ -760,6 +760,16 @@
   .rec-meter{flex:1 1 90px;min-width:70px;height:8px;background:#0d1013;border:1px solid var(--line);border-radius:4px;overflow:hidden;}
   .rec-meter i{display:block;height:100%;width:0%;background:var(--teal);transition:width .08s linear;}
   .rec-dot{color:var(--red);font-size:18px;animation:blink .6s infinite;}
+  /* MIDI着信インジケーター：信号が来たら光る（入力OFFでも光る＝ケーブルが生きているか分かる） */
+  #menuBtn{position:relative;}
+  #menuBtn::after{content:"";position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;
+    background:var(--line);transition:background .08s,box-shadow .08s;}
+  #menuBtn.midi-lit::after{background:var(--teal);box-shadow:0 0 7px var(--teal);}
+  .midi-mon{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--dim);letter-spacing:.14em;}
+  .midi-mon i{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.08s;}
+  .midi-mon.lit i{background:var(--teal);box-shadow:0 0 7px var(--teal);}
+  .midi-mon b{color:var(--ink);font-variant-numeric:tabular-nums;}
+  #peMidiLearn.learn-on{color:var(--teal);border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.35);}
   .transport .t.rec-live{animation:blink .9s ease-in-out infinite;color:var(--red);border-color:var(--red);}   /* 録音中＝●が点滅 */
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
   .knob{display:flex;flex-direction:column;gap:5px;}
@@ -969,7 +979,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.75</div>
+  <div class="s-ver" id="splashVer">v0.3.76</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1057,6 +1067,7 @@
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle" id="midiToggle"><span class="sw"></span><span>そとの鍵盤で叩く</span></label>
             <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>OUT B — ch3/4</span></label>
+            <span class="midi-mon" id="midiMon"><i></i>MIDI IN <b>—</b></span>
           </div>
         </div>
         <div class="modal-sec">
@@ -1175,6 +1186,12 @@
                 <option value="0">OFF</option><option>1</option><option>2</option><option>3</option>
                 <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
               </select></div>
+          </div>
+          <div class="modal-label" style="margin-top:14px;">MIDI <span class="pe-hint">このパッドを鳴らす鍵盤</span></div>
+          <div class="pe-row">
+            <button class="t" id="peMidiLearn">ASSIGN</button>
+            <div class="knob mini"><label>NOTE <span class="v" id="peMidiNote">—</span></label></div>
+            <button class="t" id="peMidiClear">CLEAR</button>
           </div>
           <div class="modal-label" style="margin-top:14px;">OUT <span class="pe-hint" id="peOutHint">A=MASTER / B=DRY</span></div>
           <div class="pe-row">
@@ -2063,7 +2080,7 @@ function snapshotState(){
     fxReverbOn:(typeof fxReverbOn!=="undefined"?fxReverbOn:true),
     tracks: tracks.map((t,i)=>({
       vol:t.vol,tune:t.tune,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,
-      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,delaySend:t.delaySend,reverbSend:t.reverbSend,outBus:t.outBus||"A",
+      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,delaySend:t.delaySend,reverbSend:t.reverbSend,outBus:t.outBus||"A",midiNote:t.midiNote??null,
       mute:t.mute,solo:t.solo,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
@@ -2083,7 +2100,7 @@ function restoreState(s){
   tracks.forEach((t,i)=>{
     const x=s.tracks[i];
     t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
-    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";
+    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;
     t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
     PADS[i].type=x.type;PADS[i].voice=x.voice;
     t.patterns=x.patterns;
@@ -2823,7 +2840,7 @@ function copyPadSound(src,dst){
   d.tune=s.tune; d.start=s.start; d.end=s.end;
   d.loop=s.loop; d.loopStart=s.loopStart;
   d.filter=s.filter; d.cutoff=s.cutoff; d.reso=s.reso;
-  d.vol=s.vol; d.choke=s.choke; d.scale=s.scale; d.attack=s.attack; d.fade=s.fade; d.delaySend=s.delaySend; d.reverbSend=s.reverbSend; d.outBus=s.outBus||"A";
+  d.vol=s.vol; d.choke=s.choke; d.scale=s.scale; d.attack=s.attack; d.fade=s.fade; d.delaySend=s.delaySend; d.reverbSend=s.reverbSend; d.outBus=s.outBus||"A"; d.midiNote=s.midiNote??null;
   d.name=s.name;
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
@@ -2912,7 +2929,7 @@ function swapPads(a,b){
   if(a===b) return;
   pushUndo();
   const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus"]){
+  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote"]){
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   let t=PADS[a].type;  PADS[a].type=PADS[b].type;   PADS[b].type=t;
@@ -3758,6 +3775,8 @@ function openPadEdit(i){
   document.getElementById("peChokeToggle").classList.toggle("on",ck>0);
   document.getElementById("peChokeSel").value=ck;
   [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x.dataset.o===(t.outBus||"A")));
+  document.getElementById("peMidiNote").textContent = (t.midiNote!=null) ? midiNoteName(t.midiNote) : "—";
+  midiLearnTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
   document.getElementById("peOutSeg").classList.toggle("inert", !multiOut);
   document.getElementById("peOutHint").textContent = multiOut ? "A=MASTER / B=DRY ch3/4" : "4ch機器なし — いまは全部Aから出ている";
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
@@ -3981,6 +4000,18 @@ function openPadEdit(i){
     if(f==="lp" && t.cutoff>=10000){ t.cutoff=3000; document.getElementById("peCutR").value=3000; document.getElementById("peCut").textContent="3.0k"; }
     if(f==="hp" && t.cutoff>=10000){ t.cutoff=700;  document.getElementById("peCutR").value=700;  document.getElementById("peCut").textContent="0.7k"; }
     [...b.parentElement.children].forEach(x=>x.classList.toggle("on",x===b));
+  });
+  document.getElementById("peMidiLearn").addEventListener("click",e=>{
+    if(midiLearnTarget===peTarget){ midiLearnTarget=-1; e.currentTarget.classList.remove("learn-on"); sampNameEl.textContent="ASSIGN 取消"; return; }
+    midiLearnTarget=peTarget; e.currentTarget.classList.add("learn-on");
+    sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤を押す（もう一度で取消）";
+  });
+  document.getElementById("peMidiClear").addEventListener("click",()=>{
+    if(tracks[peTarget].midiNote==null) return;
+    pushUndo(); tracks[peTarget].midiNote=null;
+    document.getElementById("peMidiNote").textContent="—";
+    midiLearnTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
+    sampNameEl.textContent="MIDI 割り当てを消した";
   });
   document.getElementById("peOutSeg").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b) return;
@@ -4947,7 +4978,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
         loopStart: crop?crop.loopStart:t.loopStart,
         filter:t.filter, cutoff:t.cutoff, reso:t.reso,
         choke:t.choke, mute:t.mute, solo:t.solo,
-        attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A",
+        attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null,
         patterns:t.patterns,
         locks:t.locks||{},
         audio: crop ? uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp)) : null,
@@ -4996,12 +5027,32 @@ function handleClock(b0){
   }
 }
 let _midiNoteTimes=[];   // 洪水ガード: 外部シーケンサー(S2400等)のノート連射で発音エンジンを潰さない
+function midiNoteName(n){ return ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n%12]+(Math.floor(n/12)-1); }
+let midiLearnTarget=-1, _ledT=null;
+function midiBlink(note){
+  const mb=document.getElementById("menuBtn"), mm=document.getElementById("midiMon");
+  if(mb) mb.classList.add("midi-lit");
+  if(mm){ mm.classList.add("lit"); mm.querySelector("b").textContent=midiNoteName(note); }
+  clearTimeout(_ledT);
+  _ledT=setTimeout(()=>{ if(mb) mb.classList.remove("midi-lit"); if(mm) mm.classList.remove("lit"); },130);
+}
 function handleMIDI(data){
   // クロックはノート入力のON/OFFと独立（MIDI入力OFFでもSYNCは生きる＝トグルの点灯が嘘をつかない）
   if(data[0]>=0xF8){ if(midiSync) handleClock(data[0]); return; }
-  if(!midiEnabled) return;
   const st=data[0]&0xF0, note=data[1], vel=data[2];
   if(st!==0x90 || !vel) return;   // Note On のみ
+  midiBlink(note);   // 着信は入力OFFでも必ず光らせる＝繋がっているか目で分かる
+  if(midiLearnTarget>=0){        // ASSIGN待機中＝鳴らさずに記憶
+    const dup=tracks.findIndex((t,j)=>j!==midiLearnTarget && t.midiNote===note);
+    if(dup>=0) tracks[dup].midiNote=null;   // 同じ鍵盤の二重割り当ては作らない
+    tracks[midiLearnTarget].midiNote=note;
+    sampNameEl.textContent="ASSIGN — PAD "+String(midiLearnTarget+1).padStart(2,"0")+" ← "+midiNoteName(note);
+    midiLearnTarget=-1;
+    const lb=document.getElementById("peMidiLearn"); if(lb) lb.classList.remove("learn-on");
+    const nv=document.getElementById("peMidiNote"); if(nv) nv.textContent=midiNoteName(note);
+    return;
+  }
+  if(!midiEnabled) return;
   const now=performance.now();
   _midiNoteTimes.push(now);
   while(_midiNoteTimes.length && now-_midiNoteTimes[0]>1000) _midiNoteTimes.shift();
@@ -5012,7 +5063,9 @@ function handleMIDI(data){
     return;
   }
   if(AC.state!=="running") AC.resume();
-  if(note>=60 && note<=75) trigger(note-60, null, vel>=100);   // C4(中央のド)=パッド1
+  const asg=tracks.findIndex(t=>t.midiNote===note);                // 割り当て済みが最優先
+  if(asg>=0) trigger(asg, null, vel>=100);
+  else if(note>=60 && note<=75) trigger(note-60, null, vel>=100);   // 既定: C4(中央のド)=パッド1
   else { playVoice(selected, AC.currentTime, vel>=100, false, note-60); flashPad(selected); }
 }
 (function initMIDI(){
@@ -5134,7 +5187,7 @@ async function applyProject(proj){
       t.start=pt.start??t.start??0; t.end=pt.end??t.end??1;   // 未指定はプリセットの自動トリム値を保持
       t.loop=pt.loop??t.loop??false; t.loopStart=pt.loopStart??t.loopStart??0;   // 未指定はプリセット既定を保持
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
-      t.attack=pt.attack??0; t.fade=pt.fade??3; t.delaySend=pt.delaySend??0; t.reverbSend=pt.reverbSend??0; t.outBus=pt.outBus||"A";
+      t.attack=pt.attack??0; t.fade=pt.fade??3; t.delaySend=pt.delaySend??0; t.reverbSend=pt.reverbSend??0; t.outBus=pt.outBus||"A"; t.midiNote=pt.midiNote??null;
       t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
       // パターン読込（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
       if(pt.patterns) for(let p=0;p<4;p++){
@@ -5190,7 +5243,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.75";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.76";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
