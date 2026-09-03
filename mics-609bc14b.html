@@ -979,7 +979,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.76</div>
+  <div class="s-ver" id="splashVer">v0.3.77</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1187,10 +1187,11 @@
                 <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
               </select></div>
           </div>
-          <div class="modal-label" style="margin-top:14px;">MIDI <span class="pe-hint">このパッドを鳴らす鍵盤</span></div>
+          <div class="modal-label" style="margin-top:14px;">ASSIGN <span class="pe-hint">このパッドを鳴らす鍵盤 / キー</span></div>
           <div class="pe-row">
             <button class="t" id="peMidiLearn">ASSIGN</button>
-            <div class="knob mini"><label>NOTE <span class="v" id="peMidiNote">—</span></label></div>
+            <div class="knob mini"><label>MIDI <span class="v" id="peMidiNote">—</span></label></div>
+            <div class="knob mini"><label>KEY <span class="v" id="peKeyName">—</span></label></div>
             <button class="t" id="peMidiClear">CLEAR</button>
           </div>
           <div class="modal-label" style="margin-top:14px;">OUT <span class="pe-hint" id="peOutHint">A=MASTER / B=DRY</span></div>
@@ -2080,7 +2081,7 @@ function snapshotState(){
     fxReverbOn:(typeof fxReverbOn!=="undefined"?fxReverbOn:true),
     tracks: tracks.map((t,i)=>({
       vol:t.vol,tune:t.tune,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,
-      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,delaySend:t.delaySend,reverbSend:t.reverbSend,outBus:t.outBus||"A",midiNote:t.midiNote??null,
+      filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,delaySend:t.delaySend,reverbSend:t.reverbSend,outBus:t.outBus||"A",midiNote:t.midiNote??null,key:t.key??null,
       mute:t.mute,solo:t.solo,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
@@ -2100,7 +2101,7 @@ function restoreState(s){
   tracks.forEach((t,i)=>{
     const x=s.tracks[i];
     t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
-    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;
+    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;t.key=x.key??null;
     t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
     PADS[i].type=x.type;PADS[i].voice=x.voice;
     t.patterns=x.patterns;
@@ -2840,7 +2841,7 @@ function copyPadSound(src,dst){
   d.tune=s.tune; d.start=s.start; d.end=s.end;
   d.loop=s.loop; d.loopStart=s.loopStart;
   d.filter=s.filter; d.cutoff=s.cutoff; d.reso=s.reso;
-  d.vol=s.vol; d.choke=s.choke; d.scale=s.scale; d.attack=s.attack; d.fade=s.fade; d.delaySend=s.delaySend; d.reverbSend=s.reverbSend; d.outBus=s.outBus||"A"; d.midiNote=s.midiNote??null;
+  d.vol=s.vol; d.choke=s.choke; d.scale=s.scale; d.attack=s.attack; d.fade=s.fade; d.delaySend=s.delaySend; d.reverbSend=s.reverbSend; d.outBus=s.outBus||"A"; d.midiNote=s.midiNote??null; d.key=s.key??null;
   d.name=s.name;
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
@@ -2929,7 +2930,7 @@ function swapPads(a,b){
   if(a===b) return;
   pushUndo();
   const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote"]){
+  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   let t=PADS[a].type;  PADS[a].type=PADS[b].type;   PADS[b].type=t;
@@ -3775,8 +3776,8 @@ function openPadEdit(i){
   document.getElementById("peChokeToggle").classList.toggle("on",ck>0);
   document.getElementById("peChokeSel").value=ck;
   [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x.dataset.o===(t.outBus||"A")));
-  document.getElementById("peMidiNote").textContent = (t.midiNote!=null) ? midiNoteName(t.midiNote) : "—";
-  midiLearnTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
+  syncAssignUI(t);
+  assignTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
   document.getElementById("peOutSeg").classList.toggle("inert", !multiOut);
   document.getElementById("peOutHint").textContent = multiOut ? "A=MASTER / B=DRY ch3/4" : "4ch機器なし — いまは全部Aから出ている";
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
@@ -4002,16 +4003,17 @@ function openPadEdit(i){
     [...b.parentElement.children].forEach(x=>x.classList.toggle("on",x===b));
   });
   document.getElementById("peMidiLearn").addEventListener("click",e=>{
-    if(midiLearnTarget===peTarget){ midiLearnTarget=-1; e.currentTarget.classList.remove("learn-on"); sampNameEl.textContent="ASSIGN 取消"; return; }
-    midiLearnTarget=peTarget; e.currentTarget.classList.add("learn-on");
-    sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤を押す（もう一度で取消）";
+    if(assignTarget===peTarget){ assignTarget=-1; e.currentTarget.classList.remove("learn-on"); sampNameEl.textContent="ASSIGN 取消"; return; }
+    assignTarget=peTarget; e.currentTarget.classList.add("learn-on");
+    sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤かキーを押す（もう一度で取消）";
   });
   document.getElementById("peMidiClear").addEventListener("click",()=>{
-    if(tracks[peTarget].midiNote==null) return;
-    pushUndo(); tracks[peTarget].midiNote=null;
-    document.getElementById("peMidiNote").textContent="—";
-    midiLearnTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
-    sampNameEl.textContent="MIDI 割り当てを消した";
+    const t=tracks[peTarget];
+    if(t.midiNote==null && !t.key) return;
+    pushUndo(); t.midiNote=null; t.key=null;
+    syncAssignUI(t);
+    assignTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
+    sampNameEl.textContent="割り当てを消した";
   });
   document.getElementById("peOutSeg").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b) return;
@@ -4232,6 +4234,21 @@ window.addEventListener("keydown",async(e)=>{
   if(ae && (ae.tagName==="TEXTAREA" || ae.tagName==="SELECT" ||
             (ae.tagName==="INPUT" && (ae.type||"").toLowerCase()!=="range"))) return;
   if(e.code==="Space"){e.preventDefault();playBtn.click();return;}
+  if(assignTarget>=0){   // ASSIGN待機中＝次に押したキーをこのパッドに記憶（Escapeで取消・修飾キー単独は無視）
+    if(e.key==="Escape"){ assignTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on"); sampNameEl.textContent="ASSIGN 取消"; return; }
+    if(["Shift","Control","Alt","Meta"].includes(e.key)) return;
+    e.preventDefault();
+    const kk=e.key.toLowerCase();
+    assignTo(assignTarget,"key",kk,kk.toUpperCase());
+    return;
+  }
+  const custom=tracks.findIndex(t=>t.key===e.key.toLowerCase());   // 明示割り当ては既定キー(STEP/音階/KEYMAP)より優先
+  if(custom>=0 && !e.altKey && !e.shiftKey){
+    e.preventDefault();
+    if(AC.state!=="running")await AC.resume();
+    trigger(custom); selectPad(custom,true);
+    return;
+  }
   // Alt+パッドキー = 選択のみ（発音せず）。Shift+パッドキー = ミュート（既定）。
   if(e.altKey){
     const ai=CODEMAP.indexOf(e.code);
@@ -4978,7 +4995,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
         loopStart: crop?crop.loopStart:t.loopStart,
         filter:t.filter, cutoff:t.cutoff, reso:t.reso,
         choke:t.choke, mute:t.mute, solo:t.solo,
-        attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null,
+        attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null, key:t.key??null,
         patterns:t.patterns,
         locks:t.locks||{},
         audio: crop ? uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp)) : null,
@@ -5028,7 +5045,7 @@ function handleClock(b0){
 }
 let _midiNoteTimes=[];   // 洪水ガード: 外部シーケンサー(S2400等)のノート連射で発音エンジンを潰さない
 function midiNoteName(n){ return ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n%12]+(Math.floor(n/12)-1); }
-let midiLearnTarget=-1, _ledT=null;
+let assignTarget=-1, _ledT=null;   // ASSIGN待機中のパッド（MIDIノートでもPCキーでも、次に押されたものを覚える）
 function midiBlink(note){
   const mb=document.getElementById("menuBtn"), mm=document.getElementById("midiMon");
   if(mb) mb.classList.add("midi-lit");
@@ -5036,22 +5053,28 @@ function midiBlink(note){
   clearTimeout(_ledT);
   _ledT=setTimeout(()=>{ if(mb) mb.classList.remove("midi-lit"); if(mm) mm.classList.remove("lit"); },130);
 }
+// ASSIGNの共通処理: 種別(midiNote|key)を問わず「二重割り当てを作らず記憶し、UIとトーストを更新」
+function assignTo(pad, field, value, label){
+  const dup=tracks.findIndex((t,j)=>j!==pad && t[field]===value);
+  if(dup>=0) tracks[dup][field]=null;   // 同じ鍵盤/キーの二重割り当ては作らない
+  pushUndo();
+  tracks[pad][field]=value;
+  assignTarget=-1;
+  const lb=document.getElementById("peMidiLearn"); if(lb) lb.classList.remove("learn-on");
+  if(pad===peTarget) syncAssignUI(tracks[pad]);
+  sampNameEl.textContent="ASSIGN — PAD "+String(pad+1).padStart(2,"0")+" ← "+label;
+}
+function syncAssignUI(t){
+  const nv=document.getElementById("peMidiNote"); if(nv) nv.textContent=(t.midiNote!=null)?midiNoteName(t.midiNote):"—";
+  const kv=document.getElementById("peKeyName"); if(kv) kv.textContent=t.key?String(t.key).toUpperCase():"—";
+}
 function handleMIDI(data){
   // クロックはノート入力のON/OFFと独立（MIDI入力OFFでもSYNCは生きる＝トグルの点灯が嘘をつかない）
   if(data[0]>=0xF8){ if(midiSync) handleClock(data[0]); return; }
   const st=data[0]&0xF0, note=data[1], vel=data[2];
   if(st!==0x90 || !vel) return;   // Note On のみ
   midiBlink(note);   // 着信は入力OFFでも必ず光らせる＝繋がっているか目で分かる
-  if(midiLearnTarget>=0){        // ASSIGN待機中＝鳴らさずに記憶
-    const dup=tracks.findIndex((t,j)=>j!==midiLearnTarget && t.midiNote===note);
-    if(dup>=0) tracks[dup].midiNote=null;   // 同じ鍵盤の二重割り当ては作らない
-    tracks[midiLearnTarget].midiNote=note;
-    sampNameEl.textContent="ASSIGN — PAD "+String(midiLearnTarget+1).padStart(2,"0")+" ← "+midiNoteName(note);
-    midiLearnTarget=-1;
-    const lb=document.getElementById("peMidiLearn"); if(lb) lb.classList.remove("learn-on");
-    const nv=document.getElementById("peMidiNote"); if(nv) nv.textContent=midiNoteName(note);
-    return;
-  }
+  if(assignTarget>=0){ assignTo(assignTarget,"midiNote",note,midiNoteName(note)); return; }   // ASSIGN待機中＝鳴らさずに記憶
   if(!midiEnabled) return;
   const now=performance.now();
   _midiNoteTimes.push(now);
@@ -5187,7 +5210,7 @@ async function applyProject(proj){
       t.start=pt.start??t.start??0; t.end=pt.end??t.end??1;   // 未指定はプリセットの自動トリム値を保持
       t.loop=pt.loop??t.loop??false; t.loopStart=pt.loopStart??t.loopStart??0;   // 未指定はプリセット既定を保持
       t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
-      t.attack=pt.attack??0; t.fade=pt.fade??3; t.delaySend=pt.delaySend??0; t.reverbSend=pt.reverbSend??0; t.outBus=pt.outBus||"A"; t.midiNote=pt.midiNote??null;
+      t.attack=pt.attack??0; t.fade=pt.fade??3; t.delaySend=pt.delaySend??0; t.reverbSend=pt.reverbSend??0; t.outBus=pt.outBus||"A"; t.midiNote=pt.midiNote??null; t.key=pt.key??null;
       t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
       // パターン読込（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
       if(pt.patterns) for(let p=0;p<4;p++){
@@ -5243,7 +5266,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.76";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.77";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

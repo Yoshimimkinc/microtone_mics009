@@ -740,3 +740,14 @@ ramp 25ms in / 180ms out・hold 1200ms。復帰は実測0.00dB（完全に戻る
   **入力OFFでも光る**＝ケーブル/機器が生きているか目で分かる（クロックでは光らせない＝S2400接続時に点きっぱなしにしない）。
 - 状態同期は**最初から全経路**に通した（v0.3.75のoutBus事故の教訓）: swapPads/copyPadSound/snapshotState/restoreState/.mics保存/読込。
 - verify: LED点灯・消灯 / 学習(無発音・NOTE表示・トースト) / 割り当て優先 / 二重防止 / copy・swap・UNDO追従 / CLEAR / .mics往復 — 12+1項目pass・0 errors
+
+## 92. 【v0.3.77】ASSIGNを一般化：MIDI鍵盤とPCキーを同じ1操作で学習
+入口を増やさず（重複＝バグの温床の原則）、ASSIGNを「**次に押されたものを覚える**」に一般化。
+- EDIT ADVの行を `MIDI` → `ASSIGN`（MIDI / KEY の2値を表示、CLEARは両方消す）
+- ASSIGN押下 → 次に来た **MIDIノート** or **PCキー** のどちらでも `tracks[i].midiNote` / `tracks[i].key` に記憶。
+  学習中は発音しない。Escapeで取消。修飾キー単独は無視。二重割り当ては自動解除（assignTo()に共通化）
+- **明示割り当ては既定キーより優先**: STEP_KEYS/MELO_KEYS/KEYMAP より先に判定。
+  例）"a"をPAD3に割り当てるとステップ入力ではなくPAD3発音になる（実測でステップ値が変化しないことを確認）
+- 状態同期は `key` も最初から全経路（swap/copy/snapshot/restore/.mics保存/読込）
+- verify: 学習(無発音・KEY表示・トースト) / 学習キーで発音 / 既定より優先 / 二重防止 / MIDIとキーの併用 /
+  .mics往復 / copy・swap・UNDO追従 / CLEARで両方消去 — 11項目pass・0 errors
