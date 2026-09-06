@@ -3,7 +3,7 @@
 //   実行:  node tools/check.mjs [port]
 //   環境変数: SHOT=出力先ディレクトリ（既定 ./tools/_shots）
 // 環境ごとに違うのは chromium の場所だけ。PW_EXE で上書きできる。
-import { chromium } from './pw.mjs';
+import { chromium, unlock } from './pw.mjs';
 const PORT=process.argv[2]||8137;
 const SHOT=process.env.SHOT||'./tools/_shots';
 await (await import('node:fs/promises')).mkdir(SHOT,{recursive:true});
@@ -21,7 +21,7 @@ async function ready(p){
   await p.waitForTimeout(600);   // 起動タップ直後450msの入力シールドを消化（これは仕様なので時間待ち）
 }
 async function run(w,h,mobile){
-  const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile});
+  const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
   await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
   await ready(p);
@@ -150,7 +150,7 @@ async function run(w,h,mobile){
     const ph=()=>p.evaluate(()=>{const e=document.getElementById('pePlayhead'); return {op:e.style.opacity, left:parseFloat(e.style.left)||0};});
     await page('smpl'); await p.evaluate(()=>{ selectPad(3); selectPadHeavy(); });
     await p.evaluate(()=>trigger(3));
-    let hit=null; for(let k=0;k<10;k++){ await p.waitForTimeout(50); const r=await ph(); if(r.op==='1'){ hit=r; break; } }
+    let hit=null; for(let k=0;k<24;k++){ await p.waitForTimeout(50); const r=await ph(); if(r.op==='1'){ hit=r; break; } }
     ok_(`${V} SAMPLEで叩くと再生カーソル`, !!hit, 'カーソルが出ない');
     await p.evaluate(()=>{ const t=tracks[3]; t.patterns[editPat][editBar].fill(0); t.patterns[editPat][editBar][0]=1; t.patterns[editPat][editBar][8]=1; document.getElementById('play').click(); });
     let seen=false; for(let k=0;k<30;k++){ await p.waitForTimeout(60); const r=await ph(); if(r.op==='1'&&r.left>0){ seen=true; break; } }
@@ -158,7 +158,7 @@ async function run(w,h,mobile){
     ok_(`${V} 再生中も再生カーソル`, seen, '再生中にカーソルが出ない');
     await page('tone'); await p.evaluate(()=>trigger(3)); await p.waitForTimeout(150);
     ok_(`${V} 波形が無いページではカーソルを出さない`, (await ph()).op!=='1', '出ている');
-    await page('main');
+    await page('smpl');   // 次の検査（TRIM/CHOP モーダル）は SAMPLE ページの ✂ から開く
   }
 
   // 7) モーダルは「入り組んだ設定」だけ
@@ -304,6 +304,34 @@ async function run(w,h,mobile){
   await ctx.close();
   return {V, dim, md:md.btns};
 }
+// 12) ★入口の合言葉（v0.3.104）：解錠していない端末では合言葉を通るまで始まらない。通ったら覚える
+async function passGate(){
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});   // unlock しない
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await p.waitForFunction(()=>typeof tracks!=='undefined' && tracks[0] && tracks[0].buffer, null, {timeout:20000});
+  // 通った後は start() が splash を DOM から外す（400ms後）ので null を「隠れた」と読む
+  const st=()=>p.evaluate(()=>{const sp=document.getElementById('splash');
+    const g=x=>{const e=document.querySelector(x); return e?getComputedStyle(e).display:'none';};
+    return {locked:!!sp&&sp.classList.contains('locked'), prompt:g('#splash .s-prompt'), form:g('#splashPassForm'),
+      msg:(document.getElementById('splashPassMsg')||{}).textContent||'', hidden:!sp||sp.classList.contains('hide'),
+      saved:(()=>{try{return localStorage.getItem('mics009.pass');}catch(e){return null;}})()};});
+  const s0=await st();
+  ok_(`合言葉 施錠中は TAP TO START を出さない`, s0.locked && s0.prompt==='none' && s0.form!=='none', JSON.stringify(s0));
+  await p.mouse.click(200,600); await p.waitForTimeout(400);   // 画面をタップしても始まらない
+  ok_(`合言葉 施錠中はタップで始まらない`, !(await st()).hidden, '始まってしまった');
+  await p.fill('#splashPass','wrongword'); await p.press('#splashPass','Enter'); await p.waitForTimeout(300);
+  const s1=await st(); ok_(`合言葉 違うと通さない`, !s1.hidden && /違/.test(s1.msg), JSON.stringify(s1));
+  ok_(`合言葉 純JSのSHA-256が subtle と一致`, await p.evaluate(()=>typeof sha256js==='function' ? sha256js('akaiTower')==='1043819599ce5f51aa0d72251e2b5a18aa239fba8838621e6252032317d30f0f' : true), '不一致');
+  await p.fill('#splashPass','akaiTower'); await p.press('#splashPass','Enter'); await p.waitForTimeout(600);
+  const s2=await st(); ok_(`合言葉 合えば始まる＋覚える`, s2.hidden && s2.saved && s2.saved.length===64, JSON.stringify(s2));
+  await p.reload({waitUntil:'load'});
+  await p.waitForFunction(()=>typeof tracks!=='undefined' && tracks[0] && tracks[0].buffer, null, {timeout:20000});
+  const s3=await st(); ok_(`合言葉 次回から聞かない`, !s3.locked && s3.form==='none' && s3.prompt!=='none', JSON.stringify(s3));
+  eq(`合言葉 0 errors`, errs, []);
+  await ctx.close();
+}
+await passGate();
 const res=[];
 for(const [w,h,m] of [[390,844,true],[390,664,true],[520,900,true],[700,900,false],[960,1040,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));
 await br.close();

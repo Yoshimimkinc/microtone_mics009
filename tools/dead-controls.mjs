@@ -3,7 +3,7 @@
 // ハンドラを消してしまった事故（v0.3.96のSEQ小節バグ）はこれで即座に出る。
 // 判定：クリック前後で「DOMの中身＋主要な状態」が1つも変わらなければ“無反応”。
 // 落ちない（レポート専用）。無反応でも正しいもの（同じページの再タップ等）は下の EXPECT で除外する。
-import { chromium } from './pw.mjs';
+import { chromium, unlock } from './pw.mjs';
 const PORT=process.argv[2]||8137;
 
 // 押しても状態が変わらないのが正しいもの（理由を必ず書く）
@@ -25,7 +25,7 @@ const REVERT={ '#play':()=>{ if(playing) document.getElementById('play').click()
 
 const br=await chromium.launch({...(process.env.PW_EXE?{executablePath:process.env.PW_EXE}:{}),
   args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
-const ctx=await br.newContext({viewport:{width:1280,height:900}});
+const ctx=await br.newContext({viewport:{width:1280,height:900}}); await unlock(ctx);
 const p=await ctx.newPage();
 const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});

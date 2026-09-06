@@ -1,7 +1,7 @@
 // 楽器UIの基準値を実測する監査。docs/ui-rules.md の数字はこれで出す。
 //   node tools/ui-audit.mjs [port]
 // 落ちない（レポート専用）。合否判定は check.mjs 側で行う。
-import { chromium } from './pw.mjs';
+import { chromium, unlock } from './pw.mjs';
 const PORT=process.argv[2]||8137;
 const br=await chromium.launch({...(process.env.PW_EXE?{executablePath:process.env.PW_EXE}:{}),
   args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
@@ -87,7 +87,7 @@ const AUDIT=()=>{
 };
 
 for(const [w,h,m] of [[390,844,true],[1280,800,false]]){
-  const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:m,hasTouch:m});
+  const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:m,hasTouch:m}); await unlock(ctx);
   const p=await ctx.newPage();
   await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'}); await p.waitForTimeout(1800);
   await p.evaluate(()=>{document.getElementById('splash').style.display='none';});
