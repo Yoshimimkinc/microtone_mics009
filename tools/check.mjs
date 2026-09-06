@@ -55,15 +55,28 @@ async function run(w,h,mobile){
   eq(`${V} FX欄`,fields.fx,['delay','reverb']);
   eq(`${V} ASSIGN欄`,fields.asgn,['choke','out','midi','key']);
 
-  // 2b) ページを移してもメニュー（ソフトキー）と窓の幅が動かない
+  // 2b) ★ページを移しても寸法が1pxも動かない（幅も高さも／窓・メニュー・キー・パッド）
+  //    このクラスの不具合を何度も出しているので、ここで丸ごと止める
   const geo=[];
   for(const id of['main','smpl','tone','fx','asgn']){ await page(id);
-    geo.push(await p.evaluate(()=>{const r=x=>{const b=document.querySelector(x).getBoundingClientRect();return [Math.round(b.width),Math.round(b.x)];};
-      return {scr:r('.perf-screen'), keys:r('#clKeys'), key1:r('#clKeys .cl-key')};})); }
-  const same=k=>new Set(geo.map(g=>JSON.stringify(g[k]))).size===1;
-  ok_(`${V} 窓の幅が一定`, same('scr'), geo.map(g=>g.scr).join(' '));
-  ok_(`${V} メニュー幅が一定`, same('keys'), geo.map(g=>g.keys).join(' '));
-  ok_(`${V} キー1枚の幅が一定`, same('key1'), geo.map(g=>g.key1).join(' '));
+    geo.push([id, await p.evaluate(()=>{const r=x=>{const e=document.querySelector(x); if(!e) return null;
+        const b=e.getBoundingClientRect(); return [Math.round(b.width),Math.round(b.height),Math.round(b.x),Math.round(b.y)];};
+      return {scr:r('.perf-screen'), keys:r('#clKeys'), key1:r('#clKeys .cl-key'), pad:r('#pads .pad'), pads:r('#pads')};})]); }
+  // メッセージ／ヒントの出入りでも動かない（トーストのたびに窓が伸び縮みしていた）
+  const snap=async lbl=>geo.push([lbl, await p.evaluate(()=>{const r=x=>{const e=document.querySelector(x); if(!e) return null;
+      const b=e.getBoundingClientRect(); return [Math.round(b.width),Math.round(b.height),Math.round(b.x),Math.round(b.y)];};
+    return {scr:r('.perf-screen'), keys:r('#clKeys'), key1:r('#clKeys .cl-key'), pad:r('#pads .pad'), pads:r('#pads')};})]);
+  await p.evaluate(()=>{sampNameEl.textContent="長文テスト：MIDI STORM 自動OFF 1秒に45ノート超えたので入力を切りました"; paintPerf();});
+  await p.waitForTimeout(120); await snap('長文メッセージ');
+  await p.evaluate(()=>{sampNameEl.textContent=""; armMode='edit'; paintPerf();});
+  await p.waitForTimeout(120); await snap('ヒント表示');
+  await p.evaluate(()=>{armMode=null; paintPerf();}); await p.waitForTimeout(120); await snap('素');
+  for(const k of ['scr','keys','key1','pad','pads']){
+    const vals=geo.map(([id,g])=>[id,JSON.stringify(g[k])]);
+    const uniq=new Set(vals.map(v=>v[1]));
+    ok_(`${V} ${k} の寸法が状態で動かない`, uniq.size===1, vals.map(v=>v.join('=')).join(' '));
+  }
+  await page('main');
 
   // 3) ドラッグ／列挙タップ／ダブルクリックで0
   await page('main');
@@ -158,8 +171,9 @@ async function run(w,h,mobile){
   return {V, dim, md:md.btns};
 }
 const res=[];
-for(const [w,h,m] of [[390,844,true],[700,900,false],[1280,800,false]]) res.push(await run(w,h,m));
+for(const [w,h,m] of [[390,844,true],[520,900,true],[700,900,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));
 await br.close();
-res.forEach(r=>console.log(`${r.V}  パッド${r.dim.pad}px 窓${r.dim.scr}px  モーダル:[${r.md.join(' ')}]`));
+res.forEach(r=>console.log(`${r.V}  パッド${r.dim.pad}px 窓${r.dim.scr}px`));
+console.log(`モーダルの中身: [${res[0].md.join(' ')}]`);
 console.log(fail.length? "\n❌ 失敗 "+fail.length+"件\n  "+fail.join("\n  ") : "\n✅ 全項目パス");
 process.exit(fail.length?1:0);
