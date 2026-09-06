@@ -186,6 +186,7 @@ async function run(w,h,mobile){
   await p.evaluate(()=>{ const vp=document.getElementById('viewPads'); if(vp) vp.scrollTop=0; });   // 低い画面では 7c のパッド tap で内側がスクロールしている
   await page('main');
   {
+    await p.evaluate(()=>{ tracks[selected].tune=0; paintPerf(); });   // 既定プロジェクトの tune に依存しない
     const b=await box('.cl-par[data-p="pitch"]');
     await p.mouse.move(b.x,b.y); await p.mouse.down(); await p.mouse.move(b.x+71,b.y,{steps:4}); await p.mouse.up();
     await p.mouse.move(b.x+20,b.y); await p.mouse.down(); await p.waitForTimeout(30);
