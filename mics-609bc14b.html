@@ -306,13 +306,16 @@
   .perf-screen .cl-btn{font:inherit;font-size:10px;letter-spacing:.06em;color:var(--teal);background:transparent;
     border:1px solid rgba(61,214,196,.35);border-radius:6px;padding:6px 10px;min-height:34px;cursor:pointer;}
   .perf-screen .cl-btn.learn-on{border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.35);}
-  /* SAMPLEページの波形：既存の行の「右」に立てる。行の高さに収めるので窓は伸びない＝パッドを削らない */
+  /* SAMPLEページの波形：行の「右」に立てる。行の高さに収めるので窓は伸びない＝パッドを削らない。
+     ソフトキー行だけは常に全幅（keys keys）＝ページを移ってもメニューの幅が動かない */
+  .perf-screen .cl-body{display:flex;flex-direction:column;gap:inherit;min-width:0;}
   .perf-screen .cl-waveslot{display:none;}
   .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
-    column-gap:12px;align-items:stretch;}
-  .perf-screen.has-wave>.cl-row,.perf-screen.has-wave>.cl-keys{grid-column:1;min-width:0;}
-  .perf-screen.has-wave>.cl-waveslot{display:flex;flex-direction:column;justify-content:center;gap:4px;
-    grid-column:2;grid-row:1/span 7;min-width:0;}   /* 暗黙行なので -1 は1行しか指さない。行数ぶんだけ span する（多すぎると空行のgapで窓が伸びる） */
+    grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
+  .perf-screen.has-wave>.cl-body{grid-area:body;}
+  .perf-screen.has-wave>.cl-keys{grid-area:keys;}
+  .perf-screen.has-wave>.cl-waveslot{grid-area:wave;display:flex;flex-direction:column;justify-content:center;
+    gap:4px;min-width:0;}
   .perf-screen .cl-waveslot .pe-over{height:20px;flex:0 0 auto;margin:0;}
   /* .pe-wave はモーダル用に height:128px 固定。窓では明示的に低くする（auto にすると中の canvas の
      属性サイズが効いて列ごと伸び、窓がパッドを潰す） */
@@ -320,7 +323,7 @@
   .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
   .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
   body.perf .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
-    column-gap:12px;align-items:stretch;}
+    grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
   @media (max-width:767px){
     /* 縦のスマホは横に並べる幅が無い：1カラムに戻し、概観レーンは畳んで波形も低く。
        細かい追い込みは TRIM/CHOP のモーダルで */
@@ -690,8 +693,7 @@
     border:1px solid var(--line);padding:5px 12px;border-radius:5px;}
   .loadbtn:hover{border-color:var(--teal);}
   .strip-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-top:12px;min-height:74px;}
-  .knob.mini{flex:1 1 90px;min-width:80px;max-width:140px;gap:4px;}
-  .knob.mini label{font-size:9px;}
+
   /* ===== EDIT-modal リデザイン（モック） =====
      窓の波形(#waveWrap)は撤去し、サンプル編集は EDIT+パッド→モーダルへ集約。
      通常PADSでは編集ノブ行も畳んでパッドを縦最大化。GRID入力(step-on)時のみ従来の操作行を表示。 */
@@ -732,14 +734,8 @@
   .pe-wave .handle.end .cap{right:3px;background:rgba(255,77,77,.9);color:#2a0808;}
   .pe-wave .handle.loop .cap{left:3px;background:rgba(255,184,77,.92);color:#3a2c00;}
   .pe-wave .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.55);pointer-events:none;z-index:1;}
-  /* 面割り：窓 / 基本 / 詳細 を罫線で分ける */
-  .pe-basic{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;}
-  .pe-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
-  .pe-row .knob{flex:1 1 84px;}
-  .pe-row .toggle{align-self:flex-end;}   /* トグルとノブのベースライン統一 */
-  .pe-hint{font-size:9px;color:var(--dim);letter-spacing:.04em;text-transform:none;margin-left:7px;}
-  #peOutSeg.inert{opacity:.45;}
-  #peOutSeg.inert button.on::after{content:"→A";font-size:8px;margin-left:3px;color:var(--amber);}   /* Bを選んでいるが今はAに落ちている */
+
+   /* Bを選んでいるが今はAに落ちている */
   /* 機材然とした抑制トーン：ベタ塗りの巨大ボタンは廃止。ダーク＋細枠＋控えめアクセント */
   .pe-transport{display:flex;gap:8px;margin:10px 0 0;}
   .pe-chop{display:flex;gap:6px;margin:8px 0 0;align-items:center;flex-wrap:nowrap;}   /* 1行に収める */
@@ -754,24 +750,15 @@
   .pe-play:hover{border-color:var(--teal);color:var(--teal);}
   .pe-play:active{background:rgba(61,214,196,.12);}
   .pe-trim:hover{border-color:var(--amber);color:var(--amber);}
-  .pe-adv-toggle{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:44px;
-    margin-top:12px;padding:9px 12px;font:inherit;font-size:11px;color:var(--dim);letter-spacing:.16em;text-transform:uppercase;
-    background:var(--panel2);border:1px solid var(--line);border-radius:7px;cursor:pointer;transition:.12s;
-    box-sizing:border-box;}
-  .pe-adv-toggle:hover{border-color:var(--edge);color:var(--ink);}
-  .pe-adv{display:none;margin-top:12px;}
-  .pe-adv.show{display:block;}
-  /* 空パッド＝音源を選ぶ画面。波形やパラメータは音が入ってから */
-  .pe-empty .pe-over,.pe-empty .pe-wave,.pe-empty .pe-transport,.pe-empty .pe-chop,
-  .pe-empty .pe-basic,.pe-empty .pe-adv-toggle,.pe-empty .pe-adv{display:none;}
+
   .pe-empty .pe-sample{flex-direction:column;gap:10px;margin-top:6px;}
   .pe-empty .pe-sample .loadbtn{width:100%;font-size:14px;min-height:54px;display:flex;
     align-items:center;justify-content:center;border-radius:10px;}
   .pe-empty .pe-sample-hint{margin:0;text-align:center;}
-  .pe-adv.show .modal-label:first-child{margin-top:0;}
-  .pe-row .knob.mini.pe-wide{flex:1 1 100%;max-width:none;min-width:0;}   /* Pitch/Level＝スライダーを横幅一杯に */
-  @media(max-width:380px){ .pe-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;}
-    .pe-row.pe-full{grid-template-columns:1fr;}                            /* Pitch/Level行は1カラム＝全幅維持 */
+
+   /* Pitch/Level＝スライダーを横幅一杯に */
+  @media(max-width:380px){
+                            /* Pitch/Level行は1カラム＝全幅維持 */
     .pe-chop{gap:5px;}
     .pe-chop .seg button{padding:6px 7px;font-size:10px;}                  /* 狭幅端末はさらに圧縮 */
     .pe-chop #edChopApply{font-size:10px;letter-spacing:.04em;padding-left:8px;padding-right:8px;} }
@@ -811,7 +798,7 @@
   .midi-mon i{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.08s;}
   .midi-mon.lit i{background:var(--teal);box-shadow:0 0 7px var(--teal);}
   .midi-mon b{color:var(--ink);font-variant-numeric:tabular-nums;}
-  #peMidiLearn.learn-on{color:var(--teal);border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.35);}
+
   .transport .t.rec-live{animation:blink .9s ease-in-out infinite;color:var(--red);border-color:var(--red);}   /* 録音中＝●が点滅 */
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
   .knob{display:flex;flex-direction:column;gap:5px;}
@@ -889,9 +876,7 @@
     #viewPads>.perf-screen .cl-par{padding:3px 9px;}
     .strip{padding:9px;}
     .strip-ctrls{gap:8px;}
-    .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
-    /* EDITモーダル：スライダー1本＝1行の全幅（レバーを最長化＝指で微調整できる）。grid化(≤380)でも全幅 */
-    #padEditModal .pe-row .knob{flex:1 1 100%;max-width:none;min-width:0;grid-column:1/-1;}
+
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
@@ -960,7 +945,7 @@
     .modebtn{padding:6px 12px;font-size:12px;letter-spacing:.12em;}
     .msbtn{padding:5px 8px;font-size:9px;}
     .strip-head .who{font-size:12px;}
-    .knob.mini{min-width:60px;}
+
   }
 
   /* 起動スプラッシュ（TAP TO START → 全画面） */
@@ -1002,7 +987,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.86</div>
+  <div class="s-ver" id="splashVer">v0.3.89</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1140,7 +1125,7 @@
     <!-- サンプル編集モーダル（EDIT＋パッドで対象を開く / モック） -->
     <div class="modal-backdrop" id="padEditModal" style="display:none;">
       <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
-        <div class="modal-head"><span id="peTitle">EDIT PAD</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+        <div class="modal-head"><span id="peTitle">TRIM · CHOP</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
@@ -1175,64 +1160,6 @@
           <div class="seg" id="edChopDiv"><button class="on" data-n="0">OFF</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
           <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
           <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
-        </div>
-        <div class="pe-basic">
-          <div class="pe-row">
-            <label class="toggle" id="peLoopToggle"><span class="sw"></span><span>Loop</span></label>
-            <div class="knob mini"><label>Scale</label>
-              <select class="t" id="peScale" style="padding:5px 7px;">
-                <option value="off">OFF</option><option value="chro">CHRO</option>
-                <option value="maj">MAJ</option><option value="min">MIN</option><option value="pent">PENT</option>
-              </select></div>
-          </div>
-          <div class="pe-row pe-full">
-            <div class="knob mini pe-wide"><label>Pitch <span class="v" id="pePitch">0</span></label>
-              <input type="range" id="pePitchR" min="-12" max="12" step="1" value="0"></div>
-          </div>
-          <div class="pe-row pe-full">
-            <div class="knob mini pe-wide"><label>Level <span class="v" id="peLevel">-4</span></label>
-              <input type="range" id="peLevelR" min="-30" max="6" step="1" value="-4"></div>
-          </div>
-        </div>
-        <span class="pe-adv-toggle" id="peAdvToggle">ADV ▾</span>
-        <div class="pe-adv" id="peAdv">
-          <div class="modal-label" style="margin-top:14px;">FILTER</div>
-          <div class="pe-row">
-            <div class="seg" id="peFilt">
-              <button class="on">OFF</button><button>LP</button><button>HP</button>
-            </div>
-            <div class="knob mini"><label>Cutoff <span class="v" id="peCut">12.0k</span></label>
-              <input type="range" id="peCutR" min="200" max="18000" step="50" value="12000"></div>
-            <div class="knob mini"><label>Reso <span class="v" id="peRes">0.7</span></label>
-              <input type="range" id="peResR" min="0.1" max="14" step="0.1" value="0.7"></div>
-          </div>
-          <div class="modal-label" style="margin-top:14px;">CHOKE <span class="pe-hint">同時に鳴らさない</span></div>
-          <div class="pe-row">
-            <label class="toggle" id="peChokeToggle"><span class="sw"></span><span>ON</span></label>
-            <div class="knob mini"><label>Group</label>
-              <select class="t" id="peChokeSel" style="padding:5px 7px;">
-                <option value="0">OFF</option><option>1</option><option>2</option><option>3</option>
-                <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
-              </select></div>
-          </div>
-          <div class="modal-label" style="margin-top:14px;">ASSIGN <span class="pe-hint">このパッドを鳴らす鍵盤 / キー</span></div>
-          <div class="pe-row">
-            <button class="t" id="peMidiLearn">ASSIGN</button>
-            <div class="knob mini"><label>MIDI <span class="v" id="peMidiNote">—</span></label></div>
-            <div class="knob mini"><label>KEY <span class="v" id="peKeyName">—</span></label></div>
-            <button class="t" id="peMidiClear">CLEAR</button>
-          </div>
-          <div class="modal-label" style="margin-top:14px;">OUT <span class="pe-hint" id="peOutHint">A=MASTER / B=DRY</span></div>
-          <div class="pe-row">
-            <div class="seg" id="peOutSeg"><button class="on" data-o="A">A</button><button data-o="B">B</button></div>
-          </div>
-          <div class="modal-label" style="margin-top:14px;">ATTACK · FADE</div>
-          <div class="pe-row">
-            <div class="knob mini"><label>Attack <span class="v" id="peAtt">0 ms</span></label>
-              <input type="range" id="peAttR" min="0" max="200" step="1" value="0"></div>
-            <div class="knob mini"><label>Fade <span class="v" id="peFade">3 ms</span></label>
-              <input type="range" id="peFadeR" min="0" max="500" step="1" value="3"></div>
-          </div>
         </div>
       </div>
     </div>
@@ -1320,6 +1247,9 @@
 
       <!-- Performance Mode（4×4横向き/PC・iPad）のガワ。通常は非表示、body.perf で表示 -->
       <div class="perf-screen" id="perfScreen">
+        <!-- 行は .cl-body に束ねる。SAMPLEページで右に波形を出しても、
+             ソフトキー行（＝メニュー）は常に窓の全幅のまま＝ページを移っても幅が動かない -->
+        <div class="cl-body">
         <div class="cl-row cl-head"><span class="cl-brand">MICS009</span><span class="cl-state" id="clState">■ STOP</span></div>
         <div class="cl-row">
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
@@ -1330,7 +1260,8 @@
         </div>
         <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params cl-page" id="clPage"></div>
-        <!-- SAMPLEページの時だけ、既存の行の「右側」に波形が入る（窓の高さは増やさない） -->
+        </div><!-- /.cl-body -->
+        <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
         <div class="cl-waveslot" id="clWaveSlot"></div>
         <div class="cl-keys" id="clKeys">
           <button class="cl-key on" data-pg="main">MAIN</button>
@@ -3288,8 +3219,7 @@ function paintClPage(){
     if(b.id==="clClear"){
       if(t.midiNote==null && !t.key) return;
       pushUndo(); t.midiNote=null; t.key=null;
-      if(typeof syncAssignUI==="function") syncAssignUI(t);
-      assignTarget=-1; const pl=document.getElementById("peMidiLearn"); if(pl) pl.classList.remove("learn-on");
+      assignTarget=-1;
       sampNameEl.textContent="割り当てを消した"; paintClPage(); paintPerf();
     }
   });
@@ -3846,28 +3776,10 @@ function openPadEdit(i){
   peTarget=i;
   const t=tracks[i];
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="PAD "+String(i+1).padStart(2,"0")+" · "+(PADS[i].type==="sample"?t.name:PADS[i].name);
-  const att=t.attack||0, fade=t.fade??3;
-  document.getElementById("pePitchR").value=t.tune; document.getElementById("pePitch").textContent=t.tune+" st";
-  document.getElementById("peLevelR").value=t.vol;  document.getElementById("peLevel").textContent=t.vol+" dB";
-  document.getElementById("peCutR").value=t.cutoff; document.getElementById("peCut").textContent=(t.cutoff/1000).toFixed(1)+"k";
-  document.getElementById("peResR").value=t.reso;   document.getElementById("peRes").textContent=t.reso.toFixed(1);
-  document.getElementById("peAttR").value=att;      document.getElementById("peAtt").textContent=att+" ms";
-  document.getElementById("peFadeR").value=fade;    document.getElementById("peFade").textContent=fade+" ms";
-  document.getElementById("peScale").value=t.scale||"off";
-  document.getElementById("peLoopToggle").classList.toggle("on",t.loop);
-  [...document.getElementById("peFilt").children].forEach((b,bi)=>b.classList.toggle("on",["off","lp","hp"][bi]===t.filter));
-  const ck=Math.min(8,t.choke||0);
-  document.getElementById("peChokeToggle").classList.toggle("on",ck>0);
-  document.getElementById("peChokeSel").value=ck;
-  [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x.dataset.o===(t.outBus||"A")));
-  syncAssignUI(t);
-  assignTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
-  document.getElementById("peOutSeg").classList.toggle("inert", !multiOut);
-  document.getElementById("peOutHint").textContent = multiOut ? "A=MASTER / B=DRY ch3/4" : "4ch機器なし — いまは全部Aから出ている";
+  document.getElementById("peTitle").textContent="PAD "+String(i+1).padStart(2,"0")+" · "+(PADS[i].type==="sample"?t.name:PADS[i].name)+" — TRIM / CHOP";
+  // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
+  // このモーダルに残るのは「入り組んだ設定」＝波形の切り出し（TRIM/REV/CHOP）と音源の差し替えだけ。
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
-  document.getElementById("peAdv").classList.remove("show");
-  document.getElementById("peAdvToggle").textContent="ADV ▾";
   // CHOPプレビュー初期化（この編集パッドを対象に。既定 TIME / 8分割）
   chopTarget=i; chopMode="time"; chopDivN=0; chopSens="mid";   // 既定OFF＝開いた時は線を出さない（分割を選んだ瞬間だけ）
   syncChopSeg("edChopMode","mode",chopMode);
@@ -3888,10 +3800,6 @@ function openPadEdit(i){
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
   document.getElementById("peAudition").addEventListener("click",async()=>{
     if(AC.state!=="running")await AC.resume(); trigger(peTarget);
-  });
-  document.getElementById("peAdvToggle").addEventListener("click",(e)=>{
-    const open=document.getElementById("peAdv").classList.toggle("show");
-    e.currentTarget.textContent = open ? "ADV ▴" : "ADV ▾";
   });
   // ハンドルは「±26pxで掴んだ時だけ」動く（どこでもタップ＝移動は廃止：ピンチ1本目や誤タップでSTRT/ENDが飛ぶため）。
   // 何もない場所の1本指ドラッグはズーム中のパン。精密配置はズームで＝掴みやすさはズームが担う
@@ -4060,81 +3968,6 @@ function openPadEdit(i){
     cropBufferToSelection(t);
     renderPeWave(peTarget); drawPadWave(peTarget);
     sampNameEl.textContent="TRIM完了  ↩で戻せる";
-  });
-  // ===== ノブ/トグル類を実機配線（tracks[peTarget]に書き戻す） =====
-  function bindPeKnob(id,valId,fmt,set){
-    const k=document.getElementById(id), v=document.getElementById(valId);
-    k.addEventListener("pointerdown",()=>pushUndo());
-    k.addEventListener("keydown",e=>{ if(/Arrow|Page|Home|End/.test(e.key)) pushUndo(); });
-    k.addEventListener("input",()=>{ set(+k.value); v.textContent=fmt(+k.value); });
-  }
-  bindPeKnob("pePitchR","pePitch",x=>x+" st", x=>{tracks[peTarget].tune=x; warmPitch(peTarget);});
-  bindPeKnob("peLevelR","peLevel",x=>x+" dB", x=>tracks[peTarget].vol=x);
-  bindPeKnob("peCutR","peCut",  x=>(x/1000).toFixed(1)+"k", x=>tracks[peTarget].cutoff=x);
-  bindPeKnob("peResR","peRes",  x=>x.toFixed(1), x=>tracks[peTarget].reso=x);
-  bindPeKnob("peAttR","peAtt",  x=>x+" ms", x=>tracks[peTarget].attack=x);
-  bindPeKnob("peFadeR","peFade",x=>x+" ms", x=>tracks[peTarget].fade=x);
-  document.getElementById("peScale").addEventListener("change",e=>{ pushUndo(); tracks[peTarget].scale=e.target.value; e.target.blur(); });
-  document.getElementById("peLoopToggle").addEventListener("click",e=>{
-    pushUndo(); const t=tracks[peTarget]; t.loop=!t.loop;
-    e.currentTarget.classList.toggle("on",t.loop);
-    if(t.loop && (t.loopStart==null || t.loopStart<t.start)) t.loopStart=t.start;
-    renderPeWave(peTarget);
-  });
-  document.getElementById("peFilt").addEventListener("click",e=>{
-    const b=e.target.closest("button"); if(!b) return;
-    pushUndo(); const t=tracks[peTarget];
-    const f=["off","lp","hp"][[...b.parentElement.children].indexOf(b)]; t.filter=f;
-    if(f==="lp" && t.cutoff>=10000){ t.cutoff=3000; document.getElementById("peCutR").value=3000; document.getElementById("peCut").textContent="3.0k"; }
-    if(f==="hp" && t.cutoff>=10000){ t.cutoff=700;  document.getElementById("peCutR").value=700;  document.getElementById("peCut").textContent="0.7k"; }
-    [...b.parentElement.children].forEach(x=>x.classList.toggle("on",x===b));
-  });
-  document.getElementById("peMidiLearn").addEventListener("click",e=>{
-    if(assignTarget===peTarget){ assignTarget=-1; e.currentTarget.classList.remove("learn-on"); sampNameEl.textContent="ASSIGN 取消"; return; }
-    assignTarget=peTarget; e.currentTarget.classList.add("learn-on");
-    sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤かキーを押す（もう一度で取消）";
-  });
-  document.getElementById("peMidiClear").addEventListener("click",()=>{
-    const t=tracks[peTarget];
-    if(t.midiNote==null && !t.key) return;
-    pushUndo(); t.midiNote=null; t.key=null;
-    syncAssignUI(t);
-    assignTarget=-1; document.getElementById("peMidiLearn").classList.remove("learn-on");
-    sampNameEl.textContent="割り当てを消した";
-  });
-  // 全箇所共通：パラメータはダブルクリック/ダブルタップで0へ（EDITモーダルのスライダーも情報窓と同じ作法）
-  (function(){
-    const md=document.getElementById("padEditModal"); if(!md) return;
-    let lastT=0, lastEl=null;
-    const zero=r=>{
-      const z=Math.max(+r.min, Math.min(+r.max, 0));
-      if(+r.value===z) return;
-      pushUndo(); r.value=z; r.dispatchEvent(new Event("input",{bubbles:true}));
-    };
-    md.addEventListener("dblclick",e=>{ const r=e.target.closest('input[type=range]'); if(r){ e.preventDefault(); zero(r); } });
-    md.addEventListener("pointerdown",e=>{
-      const r=e.target.closest('input[type=range]'); if(!r) return;
-      const now=Date.now();
-      if(r===lastEl && now-lastT<320){ lastT=0; lastEl=null; zero(r); return; }
-      lastT=now; lastEl=r;
-    });
-  })();
-  document.getElementById("peOutSeg").addEventListener("click",e=>{
-    const b=e.target.closest("button"); if(!b) return;
-    if(tracks[peTarget].outBus===b.dataset.o) return;   // 無変更でUndoスタックを埋めない
-    pushUndo(); tracks[peTarget].outBus=b.dataset.o;
-    [...document.getElementById("peOutSeg").children].forEach(x=>x.classList.toggle("on",x===b));
-    sampNameEl.textContent="OUT "+b.dataset.o+(multiOut?"":" — 4ch機器なし、いまはAから出る");
-  });
-  document.getElementById("peChokeSel").addEventListener("change",e=>{
-    pushUndo(); const g=+e.target.value; tracks[peTarget].choke=g;
-    document.getElementById("peChokeToggle").classList.toggle("on",g>0);
-    e.target.blur();
-  });
-  document.getElementById("peChokeToggle").addEventListener("click",e=>{
-    pushUndo(); const t=tracks[peTarget], sel=document.getElementById("peChokeSel");
-    if(t.choke>0){ t.choke=0; sel.value=0; e.currentTarget.classList.remove("on"); }
-    else { t.choke=+sel.value>0?+sel.value:1; sel.value=t.choke; e.currentTarget.classList.add("on"); }
   });
   // ===== CHOP（EDIT内に統合）：この編集パッドをスライスして各パッドへ展開 =====
   document.getElementById("edChopMode").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
@@ -4339,8 +4172,8 @@ window.addEventListener("keydown",async(e)=>{
             (ae.tagName==="INPUT" && (ae.type||"").toLowerCase()!=="range"))) return;
   if(e.code==="Space"){e.preventDefault();playBtn.click();return;}
   if(assignTarget>=0){   // ASSIGN待機中＝次に押したキーをこのパッドに記憶（Escapeで取消・修飾キー単独は無視）
-    if(e.key==="Escape"){ assignTarget=-1; const _lb=document.getElementById("peMidiLearn"); if(_lb) _lb.classList.remove("learn-on");
-      sampNameEl.textContent="ASSIGN 取消"; if(typeof paintPerf==="function") paintPerf(); return; }
+    if(e.key==="Escape"){ assignTarget=-1; sampNameEl.textContent="ASSIGN 取消";
+      if(typeof paintPerf==="function") paintPerf(); return; }
     if(["Shift","Control","Alt","Meta"].includes(e.key)) return;
     e.preventDefault();
     const kk=e.key.toLowerCase();
@@ -5146,15 +4979,8 @@ function assignTo(pad, field, value, label){
   pushUndo();
   tracks[pad][field]=value;
   assignTarget=-1;
-  const lb=document.getElementById("peMidiLearn"); if(lb) lb.classList.remove("learn-on");
-  if(pad===peTarget) syncAssignUI(tracks[pad]);
   if(typeof paintClPage==="function") paintClPage();   // 窓から学習した時もここで反映（peTargetと無関係）
   sampNameEl.textContent="ASSIGN — PAD "+String(pad+1).padStart(2,"0")+" ← "+label;
-}
-function syncAssignUI(t){
-  const nv=document.getElementById("peMidiNote"); if(nv) nv.textContent=(t.midiNote!=null)?midiNoteName(t.midiNote):"—";
-  const kv=document.getElementById("peKeyName"); if(kv) kv.textContent=t.key?String(t.key).toUpperCase():"—";
-  if(typeof paintClPage==="function") paintClPage();   // 情報窓のASSIGNページも同時に追従
 }
 function handleMIDI(data){
   // クロックはノート入力のON/OFFと独立（MIDI入力OFFでもSYNCは生きる＝トグルの点灯が嘘をつかない）
@@ -5354,7 +5180,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.86";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.89";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
