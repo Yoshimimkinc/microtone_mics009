@@ -9,6 +9,34 @@ python3 -m http.server 8137                              # リポジトリ直下
 ```
 chromium の場所が特殊な環境では `PW_EXE` / `PW_PLAYWRIGHT` で明示できる。
 
+## `gate.mjs` — 出す前の関門（これ1本）
+```sh
+node tools/gate.mjs
+```
+check（合否）→ dead-controls（無反応コントロール）→ lost-listeners（消えた登録）を回し、
+**1つでも落ちたら exit 1**。deadcss と ui-audit はレポートとして続けて出す。
+`.githooks/pre-push` がこれを自動で呼ぶ（初回だけ `git config core.hooksPath .githooks`）。
+どうしても飛ばすときは `SKIP_GATE=1 git push`（理由をコミットメッセージに書く）。
+意図した撤去は `tools/removals-ok.txt` に理由つきで書かないと lost-listeners で止まる。
+
+## `static-check.mjs` — 静的検査（ブラウザ不要・1秒）
+```sh
+node tools/static-check.mjs
+```
+1) **暗黙グローバル**：宣言されていないのに参照されている識別子（id持ち要素は `window` の暗黙グローバルに
+なるので、宣言を消しても動いてしまう。v0.3.84〜0.3.95 の `gPatSeg` 事故はこれで即出る）
+2) 存在しない id への参照（`getElementById` / `querySelector("#…")`、ガードの有無つき）
+3) バージョン3点一致（`APP_VERSION` / `version.json` / `splashVer`）
+検出器は検査ワーカーW6の TypeScript AST 版を取り込んだもの。関門の最初に走る。
+
+## `dead-controls.mjs` — 押しても何も起きないコントロール
+```sh
+node tools/dead-controls.mjs
+```
+PADS/SEQ の可視コントロールを実クリックで総当りし、前後で状態が1つも変わらないものを並べる。
+**ハンドラを消してしまった事故（v0.3.96）はこれで即座に出る。** 無反応が正しいもの
+（閉じるボタン、ファイル選択、選択済みの再タップ）は EXPECT に理由つきで登録。
+
 ## `check.mjs` — 回帰チェック
 ```sh
 node tools/check.mjs           # 既定ポート 8137

@@ -13,13 +13,18 @@ const fail=[];
 const eq=(label,got,want)=>{ const ok=JSON.stringify(got)===JSON.stringify(want); if(!ok) fail.push(`${label}: got ${JSON.stringify(got)} want ${JSON.stringify(want)}`); return ok; };
 const ok_=(label,cond,info)=>{ if(!cond) fail.push(`${label}: ${info}`); };
 
+// 起動完了を「時間」でなく「状態」で待つ。固定sleepだとCPU負荷（並列検査など）でフレークする
+async function ready(p){
+  await p.waitForFunction(()=>typeof tracks!=='undefined' && tracks[0] && tracks[0].buffer && typeof paintPerf==='function', null, {timeout:20000});
+  await p.evaluate(()=>{const s=document.getElementById('splash'); if(s) s.style.display='none';});
+  await p.mouse.move(5,5); await p.mouse.down(); await p.mouse.up();
+  await p.waitForTimeout(600);   // 起動タップ直後450msの入力シールドを消化（これは仕様なので時間待ち）
+}
 async function run(w,h,mobile){
   const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile});
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
   await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
-  await p.waitForTimeout(1800);
-  await p.evaluate(()=>{document.getElementById('splash').style.display='none';});
-  await p.mouse.move(5,5); await p.mouse.down(); await p.mouse.up(); await p.waitForTimeout(600); // 450msの入力シールドを消化
+  await ready(p);
   const V=`${w}x${h}`;
   const page=async id=>{ await p.click(`#clKeys .cl-key[data-pg="${id}"]`); await p.waitForTimeout(120); return p.evaluate(()=>clPage); };
   const box=s=>p.$eval(s,e=>{const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2,w:Math.round(r.width),h:Math.round(r.height)};});
@@ -141,7 +146,7 @@ async function run(w,h,mobile){
     ok_(`${V} 波形は欄の右`, wv.x>fl.x, `${wv.x} <= ${fl.x}`); }
 
   // 7) モーダルは「入り組んだ設定」だけ
-  await p.click('#clWave'); await p.waitForTimeout(400);
+  await p.click('#clWave'); await p.waitForTimeout(600);   // 開いて450msはクリックを飲む（ゴーストクリック対策）
   eq(`${V} モーダル中の波形`, await where(), 'peWaveHome');
   const md=await p.evaluate(()=>{const m=document.getElementById('padEditModal');
     return {disp:getComputedStyle(m).display, ranges:m.querySelectorAll('input[type=range]').length,
@@ -164,6 +169,62 @@ async function run(w,h,mobile){
   await p.evaluate(()=>{ setEditPat(0); setEditBar(0); document.getElementById('modePads').click(); });
   await p.waitForTimeout(200);
 
+  // 7c) ★タッチ：EDIT→パッドでモーダルが開いた直後のゴーストクリックが TRIM を誤発動しない（W1・v0.3.98）
+  if(mobile){
+    const before=await p.evaluate(()=>tracks[3].buffer.length);
+    // 低い画面（390×664）では EDIT 行が内側スクロールの下に居るので、座標ではなく要素を tap（自動でスクロールして触る）
+    await p.tap('#holdEdit'); await p.waitForTimeout(80);
+    await p.tap('#pads .pad:nth-child(4)'); await p.waitForTimeout(350);
+    const g=await p.evaluate(()=>({modal:document.getElementById('padEditModal').style.display, len:tracks[3].buffer.length}));
+    ok_(`${V} タッチでEDIT→パッド：モーダルが開いたまま`, g.modal==='flex', g.modal);
+    ok_(`${V} タッチでEDIT→パッド：TRIMが誤発動しない`, g.len===before, `${before}→${g.len}`);
+    await p.waitForTimeout(500);   // 開いてから450msはクリックを飲む（ゴーストクリック対策）ので、その後に閉じる
+    await p.evaluate(()=>{ document.getElementById('peClose').click(); if(armMode) arm('edit',false); });
+    await p.waitForTimeout(200);
+  }
+  // 7h) ★情報窓：ドラッグ直後に掴み直しても0に飛ばない／ASSIGNで奪った割当がUndoで戻る（W3・v0.3.98）
+  await p.evaluate(()=>{ const vp=document.getElementById('viewPads'); if(vp) vp.scrollTop=0; });   // 低い画面では 7c のパッド tap で内側がスクロールしている
+  await page('main');
+  {
+    const b=await box('.cl-par[data-p="pitch"]');
+    await p.mouse.move(b.x,b.y); await p.mouse.down(); await p.mouse.move(b.x+71,b.y,{steps:4}); await p.mouse.up();
+    await p.mouse.move(b.x+20,b.y); await p.mouse.down(); await p.waitForTimeout(30);
+    const v=await p.evaluate(()=>tracks[selected].tune); await p.mouse.up(); await p.waitForTimeout(80);
+    ok_(`${V} ドラッグ直後の掴み直しで0に飛ばない`, v===5, `tune=${v}`);
+    await dbl('.cl-par[data-p="pitch"]');
+  }
+  eq(`${V} 奪った割当がUndoで戻る`, await p.evaluate(()=>{ tracks.forEach(t=>{t.key=null;t.midiNote=null;}); tracks[2].key='q';
+    assignTo(7,'key','q','Q'); const a=[tracks[7].key,tracks[2].key]; doUndo(); return [...a,tracks[7].key,tracks[2].key]; }), ['q',null,null,'q']);
+  // 7d) ★perf の ●REC が存在してトグルできる（W5 NG-B・v0.3.98）
+  if(await p.evaluate(()=>document.body.classList.contains('perf'))){
+    await p.click('#perfRec'); await p.waitForTimeout(80);
+    eq(`${V} ●REC でP-LOCK記録を有効化できる`, await p.evaluate(()=>perfRecArm), true);
+    await p.click('#perfRec'); await p.waitForTimeout(80);
+  }
+  // 7e) ★手叩きの記録先は「表示中の小節」（W5 NG-C・v0.3.98）
+  eq(`${V} 小節末の手叩きが次小節に入らない`, await p.evaluate(()=>{
+    const sv=tracks[0].patterns[0].map(b=>b.slice());
+    playing=true; recording=true; displayPat=0; displayBar=0; playPat=0; playBar=1; playStep=15;
+    trigger(0); const r=[tracks[0].patterns[0][0][15], tracks[0].patterns[0][1][15]];
+    playing=false; recording=false; tracks[0].patterns[0]=sv; return r; }), [1,0]);
+  // 7f) ★BPM変更で「次のステップの時刻」が動かない＝無音も飛びも出ない（W5 NG-A・v0.3.98）
+  ok_(`${V} BPM変更で位相が保たれる`, await p.evaluate(()=>{
+    playing=true; barStartTime=AC.currentTime+1; stepIdx=5; const b0=bpmVal; applyBpm(180);
+    const t0=stepTimeClean(5); applyBpm(60); const t1=stepTimeClean(5); applyBpm(b0); playing=false;
+    return Math.abs(t1-t0)<1e-6; }), 'stepTimeClean が動いた');
+  // 7g) ★空パッドとして保存されたものを読むと前の音が消える（W4 NG-3・v0.3.98）
+  eq(`${V} 空パッドのLoadで幽霊サンプルが残らない`, await p.evaluate(async()=>{
+    const pr=JSON.parse(JSON.stringify(buildProject())); pr.tracks[1].audio=null; pr.tracks[1].type='empty'; pr.tracks[1].name='EMPTY';
+    await applyProject(pr); return [!!tracks[1].buffer, PADS[1].type]; }), [false,'empty']);
+  await p.evaluate(async()=>{ await applyProject(JSON.parse(JSON.stringify(buildProject()))); });
+
+  // 7i) ★どのレイアウトでも再生中は STEP/STATE が生きている（W6 NG-1・v0.3.98。perf限定で「--」「■ STOP」のままだった）
+  await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(700);
+  const live=await p.evaluate(()=>({step:document.getElementById('clStep').textContent, state:document.getElementById('clState').textContent}));
+  await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
+  ok_(`${V} 再生中にSTEPが進む表示`, /^\d\d\/16$/.test(live.step), live.step);
+  ok_(`${V} 再生中に▶ PLAY表示`, live.state==='▶ PLAY', live.state);
+
   // 8) 既存機能が生きている
   const misc=await p.evaluate(()=>{
     const r={};
@@ -181,8 +242,9 @@ async function run(w,h,mobile){
   const dim=await p.evaluate(()=>{const pd=document.querySelector('#pads .pad').getBoundingClientRect();
     return {pad:Math.round(pd.height), scr:Math.round(document.querySelector('.perf-screen').getBoundingClientRect().height),
             docH:document.documentElement.scrollHeight, winH:innerHeight};});
-  ok_(`${V} 縦スクロールなし`, dim.docH<=dim.winH+1, `${dim.docH}>${dim.winH}`);
-  ok_(`${V} パッド高`, dim.pad>=60, `${dim.pad}px`);
+  ok_(`${V} ページ全体は縦スクロールしない`, dim.docH<=dim.winH+1, `${dim.docH}>${dim.winH}`);
+  ok_(`${V} PCの縦長でも回転オーバーレイで塞がない`, !(await p.evaluate(()=>document.body.classList.contains('perf-rotate'))) || mobile, 'perf-rotate が付いている');
+  ok_(`${V} パッド高（下限56px・足りなければ内側で縦スクロール）`, dim.pad>=56, `${dim.pad}px`);
   eq(`${V} 0 errors`, errs, []);
   await p.screenshot({path:`${SHOT}/shot-${w}.png`});
 
@@ -191,17 +253,40 @@ async function run(w,h,mobile){
   const wrote=await p.evaluate(async()=>{ await autosaveNow(true);
     const r=await idbOp("readonly",st=>st.get(AUTOSAVE.key)); return !!(r&&r.json&&r.json.length>1000); });
   ok_(`${V} 自動保存が書かれる`, wrote, '書かれていない');
-  await p.reload({waitUntil:'load'}); await p.waitForTimeout(2200);
-  await p.evaluate(()=>{document.getElementById('splash').style.display='none';});
+  await p.reload({waitUntil:'load'}); await ready(p);
   const restored=await p.evaluate(()=>({name:tracks[0].name, tune:tracks[0].tune,
     step:tracks[0].patterns[0][0][5], bpm:bpmVal, buf:!!tracks[0].buffer}));
   eq(`${V} リロードで復元`, restored, {name:"CHKTAKE",tune:9,step:1,bpm:111.5,buf:true});
+  // 10b) ★Load した .mics は自動保存に乗る＝次回起動で「読む前」に戻らない（W4 NG-1・v0.3.98）
+  {
+    const B=await p.evaluate(()=>{const pr=buildProject(); pr.tracks[0].name='LOADED1'; return JSON.stringify(pr);});
+    const fsP=await import('node:fs/promises'); const f=`${SHOT}/projB.mics`; await fsP.writeFile(f,B);
+    await p.setInputFiles('#projFile',f); await p.waitForTimeout(900);
+    const saved=await p.evaluate(async()=>{ const r=await idbOp("readonly",st=>st.get(AUTOSAVE.key)); return !!(r&&r.json&&r.json.includes('"LOADED1"')); });
+    ok_(`${V} Loadした.micsが自動保存に書かれる`, saved, '書かれていない');
+    eq(`${V} LoadはUndoで戻れる`, await p.evaluate(()=>{ doUndo(); return tracks[0].name; }), "CHKTAKE");
+  }
   await p.evaluate(()=>clearAutosave());
+
+  // 11) ★ウィンドウの高さを変えたらSEQも追従する
+  //     （PADSへ往復するまで古い高さのままだったバグの再発防止。v0.3.97）
+  await p.evaluate(()=>document.getElementById('modeSeq').click()); await p.waitForTimeout(300);
+  const seqBox=()=>p.evaluate(()=>{const b=document.getElementById('viewSeq').getBoundingClientRect();
+    return [Math.round(b.width),Math.round(b.height)];});
+  await p.setViewportSize({width:Math.max(360,w-160), height:Math.max(460,h-220)});
+  await p.waitForTimeout(500);
+  const afterResize=await seqBox();
+  await p.evaluate(()=>{document.getElementById('modePads').click(); document.getElementById('modeSeq').click();});
+  await p.waitForTimeout(400);
+  eq(`${V} SEQがウィンドウ変更に追従`, afterResize, await seqBox());
+  await p.setViewportSize({width:w,height:h});
+  await p.evaluate(()=>document.getElementById('modePads').click());
+  await p.waitForTimeout(200);
   await ctx.close();
   return {V, dim, md:md.btns};
 }
 const res=[];
-for(const [w,h,m] of [[390,844,true],[520,900,true],[700,900,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));
+for(const [w,h,m] of [[390,844,true],[390,664,true],[520,900,true],[700,900,false],[960,1040,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));
 await br.close();
 res.forEach(r=>console.log(`${r.V}  パッド${r.dim.pad}px 窓${r.dim.scr}px`));
 console.log(`モーダルの中身: [${res[0].md.join(' ')}]`);

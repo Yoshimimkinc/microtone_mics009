@@ -1,0 +1,2 @@
+# lost-listeners.mjs が「消えた」と報告するもののうち、意図した撤去。1行1件、理由をコメントで。
+# 書式は lost-listeners の出力そのまま（例: loopToggle [click]）。

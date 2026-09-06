@@ -70,19 +70,29 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 - **aki**: Vocalist (needs simplest UI)
 - **YKOYKО**: Illustrator (non-technical)
 
-## Unit = 6 Roles
-制作の基本単位は「1ユニット = 6ロール」。各ロールは `.claude/agents/` にエージェント化済み（`producer` / `code` / `ui` / `sound` / `feel` / `artware`）。
+## チーム = 8ロール（v0.3.97 再編成）
+目標は「**最高のドラムマシン体験**」。各ロールは `.claude/agents/` にエージェント化済み。
+v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が選べないバグが3バージョン潜伏した。再編成で検査と演奏を追加。
 
-| ロール | 視点 / 担当 | 現メンバー |
-|--------|------------|-----------|
-| プロデューサー | スコープ・調停・最終判断 | Yoshi |
-| プログラミングコード担当 | 実装・最適化・バグ修正 | Claude Code |
-| UI担当 | レイアウト・CSS・レスポンシブ・情報階層 | （専任不在＝重点） |
-| 音源担当 | Web Audio・音作り・グルーヴ | hichannel |
-| 操作感担当 | "aki rule"・触り心地・手数 | aki |
-| アートウェア担当（感性） | 世界観・色・命名・ヴァイブ | YKOYKO |
+| ロール | エージェント | 視点 / 担当 | 現メンバー |
+|--------|-------------|------------|-----------|
+| プロデューサー | `producer` | スコープ・調停・**Definition of Done** | Yoshi |
+| コード | `code` | 実装・修正。**範囲削除禁止・削除後は lost-listeners** | Claude Code |
+| **検査（QA）** | `qa` | **関門を回す・バグは再現→テスト追加→修正の順** | Claude Code（新設） |
+| 音源 | `sound` | 信号鎖・ローファイ・レイテンシ予算・音の安全 | hichannel |
+| **演奏** | `player` | **叩いて気持ちいいか**：反応・手触り・グルーヴ・ライブ編集 | hichannel（新設） |
+| 操作感 | `feel` | "aki rule"・手数・両手難易度 | aki |
+| UI | `ui` | レイアウト・寸法の不変性・画面予算 | （専任不在＝重点） |
+| アートウェア | `artware` | 世界観・色（値は4.5:1を割らない）・命名 | YKOYKO |
 
-運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
+### 運用（Definition of Done）
+1. **バグは再現してから直す**：qa が Playwright で再現 → `tools/check.mjs` に追加 → code が修正 → 同じテストで確認
+2. **出す前に関門**：`node tools/gate.mjs`（check / dead-controls / lost-listeners）が通ること。`.githooks/pre-push` が自動で止める（初回 `git config core.hooksPath .githooks`）
+3. **削除は1件ずつ**：範囲指定で消さない。消したら `lost-listeners.mjs`、意図した撤去は `tools/removals-ok.txt` に理由つきで
+4. **規則は数値で**：`docs/ui-rules.md`。スコアが悪化したら理由を書く。規則と現実が衝突したら測ってから決める
+5. **経緯は残す**：`docs/screen-spec.md` に §番号で。何を試して何が駄目だったかも
+
+意味のある変更は出す前に8ロール（特に qa・player・feel）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
 
 ## UI開発規則
 楽器UIの基準値（情報提供・操作・視認性スコア・両手操作の難易度・レイテンシ・不変性・
@@ -95,7 +105,7 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.96
+MICS009 beta v0.3.98
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
 - `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
