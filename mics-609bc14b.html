@@ -278,8 +278,8 @@
   .perf-screen .cl-hint{font-size:10px;opacity:.5;letter-spacing:.02em;}
 
   /* 触れるパラメータ（横ドラッグ＝MPCのデータホイール相当） */
-  .perf-screen .cl-par{display:flex;align-items:baseline;gap:4px;cursor:ew-resize;touch-action:none;
-    padding:2px 8px;border:1px solid rgba(61,214,196,.22);border-radius:6px;user-select:none;-webkit-user-select:none;}
+  .perf-screen .cl-par{display:flex;align-items:baseline;gap:4px;cursor:ew-resize;touch-action:none;min-height:30px;
+    padding:5px 8px;border:1px solid rgba(61,214,196,.22);border-radius:6px;user-select:none;-webkit-user-select:none;}
   .perf-screen .cl-par:active,.perf-screen .cl-par.tweak{border-color:var(--teal);background:rgba(61,214,196,.10);}
   /* 桁数や符号で幅が動く値はすべて「最大桁ぶんの固定幅」。
      letter-spacing を 0 に戻すのが要点：ch は字送りを含まないので、
@@ -979,7 +979,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.84</div>
+  <div class="s-ver" id="splashVer">v0.3.85</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1294,8 +1294,8 @@
       <div class="perf-screen" id="perfScreen">
         <div class="cl-row cl-head"><span class="cl-brand">MICS009</span><span class="cl-state" id="clState">■ STOP</span></div>
         <div class="cl-row">
-          <span><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
-          <span><i>SWG</i><b class="cl-num" id="clSwing">50%</b></span>
+          <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
+          <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50%</b></span>
           <span><i>PAT</i><b class="cl-num" id="perfPat">A</b></span>
           <span><i>BAR</i><b class="cl-num" id="clBar">1</b></span>
           <span><i>STEP</i><b class="cl-num" id="clStep">--</b></span>
@@ -3088,6 +3088,12 @@ window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active"
 // パッド1枚の編集項目を「カテゴリ＝ページ」に棚卸ししたもの（docs/screen-spec.md §96 の表と1:1）。
 // en=列挙（タップで送る） / min-max-st=数値（横ドラッグ＝データホイール） / ro=表示専用 / w=固定表示幅(ch)
 const CL_SPEC={
+  // g:1 = パッドではなく本体の状態。書き込みはメニューの既存UI経由に流して単一経路を保つ
+  // （setDelayTempo・readout・paintPerf が既存ハンドラでまとめて走る）
+  bpm:   {lbl:"BPM", g:1, get:()=>bpmVal, min:40,max:250,st:0.5,px:5, fmt:v=>v.toFixed(1), w:5, zero:100,
+          set:v=>{ const el=document.getElementById("bpm"); el.value=v; el.dispatchEvent(new Event("input",{bubbles:true})); }},
+  swing: {lbl:"SWG", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>v+"%", w:4,
+          set:v=>{ const el=document.getElementById("swing"); el.value=v; el.dispatchEvent(new Event("change",{bubbles:true})); }},
   pitch: {lbl:"PITCH", u:"st", get:t=>t.tune,  set:(t,v)=>t.tune=v, min:-12,max:12,st:1,px:14, fmt:v=>(v>0?"+":"")+v, w:3},
   scale: {lbl:"SCALE", en:["off","chro","maj","min","pent"], get:t=>t.scale||"off",
           set:(t,v)=>{ t.scale=v; if(typeof refreshSeqMode==="function") refreshSeqMode(); },   // SEQの音階表示も連動
@@ -3148,12 +3154,14 @@ function paintClPage(){
   const scr=document.getElementById("perfScreen"); if(!scr) return;
   const SPEC=CL_SPEC;
   const quant=(sp,v)=>{ let x=Math.round(v/sp.st)*sp.st; if(sp.st<1) x=+x.toFixed(4); return Math.max(sp.min,Math.min(sp.max,x)); };
+  const GET=sp=> sp.g ? sp.get() : sp.get(tracks[selected]);
+  const SET=(sp,pad,v)=> sp.g ? sp.set(v) : sp.set(tracks[pad],v);
   const after=(pad,sp,k)=>{
     if(k==="pitch" && typeof warmPitch==="function") warmPitch(pad);
     paintPerf();
     if(typeof syncEditor==="function") syncEditor();
     if(typeof refreshOpenPadEdit==="function") refreshOpenPadEdit(pad);   // EDITモーダルを開いていれば追従
-    if(sp.msg && typeof sampNameEl!=="undefined" && sampNameEl) sampNameEl.textContent=sp.msg(sp.get(tracks[pad]));
+    if(sp.msg && typeof sampNameEl!=="undefined" && sampNameEl) sampNameEl.textContent=sp.msg(GET(sp));
   };
   // 欄を既定値（ほとんどは0）へ戻す。旧・円形ノブのダブルタップ復帰をそのまま窓へ引き継いだもの
   // 数値欄は全部おなじルール：戻す先は 0（0が範囲外の CUTOFF/RESO だけ一番0に近い値）。欄ごとの例外は作らない。
@@ -3161,9 +3169,11 @@ function paintClPage(){
   // リセットと誤認すると「送ったのに戻る」になる。OFFへは1〜数タップで届くので不要。
   const resetPar=k=>{
     const sp=SPEC[k]; if(!sp||sp.ro||sp.en) return;
-    const t=tracks[selected], z=Math.max(sp.min, Math.min(sp.max, 0)); if(sp.get(t)===z) return;
-    pushUndo(); sp.set(t,z); after(selected,sp,k); paintClPage();
-    if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=sp.lbl+" → "+sp.fmt(sp.get(t))+(sp.u||"");
+    // zero 指定の欄だけ例外（テンポに「0」は無いので既定の100へ）。他は一律0＝0が範囲外なら一番近い値
+    const z=(sp.zero!==undefined)?sp.zero:Math.max(sp.min, Math.min(sp.max, 0));
+    if(GET(sp)===z) return;
+    pushUndo(); SET(sp,selected,z); after(selected,sp,k); paintClPage();
+    if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=sp.lbl+" → "+sp.fmt(GET(sp))+(sp.u||"");
   };
   scr.addEventListener("dblclick",e=>{   // マウス
     const el=e.target.closest(".cl-par"); if(!el) return;
@@ -3179,29 +3189,29 @@ function paintClPage(){
       if(el===lastTapEl && now-lastTap<320){ lastTap=0; lastTapEl=null; drag=null; resetPar(k); return; }
       lastTap=now; lastTapEl=el;
     }
-    document.querySelectorAll("#clPage .cl-par.sel").forEach(x=>x.classList.remove("sel"));
+    scr.querySelectorAll(".cl-par.sel").forEach(x=>x.classList.remove("sel"));   // カーソルは窓に1つ（上段のBPM/SWGも含む）
     el.classList.add("sel","tweak");   // MPC1000のカーソル＝いまデータホイールが効く欄
-    drag={el,sp,k,x0:e.clientX,start:sp.get(tracks[selected]),pad:selected,undone:false,moved:false};
+    drag={el,sp,k,x0:e.clientX,start:GET(sp),pad:selected,undone:false,moved:false};
     try{ el.setPointerCapture(e.pointerId); }catch(_){}
   });
   scr.addEventListener("pointermove",e=>{
     if(!drag) return;
-    const sp=drag.sp, t=tracks[drag.pad];
+    const sp=drag.sp;
     let v;
     if(sp.en){ const d=Math.round((e.clientX-drag.x0)/26); if(!d) return;
       v=sp.en[((sp.en.indexOf(drag.start)+d)%sp.en.length+sp.en.length)%sp.en.length]; }
     else { v=quant(sp, drag.start + Math.round((e.clientX-drag.x0)/sp.px)*sp.st); }
-    if(v===sp.get(t)) return;
+    if(v===GET(sp)) return;
     drag.moved=true;
     if(!drag.undone){ pushUndo(); drag.undone=true; }   // ドラッグ1回で1手（連続でUndoを埋めない）
-    sp.set(t,v); after(drag.pad,sp,drag.k); paintClPage();
+    SET(sp,drag.pad,v); after(drag.pad,sp,drag.k); paintClPage();
   });
   const end=()=>{
     if(!drag) return;
     const sp=drag.sp;
     if(!drag.moved && sp.en){   // タップ＝列挙を1つ送る（MPC1000でいうINC）
-      const t=tracks[drag.pad], nx=sp.en[(sp.en.indexOf(sp.get(t))+1)%sp.en.length];
-      pushUndo(); sp.set(t,nx); after(drag.pad,sp,drag.k); paintClPage();
+      const nx=sp.en[(sp.en.indexOf(GET(sp))+1)%sp.en.length];
+      pushUndo(); SET(sp,drag.pad,nx); after(drag.pad,sp,drag.k); paintClPage();
     }
     drag.el.classList.remove("tweak"); drag=null;
   };
@@ -5287,7 +5297,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.84";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.85";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
