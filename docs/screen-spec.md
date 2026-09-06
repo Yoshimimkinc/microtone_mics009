@@ -751,3 +751,9 @@ ramp 25ms in / 180ms out・hold 1200ms。復帰は実測0.00dB（完全に戻る
 - 状態同期は `key` も最初から全経路（swap/copy/snapshot/restore/.mics保存/読込）
 - verify: 学習(無発音・KEY表示・トースト) / 学習キーで発音 / 既定より優先 / 二重防止 / MIDIとキーの併用 /
   .mics往復 / copy・swap・UNDO追従 / CLEARで両方消去 — 11項目pass・0 errors
+
+## 93. 【v0.3.78】PC横幅の谷間ゾーン（601〜767px）で画面が破綻する問題を修正
+splitの2カラムは右カラムが`minmax(300px,...)`を要求するため、601〜767pxで発動すると左のパッドが潰れる。
+実測: 620px→パッド43×43px（指で押せない）/ 700px→63px / 760px→77px。
+→ splitの開始を **768px**（Performance Modeと同じ閾値）へ引き上げ、積み上げレイアウトを **767px** まで伸ばして隙間なく接続。
+実測（修正後）: 620px→137px / 700px→157px / 760px→172px。820px(perf)・1100pxは無変更で健全。
