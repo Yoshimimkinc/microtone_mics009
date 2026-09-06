@@ -144,7 +144,7 @@
   /* 画面モード：●PADS 〇SEQ 〇MIX を画面幅いっぱいに均等表示してスワイプを促す */
   .viewdots{display:none;align-items:stretch;gap:0;width:100%;}
   .viewdots .vdot{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:7px;
-    background:none;border:none;padding:11px 4px;min-height:36px;cursor:pointer;
+    background:none;border:none;padding:5px 4px;min-height:32px;cursor:pointer;
     font-size:11px;letter-spacing:.12em;font-weight:700;color:var(--dim);transition:color .15s;}
   .viewdots .vdot .vd-dot{width:9px;height:9px;border-radius:50%;background:var(--line);transition:.15s;}
   .viewdots .vdot.on{color:var(--ink);}
@@ -364,7 +364,7 @@
     .top{padding-bottom:6px;margin-bottom:6px;gap:8px;}
     .brand .logo{font-size:17px;}
     .brand .model{font-size:9px;padding:2px 5px;letter-spacing:.18em;}
-    .modebar-row{margin:2px 0 4px;gap:12px;}
+    .modebar-row{margin:0 0 2px;gap:12px;}
     .modebar{margin:0;}
     .modebtn{padding:5px 12px;font-size:11px;min-height:0;}
   }
@@ -664,6 +664,11 @@
   .msbtn.solo.armed .d{background:#06201d;box-shadow:0 0 6px #06201d;}
   .msbtn.edit.armed{background:#5b9dff;color:#06183a;border-color:#5b9dff;box-shadow:0 0 16px rgba(91,157,255,.5);}
   .msbtn.edit.armed .d{background:#06183a;}
+  /* スマホ用エフェクト選択子（PCでは perf の P-LOCK 行が担う） */
+  .msbtn.fx{display:none;}
+  .msbtn.fx[data-lock="delay"]{color:#5fd35f;}   .msbtn.fx[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;box-shadow:0 0 16px rgba(95,211,95,.5);}
+  .msbtn.fx[data-lock="reverb"]{color:#5aa9ff;}  .msbtn.fx[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;box-shadow:0 0 16px rgba(90,169,255,.5);}
+  .msbtn.fx.on .d{background:currentColor;}
   /* MIX画面廃止に伴い、MUTE/SOLOはPADSバーに復活（M/Sの行き場をここに確保） */
   .msbar .msbtn{justify-content:center;min-width:104px;}
   /* EDIT mode：対象選択を促すパッドのほのかな点滅枠 */
@@ -877,6 +882,9 @@
     /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
     #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin:4px 0 0;}   /* 44px化のぶんは余白から返す */
+    /* スマホの下段は [MUTE] [DELAY] [REVERB]。SOLO と EDIT は出さない（TRIM/CHOPは窓の✂、空パッドは＋から） */
+    #viewPads>.msbar #holdSolo,#viewPads>.msbar #holdEdit{display:none;}
+    #viewPads>.msbar .msbtn.fx{display:flex;}
     /* スマホ：EDIT行（MUTE/SOLO/EDIT）を均等3分割でフィル */
     #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:6px;padding-right:6px;}
     /* 移設したMUTE/SOLO(.t.arm)もEDITと同じ高さ・並びに揃える */
@@ -984,7 +992,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.105</div>
+  <div class="s-ver" id="splashVer">v0.3.106</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1214,6 +1222,10 @@
            スマホ(<600px)のみ relocateMuteSolo() が MUTE/SOLO をこの行に親替え＝[MUTE SOLO EDIT]（v0.3.31） -->
       <div class="msbar">
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
+        <!-- スマホだけ：エフェクトの P-LOCK 選択子（押してからパッドを左右にドラッグ＝そのパッドの送り量。
+             下段ステップ列を左右にドラッグ＝そのステップだけ）。SOLO/EDIT はスマホでは出さない（v0.3.106） -->
+        <button class="msbtn fx" id="fxDelay" data-lock="delay"><span class="d"></span>DELAY</button>
+        <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
       </div>
 
       <!-- 16 pads (主役)：4×4固定（8×2レイアウトは廃止） -->
@@ -2467,7 +2479,7 @@ PADS.forEach((p,i)=>{
     if(e.altKey){ e.preventDefault(); selectPad(i); return; }                                  // Alt+PAD＝選択のみ・発音なし（Ctrlはブラウザ衝突のためAlt）
     if(e.shiftKey){ e.preventDefault(); tracks[i].mute=!tracks[i].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }   // Shift+PAD＝ミュート（既定）
     // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
-    if(document.body.classList.contains("perf") && activeLock && PERF_BASE[activeLock]){
+    if(activeLock && PERF_BASE[activeLock]){   // P-LOCK選択中はドラッグ＝そのパッドの値（perf でもスマホの DELAY/REVERB でも）
       e.preventDefault();
       const now=Date.now();
       if(now-(perfTapT[i]||0) < 320){      // ダブルタップ＝そのパッドを基準値へ戻す
@@ -3432,8 +3444,14 @@ paintStepStrip();   // ボタン生成直後の初期描画（起動時の最初
 // P-LOCK の選択（perf の #perfPlk から）。以前は隠れた #plockRow のボタンを click() で代理していた
 function setActiveLock(p){
   activeLock=(activeLock===p)?null:p;
-  document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
+  document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock], .msbar .msbtn.fx[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
 }
+// スマホの DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの送り量（perfLockApply は呼ばない＝離しても戻らない、Undoで戻す）
+document.querySelectorAll(".msbar .msbtn.fx").forEach(b=>b.addEventListener("click",()=>{
+  setActiveLock(b.dataset.lock);
+  if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent = activeLock ? (b.textContent.trim()+"：パッドを左右にドラッグ＝送り量 / もう一度で解除") : "";
+  if(typeof paintPerf==="function") paintPerf();
+}));
 function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); }
 document.getElementById("stepPrev").addEventListener("click",()=>stepShift(-1));
 document.getElementById("stepNext").addEventListener("click",()=>stepShift(1));
@@ -5212,7 +5230,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.105";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.106";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

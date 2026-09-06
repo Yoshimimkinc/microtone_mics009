@@ -172,6 +172,25 @@ async function run(w,h,mobile){
     ok_(`${V} スマホの高さは可視高さに追従`, /px$/.test(st.bodyH), st.bodyH);
   }
 
+  // 6d) スマホの下段は [MUTE][DELAY][REVERB]（SOLO/EDIT は出さない）。DELAY→パッド左右ドラッグで送り量（v0.3.106）
+  if(mobile){
+    const vis=await p.evaluate(()=>{const g=id=>{const e=document.getElementById(id); const r=e.getBoundingClientRect(); return r.height>0&&getComputedStyle(e).display!=='none'?Math.round(r.height):0;};
+      return {mute:g('holdMute'), solo:g('holdSolo'), edit:g('holdEdit'), delay:g('fxDelay'), reverb:g('fxReverb')};});
+    ok_(`${V} 下段は MUTE/DELAY/REVERB`, vis.mute>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo===0 && vis.edit===0, JSON.stringify(vis));
+    await p.evaluate(()=>{ selectPad(4); selectPadHeavy(); tracks[4].delaySend=0; });
+    await p.click('#fxDelay'); await p.waitForTimeout(80);
+    eq(`${V} DELAYボタンで activeLock`, await p.evaluate(()=>activeLock), 'delay');
+    const pb=await box('#pads .pad:nth-child(5)');
+    await p.mouse.move(pb.x,pb.y); await p.mouse.down(); await p.mouse.move(pb.x+60,pb.y,{steps:8}); await p.mouse.up(); await p.waitForTimeout(120);
+    const ds=await p.evaluate(()=>tracks[4].delaySend);
+    ok_(`${V} DELAY中にパッド左右ドラッグで送り量`, ds>0, `delaySend=${ds}`);
+    await p.waitForTimeout(400);
+    ok_(`${V} 離しても戻らない`, (await p.evaluate(()=>tracks[4].delaySend))===ds, '戻った');
+    await p.click('#fxDelay'); await p.waitForTimeout(80);
+    eq(`${V} もう一度で解除`, await p.evaluate(()=>activeLock), null);
+    await p.evaluate(()=>{ tracks[4].delaySend=0; });
+  }
+
   // 7) モーダルは「入り組んだ設定」だけ
   await p.click('#clWave'); await p.waitForTimeout(600);   // 開いて450msはクリックを飲む（ゴーストクリック対策）
   eq(`${V} モーダル中の波形`, await where(), 'peWaveHome');
@@ -199,9 +218,9 @@ async function run(w,h,mobile){
   // 7c) ★タッチ：EDIT→パッドでモーダルが開いた直後のゴーストクリックが TRIM を誤発動しない（W1・v0.3.98）
   if(mobile){
     const before=await p.evaluate(()=>tracks[3].buffer.length);
-    // 低い画面（390×664）では EDIT 行が内側スクロールの下に居るので、座標ではなく要素を tap（自動でスクロールして触る）
-    await p.tap('#holdEdit'); await p.waitForTimeout(80);
-    await p.tap('#pads .pad:nth-child(4)'); await p.waitForTimeout(350);
+    // スマホに EDIT ボタンは無い（v0.3.106）。モーダルは SAMPLE ページの ✂ から開く＝その直後のゴーストクリックを見る
+    await p.evaluate(()=>{ selectPad(3); selectPadHeavy(); });
+    await page('smpl'); await p.tap('#clWave'); await p.waitForTimeout(350);
     const g=await p.evaluate(()=>({modal:document.getElementById('padEditModal').style.display, len:tracks[3].buffer.length}));
     ok_(`${V} タッチでEDIT→パッド：モーダルが開いたまま`, g.modal==='flex', g.modal);
     ok_(`${V} タッチでEDIT→パッド：TRIMが誤発動しない`, g.len===before, `${before}→${g.len}`);
