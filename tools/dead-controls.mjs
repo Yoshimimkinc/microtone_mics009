@@ -18,7 +18,6 @@ const EXPECT=new Set([
   '#tap',                                  // タップテンポは2回以上で効く
   '#undoBtn',                              // Undoスタックが空なら何も起きない（別途 check.mjs でUndoは検査）
   '#modeSeq',                              // SEQ画面で再タップ＝変化なしが正しい（PADS側は #modePads）
-  '#perfSpare',                            // 空きスロット（意図した無効ボタン）
 ]);
 // 「すでに選択中（.on）」のものは再タップで変化しないのが正しい＝個別登録せず一律で除外
 // 「押した後に元へ戻す」もの：状態を汚さないために押した直後に戻す
@@ -72,7 +71,9 @@ for(const view of ['viewPads','viewSeq']){
   await p.waitForTimeout(350);
   const list=await targets();
   for(const t of list){
-    if(EXPECT.has(t.name.split('[')[0]) || t.on) continue;
+    if(EXPECT.has(t.name.split('[')[0])) continue;
+    const onNow=await p.evaluate(path=>{const e=document.querySelector(path); return !!(e&&e.classList.contains('on'));}, t.path);
+    if(onNow) continue;   // 「すでに選択中」は再タップで変化しないのが正しい（クリック直前の状態で判定＝非決定性を潰す）
     const before=await fingerprint();
     // 実クリック（pointerdown/up/click を伴う）。パッドやステップは pointer 系でしか反応しない
     let hit=true;

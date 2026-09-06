@@ -15,6 +15,8 @@ const run=(label,args,opts={})=>{
 const alive=spawnSync('bash',['-lc',`curl -sf -o /dev/null http://localhost:${PORT}/mics-609bc14b.html && echo up`],{encoding:'utf8'}).stdout.includes('up');
 if(!alive){ console.error(`\n✖ http://localhost:${PORT} に本体が居ない。先に  python3 -m http.server ${PORT}  を起動すること`); process.exit(2); }
 const fails=[];
+// 0.5) 静的検査（1秒）：暗黙グローバル／存在しないid／バージョン3点一致
+if(run('static-check.mjs（静的：暗黙グローバル・不在id・版一致）',['tools/static-check.mjs'])!==0) fails.push('static-check.mjs');
 // 1) 回帰（合否）
 if(run('check.mjs（回帰・合否）',['tools/check.mjs',PORT])!==0) fails.push('check.mjs');
 // 2) 押しても何も起きないコントロール（消したハンドラの検出）

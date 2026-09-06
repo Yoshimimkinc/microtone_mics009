@@ -243,8 +243,9 @@
   #viewPads.split.active{
     display:grid;
     grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
-    grid-template-rows:auto auto 1fr auto;
+    grid-template-rows:auto auto auto 1fr auto;
     grid-template-areas:
+      "screen screen"
       "pads strip"
       "pads msbar"
       "pads transport"
@@ -252,6 +253,9 @@
     gap:14px 20px;
     align-items:start;
   }
+  /* 情報窓は全幅の最上段。以前は grid-area が無く右カラム（~408px）に自動配置され、
+     欄が2行に折り返して窓の高さがページで動いていた（PCの縦長ウィンドウで露見・v0.3.98） */
+  #viewPads.split .perf-screen{grid-area:screen;}
   #viewPads.split .stepstrip{grid-area:steps;}
   #viewPads.split .strip{grid-area:strip;margin-bottom:0;}
   #viewPads.split .msbar{grid-area:msbar;margin:0;}
@@ -357,7 +361,7 @@
   @media (max-width:520px){
     /* 電話幅：SAMPLEの4項目（START/END/LOOP/✂）を1行に収める。
        2行になると波形に回せる高さが半分になるので、ここは詰める価値がある */
-    #viewPads>.perf-screen .cl-row{gap:8px;}
+    #viewPads>.perf-screen>.cl-body .cl-row{gap:6px;}   /* 360幅で START/END/LOOP/✂ が1行に収まる限界。特異度を上げないと後方の ≤767 の gap:10px に負ける */
     #viewPads>.perf-screen .cl-par{padding:4px 6px;gap:3px;}
     #viewPads>.perf-screen .cl-par i{margin-right:2px;}
     #viewPads>.perf-screen .cl-par[data-p="start"] u,
@@ -414,7 +418,7 @@
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
   body.perf #viewPads.split>.msbar{display:none;}   /* MUTE/SOLOはトランスポート行へ移設予定→perfでは一旦非表示 */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
-    grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,1fr)!important;gap:6px;}
+    grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,minmax(56px,1fr))!important;gap:6px;}   /* 低い窓でも56px下限 */
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
   /* 情報窓＝コマンドライン風（複数行のターミナル表示で上段の空きを埋める） */
   body.perf .perf-screen{grid-area:screen;display:flex;flex-direction:column;justify-content:center;gap:2px;
@@ -472,8 +476,9 @@
   .perf-plkbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
   .perf-plkbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
   .perf-plkbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
-  /* 空きスロット（COMP撤去跡）：ボタンの枠だけ残す・無効 */
-  .perf-plkbtn.perf-spare{opacity:.3;cursor:default;pointer-events:none;}
+  /* ● REC：P-LOCK操作をステップへ記録するトグル。v0.3.84までDOMに無く、記録機能が丸ごと到達不能だった */
+  .perf-plkbtn.perf-rec{color:var(--red);}
+  .perf-plkbtn.perf-rec.on{background:var(--red);color:#2a0808;border-color:var(--red);box-shadow:0 0 14px rgba(255,77,77,.45);}
   .perf-plkbtn[data-lock="nudge"]{color:#ff965a;}
   .perf-plkbtn[data-lock="nudge"].on{background:#ff965a;color:#2a1205;border-color:#ff965a;}
   .perf-plkbtn[data-lock="edit"]{color:#e8e4d8;}
@@ -920,9 +925,12 @@
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
-    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
+    /* 低い画面（実機Safariのバー込み 390×664 等）ではパッドの下限56pxが収まらないので、この中だけ縦スクロールを許す。
+       普段は溢れないのでスクロールは出ない */
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
-    #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:0;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
+    /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
+    #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
     #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin:4px 0 0;}   /* 44px化のぶんは余白から返す */
     /* スマホ：EDIT行（MUTE/SOLO/EDIT）を均等3分割でフィル */
     #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:6px;padding-right:6px;}
@@ -940,7 +948,8 @@
     #viewPads>.stepstrip{display:none!important;}   /* スマホは下段ステップ非表示（打ち込みはSEQ画面で） */
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
     .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
-    .pads .pad{aspect-ratio:auto!important;min-height:0!important;padding:6px!important;}
+    /* 下限56px：これより潰すくらいなら縦スクロールさせる（実機Safariの390×664で29pxになっていた） */
+    .pads .pad{aspect-ratio:auto!important;min-height:56px!important;padding:6px!important;}
     /* モバイル：ぼかしグロー(box-shadow blur)とトランジションは毎ステップ再描画が重い→無効化（背景色での点灯は残す） */
     .pad{transition:none!important;}
     .pad.hit,.pad.hit.hit-acc{box-shadow:none!important;}
@@ -1027,7 +1036,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.97</div>
+  <div class="s-ver" id="splashVer">v0.3.98</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1336,7 +1345,7 @@
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-spare" id="perfSpare" aria-label="空きスロット" title="空きスロット（COMP撤去跡・将来用）"></button>
+        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 演奏のみ（離すと戻る）">● REC</button>
         <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
         <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
@@ -1987,6 +1996,7 @@ let stepDrag = null;   // GRIDでのパッドドラッグ状態
 let editDrag = null;   // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）
 let perfDrag = null;   // Performance中のパッドドラッグ＝ライブ・モジュレート
 let peTarget=0;        // 波形エディタの対象パッド（窓とモーダルで共有する1実体）
+let peOpenedAt=0;      // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する
 let peV0=0, peV1=1;    // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
 let assignTarget=-1, _ledT=null;   // ASSIGN待機中のパッド（MIDI/PCキー共通）。起動時のselectPadより前に宣言する（TDZ回避）
 let perfRecArm = false;// Performance: REC ON=変更を保持（記録）/ OFF=P-LOCKキー解放で復帰
@@ -2047,8 +2057,6 @@ function setLockPlay(trackIdx, pat, bar, step, param, value){
   t.locks[k][param]=value;
 }
 // 小節に音があるか／パターンの長さ（書いた分・最低1小節）
-function barHasContent(p,b){ for(let i=0;i<PADS.length;i++){ const a=tracks[i].patterns[p][b]; for(let s=0;s<STEPS;s++) if(a[s]>0) return true; } return false; }
-function patHasContent(p){ for(let b=0;b<4;b++) if(barHasContent(p,b)) return true; return false; }
 function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) last=b; return last+1; }
 
 // ===== UNDO（パターン編集＋各種操作を1手ずつ戻す） =====
@@ -2063,6 +2071,7 @@ function snapshotState(){
     compDrive:(typeof compDrive!=="undefined"?compDrive:1.5),
     masterVol:(km?+km.value:0),
     editPat, editBar, selected,
+    nextChokeGroup:(typeof nextChokeGroup!=="undefined"?nextChokeGroup:2),
     groupVol:(typeof groupVol!=="undefined"?groupVol.slice():[0,0,0,0]),
     fxDelayAmt:(typeof fxDelayAmt!=="undefined"?fxDelayAmt:0),
     fxReverbAmt:(typeof fxReverbAmt!=="undefined"?fxReverbAmt:0),
@@ -2087,6 +2096,7 @@ function restoreState(s){
   // メイクアップゲインはしきい値から再計算（undoでコンプの音量補償がズレないように）
   if(typeof compMakeup!=="undefined") compMakeup = 1 + Math.abs(compThreshold)/30*0.8;
   editPat=s.editPat; editBar=s.editBar;
+  if(typeof nextChokeGroup!=="undefined" && s.nextChokeGroup!==undefined) nextChokeGroup=s.nextChokeGroup;
   tracks.forEach((t,i)=>{
     const x=s.tracks[i];
     t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
@@ -2109,7 +2119,6 @@ function restoreState(s){
   if($("kMaster") && typeof masterGain!=="undefined"){ $("kMaster").value=s.masterVol; masterGain.gain.value=Math.pow(10,s.masterVol/20); $("vMaster").textContent=s.masterVol+" dB"; }
   if(typeof groupVol!=="undefined" && s.groupVol){ for(let g=0;g<4;g++) groupVol[g]=s.groupVol[g]; if(typeof applyGroupVol==="function") applyGroupVol(); }
   if(s.fxDelayAmt!==undefined){ fxDelayAmt=s.fxDelayAmt; fxReverbAmt=s.fxReverbAmt; fxDelayOn=s.fxDelayOn; fxReverbOn=s.fxReverbOn; if(typeof applyFx==="function") applyFx(); }
-  if(typeof paintAll==="function") paintAll();
   if(typeof selectPad==="function") selectPad(s.selected);   // editor同期＋盤面再描画
   if(typeof paintPadStates==="function") paintPadStates();
   if(typeof paintMixer==="function") paintMixer();
@@ -2395,7 +2404,9 @@ function trigger(i, time, accent=false){
   flashPad(i);
   if(typeof vuHit==="function") vuHit(i, accent);
   if(recording && playing){
-    getPlayPattern(i)[playStep] = accent?2:1;
+    // 記録先は「いま鳴っている（表示中の）パターン/小節」。playPat/playBar はスケジューラが
+    // 100ms先行して小節頭で進めているので、小節末の手叩きが次の小節／次パターンに入っていた
+    tracks[i].patterns[displayPat][displayBar][playStep] = accent?2:1;
     paintSteps();
   }
 }
@@ -2763,7 +2774,8 @@ function curStepFor(){ return (playing && editPat===displayPat && editBar===disp
 function paintSteps(){
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID中はPADのステップ表示も更新（再生ヘッド追従）
   if(typeof paintStepStrip==="function") paintStepStrip();             // 常時表示の16ステップ列（1画面化）を毎回同期（早期returnより前）
-  if(document.body.classList.contains("perf")){                        // 情報窓のSTEP/STATEをライブ更新（軽量）
+  {   // 情報窓のSTEP/STATEをライブ更新（軽量）。v0.3.79で窓を全レイアウト共通にした後も perf 限定のまま残り、
+      // スマホ・PC狭幅では再生中も「--」「■ STOP」だった（規則§1「嘘をつかない」違反・v0.3.98で修正）
     const _cs=document.getElementById("clStep"); if(_cs) _cs.textContent=playing?(String(playStep+1).padStart(2,"0")+"/16"):"--";
     const _ct=document.getElementById("clState"); if(_ct) _ct.textContent=playing?(perfRecArm?"● REC":"▶ PLAY"):"■ STOP";
     const _sc=document.querySelector(".perf-screen"); if(_sc) _sc.classList.toggle("playing",playing);
@@ -2946,6 +2958,7 @@ function assignMS(i){
   if(armMode==="mute"){ tracks[i].mute=!tracks[i].mute; }
   else if(armMode==="solo"){ tracks[i].solo=!tracks[i].solo; }
   paintPadStates();
+  if(typeof scheduleAutosave==="function") scheduleAutosave();   // .mics に入る状態なので自動保存にも乗せる
 }
 function arm(mode,on){
   armMode = on?mode:null;
@@ -3116,7 +3129,8 @@ const CL_SPEC={
           fmt:v=>v.toUpperCase(), w:4},
   level: {lbl:"LEVEL", u:"dB", get:t=>t.vol,   set:(t,v)=>t.vol=v,  min:-30,max:6, st:1,px:8,  fmt:v=>String(v), w:3},
   start: {lbl:"START", u:"%",  get:t=>t.start, set:(t,v)=>t.start=Math.min(v,(t.end??1)-0.004), min:0,max:1,st:0.002,px:3, fmt:v=>(v*100).toFixed(1), w:5, wave:1},
-  end:   {lbl:"END",   u:"%",  get:t=>t.end,   set:(t,v)=>t.end=Math.max(v,(t.start||0)+0.004), min:0,max:1,st:0.002,px:3, fmt:v=>(v*100).toFixed(1), w:5, wave:1},
+  end:   {lbl:"END",   u:"%",  get:t=>t.end,   set:(t,v)=>t.end=Math.max(v,(t.start||0)+0.004), min:0,max:1,st:0.002,px:3, fmt:v=>(v*100).toFixed(1), w:5, wave:1,
+          zero:1},   // END の「0」は無音＝意味が無く、しかも START が動けなくなる罠。戻し先は末尾（BPM→100 と同じ「0が無い欄」の例外）
   loop:  {lbl:"LOOP",  en:[false,true], get:t=>!!t.loop, set:(t,v)=>{ t.loop=v; if(v&&(t.loopStart==null||t.loopStart<t.start)) t.loopStart=t.start; }, fmt:v=>v?"ON":"OFF", w:3, wave:1},
   filter:{lbl:"FILTER",en:["off","lp","hp"], get:t=>t.filter||"off",
           set:(t,v)=>{ t.filter=v; if(v==="lp"&&t.cutoff>=10000) t.cutoff=3000; if(v==="hp"&&t.cutoff>=10000) t.cutoff=700; },
@@ -3207,8 +3221,11 @@ function paintClPage(){
   // 数値欄は全部おなじルール：戻す先は 0（0が範囲外の CUTOFF/RESO だけ一番0に近い値）。欄ごとの例外は作らない。
   // 列挙欄（SCALE/FILTER/LOOP/OUT）は対象外＝タップで送るのが主操作で、素早い2連打を
   // リセットと誤認すると「送ったのに戻る」になる。OFFへは1〜数タップで届くので不要。
+  let _lastResetAt=0, _lastResetKey=null;
   const resetPar=k=>{
     const sp=SPEC[k]; if(!sp||sp.ro||sp.en) return;
+    if(k===_lastResetKey && performance.now()-_lastResetAt<500) return;   // 同じ欄で dblclick と pointerdown の2連打判定が両方走っても1手だけ
+    _lastResetAt=performance.now(); _lastResetKey=k;
     // zero 指定の欄だけ例外（テンポに「0」は無いので既定の100へ）。他は一律0＝0が範囲外なら一番近い値
     const z=(sp.zero!==undefined)?sp.zero:Math.max(sp.min, Math.min(sp.max, 0));
     if(GET(sp)===z) return;
@@ -3231,14 +3248,15 @@ function paintClPage(){
     }
     scr.querySelectorAll(".cl-par.sel").forEach(x=>x.classList.remove("sel"));   // カーソルは窓に1つ（上段のBPM/SWGも含む）
     el.classList.add("sel","tweak");   // MPC1000のカーソル＝いまデータホイールが効く欄
-    drag={el,sp,k,x0:e.clientX,start:GET(sp),pad:selected,undone:false,moved:false};
+    drag={el,sp,k,id:e.pointerId,x0:e.clientX,start:GET(sp),pad:selected,undone:false,moved:false};
     try{ el.setPointerCapture(e.pointerId); }catch(_){}
   });
   scr.addEventListener("pointermove",e=>{
     if(!drag) return;
+    if(e.pointerId!==undefined && e.pointerId!==drag.id) return;   // 2本指で別の欄を触っても、先の指の移動が後の欄に効かない
     const sp=drag.sp;
     let v;
-    if(sp.en){ const d=Math.round((e.clientX-drag.x0)/26); if(!d) return;
+    if(sp.en){ const d=Math.round((e.clientX-drag.x0)/26);   // d=0 は「元の値」＝往復して離せば戻る
       v=sp.en[((sp.en.indexOf(drag.start)+d)%sp.en.length+sp.en.length)%sp.en.length]; }
     else { v=quant(sp, drag.start + Math.round((e.clientX-drag.x0)/sp.px)*sp.st); }
     if(v===GET(sp)) return;
@@ -3246,13 +3264,15 @@ function paintClPage(){
     if(!drag.undone){ pushUndo(); drag.undone=true; }   // ドラッグ1回で1手（連続でUndoを埋めない）
     SET(sp,drag.pad,v); after(drag.pad,sp,drag.k); paintClPage();
   });
-  const end=()=>{
+  const end=e=>{
     if(!drag) return;
+    if(e && e.pointerId!==undefined && e.pointerId!==drag.id) return;   // 別の指の up では終わらない
     const sp=drag.sp;
     if(!drag.moved && sp.en){   // タップ＝列挙を1つ送る（MPC1000でいうINC）
       const nx=sp.en[(sp.en.indexOf(GET(sp))+1)%sp.en.length];
       pushUndo(); SET(sp,drag.pad,nx); after(drag.pad,sp,drag.k); paintClPage();
     }
+    if(drag.moved){ lastTap=0; lastTapEl=null; }   // ドラッグした押下は「タップ」に数えない（直後の掴み直しを2連打と誤認して0に飛んでいた）
     drag.el.classList.remove("tweak"); drag=null;
   };
   scr.addEventListener("pointerup",end); scr.addEventListener("pointercancel",end);
@@ -3842,6 +3862,7 @@ function openPadEdit(i){
   document.getElementById("edChopSens").style.display = chopMode==="attack"?"":"none";
   computeChopBounds();
   const modal=document.getElementById("padEditModal");
+  peOpenedAt=performance.now();
   modal.style.display="flex";
   requestAnimationFrame(()=>renderPeWave(i));   // 表示後に正しい幅で描画
 }
@@ -3849,6 +3870,10 @@ function openPadEdit(i){
   const modal=document.getElementById("padEditModal");
   const close=()=>{ modal.style.display="none"; if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
     if(typeof clWaveTo==="function" && typeof clPage!=="undefined" && clPage==="smpl"){ clWaveTo("screen"); clSyncWave(); } };
+  // タッチ端末では、パッドの pointerup でモーダルを開いた直後に、ブラウザが touchend から合成する click が
+  // 「指の位置で再ヒットテスト」されてモーダルの上に落ちる（ゴーストクリック）。背景なら即閉じ、
+  // ✂TRIM の上なら勝手に切り詰める（実測：70560→35280フレーム）。開いてから450msはクリックを飲む。
+  modal.addEventListener("click",e=>{ if(performance.now()-peOpenedAt<450){ e.stopPropagation(); e.preventDefault(); } },true);
   document.getElementById("peClose").addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
   document.getElementById("peAudition").addEventListener("click",async()=>{
@@ -4117,7 +4142,19 @@ function applyChop(){
 // tempo / swing / vol
 const bpm=document.getElementById("bpm"),bpmRead=document.getElementById("bpmRead");
 bpm.addEventListener("pointerdown",()=>pushUndo());
-bpm.addEventListener("input",()=>{bpmVal=+bpm.value;bpmRead.textContent=bpmVal.toFixed(1);if(typeof setDelayTempo==="function")setDelayTempo();if(typeof paintPerf==="function")paintPerf();});
+// テンポ変更の唯一の書き込み口。再生中は「次に鳴るステップの時刻」を動かさずに基準を張り替える。
+// これが無いと、下げる方向では小節頭から新テンポで再計算されて次ステップが未来へ飛び、最大1小節近い無音が出た。
+function applyBpm(v){
+  v=Math.max(40, Math.min(250, +v)); if(!isFinite(v)) return;
+  const wasPlaying=(typeof playing!=="undefined"&&playing) && typeof stepTimeClean==="function";
+  const anchor = wasPlaying ? stepTimeClean(stepIdx) : 0;   // 変更前の「次ステップ」の絶対時刻
+  bpmVal=v;
+  if(wasPlaying) barStartTime += anchor - stepTimeClean(stepIdx);   // 次ステップの時刻を据え置く＝位相維持
+  bpm.value=bpmVal; bpmRead.textContent=bpmVal.toFixed(1);
+  if(typeof setDelayTempo==="function") setDelayTempo();
+  if(typeof paintPerf==="function") paintPerf();
+}
+bpm.addEventListener("input",()=>applyBpm(+bpm.value));
 const swing=document.getElementById("swing"),swingVal=document.getElementById("swingVal");
 swing.addEventListener("pointerdown",()=>pushUndo());
 swing.addEventListener("change",()=>{
@@ -4139,10 +4176,7 @@ tapBtn.addEventListener("pointerdown",()=>{
   if(taps.length>=2){
     const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);
     const newBpm=Math.min(180,Math.max(60, 60000/iv));
-    bpmVal=Math.round(newBpm*10)/10;
-    bpm.value=bpmVal;
-    bpmRead.textContent=bpmVal.toFixed(1);
-    if(typeof setDelayTempo==="function") setDelayTempo();
+    applyBpm(Math.round(newBpm*10)/10);   // タップテンポも同じ入口を通す（再生中の位相維持）
   }
   tapBtn.classList.add("on");setTimeout(()=>tapBtn.classList.remove("on"),90);
 });
@@ -4387,8 +4421,9 @@ async function autosaveNow(force){
   if(_asBusy || typeof buildProject!=="function") return;
   if(!force){
     if(!_asDirty) return;
-    if(typeof playing!=="undefined" && playing) return;              // 演奏中は書かない
     if(Date.now()-_asLast < AS_MIN_GAP) return;
+    // 演奏中も書く：WAVエンコードはキャッシュ済み（wavB64Cached）なので、走るのは設定のJSON化だけ。
+    // v0.3.94〜0.3.97は演奏中に一切書かなかったため「演奏しながら編集→閉じる」で全部消えていた
   }
   _asBusy=true; _asDirty=false; _asLast=Date.now();
   try{
@@ -4400,12 +4435,18 @@ async function autosaveNow(force){
       if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="自動保存できず（容量不足かも）— Saveで書き出しを"; }
   }finally{ _asBusy=false; }
 }
-function scheduleAutosave(){ _asDirty=true; }
+let _asSoonT=null;
+function scheduleAutosave(){ _asDirty=true;
+  clearTimeout(_asSoonT); _asSoonT=setTimeout(()=>autosaveNow(true), 5000);   // 変更から5秒で必ず一度書く（閉じられても残る）
+}
 setInterval(()=>{ const run=()=>autosaveNow(false);
   if(window.requestIdleCallback) requestIdleCallback(run,{timeout:2000}); else run(); }, 5000);
-// 離脱時は条件を無視して書く（iOSはvisibilitychangeが最後の機会）
+// 離脱時は条件を無視して書く。pagehide は非同期IDBの完了を待ってくれないので、
+// 「隠れた瞬間」（visibilitychange=hidden：タブ切替・アプリ切替・閉じる直前）で先に書き始める。
+// さらに変更から5秒以内に必ず一度書く（AS_MIN_GAP より短い猶予）＝閉じられても直近が残る。
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden" && _asDirty) autosaveNow(true); });
 window.addEventListener("pagehide",()=>{ if(_asDirty) autosaveNow(true); });
+window.addEventListener("beforeunload",()=>{ if(_asDirty) autosaveNow(true); });
 async function loadAutosave(){
   try{ const rec=await idbOp("readonly", st=>st.get(AUTOSAVE.key));
     if(!rec||!rec.json) return null;
@@ -4637,8 +4678,11 @@ function perfLockApply(prev){
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
   const wasPerf=document.body.classList.contains("perf");
+  // 「横にしてください」はタッチ端末（iPad縦）だけ。PCの縦長ウィンドウ（縦モニタ／ハーフスクリーン）は
+  // 回転できないので、perfを諦めて通常の split で動かす（v0.3.98：960×1040 等で全面覆われて操作不能だった）
+  const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
   document.body.classList.toggle("perf", four && land);
-  document.body.classList.toggle("perf-rotate", four && !land);   // 4×4だが縦＝回転促す（事実上の縦禁止）
+  document.body.classList.toggle("perf-rotate", four && !land && coarse);
   if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（REC OFFなら復帰）
     if(perfSnap){ if(!perfRecArm || perfSnap.recorded) perfRevertSnap(); perfSnap=null; }
     document.body.classList.remove("perf-plock");
@@ -4654,7 +4698,7 @@ function updatePerf(){
 ["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, updatePerf));
 window.addEventListener("load", updatePerf);
 setTimeout(updatePerf, 350);
-setInterval(()=>{ if(document.body.classList.contains("perf")) paintPerf(); }, 200);   // 演奏中だけ画面表示を軽く同期
+setInterval(()=>{ if(playing || document.body.classList.contains("perf")) paintPerf(); }, 200);   // 再生中は全レイアウトで窓を同期
 
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
@@ -5016,6 +5060,15 @@ function b64ToUint8(b64){
 }
 
 // SAVE
+// WAV→base64 はバッファが同じで切り出し範囲も同じなら使い回す（重いのはここ）。
+// これで buildProject() が「設定のJSON化＋文字列の連結」だけになり、演奏中に走っても音が飛ばない。
+function wavB64Cached(t, crop){
+  const c=t._wavCache;
+  if(c && c.buf===t.buffer && c.from===crop.fromSamp && c.to===crop.toSamp) return c.b64;
+  const b64=uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp));
+  t._wavCache={buf:t.buffer, from:crop.fromSamp, to:crop.toSamp, b64};
+  return b64;
+}
 function buildProject(){
   return {
     version:2,
@@ -5041,7 +5094,7 @@ function buildProject(){
         attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null, key:t.key??null,
         patterns:t.patterns,
         locks:t.locks||{},
-        audio: crop ? uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp)) : null,
+        audio: crop ? wavB64Cached(t, crop) : null,
       };
     }),
   };
@@ -5112,9 +5165,9 @@ function inBlink(label){
 function clRetargetLearn(){ if(assignTarget>=0 && assignTarget!==selected) assignTarget=selected; }
 // ASSIGNの共通処理: 種別(midiNote|key)を問わず「二重割り当てを作らず記憶し、UIとトーストを更新」
 function assignTo(pad, field, value, label){
+  pushUndo();   // 奪う前に撮る＝Undoで元パッドの割り当ても戻る
   const dup=tracks.findIndex((t,j)=>j!==pad && t[field]===value);
   if(dup>=0) tracks[dup][field]=null;   // 同じ鍵盤/キーの二重割り当ては作らない
-  pushUndo();
   tracks[pad][field]=value;
   assignTarget=-1;
   if(typeof paintClPage==="function") paintClPage();   // 窓から学習した時もここで反映（peTargetと無関係）
@@ -5282,6 +5335,8 @@ async function applyProject(proj){
         const decoded=await decodeAudio(ab);
         t.rawBuffer=decoded;
         t.buffer=makeLofi(decoded);
+      }else if(pt.type==="empty"){
+        t.buffer=null; t.rawBuffer=null;   // 空パッドとして保存されたものは、前に入っていた音を残さない（幽霊サンプル防止）
       }
       padsEl.children[i].querySelector(".nm").textContent=t.name.slice(0,8).toUpperCase();
       const rn=grid.children[i]?.querySelector(".rn");
@@ -5296,8 +5351,10 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
   try{
     const proj=JSON.parse(await f.text());
     if(!proj.version||!proj.tracks) throw new Error("Invalid project file");
+    pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
     await applyProject(proj);
     sampNameEl.textContent="LOADED — "+f.name.slice(0,12).toUpperCase();
+    if(typeof autosaveNow==="function") autosaveNow(true);   // 読んだ直後に必ず書く。次回起動で「読む前」に戻らない
   }catch(err){ console.warn("[project load]",err); sampNameEl.textContent="LOAD FAILED — このファイルは読めない"; }
 });
 
@@ -5318,7 +5375,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.97";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.98";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

@@ -19,6 +19,16 @@ check（合否）→ dead-controls（無反応コントロール）→ lost-list
 どうしても飛ばすときは `SKIP_GATE=1 git push`（理由をコミットメッセージに書く）。
 意図した撤去は `tools/removals-ok.txt` に理由つきで書かないと lost-listeners で止まる。
 
+## `static-check.mjs` — 静的検査（ブラウザ不要・1秒）
+```sh
+node tools/static-check.mjs
+```
+1) **暗黙グローバル**：宣言されていないのに参照されている識別子（id持ち要素は `window` の暗黙グローバルに
+なるので、宣言を消しても動いてしまう。v0.3.84〜0.3.95 の `gPatSeg` 事故はこれで即出る）
+2) 存在しない id への参照（`getElementById` / `querySelector("#…")`、ガードの有無つき）
+3) バージョン3点一致（`APP_VERSION` / `version.json` / `splashVer`）
+検出器は検査ワーカーW6の TypeScript AST 版を取り込んだもの。関門の最初に走る。
+
 ## `dead-controls.mjs` — 押しても何も起きないコントロール
 ```sh
 node tools/dead-controls.mjs
