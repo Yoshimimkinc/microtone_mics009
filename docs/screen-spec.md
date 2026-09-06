@@ -1046,3 +1046,42 @@ START/END/LOOPの3欄は390pxでは1行に収まらず2行になるため、**SA
 ### 残り
 `padEditModal` にはまだ CHOP / TRIM / REV / 試聴 / ADV（FILTER・CHOKE・ASSIGN・ATTACK/FADE）が残る。
 ADVの中身は情報窓の TONE/ASSIGN ページと**重複**しているので、次はそこを畳む。
+
+## 101. モーダルは「入り組んだ設定」だけに — 音作りは全部おもて（v0.3.87 / 第3段-後半その2）
+「CHOP / TRIM / REV / モーダルは入り組んだ設定だけで音作りは表に出す」に対応。
+§96の棚卸しで作った情報窓のページが全項目をカバーしたので、モーダル側の重複UIを畳んだ。
+
+### 消したもの（すべて情報窓に同じ値がある）
+| モーダルの区画 | 中身 | 移った先 |
+|---|---|---|
+| `.pe-basic` | Loop / Scale / Pitch / Level | MAIN・SAMPLE ページ |
+| `.pe-adv` FILTER | 種別 / Cutoff / Reso | TONE ページ |
+| `.pe-adv` CHOKE | ON / グループ1-8 | ASSIGN ページ |
+| `.pe-adv` ASSIGN | ASSIGN / MIDI / KEY / CLEAR | ASSIGN ページ |
+| `.pe-adv` OUT | A / B | ASSIGN ページ |
+| `.pe-adv` ATTACK·FADE | Attack / Fade | TONE ページ |
+| `#peAdvToggle` | ADV開閉 | （ページ切替が代わり） |
+
+JS側も一緒に撤去：`bindPeKnob` とその6呼び出し、`peScale`/`peLoopToggle`/`peFilt`/`peMidiLearn`/
+`peMidiClear`/`peOutSeg`/`peChokeSel`/`peChokeToggle` のハンドラ、`openPadEdit` の書き戻し20行、
+ADVトグル、モーダル用のダブルタップ0（rangeが無くなったので不要）。
+`syncAssignUI()` は `paintClPage()` の別名に痩せたので関数ごと畳んだ。
+
+### 残ったモーダル＝波形をいじる道具だけ
+`LOAD / SMPL`（音源の差し替え）・波形・`PLAY`（試聴）・`TRIM`・`REV`・`CHOP`。
+見出しも役割どおり **`TRIM · CHOP`** に改名。
+実測で **`input[type=range]` 0個 / `select` 0個** ＝ 音作りのつまみはモーダルに1つも残っていない。
+
+### 連鎖して死んだCSSも掃除
+§98の検出器（実行時に全セレクタを9状態×3幅で照合→識別子の実在で二次フィルタ）を再実行し、
+`.pe-basic` `.pe-adv` `.pe-adv-toggle` `.pe-row` `.pe-hint` `.pe-wide` `.pe-full` `.knob.mini`
+`#peOutSeg.inert` `#peMidiLearn.learn-on` など **22ルール**を削除。
+`.knob` `.toggle` の素の定義はメニュー側で生きているので残す。
+
+### 回帰テストを1本に統合
+散らばっていた7本（width/pg/smoke/learn/zero/tempo/wave）を `check.mjs` にまとめた。
+390×844 / 700×900 / 1280×800 で、固定幅・5ページ・ドラッグ・列挙タップ・ダブルクリック0・
+BPM/SWG・ラーニング一巡・波形の所在遷移・双方向同期・**モーダルにノブが無いこと**・
+SEQ往復・UNDO・縦スクロールなし・0 errors を一括検証する。**全項目パス**。
+
+パッド高：390=71px（SAMPLEページ表示中）／700=95px／1280=81px。
