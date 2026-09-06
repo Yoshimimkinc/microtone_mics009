@@ -273,9 +273,13 @@
   .perf-screen b{font-weight:700;}
   .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
   .perf-screen.playing .cl-state{color:#bafff4;}
-  .perf-screen .cl-msg{font-size:11px;opacity:.9;}
-
-  .perf-screen .cl-hint{font-size:10px;opacity:.5;letter-spacing:.02em;}
+  /* メッセージ/ヒントの共用1行。空でも高さを確保＝出入りで窓が跳ねない */
+  /* 1行ぶんで高さを固定し、長文は折り返さず端で切る（全文はトースト側に出る）。
+     折り返しを許すと長いメッセージのたびに窓が伸びてパッドがずれる */
+  .perf-screen .cl-note{height:16px;line-height:1.35;gap:8px;overflow:hidden;flex-wrap:nowrap;}
+  .perf-screen .cl-note>*{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .perf-screen .cl-note #clMsg{font-size:11px;opacity:.9;flex:0 1 auto;}
+  .perf-screen .cl-note #clHint{font-size:10px;opacity:.5;letter-spacing:.02em;flex:0 1 auto;}
 
   /* 触れるパラメータ（横ドラッグ＝MPCのデータホイール相当） */
   .perf-screen .cl-par{display:flex;align-items:baseline;gap:4px;cursor:ew-resize;touch-action:none;min-height:30px;
@@ -306,6 +310,11 @@
   .perf-screen .cl-btn{font:inherit;font-size:10px;letter-spacing:.06em;color:var(--teal);background:transparent;
     border:1px solid rgba(61,214,196,.35);border-radius:6px;padding:6px 10px;min-height:34px;cursor:pointer;}
   .perf-screen .cl-btn.learn-on{border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.35);}
+  /* ===== 窓の高さは全ページ共通（ページを移しても寸法が動かない）＝欄の行を「予約制」にする =====
+     --cl-page-h : 欄の行に必ず確保する高さ（一番混むページに合わせる）
+     --cl-wave-h : SAMPLEで下に積む波形の高さ（狭い画面のみ。予約の内数にする） */
+  :root{--cl-page-h:34px;--cl-wave-h:40px;}
+  .perf-screen #clPage{min-height:var(--cl-page-h);align-content:center;}
   /* SAMPLEページの波形：行の「右」に立てる。行の高さに収めるので窓は伸びない＝パッドを削らない。
      ソフトキー行だけは常に全幅（keys keys）＝ページを移ってもメニューの幅が動かない */
   .perf-screen .cl-body{display:flex;flex-direction:column;gap:inherit;min-width:0;}
@@ -315,23 +324,35 @@
   .perf-screen.has-wave>.cl-body{grid-area:body;}
   .perf-screen.has-wave>.cl-keys{grid-area:keys;}
   .perf-screen.has-wave>.cl-waveslot{grid-area:wave;display:flex;flex-direction:column;justify-content:center;
-    gap:4px;min-width:0;}
+    gap:4px;min-width:0;min-height:0;overflow:hidden;}   /* 列の高さは .cl-body が決める＝波形が窓を押し広げない */
   .perf-screen .cl-waveslot .pe-over{height:20px;flex:0 0 auto;margin:0;}
   /* .pe-wave はモーダル用に height:128px 固定。窓では明示的に低くする（auto にすると中の canvas の
      属性サイズが効いて列ごと伸び、窓がパッドを潰す） */
-  .perf-screen .cl-waveslot .pe-wave{height:104px;flex:0 0 auto;margin:0;}
+  .perf-screen .cl-waveslot .pe-wave{height:auto;flex:1 1 auto;min-height:40px;margin:0;}
+  .perf-screen .cl-wavebtn{flex:0 0 auto;min-height:26px;padding:4px 10px;align-self:flex-start;}
+  .perf-screen .cl-wavebtn .cl-narrow{display:none;}
   .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
   .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
   body.perf .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
     grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
   @media (max-width:767px){
-    /* 縦のスマホは横に並べる幅が無い：1カラムに戻し、概観レーンは畳んで波形も低く。
-       細かい追い込みは TRIM/CHOP のモーダルで */
+    /* 一番混むページ（ASSIGN=2行）と、波形を下に積むSAMPLEの両方を、同じ予約高さに収める */
+    :root{--cl-page-h:78px;}
+    /* 横に並べる幅が無い：1カラムに戻し、概観レーンは畳む。波形は「予約の内数」に収めるので
+       SAMPLEに移っても窓の高さは他のページと同じまま。細かい追い込みは TRIM/CHOP のモーダルで */
     .perf-screen.has-wave{display:flex;}
-    .perf-screen.has-wave>.cl-waveslot{display:block;}
+    .perf-screen.has-wave>.cl-waveslot{display:flex;flex-direction:row;align-items:center;gap:6px;}
+    /* 横並びで幅を取り合うのは波形が勝つ側。ボタンはアイコンだけに縮める
+       （#peWaveBox に min-width:0 を入れないと波形が2pxまで潰れる） */
+    .perf-screen .cl-waveslot #peWaveBox{flex:1 1 auto;min-width:0;}
+    .perf-screen .cl-wavebtn{padding:4px 8px;align-self:center;}
+    .perf-screen .cl-wavebtn .cl-wide{display:none;}
+    .perf-screen .cl-wavebtn .cl-narrow{display:inline;font-size:13px;}
     .perf-screen .cl-waveslot .pe-over{display:none;}
-    .perf-screen .cl-waveslot .pe-wave{height:46px;min-height:0;}
+    .perf-screen .cl-waveslot .pe-wave{height:var(--cl-wave-h);min-height:0;flex:1 1 auto;}
+    .perf-screen.has-wave #clPage{min-height:calc(var(--cl-page-h) - var(--cl-wave-h) - 2px);}
   }
+
   /* 着信ランプ：鍵盤/PCキーが入ると光る＝メニューを開かずに「繋がっている」が見える */
   .perf-screen .cl-mon{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;min-height:34px;
     border:1px solid rgba(61,214,196,.22);border-radius:6px;}
@@ -395,7 +416,7 @@
   body.perf .perf-screen b{font-weight:700;}
   body.perf .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
   body.perf .perf-screen.playing .cl-state{color:#bafff4;}
-  body.perf .perf-screen .cl-hint{font-size:10px;opacity:.5;letter-spacing:.02em;}
+  body.perf .perf-screen .cl-note #clHint{font-size:10px;opacity:.5;letter-spacing:.02em;}
   /* SEQ操作行：A-D / 小節1-4 / DUP / SELECT（パッド下の横一列） */
   body.perf .perf-pats{grid-area:pats;display:flex;gap:7px;align-items:stretch;flex-wrap:nowrap;}
   body.perf .perf-pats .perf-pat{flex:0 0 auto;min-width:40px;}
@@ -870,8 +891,8 @@
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
     /* 情報窓はモバイルでは2行に圧縮（BPM/PAT/BAR＝積み残しだった「現在地」表示 ＋ 触れるパラメータ） */
     #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;}
-    #viewPads>.perf-screen .cl-head,#viewPads>.perf-screen .cl-trk,
-    #viewPads>.perf-screen .cl-msg{display:none;}   /* TRK名はstrip-headが表示済み＝二重表示にしない */
+    #viewPads>.perf-screen .cl-head,
+    #viewPads>.perf-screen .cl-trk{display:none;}   /* TRK名はstrip-headが表示済み＝二重表示にしない */
     #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
     #viewPads>.perf-screen .cl-par{padding:3px 9px;}
     .strip{padding:9px;}
@@ -987,7 +1008,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.89</div>
+  <div class="s-ver" id="splashVer">v0.3.90</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1262,7 +1283,7 @@
         <div class="cl-row cl-params cl-page" id="clPage"></div>
         </div><!-- /.cl-body -->
         <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
-        <div class="cl-waveslot" id="clWaveSlot"></div>
+        <div class="cl-waveslot" id="clWaveSlot"><button class="cl-btn cl-wavebtn" id="clWave"><span class="cl-wide">✂ TRIM / CHOP</span><span class="cl-narrow">✂</span></button></div>
         <div class="cl-keys" id="clKeys">
           <button class="cl-key on" data-pg="main">MAIN</button>
           <button class="cl-key" data-pg="smpl">SAMPLE</button>
@@ -1270,10 +1291,9 @@
           <button class="cl-key" data-pg="fx">FX</button>
           <button class="cl-key" data-pg="asgn">ASSIGN</button>
         </div>
-        <!-- 初期は畳んでおく：paintPerf が中身のある時だけ開く。既定で開いていると
-             起動直後だけ窓が2行ぶん高く、最初の操作で縮んでページ全体がずれる（タップが外れる） -->
-        <div class="cl-row cl-msg" style="display:none;"><b id="clMsg"></b></div>
-        <div class="cl-row cl-hint" style="display:none;"><span id="clHint"></span></div>
+        <!-- メッセージとヒントは1行に統合し、空でも高さを確保する。
+             出入りで畳んでいた頃は、トーストが出るたびに窓が伸び縮みしてパッドがずれていた -->
+        <div class="cl-row cl-note"><b id="clMsg"></b><span id="clHint"></span></div>
       </div>
       <div class="perf-seclbl" id="perfLblPad">PAD</div>
       <div class="perf-seclbl" id="perfLblSeq">SEQ</div>
@@ -3084,7 +3104,7 @@ const CL_SPEC={
 };
 const CL_PAGES=[
   {id:"main", lbl:"MAIN",   f:["pitch","scale","level"]},
-  {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"], b:[{id:"clWave",t:"✂ CHOP"}]},
+  {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"]},
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"fx",   lbl:"FX",     f:["delay","reverb"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
@@ -3207,7 +3227,7 @@ function paintClPage(){
     const b=e.target.closest(".cl-key"); if(!b) return;
     clPage=b.dataset.pg; renderClPage();
   });
-  document.getElementById("clPage").addEventListener("click",e=>{
+  scr.addEventListener("click",e=>{
     const b=e.target.closest(".cl-btn"); if(!b) return;
     const t=tracks[selected];
     if(b.id==="clWave"){ if(typeof openPadEdit==="function") openPadEdit(selected); return; }
@@ -4423,7 +4443,8 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   if($("clState")) $("clState").textContent=_pl?(perfRecArm?"● REC":"▶ PLAY"):"■ STOP";
   const _scr=document.querySelector(".perf-screen"); if(_scr) _scr.classList.toggle("playing",_pl);
   if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
-  if($("clMsg")){ const m=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):""; $("clMsg").textContent=m; $("clMsg").parentElement.style.display = m ? "" : "none"; }
+  const _msg=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):"";
+  if($("clMsg")) $("clMsg").textContent=_msg;   // 行は常設。空でも畳まない（畳むと窓が跳ねる）
   // 選択パッドの値（MPC式＝この窓で直接いじる対象。中身は開いているページぶんだけ）
   if(typeof paintClPage==="function") paintClPage();
   if($("clHint")){
@@ -4436,8 +4457,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右=基本値 / 下段ステップ左右=そのステップだけ(P-LOCK)";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
-    $("clHint").textContent=h;
-    $("clHint").parentElement.style.display = h ? "" : "none";   // 空行で場所を取らない（:emptyは子要素があるため効かない）
+    $("clHint").textContent = _msg ? "" : h;   // メッセージが出ている間はヒントを引っ込める（1行を共用）
   }
   // パターン：現在=on、再生中の予約=queued
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{
@@ -5180,7 +5200,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.89";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.90";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
