@@ -306,6 +306,29 @@
   .perf-screen .cl-btn{font:inherit;font-size:10px;letter-spacing:.06em;color:var(--teal);background:transparent;
     border:1px solid rgba(61,214,196,.35);border-radius:6px;padding:6px 10px;min-height:34px;cursor:pointer;}
   .perf-screen .cl-btn.learn-on{border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.35);}
+  /* SAMPLEページの波形：既存の行の「右」に立てる。行の高さに収めるので窓は伸びない＝パッドを削らない */
+  .perf-screen .cl-waveslot{display:none;}
+  .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
+    column-gap:12px;align-items:stretch;}
+  .perf-screen.has-wave>.cl-row,.perf-screen.has-wave>.cl-keys{grid-column:1;min-width:0;}
+  .perf-screen.has-wave>.cl-waveslot{display:flex;flex-direction:column;justify-content:center;gap:4px;
+    grid-column:2;grid-row:1/span 7;min-width:0;}   /* 暗黙行なので -1 は1行しか指さない。行数ぶんだけ span する（多すぎると空行のgapで窓が伸びる） */
+  .perf-screen .cl-waveslot .pe-over{height:20px;flex:0 0 auto;margin:0;}
+  /* .pe-wave はモーダル用に height:128px 固定。窓では明示的に低くする（auto にすると中の canvas の
+     属性サイズが効いて列ごと伸び、窓がパッドを潰す） */
+  .perf-screen .cl-waveslot .pe-wave{height:104px;flex:0 0 auto;margin:0;}
+  .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
+  .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
+  body.perf .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
+    column-gap:12px;align-items:stretch;}
+  @media (max-width:767px){
+    /* 縦のスマホは横に並べる幅が無い：1カラムに戻し、概観レーンは畳んで波形も低く。
+       細かい追い込みは TRIM/CHOP のモーダルで */
+    .perf-screen.has-wave{display:flex;}
+    .perf-screen.has-wave>.cl-waveslot{display:block;}
+    .perf-screen .cl-waveslot .pe-over{display:none;}
+    .perf-screen .cl-waveslot .pe-wave{height:46px;min-height:0;}
+  }
   /* 着信ランプ：鍵盤/PCキーが入ると光る＝メニューを開かずに「繋がっている」が見える */
   .perf-screen .cl-mon{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;min-height:34px;
     border:1px solid rgba(61,214,196,.22);border-radius:6px;}
@@ -979,7 +1002,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.85</div>
+  <div class="s-ver" id="splashVer">v0.3.86</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1124,18 +1147,23 @@
           <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SMPL</span>
           <span class="pe-sample-hint">音源を読み込み / 録音</span>
         </div>
-        <div class="pe-over" id="peOver">
-          <canvas id="peOverCv"></canvas>
-          <div class="pe-over-win" id="peOverWin"></div>
-        </div>
-        <div class="pe-wave">
-          <canvas id="peWave"></canvas>
-          <div class="shade" id="peShadeL"></div>
-          <div class="shade" id="peShadeR"></div>
-          <div class="playhead" id="pePlayhead"></div>
-          <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
-          <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
-          <div class="handle end" id="peEnd"><span class="cap">END</span></div>
+        <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
+        <div id="peWaveHome">
+          <div id="peWaveBox">
+            <div class="pe-over" id="peOver">
+              <canvas id="peOverCv"></canvas>
+              <div class="pe-over-win" id="peOverWin"></div>
+            </div>
+            <div class="pe-wave">
+              <canvas id="peWave"></canvas>
+              <div class="shade" id="peShadeL"></div>
+              <div class="shade" id="peShadeR"></div>
+              <div class="playhead" id="pePlayhead"></div>
+              <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
+              <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
+              <div class="handle end" id="peEnd"><span class="cap">END</span></div>
+            </div>
+          </div>
         </div>
         <div class="pe-transport">
           <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PLAY</button>
@@ -1302,6 +1330,8 @@
         </div>
         <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params cl-page" id="clPage"></div>
+        <!-- SAMPLEページの時だけ、既存の行の「右側」に波形が入る（窓の高さは増やさない） -->
+        <div class="cl-waveslot" id="clWaveSlot"></div>
         <div class="cl-keys" id="clKeys">
           <button class="cl-key on" data-pg="main">MAIN</button>
           <button class="cl-key" data-pg="smpl">SAMPLE</button>
@@ -1984,6 +2014,8 @@ let activeLock = null; // 選択中のp-lockパラメータ（null=ON/OFFトグ�
 let stepDrag = null;   // GRIDでのパッドドラッグ状態
 let editDrag = null;   // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）
 let perfDrag = null;   // Performance中のパッドドラッグ＝ライブ・モジュレート
+let peTarget=0;        // 波形エディタの対象パッド（窓とモーダルで共有する1実体）
+let peV0=0, peV1=1;    // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
 let assignTarget=-1, _ledT=null;   // ASSIGN待機中のパッド（MIDI/PCキー共通）。起動時のselectPadより前に宣言する（TDZ回避）
 let perfRecArm = false;// Performance: REC ON=変更を保持（記録）/ OFF=P-LOCKキー解放で復帰
 let perfSnap = null;   // P-LOCKキー選択時に取った16パッドの元値（解放で復帰／ダブルタップ基準）
@@ -2673,6 +2705,7 @@ function selectPadHeavy(){   // selectPad の重いUI同期（エディタ/ス�
   if(typeof paintStepStrip==="function") paintStepStrip();             // 16ステップ列を選択トラックへ追従
   if(typeof applyWaveStrip==="function") applyWaveStrip();             // 下段ステップ列の波形を選択トラックへ
   if(typeof clRetargetLearn==="function") clRetargetLearn();           // ASSIGN待機中はいま選んだパッドへ的を移す
+  if(typeof clSyncWave==="function") clSyncWave();                     // SAMPLEページの波形も選択パッドへ
   if(typeof paintPerf==="function") paintPerf();                       // 情報窓を選択パッドへ追従（MPC式）
 }
 function selectPad(i, light){
@@ -3120,7 +3153,7 @@ const CL_SPEC={
 };
 const CL_PAGES=[
   {id:"main", lbl:"MAIN",   f:["pitch","scale","level"]},
-  {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"], b:[{id:"clWave",t:"WAVE ▸"}]},
+  {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"], b:[{id:"clWave",t:"✂ CHOP"}]},
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"fx",   lbl:"FX",     f:["delay","reverb"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
@@ -3130,6 +3163,7 @@ let clPage="main";
 function renderClPage(){
   const host=document.getElementById("clPage"); if(!host) return;
   const pg=CL_PAGES.find(x=>x.id===clPage)||CL_PAGES[0];
+  clWaveTo("modal");   // 先に退避：innerHTML を書き換えるとスロットごと波形が消える
   host.innerHTML =
     pg.f.map(k=>{ const sp=CL_SPEC[k];
       return `<span class="cl-par${sp.ro?" ro":""}" data-p="${k}"><i>${sp.lbl}</i>`
@@ -3138,7 +3172,28 @@ function renderClPage(){
     + (pg.b||[]).map(b=>`<button class="cl-btn" id="${b.id}">${b.t}</button>`).join("")
     + (pg.x||"");
   document.querySelectorAll("#clKeys .cl-key").forEach(k=>k.classList.toggle("on",k.dataset.pg===pg.id));
+  const scr0=document.getElementById("perfScreen");
+  if(scr0) scr0.classList.toggle("has-wave", pg.id==="smpl");
+  if(pg.id==="smpl") clWaveTo("screen");   // 波形は複製せず移動
+  clSyncWave();
   paintClPage();
+}
+// 波形エディタ（1実体）を情報窓のSAMPLEページとEDITモーダルの間で行き来させる
+function clWaveTo(where){   // "screen" | "modal"
+  const box=document.getElementById("peWaveBox"); if(!box) return;
+  const dst=(where==="screen") ? document.getElementById("clWaveSlot") : document.getElementById("peWaveHome");
+  if(!dst || box.parentElement===dst) return;
+  dst.appendChild(box);
+}
+// SAMPLEページを開いている間は、窓の波形が選択パッドを指す（peTarget＝波形まわりの対象）
+function clSyncWave(){
+  if(clPage!=="smpl") return;
+  const slot=document.getElementById("clWaveSlot"); if(!slot) return;
+  if(peTarget!==selected){ peTarget=selected; peV0=0; peV1=1; }
+  requestAnimationFrame(()=>{
+    if(typeof renderPeOver==="function") renderPeOver(peTarget);
+    if(typeof renderPeWave==="function") renderPeWave(peTarget);
+  });
 }
 function paintClPage(){
   if(typeof tracks==="undefined") return;
@@ -3161,6 +3216,7 @@ function paintClPage(){
     paintPerf();
     if(typeof syncEditor==="function") syncEditor();
     if(typeof refreshOpenPadEdit==="function") refreshOpenPadEdit(pad);   // EDITモーダルを開いていれば追従
+    if(sp.wave && clPage==="smpl" && typeof renderPeWave==="function") renderPeWave(peTarget);   // 窓の波形も追従
     if(sp.msg && typeof sampNameEl!=="undefined" && sampNameEl) sampNameEl.textContent=sp.msg(GET(sp));
   };
   // 欄を既定値（ほとんどは0）へ戻す。旧・円形ノブのダブルタップ復帰をそのまま窓へ引き継いだもの
@@ -3640,8 +3696,6 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
-let peTarget=0;
-let peV0=0, peV1=1;   // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
 // 選択範囲[start,end]でバッファを切り出し、外側を破棄。バッファ差替でピッチキャッシュは自動破棄。
 function cropBufferToSelection(t){
   const buf=t.buffer; if(!buf) return;
@@ -3787,6 +3841,7 @@ function refreshOpenPadEdit(i){
   if(pem && pem.style.display==="flex" && i===peTarget) openPadEdit(i);
 }
 function openPadEdit(i){
+  if(typeof clWaveTo==="function") clWaveTo("modal");   // 窓に出していた波形を回収してから開く
   if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
   const t=tracks[i];
@@ -3827,7 +3882,8 @@ function openPadEdit(i){
 }
 (function(){
   const modal=document.getElementById("padEditModal");
-  const close=()=>{ modal.style.display="none"; if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor(); };
+  const close=()=>{ modal.style.display="none"; if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
+    if(typeof clWaveTo==="function" && typeof clPage!=="undefined" && clPage==="smpl"){ clWaveTo("screen"); clSyncWave(); } };
   document.getElementById("peClose").addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
   document.getElementById("peAudition").addEventListener("click",async()=>{
@@ -3859,7 +3915,7 @@ function openPadEdit(i){
     if(dragKind && dragKind.indexOf("chop:")===0){
       const k=+dragKind.slice(5);
       chopBounds[k]=Math.max(chopBounds[k-1]+0.002, Math.min(chopBounds[k+1]-0.002, n));
-      renderPeWave(peTarget); return;
+      renderPeWave(peTarget); if(typeof paintClPage==="function") paintClPage(); return;
     }
     if(dragKind==="start")    t.start=Math.min(n,(t.end??1)-0.002);
     else if(dragKind==="end") t.end=Math.max(n,(t.start||0)+0.002);
@@ -3897,6 +3953,7 @@ function openPadEdit(i){
     panLast=null;
     const wasStart=(dragKind==="start"); dragKind=null;
     if(wasStart){ snapStartToOnset(peTarget); renderPeWave(peTarget); if(typeof drawPadWave==="function") drawPadWave(peTarget); }
+    if(typeof paintClPage==="function") paintClPage();   // 窓のSTART/END/LOOP欄も追従
   };
   peWaveEl.addEventListener("pointerup",peUp); peWaveEl.addEventListener("pointercancel",peUp);
   // ===== 波形ズーム：ホイール(縦)=カーソル支点ズーム / 横=パン / 2本指ピンチ=ズーム&パン / ダブルタップ=全体 =====
@@ -5297,7 +5354,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.85";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.86";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
