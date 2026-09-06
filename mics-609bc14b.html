@@ -306,13 +306,16 @@
   .perf-screen .cl-btn{font:inherit;font-size:10px;letter-spacing:.06em;color:var(--teal);background:transparent;
     border:1px solid rgba(61,214,196,.35);border-radius:6px;padding:6px 10px;min-height:34px;cursor:pointer;}
   .perf-screen .cl-btn.learn-on{border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.35);}
-  /* SAMPLEページの波形：既存の行の「右」に立てる。行の高さに収めるので窓は伸びない＝パッドを削らない */
+  /* SAMPLEページの波形：行の「右」に立てる。行の高さに収めるので窓は伸びない＝パッドを削らない。
+     ソフトキー行だけは常に全幅（keys keys）＝ページを移ってもメニューの幅が動かない */
+  .perf-screen .cl-body{display:flex;flex-direction:column;gap:inherit;min-width:0;}
   .perf-screen .cl-waveslot{display:none;}
   .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
-    column-gap:12px;align-items:stretch;}
-  .perf-screen.has-wave>.cl-row,.perf-screen.has-wave>.cl-keys{grid-column:1;min-width:0;}
-  .perf-screen.has-wave>.cl-waveslot{display:flex;flex-direction:column;justify-content:center;gap:4px;
-    grid-column:2;grid-row:1/span 7;min-width:0;}   /* 暗黙行なので -1 は1行しか指さない。行数ぶんだけ span する（多すぎると空行のgapで窓が伸びる） */
+    grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
+  .perf-screen.has-wave>.cl-body{grid-area:body;}
+  .perf-screen.has-wave>.cl-keys{grid-area:keys;}
+  .perf-screen.has-wave>.cl-waveslot{grid-area:wave;display:flex;flex-direction:column;justify-content:center;
+    gap:4px;min-width:0;}
   .perf-screen .cl-waveslot .pe-over{height:20px;flex:0 0 auto;margin:0;}
   /* .pe-wave はモーダル用に height:128px 固定。窓では明示的に低くする（auto にすると中の canvas の
      属性サイズが効いて列ごと伸び、窓がパッドを潰す） */
@@ -320,7 +323,7 @@
   .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
   .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
   body.perf .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
-    column-gap:12px;align-items:stretch;}
+    grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
   @media (max-width:767px){
     /* 縦のスマホは横に並べる幅が無い：1カラムに戻し、概観レーンは畳んで波形も低く。
        細かい追い込みは TRIM/CHOP のモーダルで */
@@ -984,7 +987,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.88</div>
+  <div class="s-ver" id="splashVer">v0.3.89</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1244,6 +1247,9 @@
 
       <!-- Performance Mode（4×4横向き/PC・iPad）のガワ。通常は非表示、body.perf で表示 -->
       <div class="perf-screen" id="perfScreen">
+        <!-- 行は .cl-body に束ねる。SAMPLEページで右に波形を出しても、
+             ソフトキー行（＝メニュー）は常に窓の全幅のまま＝ページを移っても幅が動かない -->
+        <div class="cl-body">
         <div class="cl-row cl-head"><span class="cl-brand">MICS009</span><span class="cl-state" id="clState">■ STOP</span></div>
         <div class="cl-row">
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
@@ -1254,7 +1260,8 @@
         </div>
         <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params cl-page" id="clPage"></div>
-        <!-- SAMPLEページの時だけ、既存の行の「右側」に波形が入る（窓の高さは増やさない） -->
+        </div><!-- /.cl-body -->
+        <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
         <div class="cl-waveslot" id="clWaveSlot"></div>
         <div class="cl-keys" id="clKeys">
           <button class="cl-key on" data-pg="main">MAIN</button>
@@ -5173,7 +5180,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.88";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.89";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

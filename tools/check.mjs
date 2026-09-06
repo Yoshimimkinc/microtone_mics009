@@ -55,6 +55,16 @@ async function run(w,h,mobile){
   eq(`${V} FX欄`,fields.fx,['delay','reverb']);
   eq(`${V} ASSIGN欄`,fields.asgn,['choke','out','midi','key']);
 
+  // 2b) ページを移してもメニュー（ソフトキー）と窓の幅が動かない
+  const geo=[];
+  for(const id of['main','smpl','tone','fx','asgn']){ await page(id);
+    geo.push(await p.evaluate(()=>{const r=x=>{const b=document.querySelector(x).getBoundingClientRect();return [Math.round(b.width),Math.round(b.x)];};
+      return {scr:r('.perf-screen'), keys:r('#clKeys'), key1:r('#clKeys .cl-key')};})); }
+  const same=k=>new Set(geo.map(g=>JSON.stringify(g[k]))).size===1;
+  ok_(`${V} 窓の幅が一定`, same('scr'), geo.map(g=>g.scr).join(' '));
+  ok_(`${V} メニュー幅が一定`, same('keys'), geo.map(g=>g.keys).join(' '));
+  ok_(`${V} キー1枚の幅が一定`, same('key1'), geo.map(g=>g.key1).join(' '));
+
   // 3) ドラッグ／列挙タップ／ダブルクリックで0
   await page('main');
   await drag('.cl-par[data-p="pitch"]',70);
