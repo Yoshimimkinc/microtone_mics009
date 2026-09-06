@@ -881,7 +881,10 @@
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
     /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
-    #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin:4px 0 0;}   /* 44px化のぶんは余白から返す */
+    /* 下段は常に見える：低い画面で中身がスクロールしても下に貼り付く（窓の上貼り付きと対）。
+       背景を敷かないと下を通るパッドが透ける（v0.3.107） */
+    #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin:4px 0 0;
+      position:sticky;bottom:0;z-index:5;background:var(--bg);padding-top:4px;}
     /* スマホの下段は [MUTE] [DELAY] [REVERB]。SOLO と EDIT は出さない（TRIM/CHOPは窓の✂、空パッドは＋から） */
     #viewPads>.msbar #holdSolo,#viewPads>.msbar #holdEdit{display:none;}
     #viewPads>.msbar .msbtn.fx{display:flex;}
@@ -992,7 +995,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.106</div>
+  <div class="s-ver" id="splashVer">v0.3.107</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -5230,7 +5233,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.106";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.107";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

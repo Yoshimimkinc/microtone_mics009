@@ -170,6 +170,10 @@ async function run(w,h,mobile){
       return {before:b, after:a, waveTop:wt, bodyH:document.body.style.height};});
     ok_(`${V} スクロールしても窓が上に貼り付く`, st.before===0 && st.after===0 && st.waveTop>0, JSON.stringify(st));
     ok_(`${V} スマホの高さは可視高さに追従`, /px$/.test(st.bodyH), st.bodyH);
+    // 下段（MUTE/DELAY/REVERB）はスクロールしなくても見える（v0.3.107：sticky bottom）
+    const ms=await p.evaluate(()=>{const vp=document.getElementById('viewPads').getBoundingClientRect(); const m=document.querySelector('#viewPads>.msbar').getBoundingClientRect();
+      return {inView: m.bottom<=vp.bottom+1 && m.top>=vp.top, h:Math.round(m.height)};});
+    ok_(`${V} 下段がスクロール無しで見える`, ms.inView && ms.h>=44, JSON.stringify(ms));
   }
 
   // 6d) スマホの下段は [MUTE][DELAY][REVERB]（SOLO/EDIT は出さない）。DELAY→パッド左右ドラッグで送り量（v0.3.106）
