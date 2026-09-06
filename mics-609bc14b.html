@@ -271,8 +271,6 @@
     font-size:12px;letter-spacing:.03em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
   .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
-  .perf-screen .cl-head{justify-content:space-between;border-bottom:1px solid rgba(61,214,196,.2);padding-bottom:3px;margin-bottom:1px;}
-  .perf-screen .cl-brand{letter-spacing:.16em;font-size:10px;opacity:.65;}
   .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
   .perf-screen b{font-weight:700;}
   .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
@@ -410,7 +408,6 @@
   body.perf .perf-seclbl::before{content:"";width:3px;height:11px;background:var(--teal);border-radius:2px;}
   /* perfでは面積をパッドに回す：ブランド行とセクション見出しを畳む（この2つは情報を持っていない）。
      ※ 上の .perf-seclbl 定義より後ろに置くこと（同特異度なので順序で決まる） */
-  body.perf .perf-screen .cl-head{display:none;}
   body.perf .perf-seclbl{display:none;}
   body.perf #perfLblPad{grid-area:padlbl;} body.perf #perfLblSeq{grid-area:seqlbl;}
   body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:7px;}
@@ -427,8 +424,6 @@
     font-size:12px;letter-spacing:.03em;color:var(--teal);font-variant-numeric:tabular-nums;
     box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
   body.perf .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
-  body.perf .perf-screen .cl-head{justify-content:space-between;border-bottom:1px solid rgba(61,214,196,.2);padding-bottom:3px;margin-bottom:1px;}
-  body.perf .perf-screen .cl-brand{letter-spacing:.16em;font-size:10px;opacity:.65;}
   body.perf .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
   body.perf .perf-screen b{font-weight:700;}
   body.perf .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
@@ -914,7 +909,6 @@
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
     /* 情報窓はモバイルでは2行に圧縮（BPM/PAT/BAR＝積み残しだった「現在地」表示 ＋ 触れるパラメータ） */
     #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;}
-    #viewPads>.perf-screen .cl-head,
     #viewPads>.perf-screen .cl-state,
     #viewPads>.perf-screen .cl-trk{display:none;}   /* TRK名はstrip-headが、再生状態はトランスポートが表示済み */
     #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
@@ -1036,7 +1030,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.98</div>
+  <div class="s-ver" id="splashVer">v0.3.99</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1300,7 +1294,6 @@
         <!-- 行は .cl-body に束ねる。SAMPLEページで右に波形を出しても、
              ソフトキー行（＝メニュー）は常に窓の全幅のまま＝ページを移っても幅が動かない -->
         <div class="cl-body">
-        <div class="cl-row cl-head"><span class="cl-brand">MICS009</span></div>
         <div class="cl-row cl-stat">
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
           <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50%</b></span>
@@ -5375,7 +5368,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.98";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.99";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
