@@ -97,7 +97,11 @@ for(const [w,h,m] of [[390,844,true],[1280,800,false]]){
   const small=r.fonts.filter(f=>f.px<MINPX[f.role]).sort((a,b)=>a.px-b.px);
   const lowCR=r.fonts.filter(f=>f.cr<NEED[f.role]).sort((a,b)=>a.cr-b.cr);
   const badVal=lowCR.filter(f=>f.role==='value');
-  const playSmall=r.hit.filter(t=>t.play && Math.min(t.w,t.h)<44).sort((a,b)=>Math.min(a.w,a.h)-Math.min(b.w,b.h));
+  // 横ドラッグが主操作の欄（.cl-par）は「高さ32px以上＋面積1936px²以上」で可（ui-rules.md §2）。
+  // タップで押すものは例外なく44px。
+  const isDrag=t=>/cl-par/.test(t.sel);
+  const playSmall=r.hit.filter(t=>t.play && (isDrag(t) ? (t.h<32 || t.w*t.h<1936) : Math.min(t.w,t.h)<44))
+    .sort((a,b)=>Math.min(a.w,a.h)-Math.min(b.w,b.h));
   const subSmall =r.hit.filter(t=>!t.play && Math.min(t.w,t.h)<32);
   const tiny=r.hit.filter(t=>Math.min(t.w,t.h)<44); const under36=r.hit.filter(t=>Math.min(t.w,t.h)<36);
   console.log(`\n===== ${w}x${h} =====`);

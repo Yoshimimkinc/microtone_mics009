@@ -152,6 +152,18 @@ async function run(w,h,mobile){
   await p.click('#peClose'); await p.waitForTimeout(400);
   eq(`${V} 閉じたら窓へ戻る`, await where(), 'clWaveSlot');
 
+  // 7b) ★SEQ/GRIDのパターンA-D・小節1-4が「押して選べる」
+  //     v0.3.84の範囲削除でこのクリック登録が丸ごと消えていた（v0.3.96で復元）
+  await p.evaluate(()=>{ document.getElementById('modeSeq').click(); });
+  await p.waitForTimeout(250);
+  await p.evaluate(()=>{ setEditPat(0); setEditBar(0); });
+  await p.click('#barSeg button[data-b="1"]'); await p.waitForTimeout(120);
+  eq(`${V} SEQでBAR2を選べる`, await p.evaluate(()=>editBar), 1);
+  await p.click('#patSeg button[data-p="2"]'); await p.waitForTimeout(120);
+  eq(`${V} SEQでPAT Cを選べる`, await p.evaluate(()=>editPat), 2);
+  await p.evaluate(()=>{ setEditPat(0); setEditBar(0); document.getElementById('modePads').click(); });
+  await p.waitForTimeout(200);
+
   // 8) 既存機能が生きている
   const misc=await p.evaluate(()=>{
     const r={};
