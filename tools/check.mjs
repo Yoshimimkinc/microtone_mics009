@@ -161,6 +161,17 @@ async function run(w,h,mobile){
     await page('smpl');   // 次の検査（TRIM/CHOP モーダル）は SAMPLE ページの ✂ から開く
   }
 
+  // 6c) 低い画面で中身がスクロールしても情報窓は上に貼り付く（波形の上が欠けない。v0.3.105）
+  if(mobile){
+    const st=await p.evaluate(()=>{const vp=document.getElementById('viewPads'); const scr=document.querySelector('.perf-screen');
+      const rel=()=>Math.round(scr.getBoundingClientRect().top-vp.getBoundingClientRect().top);
+      const b=rel(); vp.scrollTop=9999; const a=rel(); const wave=document.querySelector('.cl-waveslot .pe-wave');
+      const wt=wave?Math.round(wave.getBoundingClientRect().top-vp.getBoundingClientRect().top):0; vp.scrollTop=0;
+      return {before:b, after:a, waveTop:wt, bodyH:document.body.style.height};});
+    ok_(`${V} スクロールしても窓が上に貼り付く`, st.before===0 && st.after===0 && st.waveTop>0, JSON.stringify(st));
+    ok_(`${V} スマホの高さは可視高さに追従`, /px$/.test(st.bodyH), st.bodyH);
+  }
+
   // 7) モーダルは「入り組んだ設定」だけ
   await p.click('#clWave'); await p.waitForTimeout(600);   // 開いて450msはクリックを飲む（ゴーストクリック対策）
   eq(`${V} モーダル中の波形`, await where(), 'peWaveHome');

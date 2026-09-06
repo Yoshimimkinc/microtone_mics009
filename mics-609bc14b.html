@@ -860,7 +860,8 @@
     .seg button{min-height:34px;}
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
     /* 情報窓はモバイルでは2行に圧縮（BPM/PAT/BAR＝積み残しだった「現在地」表示 ＋ 触れるパラメータ） */
-    #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;}
+    #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;
+      position:sticky;top:0;z-index:5;}   /* 低い画面で中身がスクロールしても窓は上に貼り付く＝波形の上が欠けない（v0.3.105） */
     #viewPads>.perf-screen .cl-trk{display:none;}
     #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
     #viewPads>.perf-screen .cl-par{padding:3px 9px;}
@@ -983,7 +984,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.104</div>
+  <div class="s-ver" id="splashVer">v0.3.105</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4374,6 +4375,16 @@ function lockViewHeight(){
   // SEQのグリッドはCSSのflexで余白を自動充填するので個別計算は不要
 }
 ["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, lockViewHeight));
+// スマホ：body の高さを実際の可視高さ（innerHeight）で追従させる。100dvh だけだと Safari のバー収納に
+// 追従しない端末があり、本体の下に黒い余りが出て、中身が縦スクロールで欠けていた（v0.3.105）
+function fitMobileHeight(){
+  if(window.innerWidth>600){ document.body.style.height=""; return; }
+  const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+  if(h>200) document.body.style.height=Math.round(h)+"px";
+}
+["resize","orientationchange","load"].forEach(ev=>window.addEventListener(ev, fitMobileHeight));
+if(window.visualViewport) window.visualViewport.addEventListener("resize", fitMobileHeight);
+setTimeout(fitMobileHeight, 400);
 window.addEventListener("load", lockViewHeight);
 setTimeout(lockViewHeight, 400);
 
@@ -5201,7 +5212,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.104";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.105";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
