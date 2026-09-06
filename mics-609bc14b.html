@@ -39,7 +39,7 @@
   /* AK=MPC3000は明色（クリーム本体・グレーボタン）。暗いインセットだけ明色化し、波形はLCDとして暗いまま残す */
   body.t-ak .unit{background:#d2ccba;}
   body.t-ak #splash{background:#d6d0c0;}
-  body.t-ak .modebar,body.t-ak .hint kbd{background:#c2bdac;}
+  body.t-ak .modebar{background:#c2bdac;}
   body.t-ak .modebtn .led{background:#9a958a;box-shadow:0 0 0 1px #8f8a7c inset;}
   /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
   body.t-sp{--bg:#14151a;--panel:#5f6368;--panel2:#4d5156;--edge:#26282c;--line:#42464c;
@@ -134,13 +134,7 @@
   button.t.arm{min-width:54px;padding:9px 11px;}
   button.t.arm.armed{background:var(--amber);color:#241400;border-color:var(--amber);box-shadow:0 0 12px rgba(255,180,80,.5);}
   button.t.step.on{background:var(--amber);color:var(--hit-ink);border-color:var(--amber);box-shadow:0 0 14px rgba(var(--hit-glow-a),.4);}
-  /* STEP（Digitakt式）：ノブ行の枠を固定高さにし、中身をPAT/BAR+p-lockへ差し替え＝切替で高さが動かない */
-  .gridctrls{display:none;align-items:center;gap:8px;flex-wrap:wrap;width:100%;}
-  .gridctrls .patlabel{font-size:10px;color:var(--dim);letter-spacing:.12em;}
-  .stepbar-hint{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-left:auto;}
-  /* GRID中：ノブ類を非表示、PAT/BAR+p-lockを表示。strip-ctrlsは固定高さで揺れ防止 */
-  body.step-on #viewPads .strip-ctrls>:not(.gridctrls){display:none;}
-  body.step-on #viewPads .gridctrls{display:flex;}
+
   /* トラック切替◀▶：edWho両脇に常時表示（出し入れで高さ/位置が動かない） */
   .who-wrap{display:flex;align-items:center;gap:8px;min-width:0;}
   .stepnav{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;min-width:0;}
@@ -165,42 +159,13 @@
     align-items:center;justify-content:center;font-size:18px;font-weight:700;
     color:var(--dim);font-variant-numeric:tabular-nums;}
   body.step-on .pad .stepn{display:flex;}
-  /* 拍頭（1,5,9,13）を少し明るく */
-  body.step-on .pad.beathead{background:linear-gradient(180deg,#3b424b,#2f353d);}
-  /* ステップON */
-  /* !important＝perfモードの高詳細度パッド背景(#viewPads)に勝たせ、ONを必ず塗りつぶす（valbarと同方針） */
-  body.step-on .pad.stepon{background:linear-gradient(180deg,var(--amber),var(--hit-c2))!important;box-shadow:0 0 14px rgba(var(--hit-glow-a),.5)!important;}
-  body.step-on .pad.stepon .stepn{color:var(--hit-ink);}
-  body.step-on .pad.stepacc{background:linear-gradient(180deg,#ffd08a,var(--amber))!important;}
-  /* 再生中の現在ステップ */
-  body.step-on .pad.stepcur{outline:5px solid var(--teal);outline-offset:-5px;
-    box-shadow:0 0 18px rgba(61,214,196,.85), inset 0 0 14px rgba(61,214,196,.5);z-index:2;}
-  /* p-lock ツールバー（PITCH/LEVEL/FILTER/DELAY/REVERB：1つだけ点灯・パラメータ毎に色） */
-  .plock-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
-  .plockbtn{border:1px solid var(--line);border-radius:5px;background:var(--pad);
-    font:inherit;font-size:10px;font-weight:700;letter-spacing:.06em;padding:6px 9px;cursor:pointer;min-height:30px;}
-  .plockbtn[data-lock="pitch"]{color:#3dd6c4;}
-  .plockbtn[data-lock="level"]{color:#ff5db0;}
-  .plockbtn[data-lock="filter"]{color:#b07cff;}
-  .plockbtn[data-lock="delay"]{color:#5fd35f;}
-  .plockbtn[data-lock="reverb"]{color:#5aa9ff;}
-  .plockbtn[data-lock="nudge"]{color:#ff965a;}
-  .plockbtn[data-lock="pitch"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;}
-  .plockbtn[data-lock="level"].on{background:#ff5db0;color:#2a0a1e;border-color:#ff5db0;}
-  .plockbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
-  .plockbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
-  .plockbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
-  .plockbtn[data-lock="nudge"].on{background:#ff965a;color:#2a1205;border-color:#ff965a;}
+
   /* p-lock 値バー（左→右の塗りで値を表現）＋数字 */
   .pad .lockfill{display:none;position:absolute;left:0;top:0;bottom:0;width:0%;z-index:0;pointer-events:none;}
-  /* ベースは「音あり色」(アンバー)＝値0でもノートONが分かる。その上に各パラメータ色のバーを重ねる */
-  body.step-on .pad.valbar{background:linear-gradient(180deg,var(--amber),var(--hit-c2))!important;box-shadow:0 0 14px rgba(var(--hit-glow-a),.5)!important;overflow:hidden;}
-  body.step-on .pad.valbar .lockfill{display:block;}
-  /* 値表示中はステップ番号を隠して数字の重なりを防ぐ（中央に値だけ大きく出す） */
-  body.step-on .pad.valbar .stepn{display:none;}
+
   .pad .lockv{display:none;position:absolute;inset:0;z-index:2;align-items:center;justify-content:center;
     font-size:16px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000;}
-  body.step-on .pad.valbar .lockv{display:flex;}
+
   body.step-on .pad.haslock{outline:1px dashed rgba(255,255,255,.4);outline-offset:-3px;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
     border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
@@ -263,7 +228,7 @@
   }
 
   /* ===== Performance Mode（4×4・横向き・PC/iPad）：中央=大パッド / 左右=操作列。ガワはダークなデバイス調 ===== */
-  .perf-rotate,.perf-pats,.perf-plk,.perf-seclbl{display:none;}
+  .perf-rotate,.perf-pats,.perf-plk{display:none;}
   /* ===== 情報窓（MPC式ディスプレイ）：全レイアウトで常時表示。選択パッドの値をここで直接いじる ===== */
   .perf-screen{display:flex;flex-direction:column;justify-content:center;gap:2px;
     background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:8px 14px;margin-bottom:8px;
@@ -273,11 +238,14 @@
   .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
   .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
   .perf-screen b{font-weight:700;}
-  .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
-  .perf-screen.playing .cl-state{color:#bafff4;}
+
   /* メッセージ/ヒントの共用1行。空でも高さを確保＝出入りで窓が跳ねない */
   /* 1行ぶんで高さを固定し、長文は折り返さず端で切る（全文はトースト側に出る）。
      折り返しを許すと長いメッセージのたびに窓が伸びてパッドがずれる */
+  /* TRK行は perf（stripが無い）でだけ出す。それ以外は strip の「01 PHRASE 1」と二重 */
+  body:not(.perf) .perf-screen .cl-trk{display:none;}
+  #sampName.in-window{display:none!important;}
+  body.pe-open #clWave{visibility:hidden;}   /* 窓に収まる時はトーストを出さない */
   .perf-screen .cl-note{height:16px;line-height:1.35;gap:8px;overflow:hidden;flex-wrap:nowrap;}
   .perf-screen .cl-note>*{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .perf-screen .cl-note #clMsg{font-size:11px;opacity:.9;flex:0 1 auto;}
@@ -294,10 +262,9 @@
     font-variant-numeric:tabular-nums;}
   .perf-screen .cl-par b{font-size:13px;min-width:3ch;}   /* -12/+12/-30 の3文字ぶんを常に確保 */
   .perf-screen #perfBpm{min-width:5ch;}   /* 247.5 */
-  .perf-screen #clSwing{min-width:3ch;}   /* 50% */
+  .perf-screen #clSwing{min-width:2ch;}   /* 50 */
   .perf-screen #clBar,.perf-screen #perfPat{min-width:1ch;}
-  .perf-screen #clStep{min-width:5ch;}    /* 01/16 */
-  .perf-screen .cl-state{min-width:7ch;text-align:right;}
+  .perf-screen #clStep{min-width:5ch;}
   .perf-screen .cl-par u{text-decoration:none;font-size:9px;opacity:.55;}
   /* MPC1000式ページ編集：下端のソフトキー(F1-F5)でページを切り替え、フィールドは横ドラッグ＝データホイール */
   .perf-screen .cl-page{min-height:32px;gap:6px;}
@@ -372,6 +339,7 @@
   .perf-screen .cl-mon i{width:7px;height:7px;border-radius:50%;background:rgba(61,214,196,.22);transition:.08s;}
   .perf-screen .cl-mon.lit i{background:var(--teal);box-shadow:0 0 7px var(--teal);}
   .perf-screen .cl-mon b{min-width:4ch;text-align:right;}
+  .perf-screen .cl-mon em{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;}
   body.perf #viewPads.split.active{
     display:grid;
     grid-template-columns:repeat(8,1fr);
@@ -402,16 +370,10 @@
   }
   body.perf .perf-screen{padding:7px 14px;gap:1px;}
   body.perf .perf-screen .cl-row{line-height:1.4;}
-  /* セクション見出し PAD / SEQ */
-  body.perf .perf-seclbl{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
-    letter-spacing:.22em;color:var(--dim);border-top:1px solid var(--edge);padding-top:3px;}
-  body.perf .perf-seclbl::before{content:"";width:3px;height:11px;background:var(--teal);border-radius:2px;}
-  /* perfでは面積をパッドに回す：ブランド行とセクション見出しを畳む（この2つは情報を持っていない）。
-     ※ 上の .perf-seclbl 定義より後ろに置くこと（同特異度なので順序で決まる） */
-  body.perf .perf-seclbl{display:none;}
-  body.perf #perfLblPad{grid-area:padlbl;} body.perf #perfLblSeq{grid-area:seqlbl;}
+
   body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:7px;}
   body.perf .perf-plk .perf-plkbtn{flex:1 1 0;font-size:12px;padding:11px 3px;min-height:46px;letter-spacing:.04em;}
+  body.perf .perf-plk .perf-plk-label{flex:0 0 auto;font-size:10px;letter-spacing:.2em;color:var(--dim);writing-mode:vertical-rl;transform:rotate(180deg);}
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
   body.perf #viewPads.split>.msbar{display:none;}   /* MUTE/SOLOはトランスポート行へ移設予定→perfでは一旦非表示 */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
@@ -426,8 +388,6 @@
   body.perf .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
   body.perf .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
   body.perf .perf-screen b{font-weight:700;}
-  body.perf .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
-  body.perf .perf-screen.playing .cl-state{color:#bafff4;}
   body.perf .perf-screen .cl-note #clHint{font-size:10px;opacity:.5;letter-spacing:.02em;}
   /* SEQ操作行：A-D / 小節1-4 / DUP / SELECT（パッド下の横一列） */
   body.perf .perf-pats{grid-area:pats;display:flex;gap:7px;align-items:stretch;flex-wrap:nowrap;}
@@ -636,7 +596,7 @@
   .master-bar .master-vu-wrap{flex:0 0 70px;width:70px;margin-top:0;}
   .master-bar .master-ctrls{flex:1;gap:14px;align-items:center;margin:0;}
   .master-bar .master-ctrls .knob{flex:1 1 70px;max-width:150px;}
-  .track-name{font-size:13px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;}
+
   .colnums{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;margin-bottom:5px;min-width:500px;}
   .colnums .cn{font-size:9px;color:var(--dim);text-align:center;font-variant-numeric:tabular-nums;}
   .colnums .cn:nth-child(4n+2){color:var(--ink);}
@@ -664,8 +624,7 @@
   .step.on{background:var(--amber);border-color:color-mix(in srgb,var(--amber) 70%,#fff);box-shadow:0 0 8px rgba(var(--hit-glow-a),.35);}
   .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
   .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
-  .hint{font-size:10px;color:var(--dim);letter-spacing:.08em;margin-top:14px;line-height:1.7;}
-  .hint kbd{background:#0d1013;border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:var(--ink);font-family:inherit;}
+
   .file{font-size:11px;}
   .file label{color:var(--teal);cursor:pointer;text-transform:uppercase;letter-spacing:.14em;border:1px dashed var(--line);padding:6px 10px;border-radius:5px;display:inline-block;}
   .file input{display:none;}
@@ -731,12 +690,7 @@
     display:inline-flex;align-items:center;justify-content:center;
     border:1px solid var(--line);padding:5px 12px;border-radius:5px;}
   .loadbtn:hover{border-color:var(--teal);}
-  .strip-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-top:12px;min-height:74px;}
 
-  /* ===== EDIT-modal リデザイン（モック） =====
-     窓の波形(#waveWrap)は撤去し、サンプル編集は EDIT+パッド→モーダルへ集約。
-     通常PADSでは編集ノブ行も畳んでパッドを縦最大化。GRID入力(step-on)時のみ従来の操作行を表示。 */
-  body:not(.step-on) #viewPads .strip-ctrls{display:none!important;}
   body:not(.step-on) #viewPads .strip{padding:8px 14px;margin-bottom:6px;}
   /* 窓波形撤去後、strip-headが唯一の中身。下マージンを消して上下中央に揃える（上寄り防止＋フォーカス枠の見切れ防止） */
   body:not(.step-on) #viewPads .strip-head{margin-bottom:0;}
@@ -833,10 +787,6 @@
   #menuBtn::after{content:"";position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;
     background:var(--line);transition:background .08s,box-shadow .08s;}
   #menuBtn.midi-lit::after{background:var(--teal);box-shadow:0 0 7px var(--teal);}
-  .midi-mon{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--dim);letter-spacing:.14em;}
-  .midi-mon i{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.08s;}
-  .midi-mon.lit i{background:var(--teal);box-shadow:0 0 7px var(--teal);}
-  .midi-mon b{color:var(--ink);font-variant-numeric:tabular-nums;}
 
   .transport .t.rec-live{animation:blink .9s ease-in-out infinite;color:var(--red);border-color:var(--red);}   /* 録音中＝●が点滅 */
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
@@ -909,12 +859,10 @@
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
     /* 情報窓はモバイルでは2行に圧縮（BPM/PAT/BAR＝積み残しだった「現在地」表示 ＋ 触れるパラメータ） */
     #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;}
-    #viewPads>.perf-screen .cl-state,
-    #viewPads>.perf-screen .cl-trk{display:none;}   /* TRK名はstrip-headが、再生状態はトランスポートが表示済み */
+    #viewPads>.perf-screen .cl-trk{display:none;}
     #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
     #viewPads>.perf-screen .cl-par{padding:3px 9px;}
     .strip{padding:9px;}
-    .strip-ctrls{gap:8px;}
 
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
@@ -947,28 +895,19 @@
     /* モバイル：ぼかしグロー(box-shadow blur)とトランジションは毎ステップ再描画が重い→無効化（背景色での点灯は残す） */
     .pad{transition:none!important;}
     .pad.hit,.pad.hit.hit-acc{box-shadow:none!important;}
-    body.step-on .pad.stepon,body.step-on .pad.valbar{box-shadow:none!important;}
-    body.step-on .pad.stepcur{box-shadow:none!important;}
+
     /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
     /* === スマホ：3モードはタブを廃止し、スワイプ＋ドットで切替（スペース確保） === */
     .modebar-row .modebar{display:none;}
     .viewdots{display:flex;}
     .modebar-row{margin:4px 0 8px;}
-    /* === スマホ STEPモードの崩れ対策 === */
-    /* ノブ行の固定高さを解除。p-lock行は改行して自分の行に降ろし、5ボタンを常時表示（横スクロールで隠れない） */
-    .strip-ctrls{min-height:0;}
-    body.step-on #viewPads .gridctrls{flex-wrap:wrap;overflow:visible;width:100%;gap:6px 8px;}
-    .gridctrls .seg,.gridctrls .patlabel{flex:0 0 auto;}
-    .gridctrls .plock-row{flex:1 1 100%;flex-wrap:wrap;}   /* 改行して全幅。5ボタンが収まらなければさらに折り返す */
-    .gridctrls .plockbtn{flex:1 1 auto;}                    /* 残り幅を均等に分けて押しやすく */
-    .gridctrls .stepbar-hint{display:none;}
+
     /* パッド数字はスマホで控えめに（重なり防止） */
     .pads .pad .stepn{font-size:15px;}
     .pads .pad .lockv{font-size:14px;}
     /* SEQは固定高さの中で内部縦スクロール（PADSは収める方針と両立） */
     #viewSeq.active{overflow-x:hidden;overflow-y:auto;display:block;height:100%;}
     /* SEQヘッダの行数削減：ヒント省略・ラベル省略でPATTERN/BAR/DUPを1行に */
-    .seq-hint{display:none;}
     .seq-head{gap:6px;margin-bottom:8px;}
     .pat-bar{gap:6px;}
     .pat-bar .patlabel{display:none;}
@@ -1030,7 +969,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.100</div>
+  <div class="s-ver" id="splashVer">v0.3.101</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1053,13 +992,15 @@
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
         <div class="modal-head"><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
         <div class="modal-sec">
-          <div class="modal-label">Tempo / Swing</div>
+          <div class="modal-label">Tempo</div>
           <div class="tempo-row" style="flex-wrap:wrap;align-items:center;gap:14px;">
-            <div class="ctrl">Tempo
+            <!-- テンポ/スウィングの編集入口は情報窓に一本化（v0.3.101）。この2つは applyBpm / 窓のSWG欄が
+                 書き込む「唯一の経路」として残すが、見せない -->
+            <div class="ctrl" style="display:none;">Tempo
               <input type="range" id="bpm" min="40" max="250" step="0.5" value="100">
               <div class="readout" id="bpmRead">100.0</div>
             </div>
-            <div class="ctrl">Swing
+            <div class="ctrl" style="display:none;">Swing
               <select class="t" id="swing" style="padding:6px 8px;">
                 <option value="50" selected>50%</option>
                 <option value="54">54%</option>
@@ -1086,7 +1027,7 @@
           <div class="master-bar" id="masterBar">
             <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
             <div class="master-ctrls">
-              <div class="knob"><label>Master <span class="v" id="vMaster">0 dB</span></label>
+              <div class="knob"><label>Volume <span class="v" id="vMaster">0 dB</span></label>
                 <input type="range" id="kMaster" min="-30" max="6" step="1" value="0"></div>
             </div>
           </div>
@@ -1118,7 +1059,6 @@
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle" id="midiToggle"><span class="sw"></span><span>そとの鍵盤で叩く</span></label>
             <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>OUT B — ch3/4</span></label>
-            <span class="midi-mon" id="midiMon"><i></i>MIDI IN <b>—</b></span>
           </div>
         </div>
         <div class="modal-sec">
@@ -1195,7 +1135,7 @@
           </div>
         </div>
         <div class="pe-transport">
-          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PLAY</button>
+          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
           <button class="pe-trim" id="peTrunc">✂ TRIM</button>
           <button class="pe-trim" id="peRev">⇄ REV</button>
         </div>
@@ -1212,8 +1152,8 @@
 
   <div class="modebar-row">
     <div class="modebar">
-      <button class="modebtn on" id="modePads" data-view="viewPads"><span class="led"></span>Pads</button>
-      <button class="modebtn" id="modeSeq" data-view="viewSeq"><span class="led"></span>Seq</button>
+      <button class="modebtn on" id="modePads" data-view="viewPads"><span class="led"></span>PADS</button>
+      <button class="modebtn" id="modeSeq" data-view="viewSeq"><span class="led"></span>SEQ</button>
     </div>
     <!-- スマホ専用：2モードはスワイプ切替＋このドットで現在地表示（タップでも切替可） -->
     <div class="viewdots" id="viewDots">
@@ -1230,9 +1170,9 @@
       <div class="strip">
         <div class="strip-head">
           <div class="who-wrap">
-            <button class="t stepnav" id="stepPrev" aria-label="前のトラック">◀</button>
+            <button class="t stepnav" id="stepPrev" aria-label="前のトラック">‹</button>
             <div class="who" id="edWho">01 KICK</div>
-            <button class="t stepnav" id="stepNext" aria-label="次のトラック">▶</button>
+            <button class="t stepnav" id="stepNext" aria-label="次のトラック">›</button>
           </div>
           <div class="strip-actions">
             <span class="loadbtn" id="loadBtn">LOAD</span>
@@ -1245,34 +1185,8 @@
         <!-- 編集ノブ群は撤去（v0.3.82）。どのレイアウトでもCSSで隠れており「見えないのに値だけ書かれる」
              ゾンビUIだった＝Pitch/Level/Filter/Cutoff/Reso/Choke/Scale/Loop は情報窓のページが唯一の入口。
              この行に残るのは GRID（Digitakt式）のPAT/BAR＋P-LOCKだけ。 -->
-        <div class="strip-ctrls">
-          <div class="gridctrls" id="gridCtrls">
-            <span class="patlabel">PAT</span>
-            <div class="seg" id="gPatSeg">
-              <button class="patbtn on" data-p="0">A</button>
-              <button class="patbtn" data-p="1">B</button>
-              <button class="patbtn" data-p="2">C</button>
-              <button class="patbtn" data-p="3">D</button>
-            </div>
-            <span class="patlabel">BAR</span>
-            <div class="seg" id="gBarSeg">
-              <button class="patbtn on" data-b="0">1</button>
-              <button class="patbtn" data-b="1">2</button>
-              <button class="patbtn" data-b="2">3</button>
-              <button class="patbtn" data-b="3">4</button>
-            </div>
-            <div class="plock-row" id="plockRow">
-              <span class="patlabel">P-LOCK</span>
-              <button class="plockbtn" data-lock="pitch">PITCH</button>
-              <button class="plockbtn" data-lock="level">LEVEL</button>
-              <button class="plockbtn" data-lock="filter">FILTER</button>
-              <button class="plockbtn" data-lock="delay">DELAY</button>
-              <button class="plockbtn" data-lock="reverb">REVERB</button>
-              <button class="plockbtn" data-lock="nudge">NUDGE</button>
-            </div>
-            <span class="stepbar-hint" id="stepHint">PADでON/OFF</span>
-          </div>
-        </div>
+        <!-- GRID（Digitakt式）のPAT/BAR＋P-LOCK行は撤去（v0.3.101）。recMode="real"固定で body.step-on に入る経路が無く、
+             一度も表示されない死にUIだった。P-LOCKの選択子は perf の #perfPlk のみ（split/スマホ用は宿題） -->
       </div>
 
       <!-- MUTE/SOLO/COPY はトランスポート行へ移設（v0.3.5）。EDITは非perf用にここへ残置。
@@ -1296,11 +1210,10 @@
         <div class="cl-body">
         <div class="cl-row cl-stat">
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
-          <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50%</b></span>
+          <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
           <span><i>PAT</i><b class="cl-num" id="perfPat">A</b></span>
           <span><i>BAR</i><b class="cl-num" id="clBar">1</b></span>
           <span><i>STEP</i><b class="cl-num" id="clStep">--</b></span>
-          <span class="cl-state" id="clState">■ STOP</span>
         </div>
         <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params cl-page" id="clPage"></div>
@@ -1318,8 +1231,6 @@
              出入りで畳んでいた頃は、トーストが出るたびに窓が伸び縮みしてパッドがずれていた -->
         <div class="cl-row cl-note"><b id="clMsg"></b><span id="clHint"></span></div>
       </div>
-      <div class="perf-seclbl" id="perfLblPad">PAD</div>
-      <div class="perf-seclbl" id="perfLblSeq">SEQ</div>
       <div class="perf-rotate" id="perfRotate"><div>↻<br>横向きにしてください<br><small>演奏モード（4×4）</small></div></div>
       <!-- 右上：パターンA-Dライブ切替 -->
       <div class="perf-pats" id="perfPats">
@@ -1333,12 +1244,13 @@
       <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
       <!-- 下：P-LOCK 5つ均等（GRIDと同じ並び）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
       <div class="perf-plk" id="perfPlk">
+        <span class="perf-plk-label">P-LOCK</span>
         <button class="perf-plkbtn" data-lock="pitch">PITCH</button>
         <button class="perf-plkbtn" data-lock="level">LEVEL</button>
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 演奏のみ（離すと戻る）">● REC</button>
+        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 演奏のみ（離すと戻る）">REC</button>
         <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
         <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
@@ -1346,14 +1258,13 @@
       <!-- hidden legacy vol sync -->
       <input type="range" id="vol" min="-30" max="6" step="1" value="-4" style="display:none;">
       <span class="val" id="volVal" style="display:none;">-4</span>
-      <span class="track-name" id="trackName" style="display:none;">01 KICK</span>
     </div>
 
     <!-- SEQ view -->
     <div class="view" id="viewSeq">
       <div class="seq-head">
         <div class="pat-bar">
-          <span class="patlabel">PATTERN</span>
+          <span class="patlabel">PAT</span>
           <div class="seg" id="patSeg">
             <button class="patbtn on" data-p="0">A</button>
             <button class="patbtn" data-p="1">B</button>
@@ -1371,7 +1282,6 @@
         <div class="melo-banner" id="meloBanner" style="display:none;">
           <button class="t" id="meloExit">← DRUMS</button>
         </div>
-        <div class="ctrl seq-hint" style="font-size:10px;">行名クリックで試聴 · Shift+クリックでアクセント</div>
       </div>
       <div class="colnums" id="colnums"></div>
       <div class="grid playcol" id="grid"></div>
@@ -1982,10 +1892,7 @@ let playStep = 0;
 let recording = false;
 let editPat = 0;       // 編集中パターン 0-3 (A-D)
 let editBar = 0;       // 編集中の小節 0-3 (1-4)
-let recMode = "real";  // リアルタイム録音のみ。16PADステップ入力(grid/stepMode)は廃止＝下段の16ステップ列に統合（v0.3.11）
-let stepMode = false;  // 廃止済み（常にfalse）。dead branchガード用に残置
 let activeLock = null; // 選択中のp-lockパラメータ（null=ON/OFFトグル）
-let stepDrag = null;   // GRIDでのパッドドラッグ状態
 let editDrag = null;   // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）
 let perfDrag = null;   // Performance中のパッドドラッグ＝ライブ・モジュレート
 let peTarget=0;        // 波形エディタの対象パッド（窓とモーダルで共有する1実体）
@@ -2505,7 +2412,13 @@ new MutationObserver(()=>{
   sampNameEl.classList.toggle("show",has);
   if(_toastTimer){ clearTimeout(_toastTimer); _toastTimer=null; }
   if(has){ _toastTimer=setTimeout(()=>{ sampNameEl.classList.remove("show"); _toastTimer=null; }, Math.min(6000, 2000+t.length*70)); }   // 長文ほど長く出す
-  const cm=document.getElementById("clMsg"); if(cm) cm.textContent=t||"ready";   // コマンドライン窓に操作内容を逐次表示（どんどん出す）
+  const cm=document.getElementById("clMsg"); if(cm) cm.textContent=t;   // 情報窓の1行に出す
+  // 窓が見えていて1行に収まるならトーストは出さない（同じ文が2箇所に出ていた）。
+  // 窓が無いSEQ画面と、窓で切れる長文だけトースト
+  const winShown = cm && document.getElementById("viewPads") && document.getElementById("viewPads").classList.contains("active")
+                   && cm.getBoundingClientRect().height>0;
+  const fits = winShown && cm.scrollWidth<=cm.clientWidth+1;
+  sampNameEl.classList.toggle("in-window", !!fits);
 }).observe(sampNameEl,{childList:true,characterData:true,subtree:true});
 const viewPadsEl = document.getElementById("viewPads");
 const viewSeqEl  = document.getElementById("viewSeq");     // 毎ステップ描画の可視判定に使う
@@ -2533,7 +2446,7 @@ PADS.forEach((p,i)=>{
   d.addEventListener("pointerdown",async(e)=>{
     if(armMode==="select"){ e.preventDefault(); selectPad(i); arm("select",false); return; }   // SELECT＝ワンショット：1パッド選択でトグル消費＆自動解除
     if(e.altKey){ e.preventDefault(); selectPad(i); return; }                                  // Alt+PAD＝選択のみ・発音なし（Ctrlはブラウザ衝突のためAlt）
-    if(e.shiftKey && !stepMode){ e.preventDefault(); tracks[i].mute=!tracks[i].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }   // Shift+PAD＝ミュート（既定）
+    if(e.shiftKey){ e.preventDefault(); tracks[i].mute=!tracks[i].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }   // Shift+PAD＝ミュート（既定）
     // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
     if(document.body.classList.contains("perf") && activeLock && PERF_BASE[activeLock]){
       e.preventDefault();
@@ -2543,14 +2456,6 @@ PADS.forEach((p,i)=>{
       }
       perfTapT[i]=now;
       perfDrag={pad:i, x0:e.clientX, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
-      try{ d.setPointerCapture(e.pointerId); }catch(_){}
-      return;
-    }
-    if(stepMode){   // GRID入力：タップ=ON/OFF、パラメータ選択中は左右ドラッグでp-lock記録
-      e.preventDefault();
-      let startVal=null;
-      if(activeLock){ const spec=PLOCKS[activeLock]; const lk=getLockEdit(selected,i); startVal=(lk&&lk[activeLock]!=null)?lk[activeLock]:spec.def; }
-      stepDrag={pad:i, x0:e.clientX, moved:false, startVal, undone:false};
       try{ d.setPointerCapture(e.pointerId); }catch(_){}
       return;
     }
@@ -2576,33 +2481,6 @@ PADS.forEach((p,i)=>{
     }
     trigger(i);selectPad(i,true);
   });
-  d.addEventListener("pointermove",(e)=>{
-    if(!stepMode || !stepDrag || stepDrag.pad!==i) return;
-    const dx=e.clientX-stepDrag.x0;
-    if(!stepDrag.moved && Math.abs(dx)>6){ stepDrag.moved=true; }  // 動いたらタップ扱いしない（スワイプ誤爆防止）
-    if(!activeLock) return;   // パラメータ未選択時は値記録なし（スワイプはビュー切替に回す）
-    if(stepDrag.moved){
-      if(!stepDrag.undone){ pushUndo(); stepDrag.undone=true; }
-      const spec=PLOCKS[activeLock];
-      let v;
-      if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max);
-        let lv=Math.log(stepDrag.startVal)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv);
-      } else {
-        v=stepDrag.startVal+(dx/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v));
-        if(activeLock==="pitch"||activeLock==="level"||activeLock==="nudge") v=Math.round(v);
-      }
-      const pat=getPattern(selected); if(!(pat[i]>0)) pat[i]=1;   // 記録時は自動ON
-      setLockEdit(selected, i, activeLock, v);
-      paintStepPads(); paintPatBar();
-    }
-  });
-  const endStepDrag=(e)=>{
-    if(!stepMode || !stepDrag || stepDrag.pad!==i){ return; }
-    if(!stepDrag.moved){ toggleStepAt(i, e&&e.shiftKey); }   // 動かさなければタップ=ON/OFF
-    stepDrag=null;
-  };
-  d.addEventListener("pointerup",endStepDrag);
-  d.addEventListener("pointercancel",()=>{ if(stepDrag&&stepDrag.pad===i) stepDrag=null; });
   // --- EDIT中のドラッグ並べ替え（移動/コピー）---
   d.addEventListener("pointermove",(e)=>{
     if(!editDrag || editDrag.pad!==i) return;
@@ -2678,7 +2556,6 @@ function selectPadHeavy(){   // selectPad の重いUI同期（エディタ/ス�
   if(isMelodic(i) && typeof sampNameEl!=="undefined" && sampNameEl)
     sampNameEl.textContent="♪ "+PADS[i].name+"：ホーム行 A〜; ＝音階キー（"+tracks[i].scale+"）";
   if(typeof syncEditor==="function") syncEditor();
-  if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
   if(typeof paintStepStrip==="function") paintStepStrip();             // 16ステップ列を選択トラックへ追従
   if(typeof applyWaveStrip==="function") applyWaveStrip();             // 下段ステップ列の波形を選択トラックへ
   if(typeof clRetargetLearn==="function") clRetargetLearn();           // ASSIGN待機中はいま選んだパッドへ的を移す
@@ -2690,7 +2567,6 @@ function selectPad(i, light){
   selected=i;
   // 軽い更新（毎回）：選択ハイライト＋トラック名/音量表示
   for(let idx=0;idx<padsEl.children.length;idx++){ const el=padsEl.children[idx]; el.classList.toggle("sel",idx===i); el.setAttribute("aria-current", idx===i?"true":"false"); }
-  document.getElementById("trackName").textContent=String(i+1).padStart(2,"0")+" "+PADS[i].name;
   document.getElementById("vol").value=tracks[i].vol;
   document.getElementById("volVal").textContent=tracks[i].vol;
   // 同じパッド連打は重い更新を完全スキップ
@@ -2765,12 +2641,10 @@ PADS.forEach((p,i)=>{
 let _seqCurStep=-1, _padCurStep=-1, _stripCurStep=-1;
 function curStepFor(){ return (playing && editPat===displayPat && editBar===displayBar) ? playStep : -1; }
 function paintSteps(){
-  if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID中はPADのステップ表示も更新（再生ヘッド追従）
   if(typeof paintStepStrip==="function") paintStepStrip();             // 常時表示の16ステップ列（1画面化）を毎回同期（早期returnより前）
   {   // 情報窓のSTEP/STATEをライブ更新（軽量）。v0.3.79で窓を全レイアウト共通にした後も perf 限定のまま残り、
       // スマホ・PC狭幅では再生中も「--」「■ STOP」だった（規則§1「嘘をつかない」違反・v0.3.98で修正）
     const _cs=document.getElementById("clStep"); if(_cs) _cs.textContent=playing?(String(playStep+1).padStart(2,"0")+"/16"):"--";
-    const _ct=document.getElementById("clState"); if(_ct) _ct.textContent=playing?(perfRecArm?"● REC":"▶ PLAY"):"■ STOP";
     const _sc=document.querySelector(".perf-screen"); if(_sc) _sc.classList.toggle("playing",playing);
   }
   if(!viewSeqEl.classList.contains("active")) return;   // SEQ非表示なら重い16×16グリッド更新は不要（毎ステップの負荷を削減）
@@ -2796,14 +2670,6 @@ function moveCursors(){
       if(_stripCurStep>=0 && stepBtns[_stripCurStep]) stepBtns[_stripCurStep].classList.remove("cur");
       if(ns>=0 && stepBtns[ns]) stepBtns[ns].classList.add("cur");
       _stripCurStep=ns;
-    }
-  }
-  if(stepMode){
-    const ns=curStepFor();
-    if(ns!==_padCurStep){
-      if(_padCurStep>=0){ const p=padsEl.children[_padCurStep]; if(p) p.classList.remove("stepcur"); }
-      if(ns>=0){ const p=padsEl.children[ns]; if(p) p.classList.add("stepcur"); }
-      _padCurStep=ns;
     }
   }
   if(viewSeqEl.classList.contains("active")){
@@ -2892,8 +2758,8 @@ function paintCopyHL(){
   const hit=(sel,ty,key)=>document.querySelectorAll(sel).forEach(b=>
     b.classList.toggle("copysrc", !!copyArm && copyArm.type===ty && copyArm.idx===+b.dataset[key]));
   hit("#perfPats .perf-pat","pat","p"); hit("#perfPats .perf-bar","bar","b");
-  hit("#patSeg button,#gPatSeg button","pat","p");     // SEQ/GRID＝スマホの実画面（今まで塗られていなかった）
-  hit("#barSeg button,#gBarSeg button","bar","b");
+  hit("#patSeg button","pat","p");
+  hit("#barSeg button","bar","b");
   const isNote=!!copyArm && copyArm.type==="note";
   document.querySelectorAll("#stepStrip .stepbtn").forEach((b,si)=>
     b.classList.toggle("copysrc", isNote && copyArm.idx.t===selected && copyArm.idx.s===si));
@@ -3114,7 +2980,7 @@ const CL_SPEC={
   // （setDelayTempo・readout・paintPerf が既存ハンドラでまとめて走る）
   bpm:   {lbl:"BPM", g:1, get:()=>bpmVal, min:40,max:250,st:0.5,px:5, fmt:v=>v.toFixed(1), w:5, zero:100,
           set:v=>{ const el=document.getElementById("bpm"); el.value=v; el.dispatchEvent(new Event("input",{bubbles:true})); }},
-  swing: {lbl:"SWG", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>v+"%", w:4,
+  swing: {lbl:"SWG", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>String(v), w:2,
           set:v=>{ const el=document.getElementById("swing"); el.value=v; el.dispatchEvent(new Event("change",{bubbles:true})); }},
   pitch: {lbl:"PITCH", u:"st", get:t=>t.tune,  set:(t,v)=>t.tune=v, min:-12,max:12,st:1,px:14, fmt:v=>(v>0?"+":"")+v, w:3},
   scale: {lbl:"SCALE", en:["off","chro","maj","min","pent"], get:t=>t.scale||"off",
@@ -3148,7 +3014,7 @@ const CL_PAGES=[
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"fx",   lbl:"FX",     f:["delay","reverb"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
-   x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><b class="cl-num">—</b></span>'},
+   x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
 ];
 let clPage="main";
 function renderClPage(){
@@ -3440,62 +3306,23 @@ playBtn.addEventListener("click",async()=>{
   }
 });
 const recBtn=document.getElementById("rec");
-// GRID時は「打ち込み(STEP)」、REAL時は「録音(REC)」とラベルで役割を分ける（赤●=録音 と混同しないように）
 function updateRecBtnLabel(){
-  if(recMode==="grid"){ recBtn.textContent = stepMode ? "■" : "▦"; recBtn.classList.toggle("on",stepMode); recBtn.classList.remove("rec-live"); }
-  else { recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording); }   // アイコンのみ
+  recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording);   // アイコンのみ
 }
 recBtn.addEventListener("click",()=>{
-  if(recMode==="grid"){ setStepMode(!stepMode); return; }   // GRID：Recでステップ入力ON/OFF
   recording=!recording; if(recording) pushUndo(); updateRecBtnLabel();
   if(recording&&!playing) sampNameEl.textContent="● 記録待機 — ▶を押すと演奏を記録";
 });
 
 // ===== GRID（Digitakt式）ステップ入力 =====
 function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
-function paintStepPads(){
-  if(!stepMode) return;
-  const pat=getPattern(selected);
-  const spec=activeLock?PLOCKS[activeLock]:null;
-  const _padCurStepCalc=curStepFor();
-  for(let s=0;s<PADS.length;s++){
-    const el=padsEl.children[s]; const v=pat[s]||0;
-    el.classList.toggle("stepon", v>0);
-    el.classList.toggle("stepacc", v===2);
-    el.classList.toggle("beathead", s%4===0);
-    el.classList.toggle("stepcur", s===_padCurStepCalc);
-    const lk=getLockEdit(selected, s);
-    const has=!!(lk && Object.keys(lk).length);
-    el.classList.toggle("haslock", has && v>0);
-    const lockedActive = !!(spec && lk && lk[activeLock]!=null && v>0);
-    el.classList.toggle("valbar", lockedActive);
-    const fill=el._lockfill, lv=el._lockv;
-    if(lockedActive){
-      const val=lk[activeLock];
-      let norm = spec.log
-        ? (Math.log(val)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min))
-        : (val-spec.min)/(spec.max-spec.min);
-      norm=Math.max(0,Math.min(1,norm));
-      if(fill){ fill.style.width=(norm*100).toFixed(1)+"%"; fill.style.background="rgb("+spec.color+")"; }
-      if(lv) lv.textContent=spec.fmt(val);
-    } else {
-      if(fill) fill.style.width="0%";
-      if(lv) lv.textContent="";
-    }
-  }
-  _padCurStep=_padCurStepCalc;   // 全面塗り直し後はカーソルキャッシュも同期
-}
-function clearStepPadClasses(){
-  for(let s=0;s<PADS.length;s++){ const el=padsEl.children[s]; el.classList.remove("stepon","stepacc","beathead","stepcur","haslock","valbar"); if(el._lockv) el._lockv.textContent=""; if(el._lockfill) el._lockfill.style.width="0%"; }
-  _padCurStep=-1;
-}
 function toggleStepAt(s, accent){
   pushUndo();
   const pat=getPattern(selected); const cur=pat[s]||0;
   const nv = accent ? (cur===2?0:2) : (cur?0:1);
   pat[s]=nv;
   if(nv===0) clearLockEdit(selected, s);   // OFFにしたらそのステップのp-lockも消す
-  paintStepPads(); if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
+  if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
   if(typeof paintPerf==="function") paintPerf();   // A-D/小節の「中身あり」ドットを更新
   if(typeof setCellWave==="function"){              // 発音セルのみ波形：変わった1セルだけ更新（軽量）
     const _u=(trackWaveURL[selected]||"");
@@ -3580,31 +3407,15 @@ function paintStepStrip(){
 }
 paintStepStrip();   // ボタン生成直後の初期描画（起動時の最初のpaintStepsはこの行より前に走るため）
 // p-lock ツールバー（1つだけ点灯／再押しで解除）
-(function(){
-  const row=document.getElementById("plockRow"); if(!row) return;
-  row.addEventListener("click",e=>{
-    const b=e.target.closest(".plockbtn"); if(!b) return;
-    const p=b.dataset.lock;
-    activeLock=(activeLock===p)?null:p;
-    [...row.querySelectorAll(".plockbtn")].forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
-    const hint=document.getElementById("stepHint");
-    if(hint) hint.textContent= activeLock ? (activeLock.toUpperCase()+"：PADを左右で記録") : "PADでON/OFF";
-    paintStepPads();
-  });
-})();
-function setStepMode(on){
-  stepMode=on;
-  document.body.classList.toggle("step-on",on);
-  updateRecBtnLabel();
-  if(on){
-    if(!viewPadsEl.classList.contains("active") && typeof switchView==="function") switchView("viewPads");
-    paintStepPads();
-  } else { clearStepPadClasses(); }
+// P-LOCK の選択（perf の #perfPlk から）。以前は隠れた #plockRow のボタンを click() で代理していた
+function setActiveLock(p){
+  activeLock=(activeLock===p)?null:p;
+  document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
 }
-function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); paintStepPads(); }
+function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); }
 document.getElementById("stepPrev").addEventListener("click",()=>stepShift(-1));
 document.getElementById("stepNext").addEventListener("click",()=>stepShift(1));
-updateRecBtnLabel();   // 起動時（既定grid）はSTEP表示に
+updateRecBtnLabel();
 document.getElementById("undoBtn").addEventListener("click", doUndo);
 // ===== Sound A/B トグル（メニュー） =====
 (function(){
@@ -3842,7 +3653,7 @@ function openPadEdit(i){
   peTarget=i;
   const t=tracks[i];
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="PAD "+String(i+1).padStart(2,"0")+" · "+(PADS[i].type==="sample"?t.name:PADS[i].name)+" — TRIM / CHOP";
+  document.getElementById("peTitle").textContent="TRIM / CHOP";   // 名前は背後（窓・strip・パッド）に出ている＝ここには出さない
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
   // このモーダルに残るのは「入り組んだ設定」＝波形の切り出し（TRIM/REV/CHOP）と音源の差し替えだけ。
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
@@ -3856,12 +3667,13 @@ function openPadEdit(i){
   computeChopBounds();
   const modal=document.getElementById("padEditModal");
   peOpenedAt=performance.now();
+  document.body.classList.add("pe-open");   // 開いている間は窓の ✂ ボタンを隠す（二重）
   modal.style.display="flex";
   requestAnimationFrame(()=>renderPeWave(i));   // 表示後に正しい幅で描画
 }
 (function(){
   const modal=document.getElementById("padEditModal");
-  const close=()=>{ modal.style.display="none"; if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
+  const close=()=>{ modal.style.display="none"; document.body.classList.remove("pe-open"); if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
     if(typeof clWaveTo==="function" && typeof clPage!=="undefined" && clPage==="smpl"){ clWaveTo("screen"); clSyncWave(); } };
   // タッチ端末では、パッドの pointerup でモーダルを開いた直後に、ブラウザが touchend から合成する click が
   // 「指の位置で再ヒットテスト」されてモーダルの上に落ちる（ゴーストクリック）。背景なら即閉じ、
@@ -4567,12 +4379,14 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   const $=id=>document.getElementById(id);
   const bv=(typeof bpmVal!=="undefined"?bpmVal:100), ep=(typeof editPat!=="undefined"?editPat:0);
   if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1);
-  if($("clSwing")) $("clSwing").textContent=(typeof swingPct!=="undefined"?swingPct:50)+"%";
-  if($("perfPat")) $("perfPat").textContent="ABCD"[ep];
-  if($("clBar")) $("clBar").textContent=String((typeof editBar!=="undefined"?editBar:0)+1);
+  if($("clSwing")) $("clSwing").textContent=String(typeof swingPct!=="undefined"?swingPct:50);
+  // 窓の PAT/BAR は「現在地」＝再生中は鳴っている場所、停止中は編集位置（§0-3「嘘をつかない」。
+  // 以前は再生中も編集位置で、2小節目が鳴っていても BAR 1、予約しただけで PAT B と出ていた）
+  const _plNow=(typeof playing!=="undefined"&&playing);
+  if($("perfPat")) $("perfPat").textContent="ABCD"[_plNow?(typeof displayPat!=="undefined"?displayPat:ep):ep];
+  if($("clBar")) $("clBar").textContent=String((_plNow?(typeof displayBar!=="undefined"?displayBar:0):(typeof editBar!=="undefined"?editBar:0))+1);
   const _pl=(typeof playing!=="undefined"&&playing);
   if($("clStep")) $("clStep").textContent=_pl?(String((typeof playStep!=="undefined"?playStep:0)+1).padStart(2,"0")+"/16"):"--";
-  if($("clState")) $("clState").textContent=_pl?(perfRecArm?"● REC":"▶ PLAY"):"■ STOP";
   const _scr=document.querySelector(".perf-screen"); if(_scr) _scr.classList.toggle("playing",_pl);
   if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
   const _msg=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):"";
@@ -4656,11 +4470,11 @@ function perfLockApply(prev){
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
   // 小節(1-4)：COPY中は元→先で小節コピー、通常は setEditBar。DUPはCOPYに統合し撤去。
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); paintPerf(); }));
-  // P-LOCK選択：既存 #plockRow を proxy（activeLock共有）＋パラメータ・ページのスナップ/復帰。
+  // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
   // comp/edit は P-LOCK ではなくモードボタン（.perf-mode）なので除外し、専用配線で既存の真へproxy。
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
     const prev=activeLock;
-    const src=document.querySelector('#plockRow .plockbtn[data-lock="'+b.dataset.lock+'"]'); if(src) src.click();
+    setActiveLock(b.dataset.lock);
     perfLockApply(prev); paintPerf();
   }));
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
@@ -4682,7 +4496,6 @@ function updatePerf(){
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
   if(four && !wasPerf){
-    if(typeof stepMode!=="undefined" && stepMode && typeof setStepMode==="function") setStepMode(false);  // 演奏モードではGRIDステップ入力を使わない（STEPと無関係化）
     // ベストエフォートで横向きロック（Android系のみ有効。iPad Safariは非対応＝回転オーバーレイが実質ガード）
     try{ if(screen.orientation && screen.orientation.lock){ const p=screen.orientation.lock("landscape"); if(p&&p.catch) p.catch(()=>{}); } }catch(_){}
   }
@@ -4696,10 +4509,6 @@ setInterval(()=>{ if(playing || document.body.classList.contains("perf")) paintP
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
 const barSeg=document.getElementById("barSeg");
-// GRID側の同じ選択子。v0.3.84の範囲削除でこの宣言とクリック登録を巻き込んで消していた
-// （id持ちの要素は window の暗黙グローバルになるため、参照だけは動いてしまい気づけなかった）
-const gPatSeg=document.getElementById("gPatSeg");
-const gBarSeg=document.getElementById("gBarSeg");
 
 // 音階モード：← DRUMS で復帰（SCALEの選択は情報窓のMAINページ）
 document.getElementById("meloExit").addEventListener("click",()=>{
@@ -4716,27 +4525,26 @@ function setEditPat(p){
 }
 function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves(); }
 // SEQ/GRIDのパターンA-D・小節1-4を押して選ぶ（COPY中は元→先でコピー）
-[[patSeg,"p",setEditPat,"pat"],[gPatSeg,"p",setEditPat,"pat"],
- [barSeg,"b",setEditBar,"bar"],[gBarSeg,"b",setEditBar,"bar"]].forEach(([seg,k,fn,ct])=>{
+[[patSeg,"p",setEditPat,"pat"],[barSeg,"b",setEditBar,"bar"]].forEach(([seg,k,fn,ct])=>{
   if(!seg) return;
   seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
     if(copyTap(ct,+b.dataset[k])) return; fn(+b.dataset[k]); });
 });
 function updatePatIndicator(p){
-  [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
+  [patSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{ const on=+b.dataset.p===p; b.classList.toggle("playing",on); if(on) b.classList.remove("queued"); });
 }
-function clearPatIndicator(){ [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.classList.remove("playing","queued")); }
-function updateBarIndicator(bar){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("playing",+b.dataset.b===bar)); }
-function clearBarIndicator(){ [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.remove("playing")); }
+function clearPatIndicator(){ [patSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.classList.remove("playing","queued")); }
+function updateBarIndicator(bar){ [barSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("playing",+b.dataset.b===bar)); }
+function clearBarIndicator(){ [barSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.remove("playing")); }
 // 編集状態・中身ドット・予約点滅・ループ外小節をまとめて反映
 function paintPatBar(){
-  [patSeg,gPatSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
+  [patSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
     b.classList.toggle("on", j===editPat);
     b.classList.toggle("has", patHasContent(j));
     b.classList.toggle("queued", playing && queuedPat===j);
   }));
-  [barSeg,gBarSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
+  [barSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{
     b.classList.toggle("on", j===editBar);
     b.classList.toggle("has", barHasContent(editPat,j));
     b.classList.toggle("dim", j>=patLength(editPat) && !barHasContent(editPat,j));
@@ -5146,13 +4954,11 @@ function midiNoteName(n){ return ["C","C#","D","D#","E","F","F#","G","G#","A","A
 function midiBlink(note){ inBlink(midiNoteName(note)); }
 // 鍵盤でもPCキーでも「入った」ことが分かるランプ。メニュー内のMIDI IN と情報窓ASSIGNページの両方を光らせる
 function inBlink(label){
-  const mb=document.getElementById("menuBtn"), mm=document.getElementById("midiMon"), cm=document.getElementById("clMon");
+  const mb=document.getElementById("menuBtn"), cm=document.getElementById("clMon");   // メニューの MIDI IN 表示は撤去（窓の着信ランプに一本化）
   if(mb) mb.classList.add("midi-lit");
-  if(mm){ mm.classList.add("lit"); mm.querySelector("b").textContent=label; }
   if(cm){ cm.classList.add("lit"); cm.querySelector("b").textContent=label; }
   clearTimeout(_ledT);
-  _ledT=setTimeout(()=>{ if(mb) mb.classList.remove("midi-lit"); if(mm) mm.classList.remove("lit");
-                         if(cm) cm.classList.remove("lit"); },130);
+  _ledT=setTimeout(()=>{ if(mb) mb.classList.remove("midi-lit"); if(cm) cm.classList.remove("lit"); },130);
 }
 // ASSIGN待機中に別のパッドを選んだら、的をそちらへ移す（窓は選択パッドを映しているので的がズレると嘘になる）
 function clRetargetLearn(){ if(assignTarget>=0 && assignTarget!==selected) assignTarget=selected; }
@@ -5368,7 +5174,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.100";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.101";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

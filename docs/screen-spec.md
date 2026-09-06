@@ -1366,3 +1366,36 @@ BPM 87.5 / SWG 63%、16パッド全部に音声（PHRASE 1-4、TAKE 1-4、Bill W
 打ち込み47ステップ。4.86MB（前は4.31MB）。起動→全パッド揃うまで実測 1.3s。
 `fetch("default.mics?v="+APP_VERSION)` なので版を上げれば古いキャッシュを引かない。
 **自動保存がある端末では自動保存が優先される**＝新しい既定を見るにはメニューの RESET。
+
+## 113. 表記・情報の重複を全部排除（v0.3.101）
+qa ワーカーの重複検査（3レイアウト × PADS/SEQ × 停止/再生 × 窓5ページ）で出た **同時可視9件・開いた時6件・曖昧ラベル8件・副次2件** を、
+プロデューサー判断「全部排除」で処理。
+
+### 同時に見えていたもの
+| 情報 | 前 | 後 |
+|---|---|---|
+| 選択トラック名 | 窓TRK＋strip＋パッド枠（PC splitで3か所） | 窓TRKは **perf でだけ**（stripが無い時）。他は strip＋パッド枠 |
+| メッセージ本文 | トースト＋窓の1行に毎回両方 | **窓に収まる時はトーストを出さない**。窓が無いSEQ画面と、窓で切れる長文だけトースト |
+| 再生状態「■ STOP / ▶ PLAY / ● REC」 | 窓の文字＋▶ボタン＋RECボタン | 窓の文字を撤去。▶ボタン・RECボタン・窓の色変化（`.playing`）で足りる |
+| 窓の PAT/BAR | 再生中も**編集位置**（2小節目が鳴っていても BAR 1、予約しただけで PAT B） | 再生中は**鳴っている場所**、停止中は編集位置（§0-3「嘘をつかない」） |
+| P-LOCK名＝窓の欄名 | 同じ綴りが縦150pxに2回、役割名なし | P-LOCK行に縦書きの「P-LOCK」見出し |
+
+### 開いた時に重複していたもの
+- メニューの **Tempo スライダー／Swing セレクト**：窓と入口が2つ（§2違反）→ 見せない（`applyBpm` と窓SWG欄が書く唯一の経路として要素は残す）。メニューには TAP だけ
+- メニューの MIDI IN モニタ → 撤去（窓 ASSIGN の着信ランプに一本化。ランプに「IN」見出し）
+- TRIM/CHOP モーダルの見出しからトラック名を外す（背後に3つある）。開いている間は窓の ✂ ボタンを隠す
+- 「Master」見出し＋「Master」ノブ → ノブは「Volume」
+
+### 語彙・記号
+PATTERN→PAT／Pads·Seq→PADS·SEQ／常に非表示だった `PAD`·`SEQ` 見出しを削除／◀▶（トラック送り）→ ‹ ›（▶は再生だけ）／
+試聴「▶ PLAY」→「PREVIEW」／「● REC」→「REC」、「● SMPL」は色で区別／SEQ の常時ヒント削除（§8）／
+SWG の単位を `<u>%</u>` に分離（他の欄と同じ作法）／`#trackName`（display:none の三重管理）を削除
+
+### 副次：到達不能だった GRID を撤去
+`recMode="real"` 固定で `body.step-on` に入る経路が無く、`#gridCtrls`（PAT/BAR＋P-LOCK行）は**一度も表示されない**死にUIだった
+（v0.3.96で「復元」した `gPatSeg` のリスナも、この表示されないボタンのもの）。
+HTML・`setStepMode`/`paintStepPads`/`clearStepPadClasses`・`stepMode`/`stepDrag`/`recMode`・step-on の CSS 47規則を撤去。
+perf の P-LOCK ボタンは隠しボタンへの `click()` 代理をやめ `setActiveLock()` を直接呼ぶ。
+**宿題**：PC split とスマホには P-LOCK の選択子が1つも無い（撤去前から）。
+
+削除は全部 exact-string で1件ずつ。`lost-listeners` の結果（row [click] / 3関数 / 5参照）は `tools/removals-ok.txt` に理由つきで記録。

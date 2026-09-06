@@ -1,2 +1,13 @@
 # lost-listeners.mjs が「消えた」と報告するもののうち、意図した撤去。1行1件、理由をコメントで。
 # 書式は lost-listeners の出力そのまま（例: loopToggle [click]）。
+# v0.3.101 GRID（Digitakt式 PAT/BAR＋P-LOCK行）の撤去。recMode="real"固定で body.step-on に入る経路が無く一度も表示されない死にUIだった
+row [click]
+clearStepPadClasses
+paintStepPads
+setStepMode
+gBarSeg
+gPatSeg
+hint
+row
+# v0.3.101 窓の再生状態文字（■ STOP/▶ PLAY/● REC）を撤去（▶ボタン・RECボタン・窓の色変化と二重）
+_ct
