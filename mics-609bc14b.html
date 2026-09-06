@@ -291,7 +291,17 @@
   .perf-screen .cl-par{display:flex;align-items:baseline;gap:4px;cursor:ew-resize;touch-action:none;
     padding:2px 8px;border:1px solid rgba(61,214,196,.22);border-radius:6px;user-select:none;-webkit-user-select:none;}
   .perf-screen .cl-par:active,.perf-screen .cl-par.tweak{border-color:var(--teal);background:rgba(61,214,196,.10);}
-  .perf-screen .cl-par b{font-size:13px;}
+  /* 桁数や符号で幅が動く値はすべて「最大桁ぶんの固定幅」。
+     letter-spacing を 0 に戻すのが要点：ch は字送りを含まないので、
+     letter-spacing が乗ったままだと 3ch 確保しても3文字時に1-2px はみ出して幅が動く。 */
+  .perf-screen .cl-num{display:inline-block;text-align:right;flex:none;letter-spacing:normal;
+    font-variant-numeric:tabular-nums;}
+  .perf-screen .cl-par b{font-size:13px;min-width:3ch;}   /* -12/+12/-30 の3文字ぶんを常に確保 */
+  .perf-screen #perfBpm{min-width:5ch;}   /* 247.5 */
+  .perf-screen #clSwing{min-width:3ch;}   /* 50% */
+  .perf-screen #clBar,.perf-screen #perfPat{min-width:1ch;}
+  .perf-screen #clStep{min-width:5ch;}    /* 01/16 */
+  .perf-screen .cl-state{min-width:7ch;text-align:right;}
   .perf-screen .cl-par u{text-decoration:none;font-size:9px;opacity:.55;}
   body.perf #viewPads.split.active{
     display:grid;
@@ -473,7 +483,7 @@
     color:color-mix(in srgb,var(--teal) 88%, #eafff9);
     text-shadow:0 0 6px color-mix(in srgb,var(--teal) 55%, transparent), 0 0 1px color-mix(in srgb,var(--teal) 90%, transparent);
     box-shadow:inset 0 1px 6px rgba(0,0,0,.8), inset 0 0 22px color-mix(in srgb,var(--teal) 7%, transparent);}
-  body.perf .perf-screen #perfBpm{font-size:18px;font-weight:700;letter-spacing:.06em;}  /* 数字を主役に */
+  body.perf .perf-screen #perfBpm{font-size:18px;font-weight:700;}  /* 数字を主役に（letter-spacing は付けない＝固定幅が崩れる） */
   body.perf .perf-screen #perfPat{font-size:12px;opacity:.85;}
   body.perf .perf-screen #perfSel{font-size:12px;opacity:.85;margin-left:auto;}
   /* パターンA-D：on＝常灯、queued＝予約ランプ（box-shadow点滅で滲ませる） */
@@ -1004,7 +1014,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.79</div>
+  <div class="s-ver" id="splashVer">v0.3.80</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1345,16 +1355,16 @@
       <div class="perf-screen" id="perfScreen">
         <div class="cl-row cl-head"><span class="cl-brand">MICS009</span><span class="cl-state" id="clState">■ STOP</span></div>
         <div class="cl-row">
-          <span><i>BPM</i><b id="perfBpm">94.5</b></span>
-          <span><i>SWG</i><b id="clSwing">50%</b></span>
-          <span><i>PAT</i><b id="perfPat">A</b></span>
-          <span><i>BAR</i><b id="clBar">1</b></span>
-          <span><i>STEP</i><b id="clStep">--</b></span>
+          <span><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
+          <span><i>SWG</i><b class="cl-num" id="clSwing">50%</b></span>
+          <span><i>PAT</i><b class="cl-num" id="perfPat">A</b></span>
+          <span><i>BAR</i><b class="cl-num" id="clBar">1</b></span>
+          <span><i>STEP</i><b class="cl-num" id="clStep">--</b></span>
         </div>
         <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params">
-          <span class="cl-par" data-p="pitch"><i>PITCH</i><b id="clPitch">0</b><u>st</u></span>
-          <span class="cl-par" data-p="level"><i>LEVEL</i><b id="clLevel">-4</b><u>dB</u></span>
+          <span class="cl-par" data-p="pitch"><i>PITCH</i><b class="cl-num" id="clPitch">0</b><u>st</u></span>
+          <span class="cl-par" data-p="level"><i>LEVEL</i><b class="cl-num" id="clLevel">-4</b><u>dB</u></span>
         </div>
         <div class="cl-row cl-msg"><b id="clMsg"></b></div>
         <div class="cl-row cl-hint"><span id="clHint"></span></div>
@@ -5331,7 +5341,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.79";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.80";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
