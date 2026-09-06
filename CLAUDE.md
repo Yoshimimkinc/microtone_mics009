@@ -84,8 +84,12 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 
 運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
 
+## Checks before shipping
+`tools/check.mjs`（回帰）と `tools/deadcss.mjs`（未使用CSS）を出す前に回す。使い方は `tools/README.md`。
+意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
+
 ## Version
-MICS009 beta v0.3.87
+MICS009 beta v0.3.88
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
 - `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
