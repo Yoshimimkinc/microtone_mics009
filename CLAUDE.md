@@ -84,12 +84,18 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 
 運用：意味のある変更は出す前に6ロール（特に UI・操作感・感性）の観点でセルフレビューする。複雑な課題はロールをサブエージェントとして並行起動し、プロデューサー視点で統合する。
 
+## UI開発規則
+楽器UIの基準値（情報提供・操作・視認性スコア・両手操作の難易度・レイテンシ・不変性・
+可逆性/安全・静けさ・画面予算）は **`docs/ui-rules.md`** に体系化してある。
+新しいUIを足す前と、出す前に、この規則で自己採点する。
+
 ## Checks before shipping
-`tools/check.mjs`（回帰）と `tools/deadcss.mjs`（未使用CSS）を出す前に回す。使い方は `tools/README.md`。
+`tools/check.mjs`（回帰・合否）／`tools/ui-audit.mjs`（UI規則のスコア）／
+`tools/deadcss.mjs`（未使用CSS）を出す前に回す。使い方は `tools/README.md`。
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.91
+MICS009 beta v0.3.92
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
 - `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
