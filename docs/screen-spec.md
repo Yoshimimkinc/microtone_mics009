@@ -804,3 +804,198 @@ EDITモーダルの開閉をゼロにし、「パッドを叩く → 窓に出�
 ### 却下済み（案1/案2）
 - 案1（モーダルに◀▶）: 逐次移動のみ・モーダルのままでは音を聴きながら編集できない
 - 案2（モーダル内にミニ4×4）: 本物のパッドとの**二重表示**＝「入口の重複＝バグの温床」に抵触
+
+## 96. サンプル編集の棚卸し＋MPC1000式ページ化（v0.3.81 / 第2段）
+「MPC1000のEDITが最高」＝**下端のソフトキー(F1-F6)でページを切り替え、カーソルで欄を選び、
+データホイールで値を回す**。この操作モデルをタッチに翻訳して情報窓に載せた。
+
+### 96-1. 棚卸し（パッド1枚が持つ編集項目の全数）
+`tracks[i]` の編集可能プロパティを1つ残らず並べ、カテゴリと入口を突き合わせた表。
+
+| # | 値 | 型/範囲 | ページ | 従来の入口 | 備考 |
+|---|---|---|---|---|---|
+| 1 | `tune` | -12..+12 st | MAIN | strip / モーダル / 窓 | **3箇所**あった |
+| 2 | `scale` | off/chro/maj/min/pent | MAIN | strip / モーダル | |
+| 3 | `vol` | -30..+6 dB | MAIN | strip / モーダル / 窓 | **3箇所**あった |
+| 4 | `start` | 0..1 | SAMPLE | 波形ハンドルのみ | 数値で追い込めなかった |
+| 5 | `end` | 0..1 | SAMPLE | 波形ハンドルのみ | 同上 |
+| 6 | `loop` | bool | SAMPLE | strip / モーダル | |
+| 7 | `loopStart` | 0..1 | （なし） | 波形ハンドル | loop ONで自動追従。欄は作らない |
+| 8 | `filter` | off/lp/hp | TONE | strip / モーダル | |
+| 9 | `cutoff` | 200..18000 Hz | TONE | strip / モーダル | |
+| 10 | `reso` | 0.1..14 | TONE | strip / モーダル | |
+| 11 | `attack` | 0..200 ms | TONE | モーダルのみ | |
+| 12 | `fade` | 0..500 ms | TONE | モーダルのみ | |
+| 13 | `delaySend` | 0..1 | FX | **入口なし** | 保存もされ再生でも効くのに触れなかった（P-LOCKのみ） |
+| 14 | `reverbSend` | 0..1 | FX | **入口なし** | 同上 |
+| 15 | `choke` | 0..8 | ASSIGN | strip / モーダル | |
+| 16 | `outBus` | A/B | ASSIGN | モーダルのみ | |
+| 17 | `midiNote` | 0..127 | ASSIGN | モーダルのみ | LEARNで記憶（表示専用欄） |
+| 18 | `key` | PCキー | ASSIGN | モーダルのみ | 同上 |
+| — | `buffer`/`rawBuffer` | 音源 | SAMPLE | LOAD / SMPL / GTR | `WAVE ▸`からモーダル |
+| — | `mute`/`solo` | bool | （PADSモード） | MUTE/SOLOボタン | 演奏操作なので窓に置かない |
+| — | 破壊編集 | TRIM/REV/CHOP | （モーダル） | `WAVE ▸` | 面積が要るので第3段まで据置 |
+
+**棚卸しで出た事実**
+1. `delaySend`/`reverbSend` は**モデルにも保存にも再生にも居るのに、UIだけが無かった**（13/14）。FXページで解消。
+2. `start`/`end` は波形ドラッグでしか動かせず、数値で詰められなかった（4/5）。
+3. 同じ値が strip・モーダル・窓の**3箇所**から編集できていた（1/3）＝過去に何度もやった同期バグの構図。
+   第2段の間は許容（§95 受入条件4）、第3段で strip とモーダルを畳んで1本にする。
+
+### 96-2. ページ構成（§95からの変更点と理由）
+| ソフトキー | 欄 |
+|---|---|
+| `MAIN` | PITCH / SCALE / LEVEL |
+| `SAMPLE` | START / END / LOOP ＋ `WAVE ▸`（波形・TRIM・REV・CHOPのモーダル） |
+| `TONE` | FILTER / CUTOFF / RESO / ATTACK / FADE |
+| `FX` | DELAY / REVERB |
+| `ASSIGN` | CHOKE / OUT / MIDI / KEY ＋ `LEARN` `CLEAR` |
+
+- §95案の `TUNE` を **`MAIN`** に改名し PITCH/LEVEL を残した：第1段でこの2つは常時表示だった。
+  タブに沈めると一番使う操作が1タップ増える。MPC1000も MAIN ページが既定。
+- **`FX` ページを追加**（§95には無かった）：棚卸しで見つかった入口なしの2値のため。
+- タブは上ではなく**窓の下端のソフトキー**（MPC1000のF1-F6）。ページ名＝キーの真上、という機械の作法。
+
+### 96-3. 操作（タッチへの翻訳）
+| MPC1000 | MICS009 |
+|---|---|
+| カーソルキーで欄を選ぶ | 欄をタップ＝カーソル（`.cl-par.sel` が点灯） |
+| データホイールで値を回す | 欄を**横ドラッグ**（`px`＝1目盛に要るpx。pitch14 / level8 / cutoff2 …） |
+| INC/DEC で列挙を送る | 列挙欄（SCALE/FILTER/LOOP/OUT）は**タップで1つ送る** |
+| F1-F6 でページ | 下端の5ソフトキー |
+
+- 実装は `CL_SPEC`（欄の定義）＋ `CL_PAGES`（ページの定義）の2つのテーブルだけ。
+  欄を足す＝テーブルに1行足す。描画は `renderClPage()`、値の更新は `paintClPage()`（`paintPerf()`から毎回）。
+- ドラッグ1回＝Undo1手。変更後は `syncEditor()`＋`refreshOpenPadEdit()` で strip とモーダルも追従。
+- 表示幅は v0.3.80 の固定幅ルール（`.cl-num` ＋ `min-width:Nch`）に乗せる＝値を回しても欄が動かない。
+
+### 96-4. verify（Playwright）
+- 5ページの切替と全18欄の描画：0 errors
+- PITCH 横ドラッグ +70px → `tune=5` / LOOP タップ → `false→true` / DELAY ドラッグ → `delaySend=0.2`（**初めてUIから触れた**）
+- 390×844：窓 110px（§95の上限140px内）/ パッド 97px（≥88px）/ ページスクロールなし
+- 1280×800（perf）：窓175px、ソフトキー34px
+- v0.3.80の固定幅測定も再実行し全項目 stable のまま
+
+## 97. ゾンビUIの撤去 — strip-ctrls の編集ノブ群を削除（v0.3.82 / 第3段-前半）
+§96のページ化で「窓が全項目をカバーした」ので、重複入口を畳む番。畳む前に**実際に見えているか**を測った。
+
+### 判明したこと：見えていなかった
+`.strip-ctrls` の Loop / FILTER / Choke / Pitch / Scale / Cutoff / Reso / Level は、
+CSSの2行によって**どのレイアウト・どのモードでも表示されない**状態だった。
+
+```
+body:not(.step-on) #viewPads .strip-ctrls{display:none!important;}  ← 通常時は行ごと非表示
+body.step-on #viewPads .strip-ctrls>:not(.gridctrls){display:none;} ← GRID時はgridctrls以外を非表示
+```
+
+Playwright で 390×844 / 700×900 / 1280×800 の通常時と `step-on` の計6条件を測り、
+12個すべて `hidden`、`gridCtrls` だけが GRID 時に `VISIBLE` であることを確認した。
+
+つまり §96-1 の表で「strip / モーダル / 窓の3箇所」と書いた重複は、実際には
+**モーダルと窓の2箇所＋"見えないのに値だけ書かれるDOM"**だった。
+`syncEditor()` は再描画のたびにこの見えないノブへ8回書き戻し、`bindKnob`/`makeDial` は
+発火しようのないポインタ操作を待ち続けていた。
+
+### 撤去したもの
+- HTML: `loopToggle` `filtSeg` `chokeSel` `kTune` `kScale` `kCut` `kRes` `kLvl`（＋各`.v`表示）
+- JS: 上記のイベント登録一式、`bindKnob`、円形ノブ機構（`makeDial`/`dials`/`refreshDials`、約45行）
+- CSS: `.dial` 一式（`::before`のconic-gradient目盛、`::after`の指針、`.dial-val`）と `.knob.has-dial`、
+  スマホ用 `.strip-ctrls .adv{display:none!important}`
+- `syncEditor()` は「パッド名＋パッド内波形」だけになった（値のUIは情報窓のページ1本）
+
+`.strip-ctrls` の箱は残す＝GRID（Digitakt式）の PAT/BAR＋P-LOCK 行がそこに居るため。
+
+### 引き継ぎ
+SCALE は `kScale` の change ハンドラで `refreshSeqMode()` を呼んでいた。
+窓の SCALE 欄の setter に同じ呼び出しを移設し、SEQの音階表示が連動することを実測で確認。
+
+### verify（Playwright / 390・700・1280の3幅）
+5ページ切替・SCALEタップ→`chro`かつ`melodicMode=true`→1周して`off`復帰・`syncEditor`・
+`openPadEdit`開閉・GRIDのPAT/BAR表示・SEQ往復・UNDO復帰・パッド97px・スクロールなし・**0 errors**。
+§96/§80の測定（ページ描画・固定幅）も再実行して不変。
+
+### 残り（第3段-後半）
+`padEditModal` 本体（波形・TRIM/REV・CHOP・LOAD/SMPL）の移設。面積が要るので、
+SAMPLEページからの全画面オーバーレイとして設計してから着手する。
+
+## 98. 未使用行の全数検出と撤去／ラーニングを表画面へ／ダブルクリックで0（v0.3.84）
+
+### 98-1. 検出のやり方（静的解析だけでは足りなかった）
+静的grepで出たのは2件だけ（`dupBarNext` / `_editHintShown`）。実際に効いたのは**実行時に測る**方法。
+
+1. 全CSSルールのセレクタを `document.styleSheets` から取り出し、
+   **7状態 × 3画面幅**（通常 / step-on / SEQ / モーダル / モーダルADV / perf / EDITアーム、390・700・1280）で
+   `querySelectorAll(sel).length` を測る → どの状態でも0件のセレクタ 141/533 を抽出。
+2. 141件の大半は「実行時に付く状態クラス」（`.pad.hit` `.toast.show` など）＝生きている。
+   そこで各セレクタの識別子が **HTML/JSに単語として存在するか** で二次フィルタ → 20件に絞れた。
+3. `getElementById("X")` の X がHTMLに無いものも突き合わせ → `recModeSeg` `perfRec` を発見。
+
+**落とし穴**: CSS Nesting対応で `CSSStyleRule` も空の `cssRules` を持つため、
+`if(r.cssRules){recurse; continue;}` と書くと全ルールを取りこぼして「0件」になる。selectorTextを先に見る。
+
+### 98-2. 撤去したもの
+| 対象 | 実体 |
+|---|---|
+| `.padTransport` / `.big-play` | 大きなSTART廃止時にCSSだけ残っていた（要素なし） |
+| `.perf-rec` 一式 | perfのRECボタンが無いのにCSS・待機ランプ・鼓動アニメが残存 |
+| `.perf-dup` / `.dupbar` / `.perf-plk-label` | 同上 |
+| `.perf-plkbtn[data-lock="comp"]` | COMPをP-LOCKから外した時の残り |
+| `dupBarNext()` | どこからも呼ばれない小節複写（約20行） |
+| `_editHintShown` | 書かれるだけで読まれない |
+| `recModeSeg` のIIFE | セグメントUIが無く `if(!seg) return` で毎回抜けていた |
+
+**過剰に消しかけた例**: `.perf-rotate` を「未使用」と判断して要素ごと削除したが、
+`body.perf-rotate` は `updatePerf()` が付けていた（grepを `head -5` で切っていて見落とし）。復元済み。
+**教訓**: 「CSSセレクタが0件」は「使われていない」ではない。クラスを**付ける側**のコードを必ず確認する。
+
+### 98-3.〈訂正〉最初のタップが効かない原因は入力シールドだった
+当初「窓が起動直後だけ2行ぶん高く、縮んでページがずれるせい」と書いたが**誤り**。実際は
+`start()` がスプラッシュのタップ直後に張る **450msの透明シールド**（`position:fixed;z-index:99999`、
+開始タップに続く touchend/click が下のUIを誤爆しないためのもの＝意図した仕様）で、
+そのタップだけが飲まれていた。Playwrightで `elementFromPoint` を辿って特定。
+テスト側は初回ジェスチャ後に600ms待つのが正しい。
+
+メッセージ行/ヒント行を既定 `display:none` にした変更自体は入れてあるが（初回paint前の状態を
+HTMLと一致させる保険）、窓の高さは前後とも110pxで**見た目は変わっていない**。
+
+### 98-4. ラーニング（ASSIGN）を表画面で完結させる
+- `assignTo()` が `if(pad===peTarget) syncAssignUI(...)` でしかUIを更新しておらず、
+  **窓から学習するとMIDI/KEY欄が更新されなかった**。窓側は常に更新するよう分離。
+- ASSIGNページに**着信ランプ** `#clMon` を追加。MIDIノートもPCキーも同じ `inBlink()` で光る
+  ＝メニューを開かずに「繋がっている／効いている」が分かる。割り当て済みキーで鳴らした時も光る。
+- 学習待機中に別のパッドを選んだら**的をそちらへ移す**（`clRetargetLearn()`）。
+  窓は選択パッドを映しているので、的がズレたままだと表示が嘘になる。
+- Escape取消も窓に反映。
+- 副産物のバグ修正: `assignTarget` の宣言がファイル後方にあり、`selectPadHeavy()` から参照した瞬間に
+  **TDZで起動が丸ごと停止**した。状態はstateブロックで宣言する。
+
+### 98-5. パラメータはダブルクリックで0（全箇所共通）
+- 情報窓の**数値欄**：ダブルクリック／ダブルタップ（320ms以内）で **0**。
+  0が範囲外の `CUTOFF`(200Hz〜) と `RESO`(0.1〜) だけ一番0に近い値。欄ごとの既定値テーブルは作らない。
+- EDITモーダルのスライダーも**同じ作法**（`input[type=range]` 共通ハンドラ）。
+- **列挙欄（SCALE/FILTER/LOOP/OUT）は対象外**：タップで送るのが主操作で、素早い2連打を
+  リセットと誤認すると「送ったのに戻る」になる。OFFへは数タップで届く。
+  （実装当初これで SCALE の周回が壊れ、smokeテストが `off` に戻らず検出）
+- ドラッグ同様、リセットも1手＝Undo1回。
+
+### 98-6. verify
+`width`(固定幅) / `pg`(5ページ・ドラッグ・列挙タップ) / `smoke`(SCALE連動・モーダル・GRID・SEQ・UNDO) /
+`learn`(LEARN→PCキー→MIDI→的の移動→CLEAR→発音ランプ) / `zero`(14欄すべて0・モーダルのスライダー・Undo復帰)
+を 390/700/1280 で実行、**全て0 errors**。
+
+## 99. テンポ／スウィングも表画面で（v0.3.85）
+情報窓の上段 `BPM` `SWG` は表示専用だった＝テンポを変えるにはメニューを開くしかなかった。
+パッドのパラメータと**同じ作法**で窓から直接いじれるようにした。
+
+- `BPM`：横ドラッグ＝データホイール（10pxで0.5、範囲40–250）。ダブルクリック／ダブルタップで **100**。
+  テンポに「0」は無いので、`zero:` を持つ欄だけの例外として既定値へ戻す（他の数値欄は一律0のまま）。
+- `SWG`：列挙欄。タップで 50→54→58→63→67→71→50 と送る（他の列挙欄と同じくリセット対象外）。
+- **書き込みは既存のメニューUI経由**：`#bpm` / `#swing` に値を入れて `input`/`change` を発火させる。
+  こうすると `bpmVal`・readout・`setDelayTempo()`・`paintPerf()` が既存ハンドラでまとめて走り、
+  経路が2本にならない（同期バグの再発防止）。
+- `CL_SPEC` に `g:1`（パッドではなく本体の状態）を追加し、`GET/SET` で分岐。欄の定義は1行のまま。
+- 上段の欄も指で掴めるよう `.cl-par` に `min-height:30px`。カーソル（`.sel`）は窓全体で1つに統一。
+
+verify：ドラッグ右+100px→94.5→104.5（スライダー・readout・LCDが一致）／左-60→100／
+ダブルクリック→100／SWGタップで71、6タップで一周／UNDO復帰／**再生中の変更も追従**（100→104）。
+390・1280で0 errors。
