@@ -1429,3 +1429,32 @@ check.mjs：SAMPLEで叩くと出る／再生中も出る／波形が無いペ�
 検査：`tools/pw.mjs` の `unlock(ctx)` で解錠済みとして起動（他の検査を合言葉で止めない）。
 `check.mjs` §12 は解錠していないコンテキストで、施錠中は始まらない／違うと通さない／合えば始まって覚える／
 次回から聞かない／純JS SHA-256 が subtle と一致、を見る。
+
+## 117. 携帯で波形の上が欠ける（v0.3.105）
+実機（iPhone）で SAMPLE ページの波形の上が切れ、本体の下に黒い余りが出ていた。
+原因は2つが重なっていた：
+1. 低い画面では `#viewPads` が縦スクロールする設計（§v0.3.98）なので、下のパッドを触った時に
+   コンテナがスクロールし、**情報窓ごと上へ流れて**波形の上が隠れた
+2. 本体の高さが `100dvh` 頼みで、Safari のバー収納に追従しない端末があり、可視高さより小さく固まっていた
+
+直し方：
+- 情報窓を `position:sticky; top:0` にして、**中身がスクロールしても窓は上に貼り付く**（`#viewPads>.perf-screen`）
+- スマホでは `body` の高さを `visualViewport.height`／`innerHeight` で追従させる（`fitMobileHeight()`、resize/orientationchange/visualViewport.resize）
+
+実測 390×664：コンテナは108pxあふれるが、最下部までスクロールしても窓の上端は0のまま・波形の上端は43px（欠けない）。
+390×844：あふれ0。check.mjs に「スクロールしても窓が貼り付く」「body の高さが可視高さに追従」を追加。
+
+## 118. スマホの下段を [MUTE][DELAY][REVERB] に／PADS·SEQ の段を薄く（v0.3.106）
+「携帯では SOLO EDIT ボタンは無くす。代わりにエフェクトボタン。PADS SEQ の段はもっと薄くても良い」。
+
+- スマホ（≤600px）では SOLO と EDIT を出さない。TRIM/CHOP は窓の SAMPLE ページの ✂ から、空パッドは＋から開くので、EDIT モードの出番が無い。
+  SOLO は MUTE で足りる（EDIT のパッド並べ替え／長押しコピーはスマホでは使えなくなる。COPY ボタンで代替）
+- 空いた2枠に **DELAY / REVERB**：これは perf の P-LOCK 選択子と同じもの（`setActiveLock`）。
+  押してからパッドを左右にドラッグ＝そのパッドの送り量、下段ステップ列を左右にドラッグ＝そのステップだけ。
+  もう一度で解除。perf と違って `perfLockApply` は呼ばない＝**離しても戻らない**（Undoで戻す）
+- パッドの P-LOCK ドラッグは `body.perf` 限定だったのを、`activeLock` が立っていれば全レイアウトで効くようにした。
+  **これで「PC split とスマホに P-LOCK の選択子が無い」宿題のうち、スマホ側が埋まった**（PC split は未）
+- PADS·SEQ の段：36→32px、上下の余白を詰めた（二次操作の下限32pxは維持）
+
+check.mjs：下段の可視（MUTE/DELAY/REVERB ≥44、SOLO/EDIT 非表示）、DELAY→activeLock、パッド左右ドラッグで送り量、
+離しても戻らない、再押しで解除。ゴーストクリック検査はスマホの実導線（✂）に合わせて更新。
