@@ -78,6 +78,12 @@ async function run(w,h,mobile){
   }
   await page('main');
 
+  // 2c) ソフトキーは「現在地を示す値」＋演奏系（ui-rules.md §2/§3）
+  const keyGeo=await p.evaluate(()=>{const k=document.querySelector('#clKeys .cl-key');
+    const b=k.getBoundingClientRect(); return {h:Math.round(b.height), px:parseFloat(getComputedStyle(k).fontSize)};});
+  ok_(`${V} ソフトキーの高さ44px以上`, keyGeo.h>=44, `${keyGeo.h}px`);
+  ok_(`${V} ソフトキーの文字11px以上`, keyGeo.px>=11, `${keyGeo.px}px`);
+
   // 3) ドラッグ／列挙タップ／ダブルクリックで0
   await page('main');
   await drag('.cl-par[data-p="pitch"]',70);
