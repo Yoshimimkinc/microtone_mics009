@@ -269,7 +269,30 @@
   .padTransport .big-play.on{background:linear-gradient(180deg,color-mix(in srgb,var(--red) 32%,#141014),color-mix(in srgb,var(--red) 16%,#141014));color:var(--red);border-color:var(--red);}
 
   /* ===== Performance Mode（4×4・横向き・PC/iPad）：中央=大パッド / 左右=操作列。ガワはダークなデバイス調 ===== */
-  .perf-screen,.perf-rotate,.perf-pats,.perf-plk,.perf-rec,.perf-seclbl{display:none;}
+  .perf-rotate,.perf-pats,.perf-plk,.perf-rec,.perf-seclbl{display:none;}
+  /* ===== 情報窓（MPC式ディスプレイ）：全レイアウトで常時表示。選択パッドの値をここで直接いじる ===== */
+  .perf-screen{display:flex;flex-direction:column;justify-content:center;gap:2px;
+    background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:8px 14px;margin-bottom:8px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;letter-spacing:.03em;color:var(--teal);font-variant-numeric:tabular-nums;
+    box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
+  .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
+  .perf-screen .cl-head{justify-content:space-between;border-bottom:1px solid rgba(61,214,196,.2);padding-bottom:3px;margin-bottom:1px;}
+  .perf-screen .cl-brand{letter-spacing:.16em;font-size:10px;opacity:.65;}
+  .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
+  .perf-screen b{font-weight:700;}
+  .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
+  .perf-screen.playing .cl-state{color:#bafff4;}
+  .perf-screen .cl-msg{font-size:11px;opacity:.9;}
+
+  .perf-screen .cl-hint{font-size:10px;opacity:.5;letter-spacing:.02em;}
+
+  /* 触れるパラメータ（横ドラッグ＝MPCのデータホイール相当） */
+  .perf-screen .cl-par{display:flex;align-items:baseline;gap:4px;cursor:ew-resize;touch-action:none;
+    padding:2px 8px;border:1px solid rgba(61,214,196,.22);border-radius:6px;user-select:none;-webkit-user-select:none;}
+  .perf-screen .cl-par:active,.perf-screen .cl-par.tweak{border-color:var(--teal);background:rgba(61,214,196,.10);}
+  .perf-screen .cl-par b{font-size:13px;}
+  .perf-screen .cl-par u{text-decoration:none;font-size:9px;opacity:.55;}
   body.perf #viewPads.split.active{
     display:grid;
     grid-template-columns:repeat(8,1fr);
@@ -330,11 +353,7 @@
   body.perf .perf-screen b{font-weight:700;}
   body.perf .perf-screen .cl-state{font-weight:700;letter-spacing:.12em;opacity:.85;}
   body.perf .perf-screen.playing .cl-state{color:#bafff4;}
-  body.perf .perf-screen .cl-prompt{font-size:11px;opacity:.9;}
   body.perf .perf-screen .cl-hint{font-size:10px;opacity:.5;letter-spacing:.02em;}
-  body.perf .perf-screen .cl-prompt b{font-weight:400;}
-  body.perf .perf-screen .cl-caret{color:var(--amber);margin-right:5px;}
-  body.perf .perf-screen .cl-cur{margin-left:1px;animation:spblink 1.1s steps(2,start) infinite;}
   /* SEQ操作行：A-D / 小節1-4 / DUP / SELECT（パッド下の横一列） */
   body.perf .perf-pats{grid-area:pats;display:flex;gap:7px;align-items:stretch;flex-wrap:nowrap;}
   body.perf .perf-pats .perf-pat{flex:0 0 auto;min-width:40px;}
@@ -861,6 +880,12 @@
     .toggle{min-height:34px;}
     .seg button{min-height:34px;}
     /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
+    /* 情報窓はモバイルでは2行に圧縮（BPM/PAT/BAR＝積み残しだった「現在地」表示 ＋ 触れるパラメータ） */
+    #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;}
+    #viewPads>.perf-screen .cl-head,#viewPads>.perf-screen .cl-trk,
+    #viewPads>.perf-screen .cl-msg{display:none;}   /* TRK名はstrip-headが表示済み＝二重表示にしない */
+    #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
+    #viewPads>.perf-screen .cl-par{padding:3px 9px;}
     .strip{padding:9px;}
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
@@ -979,7 +1004,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.78</div>
+  <div class="s-ver" id="splashVer">v0.3.79</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1318,7 +1343,7 @@
 
       <!-- Performance Mode（4×4横向き/PC・iPad）のガワ。通常は非表示、body.perf で表示 -->
       <div class="perf-screen" id="perfScreen">
-        <div class="cl-row cl-head"><span class="cl-brand">MICS009 // PERFORM</span><span class="cl-state" id="clState">■ STOP</span></div>
+        <div class="cl-row cl-head"><span class="cl-brand">MICS009</span><span class="cl-state" id="clState">■ STOP</span></div>
         <div class="cl-row">
           <span><i>BPM</i><b id="perfBpm">94.5</b></span>
           <span><i>SWG</i><b id="clSwing">50%</b></span>
@@ -1326,9 +1351,13 @@
           <span><i>BAR</i><b id="clBar">1</b></span>
           <span><i>STEP</i><b id="clStep">--</b></span>
         </div>
-        <div class="cl-row"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
-        <div class="cl-row cl-prompt"><span class="cl-caret">&gt;</span><b id="clMsg">ready</b><span class="cl-cur">_</span></div>
-        <div class="cl-row cl-hint"><span id="clHint">PAD=選択+発音 / 下段16=打ち込み / SHIFT+PAD=選択</span></div>
+        <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
+        <div class="cl-row cl-params">
+          <span class="cl-par" data-p="pitch"><i>PITCH</i><b id="clPitch">0</b><u>st</u></span>
+          <span class="cl-par" data-p="level"><i>LEVEL</i><b id="clLevel">-4</b><u>dB</u></span>
+        </div>
+        <div class="cl-row cl-msg"><b id="clMsg"></b></div>
+        <div class="cl-row cl-hint"><span id="clHint"></span></div>
       </div>
       <div class="perf-seclbl" id="perfLblPad">PAD</div>
       <div class="perf-seclbl" id="perfLblSeq">SEQ</div>
@@ -2687,6 +2716,7 @@ function selectPadHeavy(){   // selectPad の重いUI同期（エディタ/ス�
   if(stepMode && typeof paintStepPads==="function") paintStepPads();   // GRID：対象トラック表示/点灯を更新
   if(typeof paintStepStrip==="function") paintStepStrip();             // 16ステップ列を選択トラックへ追従
   if(typeof applyWaveStrip==="function") applyWaveStrip();             // 下段ステップ列の波形を選択トラックへ
+  if(typeof paintPerf==="function") paintPerf();                       // 情報窓を選択パッドへ追従（MPC式）
 }
 function selectPad(i, light){
   const changed = selected!==i;
@@ -3199,6 +3229,36 @@ function syncEditor(){
   drawPadWave(selected);   // 窓波形の代わりにパッド内波形を更新
 }
 window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active")){ drawAllPadWaves(); } });
+
+// ===== 情報窓のパラメータを横ドラッグで編集（パッドを叩きながら追い込める＝モーダル不要の連続編集） =====
+(function initScreenParams(){
+  const scr=document.getElementById("perfScreen"); if(!scr) return;
+  const SPEC={pitch:{get:t=>t.tune, set:(t,v)=>t.tune=v, min:-12, max:12, px:14, fmt:v=>(v>0?"+":"")+v},
+              level:{get:t=>t.vol,  set:(t,v)=>t.vol=v,  min:-30, max:6,  px:8,  fmt:v=>String(v)}};
+  let drag=null;
+  scr.addEventListener("pointerdown",e=>{
+    const el=e.target.closest(".cl-par"); if(!el) return;
+    e.preventDefault();
+    const sp=SPEC[el.dataset.p]; if(!sp) return;
+    drag={el, sp, x0:e.clientX, start:sp.get(tracks[selected]), pad:selected, undone:false};
+    el.classList.add("tweak");
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  scr.addEventListener("pointermove",e=>{
+    if(!drag) return;
+    const d=Math.round((e.clientX-drag.x0)/drag.sp.px);
+    let v=Math.max(drag.sp.min, Math.min(drag.sp.max, drag.start+d));
+    if(v===drag.sp.get(tracks[drag.pad])) return;
+    if(!drag.undone){ pushUndo(); drag.undone=true; }   // ドラッグ1回で1手（連続でUndoを埋めない）
+    drag.sp.set(tracks[drag.pad], v);
+    if(drag.el.dataset.p==="pitch" && typeof warmPitch==="function") warmPitch(drag.pad);
+    paintPerf();
+    if(typeof syncEditor==="function") syncEditor();
+    if(typeof refreshOpenPadEdit==="function") refreshOpenPadEdit(drag.pad);   // EDITモーダルを開いていれば追従
+  });
+  const end=()=>{ if(drag){ drag.el.classList.remove("tweak"); drag=null; } };
+  scr.addEventListener("pointerup",end); scr.addEventListener("pointercancel",end);
+})();
 
 // ---------- transport (self-scheduling, lookahead) ----------
 let bpmVal = 100;
@@ -4471,8 +4531,7 @@ function perfFourUp(){ return viewPadsEl.classList.contains("split") && viewPads
 // 中身（打ち込み）の有無：パターンp（全トラック・全小節）／小節b（パターンp・全トラック）
 function barHasContent(p,b){ for(let i=0;i<tracks.length;i++){ const arr=tracks[i].patterns[p]&&tracks[i].patterns[p][b]; if(arr){ for(let s=0;s<arr.length;s++) if(arr[s]>0) return true; } } return false; }
 function patHasContent(p){ for(let i=0;i<tracks.length;i++){ const pat=tracks[i].patterns[p]; if(!pat) continue; for(let b=0;b<pat.length;b++){ const arr=pat[b]; if(arr){ for(let s=0;s<arr.length;s++) if(arr[s]>0) return true; } } } return false; }
-function paintPerf(){
-  if(!document.body.classList.contains("perf")) return;
+function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常時ここに現在地と選択パッドの値が出る）
   const $=id=>document.getElementById(id);
   const bv=(typeof bpmVal!=="undefined"?bpmVal:100), ep=(typeof editPat!=="undefined"?editPat:0);
   if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1);
@@ -4484,7 +4543,12 @@ function paintPerf(){
   if($("clState")) $("clState").textContent=_pl?(perfRecArm?"● REC":"▶ PLAY"):"■ STOP";
   const _scr=document.querySelector(".perf-screen"); if(_scr) _scr.classList.toggle("playing",_pl);
   if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
-  if($("clMsg")){ const m=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):""; $("clMsg").textContent=m||"ready"; }
+  if($("clMsg")){ const m=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):""; $("clMsg").textContent=m; $("clMsg").parentElement.style.display = m ? "" : "none"; }
+  // 選択パッドの値（MPC式＝この窓で直接いじる対象）
+  if($("clPitch") && typeof tracks!=="undefined" && tracks[selected]){
+    $("clPitch").textContent=(tracks[selected].tune>0?"+":"")+tracks[selected].tune;
+    $("clLevel").textContent=tracks[selected].vol;
+  }
   if($("clHint")){
     const am=(typeof armMode!=="undefined")?armMode:null;
     let h;
@@ -4494,8 +4558,9 @@ function paintPerf(){
     else if(am==="edit") h="EDIT中：パッド=中身編集 / ドラッグ=入替 / 長押し=コピー";
     else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右=基本値 / 下段ステップ左右=そのステップだけ(P-LOCK)";
-    else h="PAD=選択+発音 / 下段16=打ち込み(A-K,Z-,) / 選択のみ=SELECT or Alt+PAD / Shift+PAD=MUTE";
+    else h="";   // 平常時は黙る（常時チートシートは出さない）
     $("clHint").textContent=h;
+    $("clHint").parentElement.style.display = h ? "" : "none";   // 空行で場所を取らない（:emptyは子要素があるため効かない）
   }
   // パターン：現在=on、再生中の予約=queued
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{
@@ -5266,7 +5331,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.78";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.79";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
