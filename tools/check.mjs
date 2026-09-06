@@ -52,18 +52,17 @@ async function run(w,h,mobile){
 
   // 2) 5ページが出る
   const fields={};
-  for(const id of['main','smpl','tone','fx','asgn']){ eq(`${V} ページ切替 ${id}`, await page(id), id);
+  for(const id of['main','smpl','tone','asgn']){ eq(`${V} ページ切替 ${id}`, await page(id), id);
     fields[id]=await p.$$eval('#clPage .cl-par',e=>e.map(x=>x.dataset.p)); }
-  eq(`${V} MAIN欄`,fields.main,['pitch','scale','level']);
+  eq(`${V} MAIN欄`,fields.main,['pitch','scale','level','delay','reverb']);   // FXはMAINの2行目（v0.3.108）
   eq(`${V} SAMPLE欄`,fields.smpl,['start','end','loop']);
   eq(`${V} TONE欄`,fields.tone,['filter','cutoff','reso','attack','fade']);
-  eq(`${V} FX欄`,fields.fx,['delay','reverb']);
   eq(`${V} ASSIGN欄`,fields.asgn,['choke','out','midi','key']);
 
   // 2b) ★ページを移しても寸法が1pxも動かない（幅も高さも／窓・メニュー・キー・パッド）
   //    このクラスの不具合を何度も出しているので、ここで丸ごと止める
   const geo=[];
-  for(const id of['main','smpl','tone','fx','asgn']){ await page(id);
+  for(const id of['main','smpl','tone','asgn']){ await page(id);
     geo.push([id, await p.evaluate(()=>{const r=x=>{const e=document.querySelector(x); if(!e) return null;
         const b=e.getBoundingClientRect(); return [Math.round(b.width),Math.round(b.height),Math.round(b.x),Math.round(b.y)];};
       return {scr:r('.perf-screen'), keys:r('#clKeys'), key1:r('#clKeys .cl-key'), pad:r('#pads .pad'), pads:r('#pads')};})]); }
@@ -99,7 +98,7 @@ async function run(w,h,mobile){
   ok_(`${V} SCALE→SEQ連動`, await p.evaluate(()=>melodicMode)===true, 'melodicMode false');
   await dbl('.cl-par[data-p="pitch"]');
   ok_(`${V} PITCHダブルクリック=0`, await p.evaluate(()=>tracks[selected].tune)===0, '0でない');
-  await page('fx'); await drag('.cl-par[data-p="delay"]',80);
+  await page('main'); await drag('.cl-par[data-p="delay"]',80);
   ok_(`${V} DELAY（旧・入口なし）`, (await p.evaluate(()=>tracks[selected].delaySend))>0, '0のまま');
   await dbl('.cl-par[data-p="delay"]');
   ok_(`${V} DELAYを0へ`, await p.evaluate(()=>tracks[selected].delaySend)===0, '0でない');

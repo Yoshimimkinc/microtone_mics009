@@ -268,7 +268,7 @@
   .perf-screen .cl-par u{text-decoration:none;font-size:9px;opacity:.55;}
   /* MPC1000式ページ編集：下端のソフトキー(F1-F5)でページを切り替え、フィールドは横ドラッグ＝データホイール */
   .perf-screen .cl-page{min-height:32px;gap:6px;}
-  .perf-screen .cl-keys{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:5px;
+  .perf-screen .cl-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:5px;
     border-top:1px solid rgba(61,214,196,.2);padding-top:5px;}
   /* ソフトキーは「いまどのページか」を示す表示＝値扱い（docs/ui-rules.md §3）。
      11px以上・非選択でも読める濃さ・演奏系なので44px */
@@ -995,7 +995,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.107</div>
+  <div class="s-ver" id="splashVer">v0.3.108</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1260,7 +1260,6 @@
           <button class="cl-key on" data-pg="main">MAIN</button>
           <button class="cl-key" data-pg="smpl">SAMPLE</button>
           <button class="cl-key" data-pg="tone">TONE</button>
-          <button class="cl-key" data-pg="fx">FX</button>
           <button class="cl-key" data-pg="asgn">ASSIGN</button>
         </div>
         <!-- メッセージとヒントは1行に統合し、空でも高さを確保する。
@@ -3044,11 +3043,10 @@ const CL_SPEC={
   key:   {lbl:"KEY",   ro:1, get:t=>t.key,      fmt:v=>v?String(v).toUpperCase():"—", w:4},
 };
 const CL_PAGES=[
-  {id:"main", lbl:"MAIN",   f:["pitch","scale","level"]},
+  {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"],
    b:[{id:"clWave",t:'<span class="cl-wide">✂ TRIM / CHOP</span><span class="cl-narrow">✂</span>'}]},
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
-  {id:"fx",   lbl:"FX",     f:["delay","reverb"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
    x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
 ];
@@ -5233,7 +5231,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.107";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.108";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
