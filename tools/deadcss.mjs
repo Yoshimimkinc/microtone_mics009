@@ -3,13 +3,13 @@
 // 単体で使うと「どの状態でも0要素だったセレクタ」を並べる。0件＝未使用とは限らないので、
 // 必ず deadcss-filter.mjs（識別子がHTML/JSに実在するかの二次フィルタ）を通すこと。
 // 使われていないCSSセレクタを「実行時に」洗い出す。使い方: node deadcss.mjs [port]
-import { chromium } from './pw.mjs';
+import { chromium, unlock } from './pw.mjs';
 const PORT=process.argv[2]||8137;
 const br=await chromium.launch({...(process.env.PW_EXE?{executablePath:process.env.PW_EXE}:{}),
   args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
 const hit={};
 async function pass(w,h,mobile,setup){
- const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile});
+ const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
  const p=await ctx.newPage();
  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'}); await p.waitForTimeout(1700);
  await p.evaluate(()=>{document.getElementById('splash').style.display='none';});
