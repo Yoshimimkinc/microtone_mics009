@@ -15,3 +15,11 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 - コミットは明確な日本語メッセージで。ユーザー指示があるときだけ commit/push。
 
 出力：何をどう変えたか（file:line）と、検証結果（node --check の可否、未検証の点）を率直に報告する。
+
+## 再編成後の鉄則（v0.3.97〜）
+- **範囲指定でコードを消さない**（`s.index(開始)〜s.index(次のfunction)` 型の削除禁止）。消す文字列そのものを書いて1件ずつ消す。v0.3.84 でこれをやって SEQ のクリック登録を巻き込み、3バージョン潜伏した。
+- 削除したら必ず `node tools/lost-listeners.mjs origin/main` を回し、意図した撤去は `tools/removals-ok.txt` に理由つきで書く。
+- 変更後は `node tools/gate.mjs`。通らなければ push しない（pre-push フックが止める）。
+- id を持つ要素は `window` の暗黙グローバルになる。**宣言を消しても参照は動いてしまう**ので、宣言の有無は grep で確認する。
+- 状態の宣言（`let`）は使う関数より前に置く（TDZ で起動が丸ごと止まった過去：`assignTarget`, `peTarget`）。
+- 新しい欄・ボタンを足したら、`tools/check.mjs` に「押して効くこと」を1行足す（検査担当と相談）。

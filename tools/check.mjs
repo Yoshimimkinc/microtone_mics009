@@ -13,13 +13,18 @@ const fail=[];
 const eq=(label,got,want)=>{ const ok=JSON.stringify(got)===JSON.stringify(want); if(!ok) fail.push(`${label}: got ${JSON.stringify(got)} want ${JSON.stringify(want)}`); return ok; };
 const ok_=(label,cond,info)=>{ if(!cond) fail.push(`${label}: ${info}`); };
 
+// 起動完了を「時間」でなく「状態」で待つ。固定sleepだとCPU負荷（並列検査など）でフレークする
+async function ready(p){
+  await p.waitForFunction(()=>typeof tracks!=='undefined' && tracks[0] && tracks[0].buffer && typeof paintPerf==='function', null, {timeout:20000});
+  await p.evaluate(()=>{const s=document.getElementById('splash'); if(s) s.style.display='none';});
+  await p.mouse.move(5,5); await p.mouse.down(); await p.mouse.up();
+  await p.waitForTimeout(600);   // 起動タップ直後450msの入力シールドを消化（これは仕様なので時間待ち）
+}
 async function run(w,h,mobile){
   const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile});
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
   await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
-  await p.waitForTimeout(1800);
-  await p.evaluate(()=>{document.getElementById('splash').style.display='none';});
-  await p.mouse.move(5,5); await p.mouse.down(); await p.mouse.up(); await p.waitForTimeout(600); // 450msの入力シールドを消化
+  await ready(p);
   const V=`${w}x${h}`;
   const page=async id=>{ await p.click(`#clKeys .cl-key[data-pg="${id}"]`); await p.waitForTimeout(120); return p.evaluate(()=>clPage); };
   const box=s=>p.$eval(s,e=>{const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2,w:Math.round(r.width),h:Math.round(r.height)};});
@@ -191,12 +196,26 @@ async function run(w,h,mobile){
   const wrote=await p.evaluate(async()=>{ await autosaveNow(true);
     const r=await idbOp("readonly",st=>st.get(AUTOSAVE.key)); return !!(r&&r.json&&r.json.length>1000); });
   ok_(`${V} 自動保存が書かれる`, wrote, '書かれていない');
-  await p.reload({waitUntil:'load'}); await p.waitForTimeout(2200);
-  await p.evaluate(()=>{document.getElementById('splash').style.display='none';});
+  await p.reload({waitUntil:'load'}); await ready(p);
   const restored=await p.evaluate(()=>({name:tracks[0].name, tune:tracks[0].tune,
     step:tracks[0].patterns[0][0][5], bpm:bpmVal, buf:!!tracks[0].buffer}));
   eq(`${V} リロードで復元`, restored, {name:"CHKTAKE",tune:9,step:1,bpm:111.5,buf:true});
   await p.evaluate(()=>clearAutosave());
+
+  // 11) ★ウィンドウの高さを変えたらSEQも追従する
+  //     （PADSへ往復するまで古い高さのままだったバグの再発防止。v0.3.97）
+  await p.evaluate(()=>document.getElementById('modeSeq').click()); await p.waitForTimeout(300);
+  const seqBox=()=>p.evaluate(()=>{const b=document.getElementById('viewSeq').getBoundingClientRect();
+    return [Math.round(b.width),Math.round(b.height)];});
+  await p.setViewportSize({width:Math.max(360,w-160), height:Math.max(460,h-220)});
+  await p.waitForTimeout(500);
+  const afterResize=await seqBox();
+  await p.evaluate(()=>{document.getElementById('modePads').click(); document.getElementById('modeSeq').click();});
+  await p.waitForTimeout(400);
+  eq(`${V} SEQがウィンドウ変更に追従`, afterResize, await seqBox());
+  await p.setViewportSize({width:w,height:h});
+  await p.evaluate(()=>document.getElementById('modePads').click());
+  await p.waitForTimeout(200);
   await ctx.close();
   return {V, dim, md:md.btns};
 }

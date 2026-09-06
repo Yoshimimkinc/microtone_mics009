@@ -9,6 +9,24 @@ python3 -m http.server 8137                              # リポジトリ直下
 ```
 chromium の場所が特殊な環境では `PW_EXE` / `PW_PLAYWRIGHT` で明示できる。
 
+## `gate.mjs` — 出す前の関門（これ1本）
+```sh
+node tools/gate.mjs
+```
+check（合否）→ dead-controls（無反応コントロール）→ lost-listeners（消えた登録）を回し、
+**1つでも落ちたら exit 1**。deadcss と ui-audit はレポートとして続けて出す。
+`.githooks/pre-push` がこれを自動で呼ぶ（初回だけ `git config core.hooksPath .githooks`）。
+どうしても飛ばすときは `SKIP_GATE=1 git push`（理由をコミットメッセージに書く）。
+意図した撤去は `tools/removals-ok.txt` に理由つきで書かないと lost-listeners で止まる。
+
+## `dead-controls.mjs` — 押しても何も起きないコントロール
+```sh
+node tools/dead-controls.mjs
+```
+PADS/SEQ の可視コントロールを実クリックで総当りし、前後で状態が1つも変わらないものを並べる。
+**ハンドラを消してしまった事故（v0.3.96）はこれで即座に出る。** 無反応が正しいもの
+（閉じるボタン、ファイル選択、選択済みの再タップ）は EXPECT に理由つきで登録。
+
 ## `check.mjs` — 回帰チェック
 ```sh
 node tools/check.mjs           # 既定ポート 8137

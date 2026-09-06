@@ -1027,7 +1027,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.96</div>
+  <div class="s-ver" id="splashVer">v0.3.97</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -3088,7 +3088,17 @@ function syncEditor(){   // 値のUIは情報窓のページ1本になったの�
   const ew=document.getElementById("edWho"); if(ew) ew.textContent=String(selected+1).padStart(2,"0")+" "+(PADS[selected].type==="sample"?t.name:PADS[selected].name);
   drawPadWave(selected);   // 窓波形の代わりにパッド内波形を更新
 }
-window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active")){ drawAllPadWaves(); } });
+let _rsT=null;
+["resize","orientationchange"].forEach(ev=>window.addEventListener(ev,()=>{
+  clearTimeout(_rsT);
+  _rsT=setTimeout(()=>{   // 連続リサイズで重い再描画を繰り返さない
+    if(viewPadsEl.classList.contains("active")) drawAllPadWaves();
+    if(typeof viewSeqEl!=="undefined" && viewSeqEl.classList.contains("active")){
+      paintSteps();                                   // 往復した時と同じ経路を通す
+      if(typeof applyWaveSEQ==="function") applyWaveSEQ();
+    }
+  },120);
+}));
 
 // ===== 情報窓のパラメータを横ドラッグで編集（パッドを叩きながら追い込める＝モーダル不要の連続編集） =====
 // パッド1枚の編集項目を「カテゴリ＝ページ」に棚卸ししたもの（docs/screen-spec.md §96 の表と1:1）。
@@ -4474,13 +4484,24 @@ function lockViewHeight(){
   const vp=viewPadsEl;
   if(!body||!vp) return;
   if(window.innerWidth<=600){ body.style.minHeight=""; return; } // スマホは固定しない
-  if(vp.classList.contains("active")){ body.style.minHeight=""; refViewH=vp.offsetHeight; }     // PADSの自然高さを基準に測る
+  body.style.minHeight="";                       // 先に解除して自然高さへ戻す（測る前に必ず）
+  if(vp.classList.contains("active")){
+    refViewH=vp.offsetHeight;                    // PADSの自然高さを基準に測る
+  }else{
+    // SEQ表示中は PADS が display:none で測れない。窓の残り（.body の上端から下端まで）から求める。
+    // これが無いと、SEQを開いたままウィンドウの高さを変えても古い値が残り、
+    // PADSへ往復するまで追従しなかった（v0.3.97で修正）
+    const top=body.getBoundingClientRect().top;
+    const unit=document.querySelector(".unit");
+    const pb=unit?parseFloat(getComputedStyle(unit).paddingBottom)||0:0;
+    refViewH=Math.max(0, Math.round(window.innerHeight - top - pb));
+  }
   if(refViewH){
     body.style.minHeight = refViewH+"px";        // どのビューも縮まない＝高さ一定
   }
   // SEQのグリッドはCSSのflexで余白を自動充填するので個別計算は不要
 }
-window.addEventListener("resize", lockViewHeight);
+["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, lockViewHeight));
 window.addEventListener("load", lockViewHeight);
 setTimeout(lockViewHeight, 400);
 
@@ -5297,7 +5318,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.96";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.97";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
