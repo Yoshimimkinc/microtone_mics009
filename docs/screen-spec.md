@@ -917,3 +917,64 @@ SCALE は `kScale` の change ハンドラで `refreshSeqMode()` を呼んでい
 ### 残り（第3段-後半）
 `padEditModal` 本体（波形・TRIM/REV・CHOP・LOAD/SMPL）の移設。面積が要るので、
 SAMPLEページからの全画面オーバーレイとして設計してから着手する。
+
+## 98. 未使用行の全数検出と撤去／ラーニングを表画面へ／ダブルクリックで0（v0.3.84）
+
+### 98-1. 検出のやり方（静的解析だけでは足りなかった）
+静的grepで出たのは2件だけ（`dupBarNext` / `_editHintShown`）。実際に効いたのは**実行時に測る**方法。
+
+1. 全CSSルールのセレクタを `document.styleSheets` から取り出し、
+   **7状態 × 3画面幅**（通常 / step-on / SEQ / モーダル / モーダルADV / perf / EDITアーム、390・700・1280）で
+   `querySelectorAll(sel).length` を測る → どの状態でも0件のセレクタ 141/533 を抽出。
+2. 141件の大半は「実行時に付く状態クラス」（`.pad.hit` `.toast.show` など）＝生きている。
+   そこで各セレクタの識別子が **HTML/JSに単語として存在するか** で二次フィルタ → 20件に絞れた。
+3. `getElementById("X")` の X がHTMLに無いものも突き合わせ → `recModeSeg` `perfRec` を発見。
+
+**落とし穴**: CSS Nesting対応で `CSSStyleRule` も空の `cssRules` を持つため、
+`if(r.cssRules){recurse; continue;}` と書くと全ルールを取りこぼして「0件」になる。selectorTextを先に見る。
+
+### 98-2. 撤去したもの
+| 対象 | 実体 |
+|---|---|
+| `.padTransport` / `.big-play` | 大きなSTART廃止時にCSSだけ残っていた（要素なし） |
+| `.perf-rec` 一式 | perfのRECボタンが無いのにCSS・待機ランプ・鼓動アニメが残存 |
+| `.perf-dup` / `.dupbar` / `.perf-plk-label` | 同上 |
+| `.perf-plkbtn[data-lock="comp"]` | COMPをP-LOCKから外した時の残り |
+| `dupBarNext()` | どこからも呼ばれない小節複写（約20行） |
+| `_editHintShown` | 書かれるだけで読まれない |
+| `recModeSeg` のIIFE | セグメントUIが無く `if(!seg) return` で毎回抜けていた |
+
+**過剰に消しかけた例**: `.perf-rotate` を「未使用」と判断して要素ごと削除したが、
+`body.perf-rotate` は `updatePerf()` が付けていた（grepを `head -5` で切っていて見落とし）。復元済み。
+**教訓**: 「CSSセレクタが0件」は「使われていない」ではない。クラスを**付ける側**のコードを必ず確認する。
+
+### 98-3. 起動直後だけ窓が高い問題（クリックが外れる）
+情報窓のメッセージ行/ヒント行は `paintPerf()` が中身の有無で開閉するが、**初回paintまで開いたまま**だった。
+そのため起動直後の窓が2行ぶん高く、最初の操作で縮んでページ全体がずれ、
+**押したボタンの上で指を離せない**（mousedownとmouseupの対象がズレる）。HTML側で既定 `display:none` にして解消。
+Playwrightで「押す→離す」の座標追跡をしていて見つかった。
+
+### 98-4. ラーニング（ASSIGN）を表画面で完結させる
+- `assignTo()` が `if(pad===peTarget) syncAssignUI(...)` でしかUIを更新しておらず、
+  **窓から学習するとMIDI/KEY欄が更新されなかった**。窓側は常に更新するよう分離。
+- ASSIGNページに**着信ランプ** `#clMon` を追加。MIDIノートもPCキーも同じ `inBlink()` で光る
+  ＝メニューを開かずに「繋がっている／効いている」が分かる。割り当て済みキーで鳴らした時も光る。
+- 学習待機中に別のパッドを選んだら**的をそちらへ移す**（`clRetargetLearn()`）。
+  窓は選択パッドを映しているので、的がズレたままだと表示が嘘になる。
+- Escape取消も窓に反映。
+- 副産物のバグ修正: `assignTarget` の宣言がファイル後方にあり、`selectPadHeavy()` から参照した瞬間に
+  **TDZで起動が丸ごと停止**した。状態はstateブロックで宣言する。
+
+### 98-5. パラメータはダブルクリックで0（全箇所共通）
+- 情報窓の**数値欄**：ダブルクリック／ダブルタップ（320ms以内）で **0**。
+  0が範囲外の `CUTOFF`(200Hz〜) と `RESO`(0.1〜) だけ一番0に近い値。欄ごとの既定値テーブルは作らない。
+- EDITモーダルのスライダーも**同じ作法**（`input[type=range]` 共通ハンドラ）。
+- **列挙欄（SCALE/FILTER/LOOP/OUT）は対象外**：タップで送るのが主操作で、素早い2連打を
+  リセットと誤認すると「送ったのに戻る」になる。OFFへは数タップで届く。
+  （実装当初これで SCALE の周回が壊れ、smokeテストが `off` に戻らず検出）
+- ドラッグ同様、リセットも1手＝Undo1回。
+
+### 98-6. verify
+`width`(固定幅) / `pg`(5ページ・ドラッグ・列挙タップ) / `smoke`(SCALE連動・モーダル・GRID・SEQ・UNDO) /
+`learn`(LEARN→PCキー→MIDI→的の移動→CLEAR→発音ランプ) / `zero`(14欄すべて0・モーダルのスライダー・Undo復帰)
+を 390/700/1280 で実行、**全て0 errors**。
