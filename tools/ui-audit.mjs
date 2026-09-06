@@ -24,8 +24,12 @@ const AUDIT=()=>{
   const bgLayer=n=>{const c=getComputedStyle(n); const col=rgba(c.backgroundColor);
     if(col[3]>=1) return col;
     const img=c.backgroundImage;
-    if(img&&img!=='none'){ const m=img.match(/(?:rgba?\([^)]*\)|color\(srgb[^)]*\)|#[0-9a-fA-F]{3,8})/);
-      if(m){ const g=rgba(m[0]); if(g[3]>0) return [g[0],g[1],g[2],1]; } }
+    if(img&&img!=='none'){
+      // グラデーションは「色味レイヤー」が先頭に来ることがある（alpha 0.09 など）。
+      // それを不透明と見なすと、実際は読める文字を低コントラストと誤判定する。
+      // 十分に濃い色（alpha>=0.5）だけを地の色として採用する。
+      const all=img.match(/(?:rgba?\([^)]*\)|color\(srgb[^)]*\)|#[0-9a-fA-F]{3,8})/g)||[];
+      for(const t of all){ const g=rgba(t); if(g[3]>=0.5) return [g[0],g[1],g[2],1]; } }
     return col;};
   const over=(f,b)=>{const a=f[3]; return [f[0]*a+b[0]*(1-a), f[1]*a+b[1]*(1-a), f[2]*a+b[2]*(1-a), 1];};
   const lum=c=>{const f=[0,1,2].map(i=>{let v=c[i]/255;
@@ -49,8 +53,10 @@ const AUDIT=()=>{
     && [...e.childNodes].some(n=>n.nodeType===3 && n.textContent.trim()));
   // 役割で基準が違う。値＝読めないと演奏できない / ラベル＝場所を示すだけ / 装飾＝雰囲気
   const roleOf=e=>{const c=String(e.className||''); const px=parseFloat(getComputedStyle(e).fontSize);
-    if(/cl-num|\bv\b|nm|readout/.test(c)||e.tagName==='B'||px>=13) return 'value';
+    // 装飾の判定を先に。<b> を無条件に値とすると、ロゴの micro<b>tone</b> まで値になる
     if(/brand|model|cap|hint/.test(c)) return 'deco';
+    if(e.closest('.logo,.s-logo,.model,.cl-brand')) return 'deco';
+    if(/cl-num|\bv\b|nm|readout/.test(c)||e.tagName==='B'||px>=13) return 'value';
     return 'label';};
   const fonts=texts.map(e=>({sel:(e.tagName+(e.id?'#'+e.id:'')+(e.className&&typeof e.className==='string'?'.'+e.className.split(' ')[0]:'')),
     px:Math.round(parseFloat(getComputedStyle(e).fontSize)*10)/10,
