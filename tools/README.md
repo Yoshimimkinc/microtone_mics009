@@ -32,6 +32,14 @@ node tools/check.mjs 8080
 
 スクリーンショットは `tools/_shots/`（gitignore済み）。
 
+## `ui-audit.mjs` — UI規則のスコアを測る
+```sh
+node tools/ui-audit.mjs
+```
+`docs/ui-rules.md` の基準（役割別の文字サイズ/コントラスト、演奏系44px・二次32pxの触れる大きさ、
+常時アニメの数、パッドと情報窓の面積）を実測してスコアを出す。**落ちない**（レポート専用）。
+合否は `check.mjs` 側の役割。
+
 ## `deadcss.mjs` — 使われていないCSSを洗う
 ```sh
 node tools/deadcss.mjs | node tools/deadcss-filter.mjs

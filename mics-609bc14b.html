@@ -329,28 +329,36 @@
   /* .pe-wave はモーダル用に height:128px 固定。窓では明示的に低くする（auto にすると中の canvas の
      属性サイズが効いて列ごと伸び、窓がパッドを潰す） */
   .perf-screen .cl-waveslot .pe-wave{height:auto;flex:1 1 auto;min-height:40px;margin:0;}
-  .perf-screen .cl-wavebtn{flex:0 0 auto;min-height:26px;padding:4px 10px;align-self:flex-start;}
-  .perf-screen .cl-wavebtn .cl-narrow{display:none;}
+  .perf-screen .cl-btn .cl-narrow{display:none;}
   .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
   .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
   body.perf .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
     grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
   @media (max-width:767px){
     /* 一番混むページ（ASSIGN=2行）と、波形を下に積むSAMPLEの両方を、同じ予約高さに収める */
-    :root{--cl-page-h:78px;}
+    :root{--cl-page-h:78px;--cl-wave-h:74px;}
+    .perf-screen .cl-btn .cl-wide{display:none;}
+    .perf-screen .cl-btn .cl-narrow{display:inline;font-size:13px;}
     /* 横に並べる幅が無い：1カラムに戻し、概観レーンは畳む。波形は「予約の内数」に収めるので
        SAMPLEに移っても窓の高さは他のページと同じまま。細かい追い込みは TRIM/CHOP のモーダルで */
     .perf-screen.has-wave{display:flex;}
-    .perf-screen.has-wave>.cl-waveslot{display:flex;flex-direction:row;align-items:center;gap:6px;}
-    /* 横並びで幅を取り合うのは波形が勝つ側。ボタンはアイコンだけに縮める
-       （#peWaveBox に min-width:0 を入れないと波形が2pxまで潰れる） */
-    .perf-screen .cl-waveslot #peWaveBox{flex:1 1 auto;min-width:0;}
-    .perf-screen .cl-wavebtn{padding:4px 8px;align-self:center;}
-    .perf-screen .cl-wavebtn .cl-wide{display:none;}
-    .perf-screen .cl-wavebtn .cl-narrow{display:inline;font-size:13px;}
+    .perf-screen.has-wave>.cl-waveslot{display:block;}
+    .perf-screen .cl-waveslot #peWaveBox{min-width:0;}
     .perf-screen .cl-waveslot .pe-over{display:none;}
-    .perf-screen .cl-waveslot .pe-wave{height:var(--cl-wave-h);min-height:0;flex:1 1 auto;}
-    .perf-screen.has-wave #clPage{min-height:calc(var(--cl-page-h) - var(--cl-wave-h) - 2px);}
+    .perf-screen .cl-waveslot .pe-wave{height:var(--cl-wave-h);min-height:0;}
+    /* SAMPLE中は上段のBPM行を畳み、その高さぶんを波形に回す
+       ＝窓の高さは他のページと同じまま、波形だけ大きくなる */
+    .perf-screen.has-wave .cl-stat{display:none;}
+    .perf-screen.has-wave #clPage{min-height:0;}
+  }
+  @media (max-width:520px){
+    /* 電話幅：SAMPLEの4項目（START/END/LOOP/✂）を1行に収める。
+       2行になると波形に回せる高さが半分になるので、ここは詰める価値がある */
+    #viewPads>.perf-screen .cl-row{gap:8px;}
+    #viewPads>.perf-screen .cl-par{padding:4px 6px;gap:3px;}
+    #viewPads>.perf-screen .cl-par i{margin-right:2px;}
+    #viewPads>.perf-screen .cl-par[data-p="start"] u,
+    #viewPads>.perf-screen .cl-par[data-p="end"] u{display:none;}   /* 0-100の値なので%は自明 */
   }
 
   /* 着信ランプ：鍵盤/PCキーが入ると光る＝メニューを開かずに「繋がっている」が見える */
@@ -362,16 +370,14 @@
   body.perf #viewPads.split.active{
     display:grid;
     grid-template-columns:repeat(8,1fr);
-    grid-template-rows:auto auto auto minmax(0,1fr) auto auto auto;
+    grid-template-rows:auto auto minmax(0,1fr) auto auto;
     grid-template-areas:
       "screen screen screen screen screen screen screen screen"
-      "padlbl padlbl padlbl padlbl padlbl padlbl padlbl padlbl"
       "plk    plk    plk    plk    plk    plk    plk    plk"
       "pads   pads   pads   pads   pads   pads   pads   pads"
-      "seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl seqlbl"
       "pats   pats   pats   pats   pats   pats   pats   pats"
       "steps  steps  steps  steps  steps  steps  steps  steps";
-    gap:9px 10px; align-items:stretch; height:100%;
+    gap:7px 10px; align-items:stretch; height:100%;
   }
   /* 画面いっぱいフィット（タブレット/PC横）：PADS/SEQ どちらでも縦が変わらないよう
      body.perf ではなく「サイズ＋横向き」で適用＝ビュー切替で高さがジャンプしない */
@@ -395,13 +401,17 @@
   body.perf .perf-seclbl{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
     letter-spacing:.22em;color:var(--dim);border-top:1px solid var(--edge);padding-top:3px;}
   body.perf .perf-seclbl::before{content:"";width:3px;height:11px;background:var(--teal);border-radius:2px;}
+  /* perfでは面積をパッドに回す：ブランド行とセクション見出しを畳む（この2つは情報を持っていない）。
+     ※ 上の .perf-seclbl 定義より後ろに置くこと（同特異度なので順序で決まる） */
+  body.perf .perf-screen .cl-head{display:none;}
+  body.perf .perf-seclbl{display:none;}
   body.perf #perfLblPad{grid-area:padlbl;} body.perf #perfLblSeq{grid-area:seqlbl;}
   body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:7px;}
   body.perf .perf-plk .perf-plkbtn{flex:1 1 0;font-size:12px;padding:11px 3px;min-height:46px;letter-spacing:.04em;}
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
   body.perf #viewPads.split>.msbar{display:none;}   /* MUTE/SOLOはトランスポート行へ移設予定→perfでは一旦非表示 */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
-    grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,1fr)!important;gap:10px;}
+    grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,1fr)!important;gap:6px;}
   body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
   /* 情報窓＝コマンドライン風（複数行のターミナル表示で上段の空きを埋める） */
   body.perf .perf-screen{grid-area:screen;display:flex;flex-direction:column;justify-content:center;gap:2px;
@@ -572,7 +582,8 @@
   .pad>.pad-wave{position:absolute;inset:0;width:100%;height:100%;opacity:.42;pointer-events:none;border-radius:9px;}
   .pad.sel>.pad-wave{opacity:.6;}
   .pad .n{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;position:relative;z-index:1;}
-  .pad .nm{font-size:12px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;align-self:flex-start;position:relative;z-index:1;}
+  .pad .nm{font-size:12px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;align-self:flex-start;position:relative;z-index:1;
+    text-shadow:0 1px 0 var(--pad-face),0 -1px 0 var(--pad-face),1px 0 0 var(--pad-face),-1px 0 0 var(--pad-face);}   /* 波形の上でも輪郭が残る */
   /* 種別カラーコード：左端のカラーバー（休符時から種類が一目で分かる） */
   .pad{--cat:var(--line);}
   .pad.pcat-drum{--cat:var(--amber);}
@@ -592,7 +603,8 @@
   .pad.pcat-empty::after{content:"＋";position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;
     display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px dashed var(--line);
     font-size:26px;line-height:1;font-weight:300;color:var(--dim);opacity:.55;pointer-events:none;}
-  .pad.pcat-empty .nm{opacity:.55;}
+  /* 空パッドの名前は薄くしない（＋アイコンが空を示している）。
+     薄字だと 2.5:1 まで落ちて読めない＝docs/ui-rules.md「値は4.5:1」違反 */
 
   /* sequencer — 16-row grid */
   .seq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;}
@@ -661,7 +673,8 @@
     background:#0d1013;border:1px solid var(--edge);border-radius:8px;padding:5px;width:fit-content;
     box-shadow:0 2px 6px rgba(0,0,0,.4) inset;}
   .modebtn{
-    background:transparent;color:var(--dim);border:1px solid transparent;
+    /* 非選択の文字も4.5:1を満たす濃さにする（--dim のままだと明るい盤で3.96:1） */
+    background:transparent;color:color-mix(in srgb,var(--dim) 78%,var(--ink));border:1px solid transparent;
     border-radius:5px;padding:10px 26px;font:inherit;font-size:13px;letter-spacing:.22em;
     text-transform:uppercase;cursor:pointer;transition:.14s;display:flex;align-items:center;gap:9px;
   }
@@ -892,7 +905,8 @@
     /* 情報窓はモバイルでは2行に圧縮（BPM/PAT/BAR＝積み残しだった「現在地」表示 ＋ 触れるパラメータ） */
     #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;}
     #viewPads>.perf-screen .cl-head,
-    #viewPads>.perf-screen .cl-trk{display:none;}   /* TRK名はstrip-headが表示済み＝二重表示にしない */
+    #viewPads>.perf-screen .cl-state,
+    #viewPads>.perf-screen .cl-trk{display:none;}   /* TRK名はstrip-headが、再生状態はトランスポートが表示済み */
     #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
     #viewPads>.perf-screen .cl-par{padding:3px 9px;}
     .strip{padding:9px;}
@@ -1008,7 +1022,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.90</div>
+  <div class="s-ver" id="splashVer">v0.3.93</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1271,19 +1285,20 @@
         <!-- 行は .cl-body に束ねる。SAMPLEページで右に波形を出しても、
              ソフトキー行（＝メニュー）は常に窓の全幅のまま＝ページを移っても幅が動かない -->
         <div class="cl-body">
-        <div class="cl-row cl-head"><span class="cl-brand">MICS009</span><span class="cl-state" id="clState">■ STOP</span></div>
-        <div class="cl-row">
+        <div class="cl-row cl-head"><span class="cl-brand">MICS009</span></div>
+        <div class="cl-row cl-stat">
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
           <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50%</b></span>
           <span><i>PAT</i><b class="cl-num" id="perfPat">A</b></span>
           <span><i>BAR</i><b class="cl-num" id="clBar">1</b></span>
           <span><i>STEP</i><b class="cl-num" id="clStep">--</b></span>
+          <span class="cl-state" id="clState">■ STOP</span>
         </div>
         <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params cl-page" id="clPage"></div>
         </div><!-- /.cl-body -->
         <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
-        <div class="cl-waveslot" id="clWaveSlot"><button class="cl-btn cl-wavebtn" id="clWave"><span class="cl-wide">✂ TRIM / CHOP</span><span class="cl-narrow">✂</span></button></div>
+        <div class="cl-waveslot" id="clWaveSlot"></div>
         <div class="cl-keys" id="clKeys">
           <button class="cl-key on" data-pg="main">MAIN</button>
           <button class="cl-key" data-pg="smpl">SAMPLE</button>
@@ -3104,7 +3119,8 @@ const CL_SPEC={
 };
 const CL_PAGES=[
   {id:"main", lbl:"MAIN",   f:["pitch","scale","level"]},
-  {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"]},
+  {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"],
+   b:[{id:"clWave",t:'<span class="cl-wide">✂ TRIM / CHOP</span><span class="cl-narrow">✂</span>'}]},
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"fx",   lbl:"FX",     f:["delay","reverb"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
@@ -5200,7 +5216,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.90";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.93";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
