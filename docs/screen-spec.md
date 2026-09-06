@@ -875,3 +875,45 @@ EDITモーダルの開閉をゼロにし、「パッドを叩く → 窓に出�
 - 390×844：窓 110px（§95の上限140px内）/ パッド 97px（≥88px）/ ページスクロールなし
 - 1280×800（perf）：窓175px、ソフトキー34px
 - v0.3.80の固定幅測定も再実行し全項目 stable のまま
+
+## 97. ゾンビUIの撤去 — strip-ctrls の編集ノブ群を削除（v0.3.82 / 第3段-前半）
+§96のページ化で「窓が全項目をカバーした」ので、重複入口を畳む番。畳む前に**実際に見えているか**を測った。
+
+### 判明したこと：見えていなかった
+`.strip-ctrls` の Loop / FILTER / Choke / Pitch / Scale / Cutoff / Reso / Level は、
+CSSの2行によって**どのレイアウト・どのモードでも表示されない**状態だった。
+
+```
+body:not(.step-on) #viewPads .strip-ctrls{display:none!important;}  ← 通常時は行ごと非表示
+body.step-on #viewPads .strip-ctrls>:not(.gridctrls){display:none;} ← GRID時はgridctrls以外を非表示
+```
+
+Playwright で 390×844 / 700×900 / 1280×800 の通常時と `step-on` の計6条件を測り、
+12個すべて `hidden`、`gridCtrls` だけが GRID 時に `VISIBLE` であることを確認した。
+
+つまり §96-1 の表で「strip / モーダル / 窓の3箇所」と書いた重複は、実際には
+**モーダルと窓の2箇所＋"見えないのに値だけ書かれるDOM"**だった。
+`syncEditor()` は再描画のたびにこの見えないノブへ8回書き戻し、`bindKnob`/`makeDial` は
+発火しようのないポインタ操作を待ち続けていた。
+
+### 撤去したもの
+- HTML: `loopToggle` `filtSeg` `chokeSel` `kTune` `kScale` `kCut` `kRes` `kLvl`（＋各`.v`表示）
+- JS: 上記のイベント登録一式、`bindKnob`、円形ノブ機構（`makeDial`/`dials`/`refreshDials`、約45行）
+- CSS: `.dial` 一式（`::before`のconic-gradient目盛、`::after`の指針、`.dial-val`）と `.knob.has-dial`、
+  スマホ用 `.strip-ctrls .adv{display:none!important}`
+- `syncEditor()` は「パッド名＋パッド内波形」だけになった（値のUIは情報窓のページ1本）
+
+`.strip-ctrls` の箱は残す＝GRID（Digitakt式）の PAT/BAR＋P-LOCK 行がそこに居るため。
+
+### 引き継ぎ
+SCALE は `kScale` の change ハンドラで `refreshSeqMode()` を呼んでいた。
+窓の SCALE 欄の setter に同じ呼び出しを移設し、SEQの音階表示が連動することを実測で確認。
+
+### verify（Playwright / 390・700・1280の3幅）
+5ページ切替・SCALEタップ→`chro`かつ`melodicMode=true`→1周して`off`復帰・`syncEditor`・
+`openPadEdit`開閉・GRIDのPAT/BAR表示・SEQ往復・UNDO復帰・パッド97px・スクロールなし・**0 errors**。
+§96/§80の測定（ページ描画・固定幅）も再実行して不変。
+
+### 残り（第3段-後半）
+`padEditModal` 本体（波形・TRIM/REV・CHOP・LOAD/SMPL）の移設。面積が要るので、
+SAMPLEページからの全画面オーバーレイとして設計してから着手する。

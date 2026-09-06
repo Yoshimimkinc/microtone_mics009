@@ -819,28 +819,6 @@
   .knob label .v{color:var(--ink);font-variant-numeric:tabular-nums;}
   .knob input[type=range]{width:100%;accent-color:var(--amber);}
   .knob input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
-  /* ===== 円形ノブ（Tune/Cutoff/Reso/Level）：rangeを隠してdialで操作 ===== */
-  .knob.has-dial{align-items:center;position:relative;}
-  .knob.has-dial>label{width:100%;}
-  .knob.has-dial>input[type=range]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
-  .dial{width:44px;height:44px;border-radius:50%;position:relative;margin:2px auto 0;flex:0 0 auto;
-    background:radial-gradient(circle at 50% 38%,var(--pad-face),var(--pad));
-    border:1px solid var(--edge);
-    box-shadow:0 2px 5px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);
-    touch-action:none;cursor:ns-resize;}
-  .dial::before{content:"";position:absolute;inset:-4px;border-radius:50%;
-    background:conic-gradient(from 215deg,var(--amber) calc(var(--p,0)*290deg),rgba(255,255,255,.07) 0 290deg,transparent 0);
-    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));
-    mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));}
-  .dial::after{content:"";position:absolute;left:50%;top:5px;width:2.5px;height:13px;border-radius:2px;
-    background:var(--ink);transform-origin:50% 17px;
-    transform:translateX(-50%) rotate(calc(var(--p,0)*290deg - 145deg));}
-  .dial:active{box-shadow:0 0 0 2px var(--amber),0 2px 5px rgba(0,0,0,.45);}
-  /* 値はノブ内（下寄り中央）に重ねて表示＝行を消費しない */
-  .dial .dial-val{position:absolute;left:-3px;right:-3px;bottom:7px;text-align:center;
-    font-size:9px;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:0;
-    line-height:1;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.75);}
-  .knob.has-dial>label{justify-content:center;}   /* ラベル名は中央寄せ（ノブと縦に揃える） */
   .ctrl input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
   .seg{display:flex;gap:0;background:#0d1013;border:1px solid var(--line);border-radius:6px;padding:3px;width:fit-content;}
   .seg button{background:transparent;color:var(--dim);border:none;border-radius:4px;
@@ -913,7 +891,7 @@
     .strip-ctrls{gap:8px;}
     .knob.mini{min-width:60px;max-width:none;flex:1 1 60px;}
     /* EDITモーダル：スライダー1本＝1行の全幅（レバーを最長化＝指で微調整できる）。grid化(≤380)でも全幅 */
-    #padEditModal .pe-row .knob:not(.has-dial){flex:1 1 100%;max-width:none;min-width:0;grid-column:1/-1;}
+    #padEditModal .pe-row .knob{flex:1 1 100%;max-width:none;min-width:0;grid-column:1/-1;}
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
@@ -960,8 +938,6 @@
     /* パッド数字はスマホで控えめに（重なり防止） */
     .pads .pad .stepn{font-size:15px;}
     .pads .pad .lockv{font-size:14px;}
-    /* Koala風ミニマル：詳細ツマミ(フィルター/Choke/Cutoff/Reso)はスマホでは隠す */
-    .strip-ctrls .adv{display:none!important;}
     /* SEQは固定高さの中で内部縦スクロール（PADSは収める方針と両立） */
     #viewSeq.active{overflow-x:hidden;overflow-y:auto;display:block;height:100%;}
     /* SEQヘッダの行数削減：ヒント省略・ラベル省略でPATTERN/BAR/DUPを1行に */
@@ -1027,7 +1003,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.81</div>
+  <div class="s-ver" id="splashVer">v0.3.82</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1291,36 +1267,10 @@
         </div>
         <!-- ステータス/録音/抽出オーバーレイは .strip の外（position:fixed）へ移設＝perfで .strip を隠してもサンプリングUIが出る（v0.3.35） -->
         <!-- compact controls row -->
+        <!-- 編集ノブ群は撤去（v0.3.82）。どのレイアウトでもCSSで隠れており「見えないのに値だけ書かれる」
+             ゾンビUIだった＝Pitch/Level/Filter/Cutoff/Reso/Choke/Scale/Loop は情報窓のページが唯一の入口。
+             この行に残るのは GRID（Digitakt式）のPAT/BAR＋P-LOCKだけ。 -->
         <div class="strip-ctrls">
-          <label class="toggle" id="loopToggle"><span class="sw"></span><span>Loop</span></label>
-          <div class="seg adv" id="filtSeg">
-            <button data-f="off" class="on">OFF</button>
-            <button data-f="lp">LP</button>
-            <button data-f="hp">HP</button>
-          </div>
-          <div class="ctrl adv" style="gap:5px;">Choke
-            <select class="t" id="chokeSel" style="padding:5px 7px;">
-              <option value="0">OFF</option>
-              <option value="1">1</option><option value="2">2</option>
-              <option value="3">3</option><option value="4">4</option>
-              <option value="5">5</option><option value="6">6</option>
-              <option value="7">7</option><option value="8">8</option>
-            </select>
-          </div>
-          <div class="knob mini"><label>Pitch <span class="v" id="vTune">0</span></label>
-            <input type="range" id="kTune" min="-12" max="12" step="1" value="0"></div>
-          <div class="knob mini"><label>Scale</label>
-            <select class="t" id="kScale" style="padding:5px 7px;">
-              <option value="off">OFF</option><option value="chro">CHRO</option>
-              <option value="maj">MAJ</option><option value="min">MIN</option><option value="pent">PENT</option>
-            </select></div>
-          <div class="knob mini adv"><label>Cutoff <span class="v" id="vCut">12.0k</span></label>
-            <input type="range" id="kCut" min="200" max="18000" step="50" value="12000"></div>
-          <div class="knob mini adv"><label>Reso <span class="v" id="vRes">0.7</span></label>
-            <input type="range" id="kRes" min="0.1" max="14" step="0.1" value="0.7"></div>
-          <div class="knob mini"><label>Level <span class="v" id="vLvl">-4</span></label>
-            <input type="range" id="kLvl" min="-30" max="6" step="1" value="-4"></div>
-          <!-- GRID（Digitakt式）：PAT/BAR選択。ノブ行と同じ枠に重ねて高さ不変（GRID中のみ表示） -->
           <div class="gridctrls" id="gridCtrls">
             <span class="patlabel">PAT</span>
             <div class="seg" id="gPatSeg">
@@ -3147,111 +3097,9 @@ function snapStartToOnset(idx=selected){
   if(onset>=0){ t.start=Math.min(onset/N, t.end-0.002); }
 }
 
-// loop toggle
-const loopToggle=document.getElementById("loopToggle");
-loopToggle.addEventListener("click",()=>{
-  pushUndo();
-  const t=tracks[selected];t.loop=!t.loop;
-  loopToggle.classList.toggle("on",t.loop);
-  if(t.loop && t.loopStart<t.start) t.loopStart=t.start;
-  drawPadWave(selected);
-});
-// filter seg
-const filtSeg=document.getElementById("filtSeg");
-filtSeg.addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  pushUndo();
-  const f=b.dataset.f, t=tracks[selected];
-  t.filter=f;
-  // ONにした瞬間に効きが分かるよう、Cutoffが開きっぱなし(無効値)なら実用値へ
-  if(f==="lp" && t.cutoff>=10000) t.cutoff=3000;
-  if(f==="hp" && t.cutoff>=10000) t.cutoff=700;
-  [...filtSeg.children].forEach(x=>x.classList.toggle("on",x===b));
-  if(typeof syncEditor==="function") syncEditor();   // Cutoffノブ表示も更新
-});
-// choke group
-const chokeSel=document.getElementById("chokeSel");
-chokeSel.addEventListener("change",()=>{ pushUndo(); tracks[selected].choke=+chokeSel.value; });
-// knobs
-function bindKnob(id,valId,fmt,apply){
-  const k=document.getElementById(id),v=document.getElementById(valId);
-  // ドラッグ開始時に1回だけ状態を記録（連続inputで履歴が埋まらないように）
-  k.addEventListener("pointerdown",()=>pushUndo());
-  k.addEventListener("keydown",e=>{ if(/Arrow|Page|Home|End/.test(e.key)) pushUndo(); });
-  k.addEventListener("input",()=>{apply(+k.value);v.textContent=fmt(+k.value);});
-}
-bindKnob("kTune","vTune",x=>x+" st",x=>{tracks[selected].tune=x; warmPitch(selected);});
-bindKnob("kCut","vCut",x=>(x/1000).toFixed(1)+"k",x=>tracks[selected].cutoff=x);
-bindKnob("kRes","vRes",x=>x.toFixed(1),x=>tracks[selected].reso=x);
-bindKnob("kLvl","vLvl",x=>x+" dB",x=>{tracks[selected].vol=x;
-  const vv=document.getElementById("vol");if(vv)vv.value=x;});
-
-// ===== 円形ノブ：rangeを隠してdialで操作（縦ドラッグ=値変更） =====
-const dials=[];
-function refreshDials(){ dials.forEach(u=>u()); }
-function makeDial(id){
-  const range=document.getElementById(id); if(!range) return;
-  const wrap=range.closest(".knob"); if(!wrap) return;
-  wrap.classList.add("has-dial");
-  const dial=document.createElement("div"); dial.className="dial";
-  dial.setAttribute("aria-hidden","true");
-  range.parentNode.insertBefore(dial, range);
-  // 値表示(.v)をノブの中（下寄り）へ重ねて表示。行を増やさず読める（bindKnobは同要素を更新継続）
-  const valSpan=wrap.querySelector("label .v");
-  if(valSpan){ valSpan.classList.add("dial-val"); dial.appendChild(valSpan); }
-  const min=+range.min, max=+range.max, step=+range.step||1, span=(max-min)||1;
-  const update=()=> dial.style.setProperty("--p", (((+range.value)-min)/span).toFixed(4));
-  update();
-  range.addEventListener("input", update);
-  let dragging=false, startY=0, startVal=0, lastTap=0;
-  const resetVal=(0>=min&&0<=max)?0:+range.defaultValue;   // 0が範囲内なら0、外なら既定値へ
-  const resetDefault=()=>{
-    if(typeof pushUndo==="function") pushUndo();
-    range.value=resetVal;
-    range.dispatchEvent(new Event("input",{bubbles:true}));
-    update();
-  };
-  dial.addEventListener("pointerdown", e=>{
-    const now=Date.now();
-    if(now-lastTap<320){                             // ダブルタップ → 既定値へ戻す
-      lastTap=0; dragging=false; e.preventDefault();
-      resetDefault(); return;
-    }
-    lastTap=now;
-    dragging=true; startY=e.clientY; startVal=+range.value;
-    dial.setPointerCapture(e.pointerId);
-    if(typeof pushUndo==="function") pushUndo();
-    e.preventDefault();
-  });
-  dial.addEventListener("dblclick", e=>{ e.preventDefault(); resetDefault(); });
-  dial.addEventListener("pointermove", e=>{
-    if(!dragging) return;
-    const dy=startY - e.clientY;                  // 上方向で増加
-    let v=startVal + (dy/150)*span;               // 約150pxでフルレンジ
-    v=Math.round(v/step)*step;
-    v=Math.max(min, Math.min(max, v));
-    if(v!==+range.value){ range.value=v; range.dispatchEvent(new Event("input",{bubbles:true})); }
-    update();
-  });
-  const end=()=>{ dragging=false; };
-  dial.addEventListener("pointerup", end);
-  dial.addEventListener("pointercancel", end);
-  dials.push(update);
-}
-["kTune","kCut","kRes","kLvl"].forEach(makeDial);
-
 // エディタを選択パッドに同期
-function syncEditor(){
+function syncEditor(){   // 値のUIは情報窓のページ1本になったので、ここは名前と波形だけ
   const t=tracks[selected];
-  document.getElementById("kTune").value=t.tune; document.getElementById("vTune").textContent=t.tune+" st";
-  document.getElementById("kCut").value=t.cutoff; document.getElementById("vCut").textContent=(t.cutoff/1000).toFixed(1)+"k";
-  document.getElementById("kRes").value=t.reso; document.getElementById("vRes").textContent=t.reso.toFixed(1);
-  document.getElementById("kLvl").value=t.vol; document.getElementById("vLvl").textContent=t.vol+" dB";
-  loopToggle.classList.toggle("on",t.loop);
-  chokeSel.value=Math.min(8,t.choke||0);
-  [...filtSeg.children].forEach(x=>x.classList.toggle("on",x.dataset.f===t.filter));
-  const ks=document.getElementById("kScale"); if(ks) ks.value=t.scale||"off";
-  if(typeof refreshDials==="function") refreshDials();
   const ew=document.getElementById("edWho"); if(ew) ew.textContent=String(selected+1).padStart(2,"0")+" "+(PADS[selected].type==="sample"?t.name:PADS[selected].name);
   drawPadWave(selected);   // 窓波形の代わりにパッド内波形を更新
 }
@@ -3262,7 +3110,9 @@ window.addEventListener("resize",()=>{ if(viewPadsEl.classList.contains("active"
 // en=列挙（タップで送る） / min-max-st=数値（横ドラッグ＝データホイール） / ro=表示専用 / w=固定表示幅(ch)
 const CL_SPEC={
   pitch: {lbl:"PITCH", u:"st", get:t=>t.tune,  set:(t,v)=>t.tune=v, min:-12,max:12,st:1,px:14, fmt:v=>(v>0?"+":"")+v, w:3},
-  scale: {lbl:"SCALE", en:["off","chro","maj","min","pent"], get:t=>t.scale||"off", set:(t,v)=>t.scale=v, fmt:v=>v.toUpperCase(), w:4},
+  scale: {lbl:"SCALE", en:["off","chro","maj","min","pent"], get:t=>t.scale||"off",
+          set:(t,v)=>{ t.scale=v; if(typeof refreshSeqMode==="function") refreshSeqMode(); },   // SEQの音階表示も連動
+          fmt:v=>v.toUpperCase(), w:4},
   level: {lbl:"LEVEL", u:"dB", get:t=>t.vol,   set:(t,v)=>t.vol=v,  min:-30,max:6, st:1,px:8,  fmt:v=>String(v), w:3},
   start: {lbl:"START", u:"%",  get:t=>t.start, set:(t,v)=>t.start=Math.min(v,(t.end??1)-0.004), min:0,max:1,st:0.002,px:3, fmt:v=>(v*100).toFixed(1), w:5, wave:1},
   end:   {lbl:"END",   u:"%",  get:t=>t.end,   set:(t,v)=>t.end=Math.max(v,(t.start||0)+0.004), min:0,max:1,st:0.002,px:3, fmt:v=>(v*100).toFixed(1), w:5, wave:1},
@@ -4783,9 +4633,7 @@ setInterval(()=>{ if(document.body.classList.contains("perf")) paintPerf(); }, 2
 const patSeg=document.getElementById("patSeg");
 const barSeg=document.getElementById("barSeg");
 
-// 音階モード：SCALE選択／← DRUMS で復帰
-const kScale=document.getElementById("kScale");
-kScale.addEventListener("change",()=>{ pushUndo(); tracks[selected].scale=kScale.value; refreshSeqMode(); });
+// 音階モード：← DRUMS で復帰（SCALEの選択は情報窓のMAINページ）
 document.getElementById("meloExit").addEventListener("click",()=>{
   let d=0; for(let i=0;i<PADS.length;i++){ if(!isMelodic(i)){ d=i; break; } }  // 最初の非音階パッドへ
   selectPad(d);
@@ -5450,7 +5298,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.81";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.82";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
