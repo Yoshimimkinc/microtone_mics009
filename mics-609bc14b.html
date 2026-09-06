@@ -239,7 +239,7 @@
   /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
   /* .active も必須にして、SEQ/MIX表示中にPADSが残らないようにする */
   /* デスクトップ専用のS2400 splitグリッド。601px以上に隔離＝モバイルへの漏れ（!important戦争の発生源）を根絶 */
-  @media(min-width:601px){
+  @media(min-width:768px){   /* splitは右カラム300pxを要求＝768px未満では左のパッドが潰れる（谷間ゾーン解消 v0.3.78） */
   #viewPads.split.active{
     display:grid;
     grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
@@ -811,7 +811,7 @@
   .toggle.on .sw::after{left:20px;background:var(--amber);}
 
   /* responsive */
-  @media(max-width:600px){
+  @media(max-width:767px){   /* 積み上げレイアウトを767pxまで＝splitの開始点と隙間なく接続 */
     /* セーフエリア（ノッチ/ステータスバー/ホームバー）を避ける＝ロゴが時刻に重ならない */
     body{padding:calc(6px + env(safe-area-inset-top)) calc(6px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));}
     /* === スマホはアプリ全体を画面の高さに収める（PADSは縦スクロールさせない） === */
@@ -979,7 +979,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.77</div>
+  <div class="s-ver" id="splashVer">v0.3.78</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -5266,7 +5266,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.77";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.78";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
