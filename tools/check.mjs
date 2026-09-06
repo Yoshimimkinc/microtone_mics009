@@ -167,6 +167,18 @@ async function run(w,h,mobile){
   ok_(`${V} パッド高`, dim.pad>=60, `${dim.pad}px`);
   eq(`${V} 0 errors`, errs, []);
   await p.screenshot({path:`${SHOT}/shot-${w}.png`});
+
+  // 10) ★自動保存：更新やリロードで読み込んだ音とパターンが消えない（データ消失は再発が致命的）
+  await p.evaluate(()=>{ pushUndo(); tracks[0].name="CHKTAKE"; tracks[0].tune=9; tracks[0].patterns[0][0][5]=1; bpmVal=111.5; });
+  const wrote=await p.evaluate(async()=>{ await autosaveNow(true);
+    const r=await idbOp("readonly",st=>st.get(AUTOSAVE.key)); return !!(r&&r.json&&r.json.length>1000); });
+  ok_(`${V} 自動保存が書かれる`, wrote, '書かれていない');
+  await p.reload({waitUntil:'load'}); await p.waitForTimeout(2200);
+  await p.evaluate(()=>{document.getElementById('splash').style.display='none';});
+  const restored=await p.evaluate(()=>({name:tracks[0].name, tune:tracks[0].tune,
+    step:tracks[0].patterns[0][0][5], bpm:bpmVal, buf:!!tracks[0].buffer}));
+  eq(`${V} リロードで復元`, restored, {name:"CHKTAKE",tune:9,step:1,bpm:111.5,buf:true});
+  await p.evaluate(()=>clearAutosave());
   await ctx.close();
   return {V, dim, md:md.btns};
 }

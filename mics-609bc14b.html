@@ -319,20 +319,21 @@
      ソフトキー行だけは常に全幅（keys keys）＝ページを移ってもメニューの幅が動かない */
   .perf-screen .cl-body{display:flex;flex-direction:column;gap:inherit;min-width:0;}
   .perf-screen .cl-waveslot{display:none;}
-  .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
+  .perf-screen.has-wave{display:grid;grid-template-columns:auto minmax(0,1fr);
     grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
   .perf-screen.has-wave>.cl-body{grid-area:body;}
   .perf-screen.has-wave>.cl-keys{grid-area:keys;}
   .perf-screen.has-wave>.cl-waveslot{grid-area:wave;display:flex;flex-direction:column;justify-content:center;
     gap:4px;min-width:0;min-height:0;overflow:hidden;}   /* 列の高さは .cl-body が決める＝波形が窓を押し広げない */
   .perf-screen .cl-waveslot .pe-over{height:20px;flex:0 0 auto;margin:0;}
-  /* .pe-wave はモーダル用に height:128px 固定。窓では明示的に低くする（auto にすると中の canvas の
-     属性サイズが効いて列ごと伸び、窓がパッドを潰す） */
+  /* 波形は「空きぶんを全部使う」。#peWaveBox 自体をflexにしないと .pe-wave の flex が効かず、
+     モーダル用の height:128px / min-height だけが残って40pxのままになる（v0.3.93までの実害） */
+  .perf-screen .cl-waveslot #peWaveBox{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;}
   .perf-screen .cl-waveslot .pe-wave{height:auto;flex:1 1 auto;min-height:40px;margin:0;}
   .perf-screen .cl-btn .cl-narrow{display:none;}
   .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
   .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
-  body.perf .perf-screen.has-wave{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,34%);
+  body.perf .perf-screen.has-wave{display:grid;grid-template-columns:auto minmax(0,1fr);
     grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
   @media (max-width:767px){
     /* 一番混むページ（ASSIGN=2行）と、波形を下に積むSAMPLEの両方を、同じ予約高さに収める */
@@ -1022,7 +1023,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.93</div>
+  <div class="s-ver" id="splashVer">v0.3.94</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -1126,6 +1127,7 @@
             <button class="t" id="saveBtn">Save</button>
             <button class="t" id="loadProjBtn">Load</button>
             <button class="t" id="exportWavBtn">WAV ↓</button>
+            <button class="t" id="resetBtn" title="自動保存を消して初期状態から始める">RESET</button>
             <input type="file" id="projFile" accept=".mics,.json" style="display:none;">
           </div>
         </div>
@@ -2112,7 +2114,8 @@ function restoreState(s){
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
   if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // ステップ波形を再キャッシュ（読込/復元時）
 }
-function pushUndo(){ undoStack.push(snapshotState()); if(undoStack.length>40) undoStack.shift(); }
+function pushUndo(){ undoStack.push(snapshotState()); if(undoStack.length>40) undoStack.shift();
+  if(typeof scheduleAutosave==="function") scheduleAutosave(); }   // 変更があったら自動保存を予約
 function doUndo(){ const s=undoStack.pop(); if(!s) return; restoreState(s); }
 
 // ===== 音階モード（モノ・ベース打ち込み） =====
@@ -4353,9 +4356,63 @@ async function bakePhrase(){
     }
   }catch(e){ console.warn("phrase bake:", e); }
 }
+// ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
+// localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
+const AUTOSAVE={db:"mics009",store:"session",key:"autosave"};
+function idb(){ return new Promise((res,rej)=>{ const q=indexedDB.open(AUTOSAVE.db,1);
+  q.onupgradeneeded=()=>{ const d=q.result; if(!d.objectStoreNames.contains(AUTOSAVE.store)) d.createObjectStore(AUTOSAVE.store); };
+  q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+function idbOp(mode,fn){ return idb().then(d=>new Promise((res,rej)=>{
+  const tx=d.transaction(AUTOSAVE.store,mode), st=tx.objectStore(AUTOSAVE.store);
+  const r=fn(st); tx.oncomplete=()=>res(r&&r.result); tx.onerror=()=>rej(tx.error); })); }
+// 保存は全パッドのWAVエンコード＝重い。演奏中には絶対に走らせない（音が飛ぶ）。
+// 「変更あり」の印だけ立てて、止まっていて・間隔が空いていて・暇なときにまとめて書く。
+let _asDirty=false, _asBusy=false, _asWarned=false, _asLast=0;
+const AS_MIN_GAP=15000;   // 最短15秒に1回
+async function autosaveNow(force){
+  if(_asBusy || typeof buildProject!=="function") return;
+  if(!force){
+    if(!_asDirty) return;
+    if(typeof playing!=="undefined" && playing) return;              // 演奏中は書かない
+    if(Date.now()-_asLast < AS_MIN_GAP) return;
+  }
+  _asBusy=true; _asDirty=false; _asLast=Date.now();
+  try{
+    const json=JSON.stringify(buildProject());
+    await idbOp("readwrite", st=>st.put({at:Date.now(), ver:APP_VERSION, json}, AUTOSAVE.key));
+  }catch(e){
+    _asDirty=true;   // 失敗したら次の機会に再挑戦
+    if(!_asWarned){ _asWarned=true; console.warn("autosave:",e);
+      if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="自動保存できず（容量不足かも）— Saveで書き出しを"; }
+  }finally{ _asBusy=false; }
+}
+function scheduleAutosave(){ _asDirty=true; }
+setInterval(()=>{ const run=()=>autosaveNow(false);
+  if(window.requestIdleCallback) requestIdleCallback(run,{timeout:2000}); else run(); }, 5000);
+// 離脱時は条件を無視して書く（iOSはvisibilitychangeが最後の機会）
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden" && _asDirty) autosaveNow(true); });
+window.addEventListener("pagehide",()=>{ if(_asDirty) autosaveNow(true); });
+async function loadAutosave(){
+  try{ const rec=await idbOp("readonly", st=>st.get(AUTOSAVE.key));
+    if(!rec||!rec.json) return null;
+    const proj=JSON.parse(rec.json);
+    return (proj&&proj.tracks)?proj:null;
+  }catch(e){ console.warn("autosave load:",e); return null; }
+}
+async function clearAutosave(){ try{ await idbOp("readwrite", st=>st.delete(AUTOSAVE.key)); }catch(e){} }
+
 loadPresets().then(async ()=>{
   // 既定プロジェクト＝同梱の default.mics（ユーザーのビート：フレーズ＋ドラム＋パターン）。
   // ドラム9-16はsynthプリセットなので音声は同梱せず起動時に再生成（軽量化）。フレーズ1-4のみ音声同梱。
+  const saved=await loadAutosave();
+  if(saved){
+    try{
+      await applyProject(saved);
+      drawAllPadWaves();
+      if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="前回の続きを復元（メニューの RESET で初期状態へ）";
+      return;   // 復元できたら default.mics は読まない
+    }catch(e){ console.warn("autosave復元に失敗→既定へ:",e); }
+  }
   try{
     const r=await fetch("default.mics?v="+APP_VERSION,{cache:"force-cache"});
     if(!r.ok) throw new Error("HTTP "+r.status);
@@ -4923,8 +4980,8 @@ function b64ToUint8(b64){
 }
 
 // SAVE
-document.getElementById("saveBtn").addEventListener("click",()=>{
-  const proj={
+function buildProject(){
+  return {
     version:2,
     bpm:bpmVal,
     swing:swingPct,
@@ -4952,6 +5009,15 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
       };
     }),
   };
+}
+document.getElementById("resetBtn").addEventListener("click",async()=>{
+  if(!confirm("自動保存を消して初期状態から始めます。読み込んだ音とパターンは失われます（Saveで書き出していれば戻せます）。よろしいですか？")) return;
+  await clearAutosave();
+  _asDirty=false;
+  location.reload();
+});
+document.getElementById("saveBtn").addEventListener("click",()=>{
+  const proj=buildProject();
   const json=JSON.stringify(proj);
   const blob=new Blob([json],{type:"application/json"});
   // ファイル名に日時を付与: mics009-YYMMDD-HHMM.mics。共有シート（メンバーへ直接）→非対応はDL
@@ -5216,7 +5282,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.93";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.94";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
