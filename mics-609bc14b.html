@@ -971,7 +971,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.102</div>
+  <div class="s-ver" id="splashVer">v0.3.103</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2277,13 +2277,11 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   if(!t.loop){
     voice.wd = setTimeout(voice.cleanup, Math.max(0, when-AC.currentTime+oneShotLen)*1000 + 1000);
   }
-  // EDITモーダルが開いていて対象パッドが鳴ったら、波形に再生位置トレースを走らせる
-  if(!fromSeq && i===peTarget && typeof pePlayheadRun==="function"){
-    const pem=document.getElementById("padEditModal");
-    if(pem && pem.style.display==="flex"){
-      const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;
-      pePlayheadRun(when, startSec, endSec, lsN*dur, dur, t.loop);
-    }
+  // 波形（モーダル or 情報窓のSAMPLEページ）が見えていて対象パッドが鳴ったら、再生位置カーソルを走らせる。
+  // 手叩きもシーケンサーも同じ（v0.3.103）。ループは常に1本＝再トリガで前のを止めるので負荷は増えない
+  if(i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
+    const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;
+    pePlayheadRun(when, startSec, endSec, lsN*dur, dur, t.loop);
   }
 }
 
@@ -3529,16 +3527,21 @@ function cropBufferToSelection(t){
 }
 // 波形上の再生位置トレース（playbackRate=1なので経過秒＝バッファ秒で正確に追える）
 let pePlayRAF=0;
+// 波形エディタが画面に出ているか（モーダルが開いている／窓のSAMPLEページに居る）
+function peWaveVisible(){
+  const w=document.getElementById("peWave"); if(!w) return false;
+  const r=w.parentElement.getBoundingClientRect(); return r.width>0 && r.height>0;
+}
 function pePlayheadRun(when, startSec, endSec, lsSec, dur, loop){
   const ph=document.getElementById("pePlayhead");
   const wrap=document.getElementById("peWave").parentElement;
   if(!ph||!wrap) return;
   cancelAnimationFrame(pePlayRAF);
   const span=Math.max(0.0001, endSec-startSec);
+  const W=wrap.clientWidth;   // 幅は開始時に1回だけ測る（毎フレーム clientWidth を読むとレイアウト計算を強制する）
   const tick=()=>{
-    const pem=document.getElementById("padEditModal");
-    // モーダルが閉じた / 音が止まった(=チョーク/再トリガ/減衰) ら消す
-    if(!pem || pem.style.display!=="flex" || !tracks[peTarget] || tracks[peTarget].activeVoices.length===0){ ph.style.opacity="0"; return; }
+    // 波形が隠れた / 音が止まった(=チョーク/再トリガ/減衰) ら消す
+    if(!peWaveVisible() || !tracks[peTarget] || tracks[peTarget].activeVoices.length===0){ ph.style.opacity="0"; return; }
     const el=AC.currentTime-when;
     if(el<0){ pePlayRAF=requestAnimationFrame(tick); return; }
     let posSec;
@@ -3549,8 +3552,8 @@ function pePlayheadRun(when, startSec, endSec, lsSec, dur, loop){
       if(el<span) posSec=startSec+el;
       else { const lp=Math.max(0.0001, endSec-lsSec); posSec=lsSec+((el-span)%lp); }
     }
-    const px=(((posSec/dur)-peV0)/((peV1-peV0)||1))*wrap.clientWidth;
-    if(px<0||px>wrap.clientWidth){ ph.style.opacity="0"; }
+    const px=(((posSec/dur)-peV0)/((peV1-peV0)||1))*W;
+    if(px<0||px>W){ ph.style.opacity="0"; }
     else { ph.style.left=px+"px"; ph.style.opacity="1"; }
     pePlayRAF=requestAnimationFrame(tick);
   };
@@ -5180,7 +5183,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.102";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.103";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

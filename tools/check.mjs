@@ -145,6 +145,22 @@ async function run(w,h,mobile){
   if(!mobile){ const wv=await box('.cl-waveslot .pe-wave'), fl=await box('.cl-par[data-p="start"]');
     ok_(`${V} 波形は欄の右`, wv.x>fl.x, `${wv.x} <= ${fl.x}`); }
 
+  // 6b) 再生位置カーソル（v0.3.103）：SAMPLEページで手叩き／再生中に走り、他ページでは出ない
+  {
+    const ph=()=>p.evaluate(()=>{const e=document.getElementById('pePlayhead'); return {op:e.style.opacity, left:parseFloat(e.style.left)||0};});
+    await page('smpl'); await p.evaluate(()=>{ selectPad(3); selectPadHeavy(); });
+    await p.evaluate(()=>trigger(3));
+    let hit=null; for(let k=0;k<10;k++){ await p.waitForTimeout(50); const r=await ph(); if(r.op==='1'){ hit=r; break; } }
+    ok_(`${V} SAMPLEで叩くと再生カーソル`, !!hit, 'カーソルが出ない');
+    await p.evaluate(()=>{ const t=tracks[3]; t.patterns[editPat][editBar].fill(0); t.patterns[editPat][editBar][0]=1; t.patterns[editPat][editBar][8]=1; document.getElementById('play').click(); });
+    let seen=false; for(let k=0;k<30;k++){ await p.waitForTimeout(60); const r=await ph(); if(r.op==='1'&&r.left>0){ seen=true; break; } }
+    await p.evaluate(()=>{ document.getElementById('play').click(); tracks[3].patterns[editPat][editBar].fill(0); });
+    ok_(`${V} 再生中も再生カーソル`, seen, '再生中にカーソルが出ない');
+    await page('tone'); await p.evaluate(()=>trigger(3)); await p.waitForTimeout(150);
+    ok_(`${V} 波形が無いページではカーソルを出さない`, (await ph()).op!=='1', '出ている');
+    await page('main');
+  }
+
   // 7) モーダルは「入り組んだ設定」だけ
   await p.click('#clWave'); await p.waitForTimeout(600);   // 開いて450msはクリックを飲む（ゴーストクリック対策）
   eq(`${V} モーダル中の波形`, await where(), 'peWaveHome');
