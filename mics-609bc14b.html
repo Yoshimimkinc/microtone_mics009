@@ -396,7 +396,7 @@
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:14px;
     padding:10px 4px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
   .perf-bar:active{transform:translateY(1px);}
-  .perf-bar.on{background:linear-gradient(180deg,color-mix(in srgb,var(--teal) 42%,#0e1114),color-mix(in srgb,var(--teal) 20%,#0e1114));color:color-mix(in srgb,var(--teal) 70%,#fff);border-color:var(--teal);}
+  .perf-bar.on{background:var(--teal);color:#06201d;border-color:var(--teal);font-weight:800;}   /* 選択中はベタ塗り＝一目で分かる（SEQの .patbtn.on と同じ作法） */
   /* 現在再生中の小節/パターン＝アンバーの枠（編集中の緑とは別物・最前面） */
   .perf-bar.playing,.perf-pat.playing{box-shadow:0 0 0 2px var(--amber), 0 0 10px rgba(255,180,80,.55)!important;position:relative;z-index:3;}
   .perf-bar.barsep{margin-left:12px;}   /* A-D と小節群の間に余白 */
@@ -416,7 +416,7 @@
     border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:16px;
     letter-spacing:.1em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
   .perf-pat:active{transform:translateY(1px);}
-  .perf-pat.on{background:linear-gradient(180deg,color-mix(in srgb,var(--teal) 42%,#0e1114),color-mix(in srgb,var(--teal) 20%,#0e1114));color:color-mix(in srgb,var(--teal) 70%,#fff);border-color:var(--teal);}
+  .perf-pat.on{background:var(--teal);color:#06201d;border-color:var(--teal);font-weight:800;}
   .perf-pat.queued{border-color:var(--amber);color:var(--amber);animation:spblink 1s ease-in-out infinite;}
   /* P-LOCK行（演奏中いじり）。色は既存plockbtnと統一 */
   .perf-plkbtn{background:var(--pad);border:1px solid var(--line);border-radius:8px;cursor:pointer;
@@ -444,7 +444,7 @@
   body.perf-plock #viewPads.split>.pads .pad .lockv{display:flex;font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);}
   body.perf-plock #viewPads.split>.pads .pad>.pad-wave,
   body.perf-plock #viewPads.split>.pads .pad .nm,
-  body.perf-plock #viewPads.split>.pads .pad .n{opacity:.18;}
+  body.perf-plock #viewPads.split>.pads .pad .n,body.perf-plock #viewPads.split>.pads .pad .k{opacity:.18;}
   /* 縦向き(4×4選択)では回転を促す（body.perf-rotate は updatePerfMode が付ける） */
   .perf-rotate{position:fixed;inset:0;z-index:9980;background:var(--bg);
     flex-direction:column;align-items:center;justify-content:center;text-align:center;
@@ -490,7 +490,7 @@
   body.perf #viewPads.split>.pads .pad.hit.hit-acc{
     box-shadow:0 0 0 1px #fff inset, 0 0 34px 6px color-mix(in srgb,var(--cat) 85%, #fff 15%), 0 0 10px rgba(255,255,255,.7) inset;}
   body.perf #viewPads.split>.pads .pad.hit .nm,
-  body.perf #viewPads.split>.pads .pad.hit .n{color:rgba(0,0,0,.8);text-shadow:0 1px 0 rgba(255,255,255,.25);}
+  body.perf #viewPads.split>.pads .pad.hit .n,body.perf #viewPads.split>.pads .pad.hit .k{color:rgba(0,0,0,.8);text-shadow:0 1px 0 rgba(255,255,255,.25);}
   /* スクリーン：緑がかった蛍光LCD（バックライト＋にじみグロー＋控えめ走査線） */
   body.perf .perf-screen{
     background:repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px),
@@ -504,7 +504,7 @@
   body.perf .perf-screen #perfSel{font-size:12px;opacity:.85;margin-left:auto;}
   /* パターンA-D：on＝常灯、queued＝予約ランプ（box-shadow点滅で滲ませる） */
   body.perf .perf-pat{box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 3px 7px rgba(0,0,0,.4);}
-  body.perf .perf-pat.on{box-shadow:0 0 0 1px var(--teal) inset, 0 0 14px -2px color-mix(in srgb,var(--teal) 50%,transparent), 0 3px 7px rgba(0,0,0,.4);}
+  body.perf .perf-pat.on,body.perf .perf-bar.on{box-shadow:0 0 14px -2px color-mix(in srgb,var(--teal) 60%,transparent), 0 3px 7px rgba(0,0,0,.4);}
   body.perf .perf-pat.queued{box-shadow:0 0 0 1px var(--amber) inset, 0 0 12px -3px rgba(var(--hit-glow-a),.55);}
   /* P-LOCK 5色：rest＝消灯ランプ（下線で色予告）、on＝点灯グロー＋立体押下 */
   body.perf .perf-plkbtn{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));
@@ -545,6 +545,8 @@
   .pad>.pad-wave{position:absolute;inset:0;width:100%;height:100%;opacity:.42;pointer-events:none;border-radius:9px;}
   .pad.sel>.pad-wave{opacity:.6;}
   .pad .n{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;position:relative;z-index:1;}
+  /* 右下：このパッドを鳴らすPCキー（ASSIGNで変えたものが優先、無ければ既定の 1-8 / Q-I）。左下の番号と同じ大きさ */
+  .pad .k{position:absolute;right:10px;bottom:9px;font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;z-index:1;pointer-events:none;}
   .pad .nm{font-size:12px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;align-self:flex-start;position:relative;z-index:1;
     text-shadow:0 1px 0 var(--pad-face),0 -1px 0 var(--pad-face),1px 0 0 var(--pad-face),-1px 0 0 var(--pad-face);}   /* 波形の上でも輪郭が残る */
   /* 種別カラーコード：左端のカラーバー（休符時から種類が一目で分かる） */
@@ -560,7 +562,7 @@
   .pad.hit{background:linear-gradient(180deg,var(--amber),var(--hit-c2));
     box-shadow:0 0 18px rgba(var(--hit-glow-a),.55);}
   .pad.hit.hit-acc{box-shadow:0 0 30px 3px rgba(var(--hit-glow-a),.9);}  /* アクセント=より明るく点灯 */
-  .pad.hit .nm,.pad.hit .n{color:var(--hit-ink);}
+  .pad.hit .nm,.pad.hit .n,.pad.hit .k{color:var(--hit-ink);}
   /* 空パッド＝招待：中央に薄い「＋」（説明なしで「ここに入れる」が伝わる） */
   /* ＋は実体のある円＝見た目とタッチ判定を一致させる（44pxのタッチターゲット） */
   .pad.pcat-empty::after{content:"＋";position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;
@@ -969,7 +971,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.101</div>
+  <div class="s-ver" id="splashVer">v0.3.102</div>
   <div class="s-prompt">▶ TAP TO START</div>
 </div>
 <div class="unit">
@@ -2438,7 +2440,7 @@ function applyPadCategory(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="stepn">${i+1}</div><div class="lockv"></div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><div class="stepn">${i+1}</div><div class="lockv"></div>`;
   d._lockfill=d.querySelector(".lockfill"); d._lockv=d.querySelector(".lockv");   // 毎ステップ描画でquerySelectorしないよう参照をキャッシュ
   d.dataset.i=i;
   d.setAttribute("role","button");
@@ -2689,9 +2691,11 @@ let copyArm = null;  // COPY中の元 {type:"pad"|"pat"|"bar", idx}（汎用コ�
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
 // CHOPPYスライスの基準名（末尾の連番は剥がす＝再チョップでも増殖しない）
 function chopBaseName(i){ return (tracks[i].name||PADS[i].name||"").replace(/\s*\d+$/,"").trim()||"SLICE"; }
+function padKeyLabel(i){ const k=tracks[i].key || KEYMAP[i]; return k ? String(k).toUpperCase() : ""; }   // ASSIGN優先、無ければ既定キー
 function paintPadStates(){
   for(let i=0;i<PADS.length;i++){
     const el=padsEl.children[i];
+    const kEl=el.querySelector(".k"); if(kEl){ const lb=padKeyLabel(i); if(kEl.textContent!==lb) kEl.textContent=lb; }
     el.classList.toggle("muted",tracks[i].mute);
     el.classList.toggle("soloed",tracks[i].solo);
     el.classList.toggle("copysrc", !!copyArm && copyArm.type==="pad" && copyArm.idx===i);
@@ -3151,6 +3155,7 @@ function paintClPage(){
     if(b.id==="clClear"){
       if(t.midiNote==null && !t.key) return;
       pushUndo(); t.midiNote=null; t.key=null;
+      if(typeof paintPadStates==="function") paintPadStates();
       assignTarget=-1;
       sampNameEl.textContent="割り当てを消した"; paintClPage(); paintPerf();
     }
@@ -4970,6 +4975,7 @@ function assignTo(pad, field, value, label){
   tracks[pad][field]=value;
   assignTarget=-1;
   if(typeof paintClPage==="function") paintClPage();   // 窓から学習した時もここで反映（peTargetと無関係）
+  if(typeof paintPadStates==="function") paintPadStates();   // パッド右下のキー表示も更新
   sampNameEl.textContent="ASSIGN — PAD "+String(pad+1).padStart(2,"0")+" ← "+label;
 }
 function handleMIDI(data){
@@ -5174,7 +5180,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.101";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.102";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

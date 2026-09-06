@@ -194,6 +194,11 @@ async function run(w,h,mobile){
     ok_(`${V} ドラッグ直後の掴み直しで0に飛ばない`, v===5, `tune=${v}`);
     await dbl('.cl-par[data-p="pitch"]');
   }
+  // パッド右下のキー表示（v0.3.102）：既定は 1-8/Q-I、ASSIGN で変えたら追従、Undoで戻る
+  eq(`${V} パッド右下のキー表示`, await p.evaluate(()=>{ tracks.forEach(t=>{t.key=null;}); paintPadStates();
+    const a=[...document.querySelectorAll('#pads .pad .k')].map(e=>e.textContent).join('');
+    assignTo(4,'key','z','Z'); const b=document.querySelectorAll('#pads .pad .k')[4].textContent; doUndo(); paintPadStates();
+    const c=document.querySelectorAll('#pads .pad .k')[4].textContent; return [a,b,c]; }), ['12345678QWERTYUI','Z','5']);
   eq(`${V} 奪った割当がUndoで戻る`, await p.evaluate(()=>{ tracks.forEach(t=>{t.key=null;t.midiNote=null;}); tracks[2].key='q';
     assignTo(7,'key','q','Q'); const a=[tracks[7].key,tracks[2].key]; doUndo(); return [...a,tracks[7].key,tracks[2].key]; }), ['q',null,null,'q']);
   // 7d) ★perf の ●REC が存在してトグルできる（W5 NG-B・v0.3.98）
