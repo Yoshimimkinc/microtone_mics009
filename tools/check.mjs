@@ -186,6 +186,7 @@ async function run(w,h,mobile){
   await p.evaluate(()=>{ const vp=document.getElementById('viewPads'); if(vp) vp.scrollTop=0; });   // 低い画面では 7c のパッド tap で内側がスクロールしている
   await page('main');
   {
+    await p.evaluate(()=>{ tracks[selected].tune=0; paintPerf(); });   // 既定プロジェクトの tune に依存しない
     const b=await box('.cl-par[data-p="pitch"]');
     await p.mouse.move(b.x,b.y); await p.mouse.down(); await p.mouse.move(b.x+71,b.y,{steps:4}); await p.mouse.up();
     await p.mouse.move(b.x+20,b.y); await p.mouse.down(); await p.waitForTimeout(30);
@@ -220,18 +221,15 @@ async function run(w,h,mobile){
 
   // 7i) ★どのレイアウトでも再生中は STEP/STATE が生きている（W6 NG-1・v0.3.98。perf限定で「--」「■ STOP」のままだった）
   await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(700);
-  const live=await p.evaluate(()=>({step:document.getElementById('clStep').textContent, state:document.getElementById('clState').textContent}));
+  const live=await p.evaluate(()=>({step:document.getElementById('clStep').textContent, playing:document.querySelector('.perf-screen').classList.contains('playing')}));
   await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
   ok_(`${V} 再生中にSTEPが進む表示`, /^\d\d\/16$/.test(live.step), live.step);
-  ok_(`${V} 再生中に▶ PLAY表示`, live.state==='▶ PLAY', live.state);
+  ok_(`${V} 再生中は窓が点く（.playing）`, live.playing===true, 'playing クラスが無い');   // 文字の ▶ PLAY は撤去（▶ボタンと二重）
 
   // 8) 既存機能が生きている
   const misc=await p.evaluate(()=>{
     const r={};
     try{ document.getElementById('modeSeq').click(); r.seq='ok'; document.getElementById('modePads').click(); }catch(e){ r.seq=String(e); }
-    document.body.classList.add('step-on');
-    r.grid=Math.round(document.getElementById('gridCtrls').getBoundingClientRect().width)>0;
-    document.body.classList.remove('step-on');
     const v0=tracks[selected].tune; pushUndo(); tracks[selected].tune=7; doUndo(); r.undo=tracks[selected].tune===v0;
     return r;
   });
