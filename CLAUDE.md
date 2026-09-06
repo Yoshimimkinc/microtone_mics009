@@ -95,7 +95,7 @@ Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp setti
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.94
+MICS009 beta v0.3.96
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
 - `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)

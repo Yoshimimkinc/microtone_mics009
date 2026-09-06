@@ -40,6 +40,19 @@ node tools/ui-audit.mjs
 常時アニメの数、パッドと情報窓の面積）を実測してスコアを出す。**落ちない**（レポート専用）。
 合否は `check.mjs` 側の役割。
 
+## `lost-listeners.mjs` — うっかり消した実行コードを見つける
+```sh
+node tools/lost-listeners.mjs            # 既定は origin/main と比較
+node tools/lost-listeners.mjs bef65de    # 任意のリビジョンと比較
+```
+消えた **addEventListener 登録／関数宣言／要素参照** を前の版と全数比較して並べる。**落ちない**。
+出たものが全部バグではない（意図した撤去も出る）が、**消したつもりが無いのに出ているもの**は巻き込み事故。
+
+範囲指定でコードを消すと、隣の生きたコードを黙って巻き込む。v0.3.84 の削除が
+SEQのパターン/小節のクリック登録を巻き込み、**3バージョン気づけなかった**
+（id持ちの要素は `window` の暗黙グローバルになるので、参照だけは動いてエラーも出ない）。
+コードを消したら必ずこれを回すこと。
+
 ## `deadcss.mjs` — 使われていないCSSを洗う
 ```sh
 node tools/deadcss.mjs | node tools/deadcss-filter.mjs
