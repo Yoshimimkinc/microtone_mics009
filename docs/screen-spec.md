@@ -1543,3 +1543,14 @@ check.mjs：390×664 で下段がスクロール無しで見える（コンテ�
 消さずに**PADS/SEQ の行の左**へ移した（同一DOMノードの親替え。PCでは元のヘッダに戻す）。見出し行が1段減り、ブランドはスクショに残る。
 検査：`check.mjs` 6e（スマホ全幅で16枚が下段の上・高さ≥44・ロゴが画面内）。
 
+## 125. 実機 iPhone：全画面化後に本体の下へ黒い余りが出る（v0.3.112）
+§124 のあと届いた実機スクショ（v0.3.108・iPhone・全画面）：本体の下に **約50〜90px の黒い余り**があるのに、パッドの下段は下段バーの裏。
+つまり画面はまだ余っているのに body の高さがそれより低く固められていた。
+`fitMobileHeight` は `visualViewport.height` を body の高さにしていたが、iPhone の全画面化（`requestFullscreen`）の直後は
+この値が切替前（バー込み）のまま resize が来ない／来ても早すぎることがある。手元の Chromium では再現できない（iOS固有）。
+
+直し方：
+- 高さは `visualViewport.height` / `innerHeight` / `documentElement.clientHeight` の**最大値**。キーボードで縮んだ visualViewport には引きずられない
+- `fullscreenchange`（webkit も）・`pageshow`・`visibilitychange` の後に **150/600/1500ms** で測り直す（切替アニメの後に確定する）
+検証は実機のみ（Playwright は iOS の全画面を持たない）。v0.3.111 の縦予算と合わせて、実機で16枚が収まるかを見る。
+

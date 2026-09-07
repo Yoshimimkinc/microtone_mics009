@@ -1007,7 +1007,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.111</div>
+  <div class="s-ver" id="splashVer">v0.3.112</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4470,12 +4470,19 @@ function lockViewHeight(){
 ["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, lockViewHeight));
 // スマホ：body の高さを実際の可視高さ（innerHeight）で追従させる。100dvh だけだと Safari のバー収納に
 // 追従しない端末があり、本体の下に黒い余りが出て、中身が縦スクロールで欠けていた（v0.3.105）
+// v0.3.112：実機 iPhone の全画面化直後に visualViewport の高さが古い値のまま固まり、本体の下に黒い余り（約50〜90px）が
+// 出てパッドの下段が隠れた（§125）。高さは visualViewport / innerHeight / clientHeight の最大値（キーボードで縮んだ
+// visualViewport には引きずられない）にし、全画面切替・可視化の後は数回に分けて測り直す（切替アニメの後に確定する）
 function fitMobileHeight(){
   if(window.innerWidth>600){ document.body.style.height=""; return; }
-  const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+  const h=Math.max((window.visualViewport&&window.visualViewport.height)||0, window.innerHeight||0, document.documentElement.clientHeight||0);
   if(h>200) document.body.style.height=Math.round(h)+"px";
 }
-["resize","orientationchange","load"].forEach(ev=>window.addEventListener(ev, fitMobileHeight));
+function refitMobileHeight(){ fitMobileHeight(); [150,600,1500].forEach(ms=>setTimeout(fitMobileHeight, ms)); }
+["resize","orientationchange","load","fullscreenchange","webkitfullscreenchange","pageshow"].forEach(ev=>window.addEventListener(ev, refitMobileHeight));
+document.addEventListener("fullscreenchange", refitMobileHeight);
+document.addEventListener("webkitfullscreenchange", refitMobileHeight);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refitMobileHeight(); });
 if(window.visualViewport) window.visualViewport.addEventListener("resize", fitMobileHeight);
 setTimeout(fitMobileHeight, 400);
 window.addEventListener("load", lockViewHeight);
@@ -5328,7 +5335,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.111";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.112";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
