@@ -175,6 +175,16 @@ async function run(w,h,mobile){
     ok_(`${V} 下段がスクロール無しで見える`, ms.inView && ms.h>=44, JSON.stringify(ms));
   }
 
+  // 6e) スマホ：16枚のパッドがスクロール無しで下段の上に収まる（v0.3.111：ロゴ行の統合＋パッド下限44px）。ロゴは行を変えても画面に残る
+  {
+    const g=await p.evaluate(()=>{const pads=[...document.querySelectorAll('#pads .pad')].map(e=>e.getBoundingClientRect());
+      const m=document.querySelector('#viewPads>.msbar').getBoundingClientRect(); const lg=document.querySelector('.logo'); const lr=lg.getBoundingClientRect();
+      return {n:pads.length, lastBot:Math.round(Math.max(...pads.map(r=>r.bottom))), minH:Math.round(Math.min(...pads.map(r=>r.height))), msTop:Math.round(m.top),
+        logoIn:lg.closest('#viewDots')?'dots':(lg.closest('.top')?'top':'?'), logoVis:lr.width>0&&lr.height>0&&lr.bottom<=innerHeight};});
+    const stacked=w<=767;   // 積み上げレイアウト（media query と relocateLogo の境界）。touch 有無とは別
+    if(stacked){ ok_(`${V} 16枚のパッドが下段の上に収まる（スクロール無し）`, g.n===16 && g.lastBot<=g.msTop, JSON.stringify(g)); ok_(`${V} パッド高さ ≥44px`, g.minH>=44, g.minH); }
+    ok_(`${V} ロゴが画面に残る（${stacked?'PADS/SEQ行':'ヘッダ'}）`, g.logoVis && g.logoIn===(stacked?'dots':'top'), JSON.stringify(g));
+  }
   // 6d) スマホの下段は [MUTE][DELAY][REVERB]（SOLO/EDIT は出さない）。DELAY→パッド左右ドラッグで送り量（v0.3.106）
   if(mobile){
     const vis=await p.evaluate(()=>{const g=id=>{const e=document.getElementById(id); const r=e.getBoundingClientRect(); return r.height>0&&getComputedStyle(e).display!=='none'?Math.round(r.height):0;};
@@ -296,7 +306,7 @@ async function run(w,h,mobile){
             docH:document.documentElement.scrollHeight, winH:innerHeight};});
   ok_(`${V} ページ全体は縦スクロールしない`, dim.docH<=dim.winH+1, `${dim.docH}>${dim.winH}`);
   ok_(`${V} PCの縦長でも回転オーバーレイで塞がない`, !(await p.evaluate(()=>document.body.classList.contains('perf-rotate'))) || mobile, 'perf-rotate が付いている');
-  ok_(`${V} パッド高（下限56px・足りなければ内側で縦スクロール）`, dim.pad>=56, `${dim.pad}px`);
+  ok_(`${V} パッド高（下限44px＝演奏系タップの規則値。足りなければ内側で縦スクロール）`, dim.pad>=44, `${dim.pad}px`);
   eq(`${V} 0 errors`, errs, []);
   await p.screenshot({path:`${SHOT}/shot-${w}.png`});
 

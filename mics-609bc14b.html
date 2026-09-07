@@ -832,14 +832,18 @@
     .unit{padding:8px 10px 10px;border-radius:10px;}
     .brand .logo{font-size:18px;}
     .brand .model{display:none;}
-    .top{padding-bottom:8px;margin-bottom:8px;gap:7px;flex:0 0 auto;}
+    /* スマホ：ロゴは PADS/SEQ の行へ移す（relocateLogo）。見出し行が1段減る＝約35px をパッドへ。ブランドは画面に残る（v0.3.111） */
+    .top .brand{display:none;}
+    .viewdots .logo{flex:0 0 auto;display:flex;align-items:center;font-size:18px;font-weight:700;letter-spacing:.02em;padding:0 10px 0 4px;color:var(--ink);}
+    .viewdots .logo b{color:var(--amber);}
+    .top{padding-bottom:8px;margin-bottom:6px;gap:7px;flex:0 0 auto;}
     button.t{padding:6px 8px;font-size:10px;min-width:0;}
     /* スマホ：transportはロゴと別行＝全幅。5ボタンを均等割りで大きく押しやすく */
     .transport{gap:6px;flex-wrap:nowrap;flex-basis:100%;width:100%;}
     .transport .ctrl{font-size:9px;}
     .transport button.t{flex:1 1 0;min-width:0;font-size:13px;letter-spacing:.02em;padding:0 4px;min-height:50px;white-space:nowrap;overflow:hidden;text-overflow:clip;}
     #bpm{max-width:84px;}
-    .modebar-row{margin:8px 0 8px;gap:12px;}
+    .modebar-row{margin:2px 0 6px;gap:12px;}
     /* スマホ：MENUモーダルの設定行は縦積み・スライダー全幅（横並びだと潰れてラベルとスライダーが重なる） */
     .modal .tempo-row{flex-direction:column;align-items:stretch!important;gap:14px!important;}
     .modal .tempo-row .ctrl{width:100%;justify-content:space-between;}
@@ -873,14 +877,14 @@
     #viewPads>.perf-screen .cl-trk{display:none;}
     #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
     #viewPads>.perf-screen .cl-par{padding:3px 9px;}
-    .strip{padding:9px;}
+    .strip{padding:6px 9px;}
 
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
     /* 低い画面（実機Safariのバー込み 390×664 等）ではパッドの下限56pxが収まらないので、この中だけ縦スクロールを許す。
        普段は溢れないのでスクロールは出ない */
-    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:6px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
     /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
@@ -906,9 +910,14 @@
     /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
     #viewPads>.stepstrip{display:none!important;}   /* スマホは下段ステップ非表示（打ち込みはSEQ画面で） */
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
-    .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
-    /* 下限56px：これより潰すくらいなら縦スクロールさせる（実機Safariの390×664で29pxになっていた） */
-    .pads .pad{aspect-ratio:auto!important;min-height:56px!important;padding:6px!important;}
+    /* 縦の予算（v0.3.111）：窓/strip/下段の余白を gap(6px) に一本化＝ 390×664 で 16 枚が下段の上に収まる（§124） */
+    #viewPads.active>.perf-screen{margin-bottom:0;}
+    #viewPads.active>.strip{margin:0!important;padding-top:6px;padding-bottom:6px;}
+    #viewPads.active>.msbar{margin-top:0;padding-top:2px;}
+    .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:6px;}
+    /* 下限44px（演奏系タップの規則値 §2）：これより潰すくらいなら縦スクロールさせる。
+       56px だと実機Safariの 390×664 で下2行が下段の裏に隠れた（v0.3.111）。ロゴ行の統合と合わせて 664 で16枚が収まる */
+    .pads .pad{aspect-ratio:auto!important;min-height:44px!important;padding:6px!important;}
     /* モバイル：ぼかしグロー(box-shadow blur)とトランジションは毎ステップ再描画が重い→無効化（背景色での点灯は残す） */
     .pad{transition:none!important;}
     .pad.hit,.pad.hit.hit-acc{box-shadow:none!important;}
@@ -917,7 +926,7 @@
     /* === スマホ：3モードはタブを廃止し、スワイプ＋ドットで切替（スペース確保） === */
     .modebar-row .modebar{display:none;}
     .viewdots{display:flex;}
-    .modebar-row{margin:4px 0 8px;}
+    .modebar-row{margin:2px 0 4px;}
 
     /* パッド数字はスマホで控えめに（重なり防止） */
     .pads .pad .stepn{font-size:15px;}
@@ -939,7 +948,7 @@
   }
   @media(max-width:400px){
     body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
-    .unit{padding:10px 8px 12px;}
+    .unit{padding:10px 8px 8px;}
     .brand .logo{font-size:18px;}
     .modebtn{padding:6px 12px;font-size:12px;letter-spacing:.12em;}
     .msbtn{padding:5px 8px;font-size:11px;}
@@ -998,7 +1007,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.110</div>
+  <div class="s-ver" id="splashVer">v0.3.111</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4489,6 +4498,18 @@ function relocateMuteSolo(){
 window.addEventListener("load", relocateMuteSolo);
 window.addEventListener("resize", relocateMuteSolo);
 relocateMuteSolo();
+// スマホ：ロゴを PADS/SEQ の行（#viewDots）の左へ親替え＝見出し行を1段減らしてパッドに高さを渡す。
+// ブランドは画面に残す（スクショで訴求できる）。PCでは .brand に戻す。同一DOMノードの移動だけ（v0.3.111）
+function relocateLogo(){
+  const logo=document.querySelector(".logo"), brand=document.querySelector(".top .brand"), dots=document.getElementById("viewDots");
+  if(!logo||!brand||!dots) return;
+  const mobile=window.innerWidth<=767;
+  if(mobile){ if(logo.parentNode!==dots) dots.insertBefore(logo, dots.firstChild); }
+  else { if(logo.parentNode!==brand) brand.insertBefore(logo, brand.firstChild); }
+}
+window.addEventListener("load", relocateLogo);
+window.addEventListener("resize", relocateLogo);
+relocateLogo();
 
 // ===== Performance Mode：4×4 × 横向き × PC/iPad幅(≥768) で発動。縦向き(4×4)は回転オーバーレイ =====
 function landscapeMode(){ return !(window.matchMedia && window.matchMedia("(orientation:landscape)").matches===false); }
@@ -5307,7 +5328,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.110";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.111";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
