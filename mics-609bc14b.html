@@ -1007,7 +1007,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.112</div>
+  <div class="s-ver" id="splashVer">v0.3.113</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4473,9 +4473,15 @@ function lockViewHeight(){
 // v0.3.112：実機 iPhone の全画面化直後に visualViewport の高さが古い値のまま固まり、本体の下に黒い余り（約50〜90px）が
 // 出てパッドの下段が隠れた（§125）。高さは visualViewport / innerHeight / clientHeight の最大値（キーボードで縮んだ
 // visualViewport には引きずられない）にし、全画面切替・可視化の後は数回に分けて測り直す（切替アニメの後に確定する）
+const IS_IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 function fitMobileHeight(){
   if(window.innerWidth>600){ document.body.style.height=""; return; }
-  const h=Math.max((window.visualViewport&&window.visualViewport.height)||0, window.innerHeight||0, document.documentElement.clientHeight||0);
+  let h=Math.max((window.visualViewport&&window.visualViewport.height)||0, window.innerHeight||0, document.documentElement.clientHeight||0);
+  // iOS の全画面/ホーム画面起動：innerHeight がステータスバー分（47px）小さく報告されるのにレイアウト原点は画面上端
+  // ＝本体の下に黒い余り（実機 iPhone 16e で 87px＝47＋安全域40）。画面の実寸（縦持ちの screen.height）を使う（§126 v0.3.113）。
+  // Android は全画面で innerHeight が実寸になるので触らない（screen.height はナビバー込みで大きすぎることがある）
+  const fs=!!(document.fullscreenElement||document.webkitFullscreenElement||navigator.standalone);
+  if(IS_IOS && fs && screen && screen.height>screen.width) h=Math.max(h, screen.height);
   if(h>200) document.body.style.height=Math.round(h)+"px";
 }
 function refitMobileHeight(){ fitMobileHeight(); [150,600,1500].forEach(ms=>setTimeout(fitMobileHeight, ms)); }
@@ -5335,7 +5341,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.112";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.113";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
