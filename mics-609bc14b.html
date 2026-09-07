@@ -23,6 +23,9 @@
     --line:#32383f;
     --ink:#e8e4d8;        /* off-white silkscreen */
     --dim:#8b919a;
+    --well:#0d1013;        /* 窪み（セグ・readout・入力欄の受け皿） */
+    --well-ink:#e8e4d8;
+    --modal-deep:#161a1f;  /* モーダル/トースト/本体の下端色（明るいテーマではパネル色を入れる） */
     --amber:#ff8a3d;      /* lit-pad amber */
     --amber-dim:#7a4a26;
     --teal:#3dd6c4;       /* active step / accent */
@@ -33,8 +36,8 @@
   }
   /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL）。背景はどれも黒 ===== */
   /* Akai MPC3000風：黒地 + 暖色グレー本体 + 緑の蛍光LCD + Akaiレッド + クリーム文字 */
-  body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;
-    --ink:#2b2720;--dim:#5a5546;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
+  body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;--well:#2b2720;--well-ink:#e8e4d8;--modal-deep:#bdb8a8;
+    --ink:#2b2720;--dim:#4a4639;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
     --hit-c2:#8f2318;--hit-glow-a:207,58,44;--hit-ink:#f6efe3;}
   /* AK=MPC3000は明色（クリーム本体・グレーボタン）。暗いインセットだけ明色化し、波形はLCDとして暗いまま残す */
   body.t-ak .unit{background:#d2ccba;}
@@ -62,7 +65,7 @@
   .kebab{font-size:18px;line-height:1;padding:6px 11px;margin-left:auto;}
   .modal-backdrop{position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.55);
     display:flex;align-items:center;justify-content:center;padding:20px;}
-  .modal{background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+  .modal{background:linear-gradient(180deg,var(--panel),var(--modal-deep));border:1px solid var(--edge);
     border-radius:14px;padding:18px 20px 20px;width:min(360px,92vw);
     max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;   /* 小型端末で見切れてもスクロールで全要素に届く */
     box-shadow:0 24px 70px rgba(0,0,0,.6);}
@@ -99,7 +102,7 @@
   }
   .unit{
     width:100%;max-width:1080px;margin:0 auto;overflow:hidden;
-    background:linear-gradient(180deg,var(--panel) 0%, #161a1f 100%);
+    background:linear-gradient(180deg,var(--panel) 0%, var(--modal-deep) 100%);
     border:1px solid var(--edge);
     border-radius:14px;
     box-shadow:0 1px 0 #3a4047 inset, 0 24px 60px rgba(0,0,0,.55);
@@ -168,7 +171,7 @@
 
   body.step-on .pad.haslock{outline:1px dashed rgba(255,255,255,.4);outline-offset:-3px;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
-    border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
+    border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:var(--well);min-width:64px;text-align:center;}
   .ctrl{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;flex-shrink:1;min-width:0;}
   .ctrl input[type=range]{width:100%;min-width:50px;max-width:120px;flex:1;accent-color:var(--amber);}
   .ctrl .val{color:var(--ink);font-variant-numeric:tabular-nums;min-width:28px;text-align:right;}
@@ -774,14 +777,14 @@
   .rec-overlay::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.5);}   /* 背面を覆う＝重なりの見切れ防止 */
   /* 一時トースト：Loaded/Sampled/エラー等を数秒だけ画面上部に表示（常駐しない） */
   .toast{position:fixed;left:50%;top:84px;transform:translateX(-50%) translateY(-6px);
-    background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+    background:linear-gradient(180deg,var(--panel),var(--modal-deep));border:1px solid var(--edge);
     border-radius:10px;padding:9px 14px;color:var(--ink);font-size:11px;letter-spacing:.06em;
     max-width:min(88vw,420px);white-space:normal;line-height:1.5;text-align:center;
     opacity:0;pointer-events:none;z-index:9992;box-shadow:0 14px 40px rgba(0,0,0,.55);
     transition:opacity .18s,transform .18s;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .rec-panel{position:relative;display:flex;flex-direction:column;gap:12px;align-items:stretch;
-    background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+    background:linear-gradient(180deg,var(--panel),var(--modal-deep));border:1px solid var(--edge);
     border-radius:12px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.6);min-width:240px;max-width:90vw;}
   .rec-target{font-size:11px;letter-spacing:.06em;color:var(--ink);text-align:center;}
   .rec-target:empty{display:none;}
@@ -803,12 +806,12 @@
   .knob input[type=range]{width:100%;accent-color:var(--amber);}
   .knob input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
   .ctrl input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
-  .seg{display:flex;gap:0;background:#0d1013;border:1px solid var(--line);border-radius:6px;padding:3px;width:fit-content;}
-  .seg button{background:transparent;color:var(--dim);border:none;border-radius:4px;
+  .seg{display:flex;gap:0;background:var(--well);border:1px solid var(--line);border-radius:6px;padding:3px;width:fit-content;}
+  .seg button{background:transparent;color:var(--well-ink);opacity:.72;border:none;border-radius:4px;
     padding:6px 14px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.1s;}
-  .seg button.on{background:var(--panel2);color:var(--ink);}
+  .seg button.on{background:var(--panel2);color:var(--ink);opacity:1;}
   .toggle{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em;cursor:pointer;}
-  .toggle .sw{width:38px;height:20px;border-radius:10px;background:#23282f;border:1px solid var(--line);position:relative;transition:.1s;}
+  .toggle .sw{width:38px;height:20px;border-radius:10px;background:var(--well);border:1px solid var(--line);position:relative;transition:.1s;}
   .toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--dim);transition:.12s;}
   .toggle.on .sw{background:var(--amber-dim);}
   .toggle.on .sw::after{left:20px;background:var(--amber);}
@@ -967,7 +970,7 @@
   /* 合言葉：通るまで TAP TO START は出さない */
   .s-pass{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:18px 0 6px;width:min(320px,80vw);}
   .s-pass input{flex:1 1 160px;min-height:44px;padding:8px 12px;font:inherit;font-size:16px;letter-spacing:.08em;
-    background:#0d1013;color:var(--ink);border:1px solid var(--line);border-radius:6px;outline:none;}
+    background:var(--well);color:var(--well-ink);border:1px solid var(--line);border-radius:6px;outline:none;}
   .s-pass input:focus{border-color:var(--teal);}
   .s-pass .s-enter{min-height:44px;padding:8px 16px;font:inherit;font-size:12px;letter-spacing:.14em;
     background:var(--teal);color:#06201d;border:1px solid var(--teal);border-radius:6px;cursor:pointer;}
@@ -995,7 +998,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.108</div>
+  <div class="s-ver" id="splashVer">v0.3.109</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -5231,7 +5234,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.108";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.109";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
