@@ -23,6 +23,9 @@
     --line:#32383f;
     --ink:#e8e4d8;        /* off-white silkscreen */
     --dim:#8b919a;
+    --well:#0d1013;        /* 窪み（セグ・readout・入力欄の受け皿） */
+    --well-ink:#e8e4d8;
+    --modal-deep:#161a1f;  /* モーダル/トースト/本体の下端色（明るいテーマではパネル色を入れる） */
     --amber:#ff8a3d;      /* lit-pad amber */
     --amber-dim:#7a4a26;
     --teal:#3dd6c4;       /* active step / accent */
@@ -33,8 +36,8 @@
   }
   /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL）。背景はどれも黒 ===== */
   /* Akai MPC3000風：黒地 + 暖色グレー本体 + 緑の蛍光LCD + Akaiレッド + クリーム文字 */
-  body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;
-    --ink:#2b2720;--dim:#5a5546;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
+  body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;--well:#2b2720;--well-ink:#e8e4d8;--modal-deep:#bdb8a8;
+    --ink:#2b2720;--dim:#4a4639;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
     --hit-c2:#8f2318;--hit-glow-a:207,58,44;--hit-ink:#f6efe3;}
   /* AK=MPC3000は明色（クリーム本体・グレーボタン）。暗いインセットだけ明色化し、波形はLCDとして暗いまま残す */
   body.t-ak .unit{background:#d2ccba;}
@@ -62,7 +65,7 @@
   .kebab{font-size:18px;line-height:1;padding:6px 11px;margin-left:auto;}
   .modal-backdrop{position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.55);
     display:flex;align-items:center;justify-content:center;padding:20px;}
-  .modal{background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+  .modal{background:linear-gradient(180deg,var(--panel),var(--modal-deep));border:1px solid var(--edge);
     border-radius:14px;padding:18px 20px 20px;width:min(360px,92vw);
     max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;   /* 小型端末で見切れてもスクロールで全要素に届く */
     box-shadow:0 24px 70px rgba(0,0,0,.6);}
@@ -99,7 +102,7 @@
   }
   .unit{
     width:100%;max-width:1080px;margin:0 auto;overflow:hidden;
-    background:linear-gradient(180deg,var(--panel) 0%, #161a1f 100%);
+    background:linear-gradient(180deg,var(--panel) 0%, var(--modal-deep) 100%);
     border:1px solid var(--edge);
     border-radius:14px;
     box-shadow:0 1px 0 #3a4047 inset, 0 24px 60px rgba(0,0,0,.55);
@@ -168,7 +171,7 @@
 
   body.step-on .pad.haslock{outline:1px dashed rgba(255,255,255,.4);outline-offset:-3px;}
   .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
-    border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:#0d1013;min-width:64px;text-align:center;}
+    border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:var(--well);min-width:64px;text-align:center;}
   .ctrl{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;flex-shrink:1;min-width:0;}
   .ctrl input[type=range]{width:100%;min-width:50px;max-width:120px;flex:1;accent-color:var(--amber);}
   .ctrl .val{color:var(--ink);font-variant-numeric:tabular-nums;min-width:28px;text-align:right;}
@@ -373,7 +376,6 @@
 
   body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:7px;}
   body.perf .perf-plk .perf-plkbtn{flex:1 1 0;font-size:12px;padding:11px 3px;min-height:46px;letter-spacing:.04em;}
-  body.perf .perf-plk .perf-plk-label{flex:0 0 auto;font-size:10px;letter-spacing:.2em;color:var(--dim);writing-mode:vertical-rl;transform:rotate(180deg);}
   body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
   body.perf #viewPads.split>.msbar{display:none;}   /* MUTE/SOLOはトランスポート行へ移設予定→perfでは一旦非表示 */
   body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
@@ -774,14 +776,14 @@
   .rec-overlay::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.5);}   /* 背面を覆う＝重なりの見切れ防止 */
   /* 一時トースト：Loaded/Sampled/エラー等を数秒だけ画面上部に表示（常駐しない） */
   .toast{position:fixed;left:50%;top:84px;transform:translateX(-50%) translateY(-6px);
-    background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+    background:linear-gradient(180deg,var(--panel),var(--modal-deep));border:1px solid var(--edge);
     border-radius:10px;padding:9px 14px;color:var(--ink);font-size:11px;letter-spacing:.06em;
     max-width:min(88vw,420px);white-space:normal;line-height:1.5;text-align:center;
     opacity:0;pointer-events:none;z-index:9992;box-shadow:0 14px 40px rgba(0,0,0,.55);
     transition:opacity .18s,transform .18s;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .rec-panel{position:relative;display:flex;flex-direction:column;gap:12px;align-items:stretch;
-    background:linear-gradient(180deg,var(--panel),#161a1f);border:1px solid var(--edge);
+    background:linear-gradient(180deg,var(--panel),var(--modal-deep));border:1px solid var(--edge);
     border-radius:12px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.6);min-width:240px;max-width:90vw;}
   .rec-target{font-size:11px;letter-spacing:.06em;color:var(--ink);text-align:center;}
   .rec-target:empty{display:none;}
@@ -798,17 +800,18 @@
   .transport .t.rec-live{animation:blink .9s ease-in-out infinite;color:var(--red);border-color:var(--red);}   /* 録音中＝●が点滅 */
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
   .knob{display:flex;flex-direction:column;gap:5px;}
+  .lat-row{margin-top:10px;}
   .knob label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.16em;display:flex;justify-content:space-between;gap:8px;}
   .knob label .v{color:var(--ink);font-variant-numeric:tabular-nums;}
   .knob input[type=range]{width:100%;accent-color:var(--amber);}
   .knob input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
   .ctrl input[type=range]:focus{box-shadow:0 0 0 2px var(--amber);border-radius:3px;outline:none;}
-  .seg{display:flex;gap:0;background:#0d1013;border:1px solid var(--line);border-radius:6px;padding:3px;width:fit-content;}
-  .seg button{background:transparent;color:var(--dim);border:none;border-radius:4px;
+  .seg{display:flex;gap:0;background:var(--well);border:1px solid var(--line);border-radius:6px;padding:3px;width:fit-content;}
+  .seg button{background:transparent;color:var(--well-ink);opacity:.72;border:none;border-radius:4px;
     padding:6px 14px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.1s;}
-  .seg button.on{background:var(--panel2);color:var(--ink);}
+  .seg button.on{background:var(--panel2);color:var(--ink);opacity:1;}
   .toggle{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em;cursor:pointer;}
-  .toggle .sw{width:38px;height:20px;border-radius:10px;background:#23282f;border:1px solid var(--line);position:relative;transition:.1s;}
+  .toggle .sw{width:38px;height:20px;border-radius:10px;background:var(--well);border:1px solid var(--line);position:relative;transition:.1s;}
   .toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--dim);transition:.12s;}
   .toggle.on .sw{background:var(--amber-dim);}
   .toggle.on .sw::after{left:20px;background:var(--amber);}
@@ -829,14 +832,18 @@
     .unit{padding:8px 10px 10px;border-radius:10px;}
     .brand .logo{font-size:18px;}
     .brand .model{display:none;}
-    .top{padding-bottom:8px;margin-bottom:8px;gap:7px;flex:0 0 auto;}
+    /* スマホ：ロゴは PADS/SEQ の行へ移す（relocateLogo）。見出し行が1段減る＝約35px をパッドへ。ブランドは画面に残る（v0.3.111） */
+    .top .brand{display:none;}
+    .viewdots .logo{flex:0 0 auto;display:flex;align-items:center;font-size:18px;font-weight:700;letter-spacing:.02em;padding:0 10px 0 4px;color:var(--ink);}
+    .viewdots .logo b{color:var(--amber);}
+    .top{padding-bottom:8px;margin-bottom:6px;gap:7px;flex:0 0 auto;}
     button.t{padding:6px 8px;font-size:10px;min-width:0;}
     /* スマホ：transportはロゴと別行＝全幅。5ボタンを均等割りで大きく押しやすく */
     .transport{gap:6px;flex-wrap:nowrap;flex-basis:100%;width:100%;}
     .transport .ctrl{font-size:9px;}
     .transport button.t{flex:1 1 0;min-width:0;font-size:13px;letter-spacing:.02em;padding:0 4px;min-height:50px;white-space:nowrap;overflow:hidden;text-overflow:clip;}
     #bpm{max-width:84px;}
-    .modebar-row{margin:8px 0 8px;gap:12px;}
+    .modebar-row{margin:2px 0 6px;gap:12px;}
     /* スマホ：MENUモーダルの設定行は縦積み・スライダー全幅（横並びだと潰れてラベルとスライダーが重なる） */
     .modal .tempo-row{flex-direction:column;align-items:stretch!important;gap:14px!important;}
     .modal .tempo-row .ctrl{width:100%;justify-content:space-between;}
@@ -870,14 +877,14 @@
     #viewPads>.perf-screen .cl-trk{display:none;}
     #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
     #viewPads>.perf-screen .cl-par{padding:3px 9px;}
-    .strip{padding:9px;}
+    .strip{padding:6px 9px;}
 
     .seg button{padding:5px 10px;font-size:10px;}
     /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
     /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
     /* 低い画面（実機Safariのバー込み 390×664 等）ではパッドの下限56pxが収まらないので、この中だけ縦スクロールを許す。
        普段は溢れないのでスクロールは出ない */
-    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:8px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:6px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
     #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
     /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
@@ -903,9 +910,14 @@
     /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
     #viewPads>.stepstrip{display:none!important;}   /* スマホは下段ステップ非表示（打ち込みはSEQ画面で） */
     /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
-    .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:8px;}
-    /* 下限56px：これより潰すくらいなら縦スクロールさせる（実機Safariの390×664で29pxになっていた） */
-    .pads .pad{aspect-ratio:auto!important;min-height:56px!important;padding:6px!important;}
+    /* 縦の予算（v0.3.111）：窓/strip/下段の余白を gap(6px) に一本化＝ 390×664 で 16 枚が下段の上に収まる（§124） */
+    #viewPads.active>.perf-screen{margin-bottom:0;}
+    #viewPads.active>.strip{margin:0!important;padding-top:6px;padding-bottom:6px;}
+    #viewPads.active>.msbar{margin-top:0;padding-top:2px;}
+    .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:6px;}
+    /* 下限44px（演奏系タップの規則値 §2）：これより潰すくらいなら縦スクロールさせる。
+       56px だと実機Safariの 390×664 で下2行が下段の裏に隠れた（v0.3.111）。ロゴ行の統合と合わせて 664 で16枚が収まる */
+    .pads .pad{aspect-ratio:auto!important;min-height:44px!important;padding:6px!important;}
     /* モバイル：ぼかしグロー(box-shadow blur)とトランジションは毎ステップ再描画が重い→無効化（背景色での点灯は残す） */
     .pad{transition:none!important;}
     .pad.hit,.pad.hit.hit-acc{box-shadow:none!important;}
@@ -914,7 +926,7 @@
     /* === スマホ：3モードはタブを廃止し、スワイプ＋ドットで切替（スペース確保） === */
     .modebar-row .modebar{display:none;}
     .viewdots{display:flex;}
-    .modebar-row{margin:4px 0 8px;}
+    .modebar-row{margin:2px 0 4px;}
 
     /* パッド数字はスマホで控えめに（重なり防止） */
     .pads .pad .stepn{font-size:15px;}
@@ -936,7 +948,7 @@
   }
   @media(max-width:400px){
     body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
-    .unit{padding:10px 8px 12px;}
+    .unit{padding:10px 8px 8px;}
     .brand .logo{font-size:18px;}
     .modebtn{padding:6px 12px;font-size:12px;letter-spacing:.12em;}
     .msbtn{padding:5px 8px;font-size:11px;}
@@ -967,7 +979,7 @@
   /* 合言葉：通るまで TAP TO START は出さない */
   .s-pass{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:18px 0 6px;width:min(320px,80vw);}
   .s-pass input{flex:1 1 160px;min-height:44px;padding:8px 12px;font:inherit;font-size:16px;letter-spacing:.08em;
-    background:#0d1013;color:var(--ink);border:1px solid var(--line);border-radius:6px;outline:none;}
+    background:var(--well);color:var(--well-ink);border:1px solid var(--line);border-radius:6px;outline:none;}
   .s-pass input:focus{border-color:var(--teal);}
   .s-pass .s-enter{min-height:44px;padding:8px 16px;font:inherit;font-size:12px;letter-spacing:.14em;
     background:var(--teal);color:#06201d;border:1px solid var(--teal);border-radius:6px;cursor:pointer;}
@@ -995,7 +1007,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.108</div>
+  <div class="s-ver" id="splashVer">v0.3.112</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1070,6 +1082,7 @@
             <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
               <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
           </div>
+          <div class="knob lat-row"><label>Latency <span class="v" id="vLat">—</span></label></div>
         </div>
         <div class="modal-sec">
           <div class="modal-label">Sound</div>
@@ -1279,7 +1292,6 @@
       <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
       <!-- 下：P-LOCK 5つ均等（GRIDと同じ並び）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
       <div class="perf-plk" id="perfPlk">
-        <span class="perf-plk-label">P-LOCK</span>
         <button class="perf-plkbtn" data-lock="pitch">PITCH</button>
         <button class="perf-plkbtn" data-lock="level">LEVEL</button>
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
@@ -1505,15 +1517,20 @@ comp.release.value = 0.12;    // 120ms（SP的なポンピング感）
 
 // サチュレーション（ソフトクリップ）
 const saturator = AC.createWaveShaper();
+// 入力域は ±2（手前の satIn=0.5 で半分にして入れる）。|x|≤1 の写像は従来と同一、1〜2 は tanh で滑らかに（最大 +0.8dB）。
+// WaveShaper は定義域の外を端の値に張り付ける＝硬いクリップになるため、先読みなしコンプ（v0.3.110）が通す
+// 頭の一発（実測 +3dB 程度）を硬く切らないよう定義域を広げた
 function makeSatCurve(drive){
-  const n=1024, curve=new Float32Array(n);
+  const n=2048, curve=new Float32Array(n);
   for(let i=0;i<n;i++){
-    const x=i*2/n-1;
+    const x=(i*2/n-1)*2;   // -2..+2
     // tanh系ソフトクリップ。driveが高いほど歪む
     curve[i]=Math.tanh(x*drive)/Math.tanh(drive);
   }
   return curve;
 }
+const satIn = AC.createGain(); satIn.gain.value = 0.5;   // 定義域 ±2 に合わせる（音は変えない）
+satIn.connect(saturator);
 saturator.curve = makeSatCurve(1.5);
 saturator.oversample = "2x"; // エイリアシング低減
 
@@ -1524,7 +1541,7 @@ makeupGain.gain.value = 1.2;  // 圧縮分の音量補償
 // ===== テープ質感（固定・常時ON）=====
 // ワウフラッター：遅延線をLFOで揺らしてピッチを微妙に揺らす
 const tapeDelay = AC.createDelay(0.05);
-tapeDelay.delayTime.value = 0.003;  // ベース3ms
+tapeDelay.delayTime.value = 0.001;  // ベース1ms（v0.3.110: 3→1ms。揺れ幅の合計0.48msより大きければ足りる＝固定遅延は音に出ないので最小に）
 
 // Wow（遅い揺れ 〜0.7Hz ±0.4ms）
 const wowLfo = AC.createOscillator();
@@ -1594,13 +1611,68 @@ bassDcBlock.connect(bassGain);
 bassGain.connect(tapeDelay);  // テープ経由で出力
 
 // 接続（テープ質感込み）。SP-DAC段(spOut)以降がアウトボード
-// comp経路: spOut → comp → saturator → makeupGain → tapeDelay → destination
+// comp経路: spOut → comp → satIn(0.5) → saturator → makeupGain → tapeDelay → destination
 // bypass経路: spOut → bypassGain → tapeDelay → destination
 // テープは常時ON（どちらの経路でもかかる）
 spOut.connect(comp);
-comp.connect(saturator);
+comp.connect(satIn);
 saturator.connect(makeupGain);
 makeupGain.connect(tapeDelay);
+// ===== 先読みなしコンプ（AudioWorklet 'sp-comp'、v0.3.110）=====
+// ブラウザ標準の DynamicsCompressorNode は仕様で約6msの先読み遅延を持つ（実測 264 frames @44.1k）。
+// 手叩き→発音の予算10msのうち6msをこれが食っていた（さらにライブ叩きの一発目は並列ドライが立ち上がる前＝素通しの6ms）。
+// 先読みなし（＝アナログ機と同じ。頭の一発は通す＝SP的なパンチ）で、同じ静特性（threshold/knee/ratio）と
+// 同じ自動メイクアップ（Web Audio仕様の (1/fullRangeGain)^0.6）を再現。ロード成功時に spOut→comp→satIn を
+// spOut→compNode→satIn に差し替え。アタックは 2ms（先読み6ms＋8msの標準ノードと実素材のRMSが ±0.5dB で一致する値。
+// 8ms だと頭が素通りして +2.3dB 大きくなった）。非対応/失敗は標準ノードのまま（その場合は liveCompDuck の並列ドライが効く）。
+const SP_COMP_CODE = `
+class SPComp extends AudioWorkletProcessor{
+  static get parameterDescriptors(){ return [
+    {name:'threshold',defaultValue:-12,  minValue:-100,  maxValue:0,  automationRate:'k-rate'},
+    {name:'knee',     defaultValue:12,   minValue:0,     maxValue:40, automationRate:'k-rate'},
+    {name:'ratio',    defaultValue:4,    minValue:1,     maxValue:20, automationRate:'k-rate'},
+    {name:'attack',   defaultValue:0.002,minValue:0.0001,maxValue:1,  automationRate:'k-rate'},
+    {name:'release',  defaultValue:0.12, minValue:0.001, maxValue:1,  automationRate:'k-rate'}]; }
+  constructor(){ super(); this.env=0; }
+  static curve(x,th,kn,ra){   // Web Audio仕様のゲインコンピュータ（dB→dB、ソフトニー）
+    const lo=th-kn/2; if(x<lo) return x;
+    if(x<=th+kn/2){ const d=x-lo; return x+(1/ra-1)*d*d/(2*kn); }
+    return th+(x-th)/ra;
+  }
+  process(inputs,outputs,p){
+    const inp=inputs[0], out=outputs[0]; if(!out||!out.length) return true;
+    const nf=out[0].length, nc=out.length;
+    const th=p.threshold[0], kn=Math.max(1e-3,p.knee[0]), ra=p.ratio[0];
+    const aA=1-Math.exp(-1/(p.attack[0]*sampleRate)), aR=1-Math.exp(-1/(p.release[0]*sampleRate));
+    const makeup=Math.pow(1/Math.pow(10,SPComp.curve(0,th,kn,ra)/20),0.6);   // 仕様どおりの自動メイクアップ
+    let env=this.env;
+    for(let i=0;i<nf;i++){
+      let pk=0; for(let c=0;c<nc;c++){ const s=inp&&(inp[c]||inp[0]); const a=s?Math.abs(s[i]):0; if(a>pk) pk=a; }
+      env+=(pk-env)*(pk>env?aA:aR);                                   // ピーク検出（ステレオリンク）
+      const xdb=20*Math.log10(env>1e-5?env:1e-5);
+      const g=Math.pow(10,(SPComp.curve(xdb,th,kn,ra)-xdb)/20)*makeup;
+      for(let c=0;c<nc;c++){ const s=inp&&(inp[c]||inp[0]); out[c][i]=s?s[i]*g:0; }
+    }
+    this.env=env; return true;
+  }
+}
+registerProcessor('sp-comp',SPComp);`;
+let compNode=null;   // ロード成功時のみ。threshold の操作は compThr() 経由で両実装に効く
+function compThr(){ return compNode ? compNode.parameters.get('threshold') : comp.threshold; }
+(function loadSpComp(){
+  if(!(AC.audioWorklet && AC.audioWorklet.addModule)) return;
+  const url=URL.createObjectURL(new Blob([SP_COMP_CODE],{type:"application/javascript"}));
+  AC.audioWorklet.addModule(url).then(()=>{
+    try{
+      const n=new AudioWorkletNode(AC,'sp-comp',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
+      n.parameters.get('threshold').value = comp.threshold.value;   // 現在の状態（COMP OFF=0dB）を引き継ぐ
+      spOut.disconnect(comp); comp.disconnect(satIn);
+      spOut.connect(n); n.connect(satIn);
+      compNode=n;
+    }catch(e){ /* 失敗時は標準コンプのまま */ }
+    URL.revokeObjectURL(url);
+  }).catch(()=>{ URL.revokeObjectURL(url); });
+})();
 // 最終段ソフトクリッパ：|x|<0.7は完全透過（傾き1）、以降tanhで±0.93に漸近。
 // 4系統(テープ/エコー/リバーブ)の生加算がブラウザの無慈悲なデジタルクリップに当たるのを防ぎ、
 // フルパターン＋アクセントでも「テープが潰れる」方向に歪む＝安心して音量を突っ込める
@@ -1648,11 +1720,11 @@ let _liveDuck=false, _liveDuckT=null;
 function _rampCompRouting(on, tc){
   const t=AC.currentTime;
   if(on){
-    comp.threshold.setTargetAtTime(compThreshold, t, tc);
+    compThr().setTargetAtTime(compThreshold, t, tc);
     makeupGain.gain.setTargetAtTime(compMakeup, t, tc);
     bypassGain.gain.setTargetAtTime(0, t, tc);
   } else {
-    comp.threshold.setTargetAtTime(0, t, tc);      // 閾値0dB＝実質かからない
+    compThr().setTargetAtTime(0, t, tc);      // 閾値0dB＝実質かからない
     makeupGain.gain.setTargetAtTime(0, t, tc);
     bypassGain.gain.setTargetAtTime(1.0, t, tc);   // ON時の平均メイクアップ相当＝A/B音量差を縮める
   }
@@ -1663,10 +1735,11 @@ function _rampCompRouting(on, tc){
 const LIVE_DRY=0.35;   // ドライ混合量（0=無効, 1=全バイパス）。レベル差は実測±1dB程度に収まる
 function liveCompDuck(){
   if(!compOn) return;                                   // ユーザーがCOMP OFFなら関与しない
+  if(compNode) return;                                  // 先読みなしコンプ（worklet）なら遅延ゼロ＝並列ドライは不要（v0.3.110）
   if(!_liveDuck){
     _liveDuck=true;
     const t=AC.currentTime;
-    comp.threshold.setTargetAtTime(compThreshold, t, 0.02);        // 閾値は動かさない＝コンプの効き自体は保つ
+    compThr().setTargetAtTime(compThreshold, t, 0.02);        // 閾値は動かさない＝コンプの効き自体は保つ
     makeupGain.gain.setTargetAtTime(compMakeup*(1-LIVE_DRY), t, 0.025);
     bypassGain.gain.setTargetAtTime(LIVE_DRY, t, 0.025);           // 25ms＝段差を感じない速さ
   }
@@ -1677,13 +1750,13 @@ function setCompBypass(on){
   compOn = on;
   clearTimeout(_liveDuckT); _liveDuck=false;   // 手動切替はライブ自動バイパスの予約より優先
   const t=AC.currentTime;
-  comp.threshold.cancelScheduledValues(t); makeupGain.gain.cancelScheduledValues(t); bypassGain.gain.cancelScheduledValues(t);
+  compThr().cancelScheduledValues(t); makeupGain.gain.cancelScheduledValues(t); bypassGain.gain.cancelScheduledValues(t);
   if(on){
-    comp.threshold.setValueAtTime(compThreshold, t);
+    compThr().setValueAtTime(compThreshold, t);
     makeupGain.gain.setValueAtTime(compMakeup, t);
     bypassGain.gain.setValueAtTime(0, t);
   } else {
-    comp.threshold.setValueAtTime(0, t);
+    compThr().setValueAtTime(0, t);
     makeupGain.gain.setValueAtTime(0, t);
     bypassGain.gain.setValueAtTime(1.0, t);
   }
@@ -3518,6 +3591,7 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
   let lastFocus=null;
   function open(){
     lastFocus=document.activeElement;
+    if(typeof paintLatency==="function") paintLatency();
     modal.style.display="flex";
     closeBtn.focus();                       // フォーカスをダイアログ内へ
     document.addEventListener("keydown",onKey);
@@ -4396,12 +4470,19 @@ function lockViewHeight(){
 ["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, lockViewHeight));
 // スマホ：body の高さを実際の可視高さ（innerHeight）で追従させる。100dvh だけだと Safari のバー収納に
 // 追従しない端末があり、本体の下に黒い余りが出て、中身が縦スクロールで欠けていた（v0.3.105）
+// v0.3.112：実機 iPhone の全画面化直後に visualViewport の高さが古い値のまま固まり、本体の下に黒い余り（約50〜90px）が
+// 出てパッドの下段が隠れた（§125）。高さは visualViewport / innerHeight / clientHeight の最大値（キーボードで縮んだ
+// visualViewport には引きずられない）にし、全画面切替・可視化の後は数回に分けて測り直す（切替アニメの後に確定する）
 function fitMobileHeight(){
   if(window.innerWidth>600){ document.body.style.height=""; return; }
-  const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+  const h=Math.max((window.visualViewport&&window.visualViewport.height)||0, window.innerHeight||0, document.documentElement.clientHeight||0);
   if(h>200) document.body.style.height=Math.round(h)+"px";
 }
-["resize","orientationchange","load"].forEach(ev=>window.addEventListener(ev, fitMobileHeight));
+function refitMobileHeight(){ fitMobileHeight(); [150,600,1500].forEach(ms=>setTimeout(fitMobileHeight, ms)); }
+["resize","orientationchange","load","fullscreenchange","webkitfullscreenchange","pageshow"].forEach(ev=>window.addEventListener(ev, refitMobileHeight));
+document.addEventListener("fullscreenchange", refitMobileHeight);
+document.addEventListener("webkitfullscreenchange", refitMobileHeight);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refitMobileHeight(); });
 if(window.visualViewport) window.visualViewport.addEventListener("resize", fitMobileHeight);
 setTimeout(fitMobileHeight, 400);
 window.addEventListener("load", lockViewHeight);
@@ -4424,6 +4505,18 @@ function relocateMuteSolo(){
 window.addEventListener("load", relocateMuteSolo);
 window.addEventListener("resize", relocateMuteSolo);
 relocateMuteSolo();
+// スマホ：ロゴを PADS/SEQ の行（#viewDots）の左へ親替え＝見出し行を1段減らしてパッドに高さを渡す。
+// ブランドは画面に残す（スクショで訴求できる）。PCでは .brand に戻す。同一DOMノードの移動だけ（v0.3.111）
+function relocateLogo(){
+  const logo=document.querySelector(".logo"), brand=document.querySelector(".top .brand"), dots=document.getElementById("viewDots");
+  if(!logo||!brand||!dots) return;
+  const mobile=window.innerWidth<=767;
+  if(mobile){ if(logo.parentNode!==dots) dots.insertBefore(logo, dots.firstChild); }
+  else { if(logo.parentNode!==brand) brand.insertBefore(logo, brand.firstChild); }
+}
+window.addEventListener("load", relocateLogo);
+window.addEventListener("resize", relocateLogo);
+relocateLogo();
 
 // ===== Performance Mode：4×4 × 横向き × PC/iPad幅(≥768) で発動。縦向き(4×4)は回転オーバーレイ =====
 function landscapeMode(){ return !(window.matchMedia && window.matchMedia("(orientation:landscape)").matches===false); }
@@ -4613,6 +4706,17 @@ function paintPatBar(){
 let masterVuLevel=0;
 
 // --- VUトリガー：発音時にマスターVUレベルを設定 ---
+// メニューの Latency 表示：内部（音声経路の固定遅延）＋出力（OS/機器）。Bluetooth等の大きな出力遅延はここで分かる（v0.3.110）
+function chainLatencyMs(){
+  const q=128/AC.sampleRate;                                   // レンダ量子（発音予約→開始の最大待ち）
+  const cmp=compNode?0:0.006;                                  // 標準コンプの先読み（worklet版はゼロ）
+  return (q + tapeDelay.delayTime.value + cmp)*1000;
+}
+function paintLatency(){
+  const el=document.getElementById("vLat"); if(!el) return;
+  const out=(AC.outputLatency||0)*1000, inn=chainLatencyMs();
+  el.textContent=Math.round(inn)+" ms 内部 / "+Math.round(out)+" ms 出力"+(out>60?"（Bluetooth?）":"");
+}
 function vuHit(padIdx, accent){
   const g=dbToGain(tracks[padIdx].vol + (accent?5:0));
   masterVuLevel=Math.min(1, masterVuLevel + g*0.4);
@@ -4655,7 +4759,7 @@ document.getElementById("kComp").addEventListener("pointerdown",()=>pushUndo());
 document.getElementById("kComp").addEventListener("input",function(){
   compThreshold=+this.value;
   document.getElementById("vComp").textContent=this.value;
-  if(compOn) comp.threshold.value=compThreshold;
+  if(compOn) compThr().value=compThreshold;
   compMakeup = 1 + Math.abs(compThreshold)/30*0.8;
   if(compOn) makeupGain.gain.value=compMakeup;
 });
@@ -5231,7 +5335,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.108";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.112";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
