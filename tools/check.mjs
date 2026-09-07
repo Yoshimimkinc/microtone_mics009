@@ -364,7 +364,53 @@ async function passGate(){
   eq(`合言葉 0 errors`, errs, []);
   await ctx.close();
 }
+// §13 レイテンシ予算（v0.3.110）：手叩き→発音の内部固定遅延と、コンプ差し替えの音量整合
+async function latency(){
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const loaded=await p.waitForFunction(()=>typeof compNode!=='undefined' && !!compNode, null, {timeout:8000}).then(()=>true).catch(()=>false);
+  ok_(`レイテンシ 先読みなしコンプ(worklet)がロードされる`, loaded, 'compNode が null');
+  const r=await p.evaluate(async()=>{
+    const out={tape:tapeDelay.delayTime.value, chain:chainLatencyMs()};
+    const sr=AC.sampleRate;
+    const mk=async(len)=>{ const o=new OfflineAudioContext(2,len,sr); await o.audioWorklet.addModule(URL.createObjectURL(new Blob([SP_COMP_CODE],{type:'application/javascript'}))); return o; };
+    const render=async(sig,build)=>{ const o=await mk(sig.length); const b=o.createBuffer(2,sig.length,sr); b.getChannelData(0).set(sig); b.getChannelData(1).set(sig);
+      const s=o.createBufferSource(); s.buffer=b; const n=build(o); s.connect(n); n.connect(o.destination); s.start(0); return (await o.startRendering()).getChannelData(0); };
+    const native=o=>{ const c=o.createDynamicsCompressor(); c.threshold.value=-12;c.knee.value=12;c.ratio.value=4;c.attack.value=0.008;c.release.value=0.12; return c; };
+    const work=o=>new AudioWorkletNode(o,'sp-comp',{outputChannelCount:[2]});
+    const imp=new Float32Array(1024); imp[0]=1;
+    const first=d=>{ let i=0; while(i<d.length&&Math.abs(d[i])<1e-4) i++; return i; };
+    out.compFrames=first(await render(imp,work)); out.nativeFrames=first(await render(imp,native));
+    // 実素材（ドラムパッド9-12の2小節）で標準コンプとRMSを比べる
+    const bpm=92, step=60/bpm/4, len=Math.floor(sr*step*32), sig=new Float32Array(len);
+    const hit=(ti,st,acc)=>{ const t=tracks[ti]; if(!t.buffer) return; const d=t.buffer.getChannelData(0); const g=Math.pow(10,(t.vol+(acc?3:0))/20);
+      const s0=Math.floor(t.start*d.length), s1=Math.floor(t.end*d.length), at=Math.floor(st*step*sr); for(let i=s0;i<s1&&at+i-s0<len;i++) sig[at+i-s0]+=d[i]*g; };
+    for(let bar=0;bar<2;bar++){ const o=bar*16; hit(8,o,1);hit(8,o+8,0);hit(8,o+10,0); hit(9,o+4,1);hit(9,o+12,1); for(let q=0;q<16;q+=2) hit(10,o+q,q%4===0); hit(11,o+14,0); }
+    const rms=d=>{ let a=0; for(let i=0;i<d.length;i++) a+=d[i]*d[i]; return 10*Math.log10(a/d.length+1e-12); };
+    out.rmsDiff=+(rms(await render(sig,work))-rms(await render(sig,native))).toFixed(2);
+    // キーボード→発音予約のJSコスト（中央値）
+    const os=AudioBufferSourceNode.prototype.start; let ts=0; AudioBufferSourceNode.prototype.start=function(w,...a){ ts=performance.now(); return os.call(this,w,...a); };
+    const js=[]; for(let k=0;k<7;k++){ const t0=performance.now(); window.dispatchEvent(new KeyboardEvent('keydown',{key:'1',code:'Digit1',bubbles:true})); js.push(ts-t0); await new Promise(r=>setTimeout(r,70)); }
+    AudioBufferSourceNode.prototype.start=os;
+    out.jsMedian=+js.sort((a,b)=>a-b)[3].toFixed(2);
+    return out;
+  });
+  ok_(`レイテンシ テープ基底遅延 ≤1.1ms`, r.tape<=0.0011, r.tape);
+  ok_(`レイテンシ 内部固定遅延 <5ms (量子+テープ+コンプ)`, r.chain<5, r.chain);
+  ok_(`レイテンシ コンプ先読み 0 frames（標準は${r.nativeFrames}）`, r.compFrames===0, r.compFrames);
+  ok_(`レイテンシ コンプ差し替えのRMS差 ≤1dB`, Math.abs(r.rmsDiff)<=1, r.rmsDiff+' dB');
+  ok_(`レイテンシ キー→発音予約のJS中央値 <2ms`, r.jsMedian<2, r.jsMedian+' ms');
+  await p.click('#menuBtn'); await p.waitForTimeout(150);
+  const lat=await p.$eval('#vLat',e=>e.textContent);
+  ok_(`レイテンシ メニューに内部/出力の表示`, /\d+ ms 内部 \/ \d+ ms 出力/.test(lat), lat);
+  eq(`レイテンシ 0 errors`, errs, []);
+  console.log(`レイテンシ 内部${r.chain.toFixed(1)}ms コンプ${r.compFrames}f(標準${r.nativeFrames}f) RMS差${r.rmsDiff}dB JS${r.jsMedian}ms  menu: ${lat}`);
+  await ctx.close();
+}
 await passGate();
+await latency();
 const res=[];
 for(const [w,h,m] of [[390,844,true],[390,664,true],[520,900,true],[700,900,false],[960,1040,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));
 await br.close();
