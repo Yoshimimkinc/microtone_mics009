@@ -1007,7 +1007,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.113</div>
+  <div class="s-ver" id="splashVer">v0.3.114</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1089,6 +1089,7 @@
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC</span></label>
             <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP CH FILTER</span></label>
+            <label class="toggle on" id="fatBassToggle"><span class="sw"></span><span>FAT BASS</span></label>
             <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点スナップ</span></label>
           </div>
         </div>
@@ -1532,7 +1533,9 @@ function makeSatCurve(drive){
 const satIn = AC.createGain(); satIn.gain.value = 0.5;   // 定義域 ±2 に合わせる（音は変えない）
 satIn.connect(saturator);
 saturator.curve = makeSatCurve(1.5);
-saturator.oversample = "2x"; // エイリアシング低減
+// oversample "2x" は Chrome の再標本化 FIR で 54 frames（1.2ms）の隠れ遅延が出る（実測 §127）。差は 10kHz 以上で 0.6dB＝
+// 26kHz イメージングを故意に出すこの機材では聞こえない側。手叩きの予算を優先して "none"（v0.3.114）
+saturator.oversample = "none";
 
 // メイクアップゲイン
 const makeupGain = AC.createGain();
@@ -1587,6 +1590,19 @@ hissNode.start();
 
 // ===== 低域倍音エンハンサー（固定・常時ON）=====
 // 低域を分離 → 偶数倍音を足す → 小さく混ぜ戻し = ふっくらした低音
+// ===== FAT BASS（v0.3.114）：「この機材は音が太い」＝低域の量感＋偶数倍音。遅延ゼロ（最小位相 biquad ＋ WaveShaper）=====
+// spOut（DAC出力）直後のローシェルフ +2dB @100Hz。コンプの手前に置く＝低域でコンプが呼吸する（SP的な押し出し）。
+// 実測（ドラム2小節）：30〜90Hz +0.8dB / 90〜200Hz +0.3dB / 中域 −0.2dB / ピーク不変（§127）。メニュー Sound の FAT BASS で A/B。
+const FAT_SHELF_DB = 2, FAT_BASS_MIX = 0.18, THIN_BASS_MIX = 0.12;
+const fatShelf = AC.createBiquadFilter();
+fatShelf.type = "lowshelf"; fatShelf.frequency.value = 100; fatShelf.gain.value = FAT_SHELF_DB;
+spOut.connect(fatShelf);   // 以降のアウトボード（コンプ／バイパス／低域経路）は fatShelf から分岐
+let fatBassOn = true;
+function applyFatBass(on){
+  fatBassOn = on; const t = AC.currentTime;
+  fatShelf.gain.setTargetAtTime(on ? FAT_SHELF_DB : 0, t, 0.02);
+  bassGain.gain.setTargetAtTime(on ? FAT_BASS_MIX : THIN_BASS_MIX, t, 0.02);
+}
 const bassLp = AC.createBiquadFilter();
 bassLp.type = "lowpass"; bassLp.frequency.value = 150; bassLp.Q.value = 0.7;
 // 偶数倍音を生む非対称waveshaper（チューブ的な温かみ）
@@ -1599,12 +1615,12 @@ for(let i = 0; i < 1024; i++){
 bassSat.curve = bsCurve;
 bassSat.oversample = "none";   // サブ低域のみ整形＝エイリアス不可聴。常時稼働なので軽量化
 const bassGain = AC.createGain();
-bassGain.gain.value = 0.12;  // 控えめに混ぜる
+bassGain.gain.value = FAT_BASS_MIX;  // 偶数倍音の混ぜ量（FAT BASS ON=0.18 / OFF=0.12＝v0.3.113までの値）
 // 非対称waveshaper(x+0.35x²)が生むDC/超低域オフセットを除去（25Hz HP＝可聴下、位相影響ほぼ無し）
 const bassDcBlock = AC.createBiquadFilter();
 bassDcBlock.type = "highpass"; bassDcBlock.frequency.value = 25; bassDcBlock.Q.value = 0.707;
 // SP-DAC出力からパラレルに分岐
-spOut.connect(bassLp);
+fatShelf.connect(bassLp);
 bassLp.connect(bassSat);
 bassSat.connect(bassDcBlock);
 bassDcBlock.connect(bassGain);
@@ -1614,7 +1630,7 @@ bassGain.connect(tapeDelay);  // テープ経由で出力
 // comp経路: spOut → comp → satIn(0.5) → saturator → makeupGain → tapeDelay → destination
 // bypass経路: spOut → bypassGain → tapeDelay → destination
 // テープは常時ON（どちらの経路でもかかる）
-spOut.connect(comp);
+fatShelf.connect(comp);
 comp.connect(satIn);
 saturator.connect(makeupGain);
 makeupGain.connect(tapeDelay);
@@ -1666,8 +1682,8 @@ function compThr(){ return compNode ? compNode.parameters.get('threshold') : com
     try{
       const n=new AudioWorkletNode(AC,'sp-comp',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
       n.parameters.get('threshold').value = comp.threshold.value;   // 現在の状態（COMP OFF=0dB）を引き継ぐ
-      spOut.disconnect(comp); comp.disconnect(satIn);
-      spOut.connect(n); n.connect(satIn);
+      fatShelf.disconnect(comp); comp.disconnect(satIn);
+      fatShelf.connect(n); n.connect(satIn);
       compNode=n;
     }catch(e){ /* 失敗時は標準コンプのまま */ }
     URL.revokeObjectURL(url);
@@ -1677,7 +1693,7 @@ function compThr(){ return compNode ? compNode.parameters.get('threshold') : com
 // 4系統(テープ/エコー/リバーブ)の生加算がブラウザの無慈悲なデジタルクリップに当たるのを防ぎ、
 // フルパターン＋アクセントでも「テープが潰れる」方向に歪む＝安心して音量を突っ込める
 const finalClip = AC.createWaveShaper();
-finalClip.oversample = "2x";
+finalClip.oversample = "none";   // "2x" は 64 frames（1.5ms）の隠れ遅延（§127）。|x|<0.7 は素通しなので実害なし
 finalClip.curve = (()=>{ const N=4096, c=new Float32Array(N);
   for(let i=0;i<N;i++){ const x=(i/(N-1))*2-1, a=Math.abs(x);
     c[i]=Math.sign(x)*(a<=0.7 ? a : 0.7+0.3*Math.tanh((a-0.7)/0.3)); }
@@ -1711,7 +1727,7 @@ tapeDelay.connect(finalClip);
 let compOn = true;
 const bypassGain = AC.createGain();
 bypassGain.gain.value = 0;
-spOut.connect(bypassGain);
+fatShelf.connect(bypassGain);
 bypassGain.connect(tapeDelay);  // bypass経路もテープを通す
 
 // ライブ叩き（fromSeq=false）の瞬間はコンプを自動バイパス＝先読み遅延(約6ms)を回避。
@@ -3545,6 +3561,12 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
     if(typeof applySpChFilter==="function") applySpChFilter();
     sampNameEl.textContent = spChFilterOn ? "SP チャンネルフィルター ON（出力ch別の丸み）" : "SP チャンネルフィルター OFF（素通し）";
   });
+  const fat=document.getElementById("fatBassToggle");
+  if(fat) fat.addEventListener("click",()=>{
+    const on=!fat.classList.contains("on"); fat.classList.toggle("on",on);
+    applyFatBass(on);
+    sampNameEl.textContent = on ? "FAT BASS ON（低域 +2dB・倍音 多め）" : "FAT BASS OFF（v0.3.113 までの音）";
+  });
   const mot=document.getElementById("multiOutToggle");
   if(mot) mot.addEventListener("click",()=>{
     if(!multiOut){
@@ -4716,7 +4738,8 @@ let masterVuLevel=0;
 function chainLatencyMs(){
   const q=128/AC.sampleRate;                                   // レンダ量子（発音予約→開始の最大待ち）
   const cmp=compNode?0:0.006;                                  // 標準コンプの先読み（worklet版はゼロ）
-  return (q + tapeDelay.delayTime.value + cmp)*1000;
+  const os=(saturator.oversample==="none"?0:54)+(finalClip.oversample==="none"?0:64);   // WaveShaper 2x の再標本化遅延（実測 frames）
+  return (q + tapeDelay.delayTime.value + cmp + os/AC.sampleRate)*1000;
 }
 function paintLatency(){
   const el=document.getElementById("vLat"); if(!el) return;
@@ -5341,7 +5364,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.113";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.114";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

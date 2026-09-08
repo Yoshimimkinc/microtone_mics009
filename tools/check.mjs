@@ -400,6 +400,20 @@ async function latency(){
     for(let bar=0;bar<2;bar++){ const o=bar*16; hit(8,o,1);hit(8,o+8,0);hit(8,o+10,0); hit(9,o+4,1);hit(9,o+12,1); for(let q=0;q<16;q+=2) hit(10,o+q,q%4===0); hit(11,o+14,0); }
     const rms=d=>{ let a=0; for(let i=0;i<d.length;i++) a+=d[i]*d[i]; return 10*Math.log10(a/d.length+1e-12); };
     out.rmsDiff=+(rms(await render(sig,work))-rms(await render(sig,native))).toFixed(2);
+    // 出力段まるごとの複製（shelf→comp→sat→makeup→tape ＋ 低域経路 → finalClip）：全体の先頭遅延と FAT BASS の低域持ち上げ
+    const chain=async(input,fat)=>{ const o=await mk(input.length); const b=o.createBuffer(2,input.length,sr); b.getChannelData(0).set(input); b.getChannelData(1).set(input);
+      const s=o.createBufferSource(); s.buffer=b; const sh=o.createBiquadFilter(); sh.type='lowshelf'; sh.frequency.value=fatShelf.frequency.value; sh.gain.value=fat?FAT_SHELF_DB:0;
+      const c=work(o), si=o.createGain(); si.gain.value=0.5; const sa=o.createWaveShaper(); sa.curve=saturator.curve; sa.oversample=saturator.oversample; const mkp=o.createGain(); mkp.gain.value=1.2;
+      const tp=o.createDelay(0.05); tp.delayTime.value=tapeDelay.delayTime.value; const lp=o.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=150; lp.Q.value=0.7;
+      const bs=o.createWaveShaper(); bs.curve=bassSat.curve; const dc=o.createBiquadFilter(); dc.type='highpass'; dc.frequency.value=25; const bg=o.createGain(); bg.gain.value=fat?FAT_BASS_MIX:THIN_BASS_MIX;
+      const fc=o.createWaveShaper(); fc.curve=finalClip.curve; fc.oversample=finalClip.oversample;
+      s.connect(sh); sh.connect(c); c.connect(si); si.connect(sa); sa.connect(mkp); mkp.connect(tp); sh.connect(lp); lp.connect(bs); bs.connect(dc); dc.connect(bg); bg.connect(tp); tp.connect(fc); fc.connect(o.destination);
+      s.start(0); return (await o.startRendering()).getChannelData(0); };
+    out.chainFrames=first(await chain(imp,true));
+    const band=async(d,lo,hi)=>{ const o=new OfflineAudioContext(1,d.length,sr); const b=o.createBuffer(1,d.length,sr); b.getChannelData(0).set(d); const s=o.createBufferSource(); s.buffer=b;
+      const h=o.createBiquadFilter(); h.type='highpass'; h.frequency.value=lo; h.Q.value=0.7; const l=o.createBiquadFilter(); l.type='lowpass'; l.frequency.value=hi; l.Q.value=0.7; s.connect(h); h.connect(l); l.connect(o.destination); s.start(0); return rms((await o.startRendering()).getChannelData(0)); };
+    const fatD=await chain(sig,true), thinD=await chain(sig,false);
+    out.subLift=+((await band(fatD,30,90))-(await band(thinD,30,90))).toFixed(2); out.midShift=+((await band(fatD,400,3000))-(await band(thinD,400,3000))).toFixed(2);
     // キーボード→発音予約のJSコスト（中央値）
     const os=AudioBufferSourceNode.prototype.start; let ts=0; AudioBufferSourceNode.prototype.start=function(w,...a){ ts=performance.now(); return os.call(this,w,...a); };
     const js=[]; for(let k=0;k<7;k++){ const t0=performance.now(); window.dispatchEvent(new KeyboardEvent('keydown',{key:'1',code:'Digit1',bubbles:true})); js.push(ts-t0); await new Promise(r=>setTimeout(r,70)); }
@@ -411,12 +425,15 @@ async function latency(){
   ok_(`レイテンシ 内部固定遅延 <5ms (量子+テープ+コンプ)`, r.chain<5, r.chain);
   ok_(`レイテンシ コンプ先読み 0 frames（標準は${r.nativeFrames}）`, r.compFrames===0, r.compFrames);
   ok_(`レイテンシ コンプ差し替えのRMS差 ≤1dB`, Math.abs(r.rmsDiff)<=1, r.rmsDiff+' dB');
+  ok_(`レイテンシ 出力段まるごとの先頭遅延 ≤ テープ1ms+1（WaveShaper 2x の隠れ遅延なし）`, r.chainFrames<=Math.ceil(0.001*44100)+1, r.chainFrames+' frames');
+  ok_(`FAT BASS 30〜90Hz が +0.5〜+1.5dB 持ち上がる`, r.subLift>=0.5 && r.subLift<=1.5, r.subLift+' dB');
+  ok_(`FAT BASS 中域はほぼ不変（|Δ|≤0.5dB）`, Math.abs(r.midShift)<=0.5, r.midShift+' dB');
   ok_(`レイテンシ キー→発音予約のJS中央値 <2ms`, r.jsMedian<2, r.jsMedian+' ms');
   await p.click('#menuBtn'); await p.waitForTimeout(150);
   const lat=await p.$eval('#vLat',e=>e.textContent);
   ok_(`レイテンシ メニューに内部/出力の表示`, /\d+ ms 内部 \/ \d+ ms 出力/.test(lat), lat);
   eq(`レイテンシ 0 errors`, errs, []);
-  console.log(`レイテンシ 内部${r.chain.toFixed(1)}ms コンプ${r.compFrames}f(標準${r.nativeFrames}f) RMS差${r.rmsDiff}dB JS${r.jsMedian}ms  menu: ${lat}`);
+  console.log(`レイテンシ 内部${r.chain.toFixed(1)}ms コンプ${r.compFrames}f(標準${r.nativeFrames}f) 出力段${r.chainFrames}f RMS差${r.rmsDiff}dB FAT sub+${r.subLift}dB mid${r.midShift}dB JS${r.jsMedian}ms  menu: ${lat}`);
   await ctx.close();
 }
 await passGate();
