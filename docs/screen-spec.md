@@ -1593,3 +1593,12 @@ WaveShaper の `oversample:"2x"`（Chrome の再標本化 FIR）がサチュレ�
 機材では聞こえない側）なので、両方 **"none"** にした。内部遅延は本当に 3.9ms になり、§13 に「出力段まるごとの先頭遅延 ≤ 45 frames」を追加。
 教訓：**遅延は部品ごとでなく、経路まるごとにインパルスを通して測る**。
 
+## 128. iPhone で保存した .mics が読み込めない（v0.3.115）
+原因：Load の `<input type="file" accept=".mics,.json">`。iOS は accept を「選べる種別の制限」として扱い、
+`.mics` という拡張子を UTI に変換できないので、Files の中で .mics が**灰色（選択不可）**になる（.json だけ選べる）。
+保存側（共有シート → Files）は問題なく .mics で置かれる。
+
+直し方：iOS（`IS_IOS`）では accept 属性を外して何でも選べるようにする。中身は既存の JSON 検証（version / tracks）で弾く。
+他の環境では従来どおり .mics/.json で絞る。検査：`check.mjs` §14（iPhone UA で accept なし／他ではあり／壊れたファイルは弾く／正しい .mics は読める）。
+教訓：**iOS の accept は「ヒント」ではなく「制限」**。独自拡張子には使わない。
+

@@ -436,7 +436,27 @@ async function latency(){
   console.log(`レイテンシ 内部${r.chain.toFixed(1)}ms コンプ${r.compFrames}f(標準${r.nativeFrames}f) 出力段${r.chainFrames}f RMS差${r.rmsDiff}dB FAT sub+${r.subLift}dB mid${r.midShift}dB JS${r.jsMedian}ms  menu: ${lat}`);
   await ctx.close();
 }
+// §14 iOS：.mics の読み込み（v0.3.115）。iPhone の UA では projFile の accept 制限が外れる（.mics が Files で灰色になる対策）。他では残る
+async function iosLoad(){
+  for(const [ua,expectAccept] of [["Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", false],[null, true]]){
+    const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,...(ua?{userAgent:ua}:{})}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await p.waitForFunction(()=>typeof tracks!=='undefined' && tracks[0] && tracks[0].buffer, null, {timeout:20000});
+    const acc=await p.$eval('#projFile',e=>e.getAttribute('accept'));
+    ok_(`iOS読込 ${ua?'iPhone UA では accept 制限なし':'他では accept 制限あり'}`, expectAccept ? (acc||'').includes('.mics') : acc===null, JSON.stringify(acc));
+    // 中身の検証は残る：壊れたファイルは弾き、正しい .mics は読める
+    const r=await p.evaluate(async()=>{ const inp=document.getElementById('projFile'); const fire=f=>{ const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); };
+      fire(new File(['not json'],'broken.mics')); await new Promise(r=>setTimeout(r,300)); const bad=sampNameEl.textContent;
+      const proj=buildProject(); proj.bpm=123.5; fire(new File([JSON.stringify(proj)],'x.mics')); await new Promise(r=>setTimeout(r,800)); return {bad, bpm:bpmVal, msg:sampNameEl.textContent}; });
+    ok_(`iOS読込 壊れたファイルは弾く`, /FAILED/.test(r.bad), r.bad);
+    ok_(`iOS読込 正しい .mics は読める`, r.bpm===123.5 && /LOADED/.test(r.msg), JSON.stringify(r));
+    eq(`iOS読込 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 await passGate();
+await iosLoad();
 await latency();
 const res=[];
 for(const [w,h,m] of [[390,844,true],[390,664,true],[520,900,true],[700,900,false],[960,1040,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));
