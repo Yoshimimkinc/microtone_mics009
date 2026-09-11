@@ -29,6 +29,12 @@ const APP_VERSION = "__APP_VERSION__";   // 軽微な修正ごとに +0.0.1（ve
   const verGt=(a,b)=>{ const pa=String(a).split('.').map(n=>parseInt(n,10)||0), pb=String(b).split('.').map(n=>parseInt(n,10)||0);
     for(let i=0;i<3;i++){ const x=pa[i]||0,y=pb[i]||0; if(x!==y) return x>y; } return false; };
   // 同じ場所のversion.jsonを取得して比較（file://やオフラインは黙って無視）。サーバ側が"本当に新しい"時だけ強調
+  // プレビューで開いているときは枝名を出す＝本番と取り違えない（v0.3.118）
+  try{
+    const pv=(typeof previewName==="function") ? previewName() : null;
+    const vEl=document.getElementById("splashVer");
+    if(pv && vEl){ const b=document.createElement("div"); b.className="s-preview"; b.textContent="PREVIEW · "+pv; vEl.insertAdjacentElement("afterend", b); }
+  }catch(e){}
   fetch("version.json?ts="+Date.now(),{cache:"no-store"})
     .then(r=>r.ok?r.json():null)
     .then(d=>{

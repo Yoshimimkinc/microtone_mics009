@@ -19,6 +19,9 @@
   #splash .s-logo b{color:var(--amber);font-weight:800;}
   #splash .s-model{font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;}
   #splash .s-ver{font-size:10px;letter-spacing:.2em;color:var(--dim);margin-top:3px;}
+  /* プレビュー表示（/preview/<枝名>/ で開いたときだけJSが挿す）。本番には出ない */
+  #splash .s-preview{margin-top:6px;padding:3px 10px;border:1px solid #ff9f43;border-radius:999px;
+    font-size:10px;letter-spacing:.16em;color:#ff9f43;}
   #splash .s-update{margin-top:16px;font-size:11px;letter-spacing:.12em;color:#fff;
     background:#5a5550;border:none;border-radius:6px;padding:9px 15px;cursor:pointer;}
   /* 新バージョン検知時だけ目立たせる（明るい赤橙＋点滅＋グロー） */
