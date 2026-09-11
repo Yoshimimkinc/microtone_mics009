@@ -463,8 +463,28 @@ async function iosLoad(){
     await ctx.close();
   }
 }
+// §15 プレビュー分離（v0.3.118）：/preview/<枝>/ で開いた時は自動保存の保存先が本番と別になる
+async function previewIsolated(){
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await p.waitForFunction(()=>typeof autosaveDbName==='function' && typeof previewName==='function', null, {timeout:20000});
+  const r=await p.evaluate(()=>({
+    root: autosaveDbName('/microtone_mics009/mics-609bc14b.html'),
+    prev: autosaveDbName('/microtone_mics009/preview/claude-x/mics-609bc14b.html'),
+    live: AUTOSAVE.db,
+    name: previewName('/a/preview/foo-bar/x.html'),
+    none: previewName('/microtone_mics009/mics-609bc14b.html')}));
+  ok_(`プレビュー分離 本番は mics009`, r.root==='mics009', r.root);
+  ok_(`プレビュー分離 枝ごとに別のDB`, r.prev==='mics009-preview-claude-x', r.prev);
+  ok_(`プレビュー分離 いま開いているのは本番扱い`, r.live==='mics009', r.live);
+  ok_(`プレビュー分離 枝名を取り出せる`, r.name==='foo-bar' && r.none===null, JSON.stringify([r.name,r.none]));
+  eq(`プレビュー分離 0 errors`, errs, []);
+  await ctx.close();
+}
 await passGate();
 await iosLoad();
+await previewIsolated();
 await latency();
 const res=[];
 for(const [w,h,m] of [[390,844,true],[390,664,true],[520,900,true],[700,900,false],[960,1040,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));

@@ -1,6 +1,12 @@
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
-const AUTOSAVE={db:"mics009",store:"session",key:"autosave"};
+// 本番と同じ origin にプレビュー（/preview/<枝名>/）が並ぶ＝IndexedDB も共用になる。
+// そのままだとプレビューで触った内容が本番のセッションを上書きする（RESET も本番に効いてしまう）。
+// 保存先を枝ごとに分けて、プレビューを「触っても本番が汚れない砂場」にする（v0.3.118）。
+// 合言葉（localStorage）は共用のままでよい＝プレビューで入り直さずに済む。
+function previewName(p){ const m=String(p==null?location.pathname:p).match(/\/preview\/([^/]+)\//); return m?m[1]:null; }
+function autosaveDbName(p){ const n=previewName(p); return n?("mics009-preview-"+n):"mics009"; }
+const AUTOSAVE={db:autosaveDbName(),store:"session",key:"autosave"};
 function idb(){ return new Promise((res,rej)=>{ const q=indexedDB.open(AUTOSAVE.db,1);
   q.onupgradeneeded=()=>{ const d=q.result; if(!d.objectStoreNames.contains(AUTOSAVE.store)) d.createObjectStore(AUTOSAVE.store); };
   q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
