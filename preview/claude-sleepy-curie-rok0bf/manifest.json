@@ -1,0 +1,11 @@
+{
+  "name": "microtone MICS009",
+  "short_name": "microtone",
+  "description": "Browser-based 16-pad sampler / sequencer",
+  "start_url": "mics-609bc14b.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#121417",
+  "theme_color": "#121417"
+}
