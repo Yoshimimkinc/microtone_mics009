@@ -967,6 +967,9 @@
   #splash .s-logo b{color:var(--amber);font-weight:800;}
   #splash .s-model{font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;}
   #splash .s-ver{font-size:10px;letter-spacing:.2em;color:var(--dim);margin-top:3px;}
+  /* プレビュー表示（/preview/<枝名>/ で開いたときだけJSが挿す）。本番には出ない */
+  #splash .s-preview{margin-top:6px;padding:3px 10px;border:1px solid #ff9f43;border-radius:999px;
+    font-size:10px;letter-spacing:.16em;color:#ff9f43;}
   #splash .s-update{margin-top:16px;font-size:11px;letter-spacing:.12em;color:#fff;
     background:#5a5550;border:none;border-radius:6px;padding:9px 15px;cursor:pointer;}
   /* 新バージョン検知時だけ目立たせる（明るい赤橙＋点滅＋グロー） */
@@ -1007,7 +1010,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.117</div>
+  <div class="s-ver" id="splashVer">v0.3.118</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4353,7 +4356,13 @@ async function bakePhrase(){
 }
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
-const AUTOSAVE={db:"mics009",store:"session",key:"autosave"};
+// 本番と同じ origin にプレビュー（/preview/<枝名>/）が並ぶ＝IndexedDB も共用になる。
+// そのままだとプレビューで触った内容が本番のセッションを上書きする（RESET も本番に効いてしまう）。
+// 保存先を枝ごとに分けて、プレビューを「触っても本番が汚れない砂場」にする（v0.3.118）。
+// 合言葉（localStorage）は共用のままでよい＝プレビューで入り直さずに済む。
+function previewName(p){ const m=String(p==null?location.pathname:p).match(/\/preview\/([^/]+)\//); return m?m[1]:null; }
+function autosaveDbName(p){ const n=previewName(p); return n?("mics009-preview-"+n):"mics009"; }
+const AUTOSAVE={db:autosaveDbName(),store:"session",key:"autosave"};
 function idb(){ return new Promise((res,rej)=>{ const q=indexedDB.open(AUTOSAVE.db,1);
   q.onupgradeneeded=()=>{ const d=q.result; if(!d.objectStoreNames.contains(AUTOSAVE.store)) d.createObjectStore(AUTOSAVE.store); };
   q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
@@ -5367,7 +5376,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.117";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.118";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
@@ -5381,6 +5390,12 @@ const APP_VERSION = "0.3.117";   // 軽微な修正ごとに +0.0.1（version.js
   const verGt=(a,b)=>{ const pa=String(a).split('.').map(n=>parseInt(n,10)||0), pb=String(b).split('.').map(n=>parseInt(n,10)||0);
     for(let i=0;i<3;i++){ const x=pa[i]||0,y=pb[i]||0; if(x!==y) return x>y; } return false; };
   // 同じ場所のversion.jsonを取得して比較（file://やオフラインは黙って無視）。サーバ側が"本当に新しい"時だけ強調
+  // プレビューで開いているときは枝名を出す＝本番と取り違えない（v0.3.118）
+  try{
+    const pv=(typeof previewName==="function") ? previewName() : null;
+    const vEl=document.getElementById("splashVer");
+    if(pv && vEl){ const b=document.createElement("div"); b.className="s-preview"; b.textContent="PREVIEW · "+pv; vEl.insertAdjacentElement("afterend", b); }
+  }catch(e){}
   fetch("version.json?ts="+Date.now(),{cache:"no-store"})
     .then(r=>r.ok?r.json():null)
     .then(d=>{
