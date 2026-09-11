@@ -36,17 +36,23 @@ node tools/build.mjs --check   # 現物と src が一致しているか（関門
 
 1. `src/` を直す → `node tools/build.mjs`
 2. `node tools/gate.mjs`（手元の関門。`.githooks/pre-push` が push 時に自動で回す）
-3. ブランチに push → **GitHub Actions が2本走る**
+3. ブランチに push → **GitHub Actions が走る**
    - `gate` … 関門をもう一度回す。**PR が赤なら merge しない**。検査スクショは Artifacts に残る
    - `pages` … `/preview/<ブランチ名>/` に配置。**スマホで触って確かめてから main に出す**
-4. 確認できたら PR → merge → main が `/`（本番URL）に出る
+4. 確認できたら PR → merge → main が `/`（本番URL）に出て、`release` がタグを打つ
+
+### CI と手元を食い違わせない
+検査に使う版は CI で固定してある（`playwright@1.56.1` / `typescript@5`）。
+**ツールの中に絶対パスや「この環境なら在る」前提を書かない**（v0.3.117 で実際に2件踏んだ。§130）。
 
 プレビュー一覧：`<Pagesのアドレス>/preview/` （ブックマーク1つで全ブランチに辿り着ける）。
 本番と同じ origin なので合言葉は入り直さなくてよい。ブランチを消すとプレビューも自動で消える。
 
-## 4. タグ
+## 4. タグは自動
 
-main に出したら `v0.3.116` の形でタグを打つ。戻すのが一手になり、Releases に履歴が並ぶ。
+main に入ると `.github/workflows/release.yml` が `version.json` を読んで **`v0.3.x` のタグと Release を作る**。
+手で打つ必要はない。戻すのが一手になり、Releases に履歴が並ぶ。
+過去の版にも打ちたいときは Actions → release → Run workflow → `backfill` にチェック（一度だけでよい）。
 
 ## 5. 宿題は Issues に
 

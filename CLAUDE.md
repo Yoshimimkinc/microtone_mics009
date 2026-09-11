@@ -107,7 +107,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 ## 開発の流れ（要点。詳細は `docs/dev-flow.md`）
 1. `src/` を直す → `node tools/build.mjs` → `node tools/gate.mjs`
 2. ブランチに push → GitHub Actions が **gate（関門）** と **pages（`/preview/<branch>/` に配置）** を回す
-3. **プレビューを実機で触ってから** PR → merge（main が本番URLに出る）→ `v0.3.x` のタグを打つ
+3. **プレビューを実機で触ってから** PR → merge（main が本番URLに出る）。タグと Release は `release.yml` が自動で打つ
 4. 判断待ち・宿題は Issues に（`role:qa` `role:player` `role:feel` … のラベル）
 
 ## Checks before shipping
