@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>microtone SCR — scratch</title>
+<style>
+  :root{--bg:#121417;--edge:#0a0c0e;--line:#32383f;--ink:#e8e4d8;--dim:#8b919a;--amber:#ff8a3d;--teal:#3dd6c4;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;background:var(--bg);}
+  body{font-family:"DIN Alternate","Bahnschrift","Arial Narrow",system-ui,sans-serif;color:var(--ink);letter-spacing:.04em;
+    display:flex;flex-direction:column;touch-action:manipulation;user-select:none;-webkit-user-select:none;
+    padding:calc(10px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));}
+  .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
+  .logo{font-size:20px;font-weight:800;} .logo b{color:#c73e2e;}
+  .model{font-size:10px;color:var(--dim);letter-spacing:.28em;text-transform:uppercase;}
+  .deck{flex:1;min-height:0;position:relative;background:#0a0d10;border:1px solid var(--edge);border-radius:12px;
+    overflow:hidden;touch-action:none;cursor:grab;box-shadow:inset 0 2px 10px rgba(0,0,0,.6);}
+  .hint{position:absolute;left:0;right:0;top:8px;text-align:center;font-size:11px;color:var(--dim);pointer-events:none;}
+  canvas{display:block;width:100%;height:100%;}
+  .foot{margin-top:10px;display:flex;justify-content:space-between;font-size:10px;color:var(--dim);}
+  .foot a{color:var(--teal);text-decoration:none;}
+</style>
+</head>
+<body>
+  <div class="head"><div class="logo">micro<b>tone</b> SCR</div><div class="model">SCRATCH · TAPE HEAD</div></div>
+  <div class="deck" id="deck"><div class="hint">← 横になぞる＝スクラッチ / 離す＝再生</div><canvas id="cv"></canvas></div>
+  <div class="foot"><span>気に入ったら MICS009 の Resample で録ってパッドへ</span><a href="mics-609bc14b.html">← MICS009</a></div>
+<script>
+"use strict";
+const AC=new (window.AudioContext||window.webkitAudioContext)({latencyHint:0});
+// ===== 素材: 「アー」系フォルマント＋ビート気配を合成（レコードの定番スクラッチ素材風） =====
+const SR=AC.sampleRate, DUR=1.6, N=Math.round(SR*DUR);
+const sample=AC.createBuffer(1,N,SR);
+(function(){
+  const d=sample.getChannelData(0);
+  let ph=0;
+  for(let i=0;i<N;i++){
+    const t=i/SR;
+    ph+=110*(1+0.02*Math.sin(2*Math.PI*3*t))/SR;      // 110Hzノコギリ（軽いビブラート）
+    const saw=2*(ph%1)-1;
+    d[i]=saw*0.5;
+  }
+  // フォルマント2つ（700/1150Hz）＝「アー」: 簡易2次共振を直列適用
+  function reso(f,q){ const w=2*Math.PI*f/SR, a=Math.sin(w)/(2*q);
+    const b0=a, b2=-a, a0=1+a, a1=-2*Math.cos(w), a2=1-a;
+    let x1=0,x2=0,y1=0,y2=0;
+    for(let i=0;i<N;i++){ const x=d[i]; const y=(b0*x+b2*x2-a1*y1-a2*y2)/a0; x2=x1;x1=x;y2=y1;y1=y; d[i]=y*2.2; } }
+  reso(700,6); reso(1150,8);
+  for(let i=0;i<N;i++){ const t=i/SR;                  // 8分のハット気配（位置の手がかり）
+    if((t*4)%1<0.02) d[i]+=(Math.random()*2-1)*0.25*(1-((t*4)%1)/0.02); }
+  let pk=0; for(let i=0;i<N;i++){const a=Math.abs(d[i]); if(a>pk)pk=a;}
+  for(let i=0;i<N;i++) d[i]*=0.85/pk;
+})();
+// ===== テープヘッド再生: pos を指のバネで追従（逆再生も自在）＝スクラッチ =====
+const data=sample.getChannelData(0);
+let pos=0, dragging=false, target=0;
+const sp=AC.createScriptProcessor(1024,1,1);
+sp.onaudioprocess=ev=>{
+  const out=ev.outputBuffer.getChannelData(0);
+  for(let i=0;i<out.length;i++){
+    let rate;
+    if(dragging){ rate=(target-pos)*0.0016; rate=Math.max(-64,Math.min(64,rate)); }   // 指へのバネ＝スクラッチ
+    else rate=1;                                                                       // 離す＝順再生
+    pos+=rate;
+    if(pos>=N) pos-=N; if(pos<0) pos+=N;
+    const k=Math.floor(pos), fr=pos-k;
+    out[i]=(data[k]||0)*(1-fr)+(data[(k+1)%N]||0)*fr;
+  }
+};
+const g=AC.createGain(); g.gain.value=0.8; sp.connect(g); g.connect(AC.destination);
+// ===== UI: 波形＋ヘッド位置。横ドラッグ＝スクラッチ =====
+const deck=document.getElementById("deck"), cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+function xToPos(x){ const r=deck.getBoundingClientRect(); return Math.max(0,Math.min(1,(x-r.left)/r.width))*N; }
+deck.addEventListener("pointerdown",e=>{ if(AC.state!=="running")AC.resume(); e.preventDefault();
+  dragging=true; target=xToPos(e.clientX); pos=target;   // 針を置く
+  try{deck.setPointerCapture(e.pointerId);}catch(_){}});
+deck.addEventListener("pointermove",e=>{ if(dragging) target=xToPos(e.clientX); });
+const up=()=>{ dragging=false; };
+deck.addEventListener("pointerup",up); deck.addEventListener("pointercancel",up);
+function draw(){
+  const W=deck.clientWidth,H=deck.clientHeight,dpr=window.devicePixelRatio||1;
+  if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const mid=H/2, step=Math.max(1,Math.floor(N/W));
+  ctx.beginPath();
+  for(let x=0;x<W;x++){ let mx=0; const o=x*step;
+    for(let n2=0;n2<step;n2+=8){ const v=Math.abs(data[o+n2]||0); if(v>mx)mx=v; }
+    ctx.moveTo(x,mid-mx*mid*0.9); ctx.lineTo(x,mid+mx*mid*0.9); }
+  ctx.strokeStyle="rgba(61,214,196,.4)"; ctx.lineWidth=1; ctx.stroke();
+  const hx=(pos/N)*W;
+  ctx.strokeStyle="#ff8a3d"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(hx,0); ctx.lineTo(hx,H); ctx.stroke();
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
