@@ -26,10 +26,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Playwright（chromium だけ）
+      - name: 検査に要るもの（版は手元と揃える＝CIと手元で結果が食い違わない）
         run: |
           npm init -y >/dev/null 2>&1 || true
-          npm install --no-save playwright
+          npm install --no-save playwright@1.56.1 typescript@5
           npx playwright install --with-deps chromium
 
       - name: src と公開HTMLの一致（HTMLを直接いじっていないか）

@@ -6,7 +6,13 @@
 // 3) バージョン3点一致（APP_VERSION / version.json / splashVer）。
 // 検出器は検査ワーカーW6（v0.3.97）の implicit-scope.mjs を取り込んだもの。
 // 関数スコープを考慮した版：宣言が別の関数の中にしか無く、外から参照している識別子を出す
-import ts from '/opt/node22/lib/node_modules/typescript/lib/typescript.js';
+// typescript の在り処は環境ごとに違う（CIでは node_modules、この開発環境では /opt）。
+// 絶対パス決め打ちだと CI で ERR_MODULE_NOT_FOUND になる（v0.3.116 の CI 初回で実際に踏んだ）
+let ts=null;
+for(const cand of [process.env.TS_PATH,'typescript','/opt/node22/lib/node_modules/typescript/lib/typescript.js'].filter(Boolean)){
+  try{ const m=await import(cand); ts=m.default||m; if(ts&&ts.createSourceFile) break; ts=null; }catch(e){}
+}
+if(!ts){ console.error('✖ typescript が見つからない。`npm i --no-save typescript` するか TS_PATH にパスを指定すること'); process.exit(2); }
 import fs from 'node:fs';
 const html=fs.readFileSync(new URL('../mics-609bc14b.html',import.meta.url),'utf8');
 const browser=new Set(JSON.parse(fs.readFileSync(new URL('./browser-globals.json',import.meta.url),'utf8')));
