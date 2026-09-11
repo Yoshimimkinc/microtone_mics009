@@ -1,0 +1,53 @@
+                                      # 出す前の関門を GitHub 側でも回す。
+                                      # 手元の .githooks/pre-push は SKIP_GATE=1 で飛ばせるので、
+                                      # 「誰の手元か」に依存しない番人をここに置く。PRが赤なら merge しない。
+name: gate
+
+on:
+  push:
+    branches-ignore: [gh-pages]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # lost-listeners.mjs が origin/main と比べるため全履歴が要る
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 検査に要るもの（版は手元と揃える＝CIと手元で結果が食い違わない）
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1.56.1 typescript@5
+          npx playwright install --with-deps chromium
+
+      - name: src と公開HTMLの一致（HTMLを直接いじっていないか）
+        run: node tools/build.mjs --check
+
+      - name: 本体を配る（検査は実機と同じくHTTPで読む）
+        run: |
+          python3 -m http.server 8137 >/dev/null 2>&1 &
+          for i in $(seq 1 20); do curl -sf -o /dev/null http://localhost:8137/mics-609bc14b.html && break; sleep 0.5; done
+
+      - name: gate.mjs（static-check / check / dead-controls / lost-listeners）
+        run: node tools/gate.mjs 8137
+
+      - name: 検査スクショ（落ちた時の目視用に必ず残す）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots-${{ github.run_number }}
+          path: tools/_shots
+          if-no-files-found: ignore
+          retention-days: 14

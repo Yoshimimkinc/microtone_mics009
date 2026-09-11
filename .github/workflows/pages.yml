@@ -1,0 +1,83 @@
+                                      # 公開とプレビューを1本で。
+                                      #   main            → サイトの根（これまでと同じURL）
+                                      #   それ以外のブランチ → /preview/<ブランチ名>/  （出す前に実機で触れる）
+                                      # 同じ origin なので合言葉（localStorage）は本番と共有される＝プレビューでも入り直さなくてよい。
+                                      # ★初回だけ: Settings → Pages → Source を「Deploy from a branch / gh-pages / (root)」に切り替える。
+name: pages
+
+on:
+  push:
+    branches-ignore: [gh-pages]
+  delete:
+  workflow_dispatch:
+
+concurrency:
+  group: pages-publish        # gh-pages への push は1本ずつ（同時に走ると衝突する）
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.event_name != 'delete'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: src と公開HTMLの一致
+        run: node tools/build.mjs --check
+
+      - name: 配置して push
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          SITE="index.html mics-609bc14b.html version.json manifest.json robots.txt default.mics dj-scratch.html guitar-strum.html mock-groups.html"
+          SLUG=$(echo "$BRANCH" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')
+          if [ "$BRANCH" = "main" ]; then DEST="."; else DEST="preview/$SLUG"; fi
+          URL="https://x-access-token:${TOKEN}@github.com/${REPO}"
+          git clone --depth 1 --branch gh-pages "$URL" site 2>/dev/null || {
+            echo "gh-pages が無いので作る"; mkdir site && cd site && git init -q -b gh-pages && git remote add origin "$URL"; cd ..; }
+          mkdir -p "site/$DEST"
+          for f in $SITE; do [ -e "$f" ] && cp -f "$f" "site/$DEST/"; done
+          touch site/.nojekyll
+          bash tools/preview-index.sh site > site/preview/index.html
+          cd site
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "変更なし"; exit 0; }
+          git commit -q -m "publish ${BRANCH} → ${DEST} (${GITHUB_SHA:0:7})"
+          git push -q origin gh-pages
+          echo "公開: https://$(echo $REPO | cut -d/ -f1 | tr 'A-Z' 'a-z').github.io/$(echo $REPO | cut -d/ -f2)/${DEST#.}"
+
+  cleanup:
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: 消えたブランチのプレビューを片付ける
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          GONE: ${{ github.event.ref }}
+        run: |
+          set -euo pipefail
+          SLUG=$(echo "$GONE" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')
+          [ "$GONE" = "main" ] && { echo "main は消さない"; exit 0; }
+          git clone --depth 1 --branch gh-pages "https://x-access-token:${TOKEN}@github.com/${REPO}" site || exit 0
+          cd site
+          [ -d "preview/$SLUG" ] || { echo "プレビュー無し"; exit 0; }
+          rm -rf "preview/$SLUG"
+          cd .. && bash tools/preview-index.sh site > site/preview/index.html && cd site
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "cleanup preview/${SLUG}" && git push -q origin gh-pages

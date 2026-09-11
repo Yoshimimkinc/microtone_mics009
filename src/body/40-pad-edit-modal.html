@@ -1,0 +1,49 @@
+    <div class="modal-backdrop" id="padEditModal" style="display:none;">
+      <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
+        <div class="modal-head"><span id="peTitle">TRIM · CHOP</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+        <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
+        <div class="pe-sample">
+          <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
+          <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SMPL</span>
+          <span class="pe-sample-hint">音源を読み込み / 録音</span>
+        </div>
+        <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
+        <div id="peWaveHome">
+          <div id="peWaveBox">
+            <div class="pe-over" id="peOver">
+              <canvas id="peOverCv"></canvas>
+              <div class="pe-over-win" id="peOverWin"></div>
+            </div>
+            <div class="pe-wave">
+              <canvas id="peWave"></canvas>
+              <div class="shade" id="peShadeL"></div>
+              <div class="shade" id="peShadeR"></div>
+              <div class="playhead" id="pePlayhead"></div>
+              <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
+              <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
+              <div class="handle end" id="peEnd"><span class="cap">END</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pe-transport">
+          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
+          <button class="pe-trim" id="peTrunc">✂ TRIM</button>
+          <button class="pe-trim" id="peRev">⇄ REV</button>
+        </div>
+        <div class="pe-chop">
+          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATK</button></div>
+          <div class="seg" id="edChopDiv"><button class="on" data-n="0">OFF</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
+          <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
+          <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="modebar-row">
+    <div class="modebar">
+      <button class="modebtn on" id="modePads" data-view="viewPads"><span class="led"></span>PADS</button>
+      <button class="modebtn" id="modeSeq" data-view="viewSeq"><span class="led"></span>SEQ</button>
+    </div>
+    <!-- スマホ専用：2モードはスワイプ切替＋このドットで現在地表示（タップでも切替可） -->

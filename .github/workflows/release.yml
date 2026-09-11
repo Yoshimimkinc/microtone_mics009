@@ -1,0 +1,65 @@
+                                      # 出したら必ずタグが残る。手で打つのをやめて自動にする。
+                                      #   main に入る → version.json を読む → v0.3.x のタグ＋Release を作る
+                                      # 戻すのが一手になり、Releases に履歴が並ぶ。
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: '過去のバージョンにもタグを打つ（一度だけ回せばよい）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: git の名乗り
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: いまのバージョンにタグを打つ
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          V="v$(node -p "require('./version.json').version")"
+          if git rev-parse -q --verify "refs/tags/$V" >/dev/null; then
+            echo "$V は既にある。何もしない"; exit 0
+          fi
+          git log -1 --format=%B > /tmp/notes.md
+          git tag -a "$V" -m "$V"
+          git push origin "$V"
+          gh release create "$V" --title "$V" --notes-file /tmp/notes.md || echo "Release 作成はスキップ（タグは付いた）"
+          echo "打った: $V"
+
+      - name: 過去のバージョンにもタグを打つ（手動実行時のみ）
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill }}
+        run: |
+          set -euo pipefail
+          # main の履歴で version.json が変わった地点＝各版が出たコミット。古い順に辿って打つ。
+          for sha in $(git log --format=%H --reverse -- version.json); do
+            ver=$(git show "$sha:version.json" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).version)}catch(e){}})') || continue
+            [ -n "$ver" ] || continue
+            T="v$ver"
+            git rev-parse -q --verify "refs/tags/$T" >/dev/null && continue
+            git tag -a "$T" -m "$T" "$sha"
+            echo "backfill: $T → ${sha:0:7}"
+          done
+          git push origin --tags

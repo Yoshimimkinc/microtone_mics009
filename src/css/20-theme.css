@@ -1,0 +1,196 @@
+  /* ===== Skin themes: 変数差し替えだけで着せ替え（AK / SP / RL）。背景はどれも黒 ===== */
+  /* Akai MPC3000風：黒地 + 暖色グレー本体 + 緑の蛍光LCD + Akaiレッド + クリーム文字 */
+  body.t-ak{--bg:#d6d0c0;--panel:#d2ccba;--panel2:#bdb8a8;--edge:#8f8a7c;--line:#a9a496;--well:#2b2720;--well-ink:#e8e4d8;--modal-deep:#bdb8a8;
+    --ink:#2b2720;--dim:#4a4639;--amber:#cf3a2c;--amber-dim:#e2c2ae;--teal:#2a9d46;--pad:#8f8c82;--pad-face:#a6a399;
+    --hit-c2:#8f2318;--hit-glow-a:207,58,44;--hit-ink:#f6efe3;}
+  /* AK=MPC3000は明色（クリーム本体・グレーボタン）。暗いインセットだけ明色化し、波形はLCDとして暗いまま残す */
+  body.t-ak .unit{background:#d2ccba;}
+  body.t-ak #splash{background:#d6d0c0;}
+  body.t-ak .modebar{background:#c2bdac;}
+  body.t-ak .modebtn .led{background:#9a958a;box-shadow:0 0 0 1px #8f8a7c inset;}
+  /* E-mu SP-1200風：黒地 + 暖色ヴィンテージ + 青LCD */
+  body.t-sp{--bg:#14151a;--panel:#5f6368;--panel2:#4d5156;--edge:#26282c;--line:#42464c;
+    --ink:#f0f2f4;--dim:#c8cdd2;--amber:#d6452f;--amber-dim:#5e1c14;--teal:#3f86d6;--pad:#3a3e43;--pad-face:#474c52;
+    --hit-c2:#93291c;--hit-glow-a:214,69,47;--hit-ink:#fdece7;}
+  /* SP-1200の質感：グレー本体＋青いセクションライン＋緑LCD寄りの画面＋赤アクセント */
+  body.t-sp .label{color:#3f86d6;}
+  /* Roland TR-808風：黒地 + チャコール本体 + オレンジ/黄アクセント */
+  body.t-rl{--bg:#0e0f11;--panel:#2c2f34;--panel2:#373c43;--edge:#121316;--line:#474d56;
+    --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#33373d;--pad-face:#3e444c;
+    --hit-c2:#b34e12;--hit-glow-a:255,122,45;--hit-ink:#2a1405;}
+  /* TR-808：枠をオレンジのグラデに（拍内で暗→明・OFF時のみ）。空セル=共通の灰グラデ、充填=共通のアンバー */
+  body.t-rl .step:nth-child(4n+2):not(.on){border-color:#6e3310;}  /* 拍内1: 暗オレンジ */
+  body.t-rl .step:nth-child(4n+3):not(.on){border-color:#a85a18;}  /* 拍内2 */
+  body.t-rl .step:nth-child(4n):not(.on){border-color:#d98426;}    /* 拍内3 */
+  body.t-rl .step:nth-child(4n+1):not(.on){border-color:#ffb24d;}  /* 拍内4: 明オレンジ */
+  /* skin切替：右上角の最上位に小さく配置（行を増やさない） */
+  /* ケバブメニュー & モーダル（DADS dialog風） */
+  .tempo-row{display:contents;}   /* PCはインライン（透過） */
+  .kebab{font-size:18px;line-height:1;padding:6px 11px;margin-left:auto;}
+  .modal-backdrop{position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.55);
+    display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal{background:linear-gradient(180deg,var(--panel),var(--modal-deep));border:1px solid var(--edge);
+    border-radius:14px;padding:18px 20px 20px;width:min(360px,92vw);
+    max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;   /* 小型端末で見切れてもスクロールで全要素に届く */
+    box-shadow:0 24px 70px rgba(0,0,0,.6);}
+  /* 縦が低い端末では上寄せにして頭（波形/閉じる）が切れないように */
+  @media(max-height:680px){ .modal-backdrop{align-items:flex-start;} }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
+    font-size:11px;letter-spacing:.26em;color:var(--dim);}
+  .modal-head .t{padding:6px 10px;font-size:13px;}
+  .modal-sec{margin-bottom:16px;}
+  .modal-sec:last-child{margin-bottom:0;}
+  .modal-label{font-size:10px;color:var(--dim);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;}
+  .modal-btns{display:flex;gap:8px;flex-wrap:wrap;}
+  .modal .master-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  .modal .master-ctrls .knob{flex:1 1 90px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  /* DADS準拠：キーボードフォーカスを明確に可視化（マウス操作時は出さない）。色はテーマのアクセント */
+  :focus-visible{ outline:3px solid var(--teal)!important; outline-offset:2px; border-radius:3px; }
+  :focus:not(:focus-visible){ outline:none; }
+  html,body{height:100%;overflow-x:hidden;}
+  /* スマホ：ダブルタップ拡大/文字自動拡大/長押しメニューを抑止 */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable;}
+  /* アプリ全体でダブルタップ拡大を無効化（ピンチ・スクロールは維持） */
+  body{touch-action:manipulation;}
+  button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t,.pad{touch-action:manipulation;}
+  body{-webkit-touch-callout:none;}
+  body{
+    background:#000;  /* アプリ外側（周りの余白）は常に黒 */
+    color:var(--ink);
+    font-family:"DIN Alternate","Bahnschrift","Arial Narrow",system-ui,sans-serif;
+    letter-spacing:.04em;
+    min-height:100%;
+    padding:18px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .unit{
+    width:100%;max-width:1080px;margin:0 auto;overflow:hidden;
+    background:linear-gradient(180deg,var(--panel) 0%, var(--modal-deep) 100%);
+    border:1px solid var(--edge);
+    border-radius:14px;
+    box-shadow:0 1px 0 #3a4047 inset, 0 24px 60px rgba(0,0,0,.55);
+    padding:20px 22px 24px;
+  }
+  /* 全画面：背景を敷き、中身を上下中央に（はみ出す時は上から＝クリップしない） */
+  html:fullscreen{background:#000;overflow-y:auto;scrollbar-gutter:auto;}
+  html:fullscreen body{display:flex;flex-direction:column;min-height:100vh;}
+  html:fullscreen .unit{margin-top:auto;margin-bottom:auto;}
+  html:-webkit-full-screen{background:#000;overflow-y:auto;scrollbar-gutter:auto;}
+  html:-webkit-full-screen body{display:flex;flex-direction:column;min-height:100vh;}
+  html:-webkit-full-screen .unit{margin-top:auto;margin-bottom:auto;}
+  /* header / silkscreen */
+  .top{display:flex;align-items:flex-end;justify-content:space-between;
+    border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px;flex-wrap:wrap;gap:14px;}
+  .brand{display:flex;align-items:baseline;gap:12px;}
+  .brand .logo{font-size:30px;font-weight:700;letter-spacing:.02em;}
+  .brand .logo b{color:var(--amber);}
+  .brand .model{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.28em;
+    border:1px solid var(--line);border-radius:3px;padding:3px 7px;}
+  .transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  button.t{
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:6px;padding:9px 14px;font:inherit;font-size:13px;letter-spacing:.12em;
+    text-transform:uppercase;cursor:pointer;transition:.12s;min-width:60px;min-height:44px;text-align:center;
+  }
+  button.t:hover{border-color:var(--dim);}
+  button.t.play.on{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 14px rgba(61,214,196,.4);}
+  button.t#tap.on{background:var(--amber);color:var(--hit-ink);border-color:var(--amber);}
+  button.t.rec.on{background:var(--red);color:#2a0808;border-color:var(--red);}
+  /* トランスポートのarmボタン（COPY/MUTE/SOLO）：armed=アンバー点灯 */
+  button.t.arm{min-width:54px;padding:9px 11px;}
+  button.t.arm.armed{background:var(--amber);color:#241400;border-color:var(--amber);box-shadow:0 0 12px rgba(255,180,80,.5);}
+  button.t.step.on{background:var(--amber);color:var(--hit-ink);border-color:var(--amber);box-shadow:0 0 14px rgba(var(--hit-glow-a),.4);}
+
+  /* トラック切替◀▶：edWho両脇に常時表示（出し入れで高さ/位置が動かない） */
+  .who-wrap{display:flex;align-items:center;gap:8px;min-width:0;}
+  .stepnav{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;min-width:0;}
+  .strip-head .who{flex:0 0 130px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* STEP中：PADは1-16の自然順、ステップ番号を大きく、点灯=ステップON */
+  /* ビュー切替ドット（既定=PCでは非表示。スマホのmedia queryで表示） */
+  /* 画面モード：●PADS 〇SEQ 〇MIX を画面幅いっぱいに均等表示してスワイプを促す */
+  .viewdots{display:none;align-items:stretch;gap:0;width:100%;}
+  .viewdots .vdot{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:7px;
+    background:none;border:none;padding:5px 4px;min-height:32px;cursor:pointer;
+    font-size:11px;letter-spacing:.12em;font-weight:700;color:var(--dim);transition:color .15s;}
+  .viewdots .vdot .vd-dot{width:9px;height:9px;border-radius:50%;background:var(--line);transition:.15s;}
+  .viewdots .vdot.on{color:var(--ink);}
+  .viewdots .vdot.on .vd-dot{background:var(--teal);box-shadow:0 0 8px color-mix(in srgb,var(--teal) 60%,transparent);}
+  /* STEP中は並び順を1..16の順送りに（:nth-child(n)で詳細度を上げ、MPC配列のorderルールに確実に勝つ） */
+  body.step-on .pads .pad:nth-child(n){order:0!important;}
+  body.step-on .pads .pad .nm{display:none;}
+  body.step-on .pads .pad>.pad-wave{display:none;}
+  body.step-on .pads .pad::before{display:none;}
+  body.step-on .pad .stepn{display:block;}
+  .pad .stepn{display:none;position:absolute;inset:0;z-index:1;
+    align-items:center;justify-content:center;font-size:18px;font-weight:700;
+    color:var(--dim);font-variant-numeric:tabular-nums;}
+  body.step-on .pad .stepn{display:flex;}
+
+  /* p-lock 値バー（左→右の塗りで値を表現）＋数字 */
+  .pad .lockfill{display:none;position:absolute;left:0;top:0;bottom:0;width:0%;z-index:0;pointer-events:none;}
+
+  .pad .lockv{display:none;position:absolute;inset:0;z-index:2;align-items:center;justify-content:center;
+    font-size:16px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000;}
+
+  body.step-on .pad.haslock{outline:1px dashed rgba(255,255,255,.4);outline-offset:-3px;}
+  .readout{font-variant-numeric:tabular-nums;color:var(--teal);font-size:13px;
+    border:1px solid var(--line);border-radius:5px;padding:8px 11px;background:var(--well);min-width:64px;text-align:center;}
+  .ctrl{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;flex-shrink:1;min-width:0;}
+  .ctrl input[type=range]{width:100%;min-width:50px;max-width:120px;flex:1;accent-color:var(--amber);}
+  .ctrl .val{color:var(--ink);font-variant-numeric:tabular-nums;min-width:28px;text-align:right;}
+
+  .body{display:grid;grid-template-columns:1fr;gap:24px;}
+
+  .label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.26em;margin-bottom:10px;}
+
+  /* pads */
+  .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:540px;}
+  .pads .pad{aspect-ratio:1;}
+  /* 常時表示の16ステップ列（選択トラックの打ち込み）。1画面化(v0.3.0) */
+  .stepstrip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px;width:100%;align-self:end;}
+  .stepbtn{height:32px;border:1px solid var(--line);border-radius:4px;background:#1a1e23;position:relative;
+    cursor:pointer;padding:0;transition:.08s;-webkit-tap-highlight-color:transparent;touch-action:none;}
+  /* SEQ画面と同じデザイン：拍内4ステップを暗→明グラデ＋頭拍(1,5,9,13)に区切り線＝頭拍アクセント（OFFガイド／ONはテーマ色） */
+  .stepbtn:nth-child(4n+1):not(.on){background:#353a42;}   /* 頭拍 1,5,9,13: 暗 */
+  .stepbtn:nth-child(4n+2):not(.on){background:#5c636d;}
+  .stepbtn:nth-child(4n+3):not(.on){background:#838a95;}
+  .stepbtn:nth-child(4n):not(.on){background:#aab1bc;}     /* 拍尻: 明 */
+  .stepbtn:nth-child(4n+1){border-left:2px solid #4a525c;}  /* 頭拍の区切り線 */
+  .stepbtn.on{background:var(--amber);border-color:color-mix(in srgb,var(--amber) 70%,#fff);box-shadow:0 0 8px rgba(var(--hit-glow-a),.35);}
+  .stepbtn.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}   /* アクセント＝白（SEQと同じ） */
+  /* 再生ヘッド＝明るいアンバーの枠 */
+  .stepbtn.cur{outline:2px solid var(--amber);outline-offset:1px;box-shadow:0 0 12px rgba(255,180,80,.7);z-index:2;}
+  /* P-LOCK（per-step automation）：横バーのフィル＋数値 */
+  .stepbtn .sfill{position:absolute;left:0;top:0;bottom:0;width:0;opacity:.5;pointer-events:none;border-radius:4px 0 0 4px;transition:width .04s;}
+  .stepbtn .slv{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:8px;line-height:1;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none;}
+  .stepbtn.plk{border-color:#fff;}
+  .stepbtn.haslock::before{content:"";position:absolute;top:2px;right:3px;width:3px;height:3px;border-radius:50%;background:var(--amber);z-index:2;}
+  /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
+
+  /* S2400風スプリット（4×4時）：左にパッド、右に波形/操作、右下にStart/Stop */
+  /* .active も必須にして、SEQ/MIX表示中にPADSが残らないようにする */
+  /* デスクトップ専用のS2400 splitグリッド。601px以上に隔離＝モバイルへの漏れ（!important戦争の発生源）を根絶 */
+  @media(min-width:768px){   /* splitは右カラム300pxを要求＝768px未満では左のパッドが潰れる（谷間ゾーン解消 v0.3.78） */
+  #viewPads.split.active{
+    display:grid;
+    grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
+    grid-template-rows:auto auto auto 1fr auto;
+    grid-template-areas:
+      "screen screen"
+      "pads strip"
+      "pads msbar"
+      "pads transport"
+      "steps steps";
+    gap:14px 20px;
+    align-items:start;
+  }
+  /* 情報窓は全幅の最上段。以前は grid-area が無く右カラム（~408px）に自動配置され、
+     欄が2行に折り返して窓の高さがページで動いていた（PCの縦長ウィンドウで露見・v0.3.98） */
+  #viewPads.split .perf-screen{grid-area:screen;}
+  #viewPads.split .stepstrip{grid-area:steps;}
+  #viewPads.split .strip{grid-area:strip;margin-bottom:0;}
+  #viewPads.split .msbar{grid-area:msbar;margin:0;}
+  #viewPads.split .pads{grid-area:pads;max-width:none;align-self:start;}
+  }
+

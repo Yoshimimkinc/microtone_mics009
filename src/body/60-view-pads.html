@@ -1,0 +1,99 @@
+    <div class="view active split" id="viewPads">
+
+      <!-- waveform strip -->
+      <div class="strip">
+        <div class="strip-head">
+          <div class="who-wrap">
+            <button class="t stepnav" id="stepPrev" aria-label="前のトラック">‹</button>
+            <div class="who" id="edWho">01 KICK</div>
+            <button class="t stepnav" id="stepNext" aria-label="次のトラック">›</button>
+          </div>
+          <div class="strip-actions">
+            <span class="loadbtn" id="loadBtn">LOAD</span>
+            <span class="loadbtn" id="sampleBtn" style="color:var(--red);" title="声・音を録ってパッドに入れる">● SMPL</span>
+            <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
+          </div>
+        </div>
+        <!-- ステータス/録音/抽出オーバーレイは .strip の外（position:fixed）へ移設＝perfで .strip を隠してもサンプリングUIが出る（v0.3.35） -->
+        <!-- compact controls row -->
+        <!-- 編集ノブ群は撤去（v0.3.82）。どのレイアウトでもCSSで隠れており「見えないのに値だけ書かれる」
+             ゾンビUIだった＝Pitch/Level/Filter/Cutoff/Reso/Choke/Scale/Loop は情報窓のページが唯一の入口。
+             この行に残るのは GRID（Digitakt式）のPAT/BAR＋P-LOCKだけ。 -->
+        <!-- GRID（Digitakt式）のPAT/BAR＋P-LOCK行は撤去（v0.3.101）。recMode="real"固定で body.step-on に入る経路が無く、
+             一度も表示されない死にUIだった。P-LOCKの選択子は perf の #perfPlk のみ（split/スマホ用は宿題） -->
+      </div>
+
+      <!-- MUTE/SOLO/COPY はトランスポート行へ移設（v0.3.5）。EDITは非perf用にここへ残置。
+           スマホ(<600px)のみ relocateMuteSolo() が MUTE/SOLO をこの行に親替え＝[MUTE SOLO EDIT]（v0.3.31） -->
+      <div class="msbar">
+        <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
+        <!-- スマホだけ：エフェクトの P-LOCK 選択子（押してからパッドを左右にドラッグ＝そのパッドの送り量。
+             下段ステップ列を左右にドラッグ＝そのステップだけ）。SOLO/EDIT はスマホでは出さない（v0.3.106） -->
+        <button class="msbtn fx" id="fxDelay" data-lock="delay"><span class="d"></span>DELAY</button>
+        <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
+      </div>
+
+      <!-- 16 pads (主役)：4×4固定（8×2レイアウトは廃止） -->
+      <div class="pads" id="pads"></div>
+
+      <!-- 右下START/STOPは廃止（v0.3.28）。再生/停止はヘッダ ▶PLAY ＋スペースキー -->
+
+      <!-- 常時表示の16ステップ列：選択トラックの打ち込み（1画面化 v0.3.0） -->
+      <div class="stepstrip" id="stepStrip" aria-label="ステップ（選択トラック）"></div>
+
+      <!-- Performance Mode（4×4横向き/PC・iPad）のガワ。通常は非表示、body.perf で表示 -->
+      <div class="perf-screen" id="perfScreen">
+        <!-- 行は .cl-body に束ねる。SAMPLEページで右に波形を出しても、
+             ソフトキー行（＝メニュー）は常に窓の全幅のまま＝ページを移っても幅が動かない -->
+        <div class="cl-body">
+        <div class="cl-row cl-stat">
+          <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
+          <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
+          <span><i>PAT</i><b class="cl-num" id="perfPat">A</b></span>
+          <span><i>BAR</i><b class="cl-num" id="clBar">1</b></span>
+          <span><i>STEP</i><b class="cl-num" id="clStep">--</b></span>
+        </div>
+        <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
+        <div class="cl-row cl-params cl-page" id="clPage"></div>
+        </div><!-- /.cl-body -->
+        <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
+        <div class="cl-waveslot" id="clWaveSlot"></div>
+        <div class="cl-keys" id="clKeys">
+          <button class="cl-key on" data-pg="main">MAIN</button>
+          <button class="cl-key" data-pg="smpl">SAMPLE</button>
+          <button class="cl-key" data-pg="tone">TONE</button>
+          <button class="cl-key" data-pg="asgn">ASSIGN</button>
+        </div>
+        <!-- メッセージとヒントは1行に統合し、空でも高さを確保する。
+             出入りで畳んでいた頃は、トーストが出るたびに窓が伸び縮みしてパッドがずれていた -->
+        <div class="cl-row cl-note"><b id="clMsg"></b><span id="clHint"></span></div>
+      </div>
+      <div class="perf-rotate" id="perfRotate"><div>↻<br>横向きにしてください<br><small>演奏モード（4×4）</small></div></div>
+      <!-- 右上：パターンA-Dライブ切替 -->
+      <div class="perf-pats" id="perfPats">
+        <button class="perf-pat" data-p="0">A</button><button class="perf-pat" data-p="1">B</button>
+        <button class="perf-pat" data-p="2">C</button><button class="perf-pat" data-p="3">D</button>
+        <button class="perf-bar barsep" data-b="0">1</button><button class="perf-bar" data-b="1">2</button>
+        <button class="perf-bar" data-b="2">3</button><button class="perf-bar" data-b="3">4</button>
+        <button class="perf-sel" id="holdSelect" title="押した後にパッドを触ると選択のみ（発音なし）">SELECT</button>
+      </div>
+      <!-- 左：BPM / Swing -->
+      <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
+      <!-- 下：P-LOCK 5つ均等（GRIDと同じ並び）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
+      <div class="perf-plk" id="perfPlk">
+        <button class="perf-plkbtn" data-lock="pitch">PITCH</button>
+        <button class="perf-plkbtn" data-lock="level">LEVEL</button>
+        <button class="perf-plkbtn" data-lock="filter">FILTER</button>
+        <button class="perf-plkbtn" data-lock="delay">DELAY</button>
+        <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
+        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 演奏のみ（離すと戻る）">REC</button>
+        <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
+        <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
+      </div>
+
+      <!-- hidden legacy vol sync -->
+      <input type="range" id="vol" min="-30" max="6" step="1" value="-4" style="display:none;">
+      <span class="val" id="volVal" style="display:none;">-4</span>
+    </div>
+
+    <!-- SEQ view -->

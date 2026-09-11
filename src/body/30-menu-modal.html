@@ -1,0 +1,121 @@
+    <div class="modal-backdrop" id="menuModal" style="display:none;">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+        <div class="modal-head"><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
+        <div class="modal-sec">
+          <div class="modal-label">Tempo</div>
+          <div class="tempo-row" style="flex-wrap:wrap;align-items:center;gap:14px;">
+            <!-- テンポ/スウィングの編集入口は情報窓に一本化（v0.3.101）。この2つは applyBpm / 窓のSWG欄が
+                 書き込む「唯一の経路」として残すが、見せない -->
+            <div class="ctrl" style="display:none;">Tempo
+              <input type="range" id="bpm" min="40" max="250" step="0.5" value="100">
+              <div class="readout" id="bpmRead">100.0</div>
+            </div>
+            <div class="ctrl" style="display:none;">Swing
+              <select class="t" id="swing" style="padding:6px 8px;">
+                <option value="50" selected>50%</option>
+                <option value="54">54%</option>
+                <option value="58">58%</option>
+                <option value="63">63%</option>
+                <option value="67">67%</option>
+                <option value="71">71%</option>
+              </select>
+              <span class="val" id="swingVal"></span>
+            </div>
+            <button class="t" id="tap">TAP</button>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Skin</div>
+          <div class="seg" id="themeSeg">
+            <button data-th="ak" class="on">AK</button>
+            <button data-th="sp">SP</button>
+            <button data-th="rl">TR</button>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Master</div>
+          <div class="master-bar" id="masterBar">
+            <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
+            <div class="master-ctrls">
+              <div class="knob"><label>Volume <span class="v" id="vMaster">0 dB</span></label>
+                <input type="range" id="kMaster" min="-30" max="6" step="1" value="0"></div>
+            </div>
+          </div>
+          <div class="master-ctrls" style="margin-top:12px;">
+            <label class="toggle on" id="compToggle"><span class="sw"></span><span>COMP</span></label>
+            <div class="knob"><label>Threshold <span class="v" id="vComp">-12</span></label>
+              <input type="range" id="kComp" min="-30" max="0" step="1" value="-12"></div>
+            <div class="knob"><label>Drive <span class="v" id="vDrive">1.5</span></label>
+              <input type="range" id="kDrive" min="10" max="50" step="1" value="15"></div>
+          </div>
+          <div class="knob lat-row"><label>Latency <span class="v" id="vLat">—</span></label></div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Sound</div>
+          <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC</span></label>
+            <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP CH FILTER</span></label>
+            <label class="toggle on" id="fatBassToggle"><span class="sw"></span><span>FAT BASS</span></label>
+            <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点スナップ</span></label>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Timing</div>
+          <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム</span></label>
+            <label class="toggle" id="midiSyncToggle"><span class="sw"></span><span>MIDI SYNC — そとのテンポに合わせる</span></label>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">I/O</div>
+          <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <label class="toggle" id="midiToggle"><span class="sw"></span><span>そとの鍵盤で叩く</span></label>
+            <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>OUT B — ch3/4</span></label>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Source</div>
+          <div class="modal-btns">
+            <button class="t" id="gtrBtn" title="ギターを開く">GTR</button>
+            <button class="t" id="scrBtn" title="スクラッチを開く">SCR</button>
+          </div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-label">Project</div>
+          <div class="modal-btns">
+            <button class="t" id="saveBtn">Save</button>
+            <button class="t" id="loadProjBtn">Load</button>
+            <button class="t" id="exportWavBtn">WAV ↓</button>
+            <button class="t" id="resetBtn" title="自動保存を消して初期状態から始める">RESET</button>
+            <input type="file" id="projFile" accept=".mics,.json" style="display:none;">
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ステータストースト＋サンプリング/抽出オーバーレイ（.stripの外＝perfでも表示。position:fixed） -->
+    <div id="sampName" class="toast" role="status" aria-live="polite"></div>
+    <div class="rec-overlay" id="recOverlay">
+      <div class="rec-panel">
+        <div class="rec-target" id="recTarget"></div>
+        <div class="rec-choose" id="recChoose">
+          <button class="t" id="recTab">Tab Audio</button>
+          <button class="t" id="recMic">Mic</button>
+          <button class="t" id="recResmp" title="鳴っている音をそのまま録る">Resample</button>
+          <button class="t" id="recGtr" title="ギターを演奏して録る">Guitar</button>
+          <button class="t" id="recCancel">✕</button>
+        </div>
+        <div class="rec-active" id="recActive" style="display:none;">
+          <span class="rec-dot">●</span> <span id="recTime">0.0s</span>
+          <div class="rec-meter"><i id="recMeter"></i></div>
+          <button class="t" id="recStop" style="background:var(--red);color:#fff;">STOP</button>
+        </div>
+      </div>
+    </div>
+    <div class="rec-overlay" id="extractOverlay">
+      <div class="rec-panel" style="flex-direction:column;gap:8px;">
+        <button class="t" id="extractGo" style="background:var(--red);color:#fff;padding:10px 16px;">▶ 動画から音声を抽出</button>
+        <span id="extractMsg" style="font-size:10px;color:var(--dim);">タップで再生して音を取り込みます</span>
+      </div>
+    </div>
+
+    <!-- サンプル編集モーダル（EDIT＋パッドで対象を開く / モック） -->

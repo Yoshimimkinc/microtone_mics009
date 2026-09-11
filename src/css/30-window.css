@@ -1,0 +1,224 @@
+  /* ===== Performance Mode（4×4・横向き・PC/iPad）：中央=大パッド / 左右=操作列。ガワはダークなデバイス調 ===== */
+  .perf-rotate,.perf-pats,.perf-plk{display:none;}
+  /* ===== 情報窓（MPC式ディスプレイ）：全レイアウトで常時表示。選択パッドの値をここで直接いじる ===== */
+  .perf-screen{display:flex;flex-direction:column;justify-content:center;gap:2px;
+    background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:8px 14px;margin-bottom:8px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;letter-spacing:.03em;color:var(--teal);font-variant-numeric:tabular-nums;
+    box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
+  .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
+  .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
+  .perf-screen b{font-weight:700;}
+
+  /* メッセージ/ヒントの共用1行。空でも高さを確保＝出入りで窓が跳ねない */
+  /* 1行ぶんで高さを固定し、長文は折り返さず端で切る（全文はトースト側に出る）。
+     折り返しを許すと長いメッセージのたびに窓が伸びてパッドがずれる */
+  /* TRK行は perf（stripが無い）でだけ出す。それ以外は strip の「01 PHRASE 1」と二重 */
+  body:not(.perf) .perf-screen .cl-trk{display:none;}
+  #sampName.in-window{display:none!important;}
+  body.pe-open #clWave{visibility:hidden;}   /* 窓に収まる時はトーストを出さない */
+  .perf-screen .cl-note{height:16px;line-height:1.35;gap:8px;overflow:hidden;flex-wrap:nowrap;}
+  .perf-screen .cl-note>*{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .perf-screen .cl-note #clMsg{font-size:11px;opacity:.9;flex:0 1 auto;}
+  .perf-screen .cl-note #clHint{font-size:10px;opacity:.5;letter-spacing:.02em;flex:0 1 auto;}
+
+  /* 触れるパラメータ（横ドラッグ＝MPCのデータホイール相当） */
+  .perf-screen .cl-par{display:flex;align-items:baseline;gap:4px;cursor:ew-resize;touch-action:none;min-height:34px;
+    padding:5px 8px;border:1px solid rgba(61,214,196,.22);border-radius:6px;user-select:none;-webkit-user-select:none;}
+  .perf-screen .cl-par:active,.perf-screen .cl-par.tweak{border-color:var(--teal);background:rgba(61,214,196,.10);}
+  /* 桁数や符号で幅が動く値はすべて「最大桁ぶんの固定幅」。
+     letter-spacing を 0 に戻すのが要点：ch は字送りを含まないので、
+     letter-spacing が乗ったままだと 3ch 確保しても3文字時に1-2px はみ出して幅が動く。 */
+  .perf-screen .cl-num{display:inline-block;text-align:right;flex:none;letter-spacing:normal;
+    font-variant-numeric:tabular-nums;}
+  .perf-screen .cl-par b{font-size:13px;min-width:3ch;}   /* -12/+12/-30 の3文字ぶんを常に確保 */
+  .perf-screen #perfBpm{min-width:5ch;}   /* 247.5 */
+  .perf-screen #clSwing{min-width:2ch;}   /* 50 */
+  .perf-screen #clBar,.perf-screen #perfPat{min-width:1ch;}
+  .perf-screen #clStep{min-width:5ch;}
+  .perf-screen .cl-par u{text-decoration:none;font-size:9px;opacity:.55;}
+  /* MPC1000式ページ編集：下端のソフトキー(F1-F5)でページを切り替え、フィールドは横ドラッグ＝データホイール */
+  .perf-screen .cl-page{min-height:32px;gap:6px;}
+  .perf-screen .cl-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:5px;
+    border-top:1px solid rgba(61,214,196,.2);padding-top:5px;}
+  /* ソフトキーは「いまどのページか」を示す表示＝値扱い（docs/ui-rules.md §3）。
+     11px以上・非選択でも読める濃さ・演奏系なので44px */
+  .perf-screen .cl-key{font:inherit;font-size:12px;letter-spacing:.06em;color:var(--teal);opacity:.72;
+    background:transparent;border:1px solid rgba(61,214,196,.2);border-radius:5px;padding:5px 2px;min-height:44px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .perf-screen .cl-key.on{opacity:1;background:rgba(61,214,196,.14);border-color:var(--teal);}
+  .perf-screen .cl-par.sel{border-color:var(--teal);background:rgba(61,214,196,.08);}   /* カーソル＝いま回している欄 */
+  .perf-screen .cl-par.ro{cursor:default;border-style:dashed;opacity:.75;}              /* 表示専用（ASSIGNで覚える値） */
+  .perf-screen .cl-btn{font:inherit;font-size:11px;letter-spacing:.06em;color:var(--teal);background:transparent;
+    border:1px solid rgba(61,214,196,.35);border-radius:6px;padding:6px 10px;min-height:34px;cursor:pointer;}
+  .perf-screen .cl-btn.learn-on{border-color:var(--teal);box-shadow:0 0 10px rgba(61,214,196,.35);}
+  /* ===== 窓の高さは全ページ共通（ページを移しても寸法が動かない）＝欄の行を「予約制」にする =====
+     --cl-page-h : 欄の行に必ず確保する高さ（一番混むページに合わせる）
+     --cl-wave-h : SAMPLEで下に積む波形の高さ（狭い画面のみ。予約の内数にする） */
+  :root{--cl-page-h:34px;--cl-wave-h:40px;}
+  .perf-screen #clPage{min-height:var(--cl-page-h);align-content:center;}
+  /* SAMPLEページの波形：行の「右」に立てる。行の高さに収めるので窓は伸びない＝パッドを削らない。
+     ソフトキー行だけは常に全幅（keys keys）＝ページを移ってもメニューの幅が動かない */
+  .perf-screen .cl-body{display:flex;flex-direction:column;gap:inherit;min-width:0;}
+  .perf-screen .cl-waveslot{display:none;}
+  .perf-screen.has-wave{display:grid;grid-template-columns:auto minmax(0,1fr);
+    grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
+  .perf-screen.has-wave>.cl-body{grid-area:body;}
+  .perf-screen.has-wave>.cl-keys{grid-area:keys;}
+  .perf-screen.has-wave>.cl-waveslot{grid-area:wave;display:flex;flex-direction:column;justify-content:center;
+    gap:4px;min-width:0;min-height:0;overflow:hidden;}   /* 列の高さは .cl-body が決める＝波形が窓を押し広げない */
+  .perf-screen .cl-waveslot .pe-over{height:20px;flex:0 0 auto;margin:0;}
+  /* 波形は「空きぶんを全部使う」。#peWaveBox 自体をflexにしないと .pe-wave の flex が効かず、
+     モーダル用の height:128px / min-height だけが残って40pxのままになる（v0.3.93までの実害） */
+  .perf-screen .cl-waveslot #peWaveBox{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;}
+  .perf-screen .cl-waveslot .pe-wave{height:auto;flex:1 1 auto;min-height:40px;margin:0;}
+  .perf-screen .cl-btn .cl-narrow{display:none;}
+  .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
+  .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
+  body.perf .perf-screen.has-wave{display:grid;grid-template-columns:auto minmax(0,1fr);
+    grid-template-areas:"body wave" "keys keys";column-gap:12px;align-items:stretch;}
+  @media (max-width:767px){
+    /* 一番混むページ（ASSIGN=2行）と、波形を下に積むSAMPLEの両方を、同じ予約高さに収める */
+    :root{--cl-page-h:78px;--cl-wave-h:78px;}
+    .perf-screen .cl-btn .cl-wide{display:none;}
+    .perf-screen .cl-btn .cl-narrow{display:inline;font-size:13px;}
+    /* 横に並べる幅が無い：1カラムに戻し、概観レーンは畳む。波形は「予約の内数」に収めるので
+       SAMPLEに移っても窓の高さは他のページと同じまま。細かい追い込みは TRIM/CHOP のモーダルで */
+    .perf-screen.has-wave{display:flex;}
+    .perf-screen.has-wave>.cl-waveslot{display:block;}
+    .perf-screen .cl-waveslot #peWaveBox{min-width:0;}
+    .perf-screen .cl-waveslot .pe-over{display:none;}
+    .perf-screen .cl-waveslot .pe-wave{height:var(--cl-wave-h);min-height:0;}
+    /* SAMPLE中は上段のBPM行を畳み、その高さぶんを波形に回す
+       ＝窓の高さは他のページと同じまま、波形だけ大きくなる */
+    .perf-screen.has-wave .cl-stat{display:none;}
+    .perf-screen.has-wave #clPage{min-height:0;}
+  }
+  @media (max-width:520px){
+    /* 電話幅：SAMPLEの4項目（START/END/LOOP/✂）を1行に収める。
+       2行になると波形に回せる高さが半分になるので、ここは詰める価値がある */
+    #viewPads>.perf-screen>.cl-body .cl-row{gap:6px;}   /* 360幅で START/END/LOOP/✂ が1行に収まる限界。特異度を上げないと後方の ≤767 の gap:10px に負ける */
+    #viewPads>.perf-screen .cl-par{padding:4px 6px;gap:3px;}
+    #viewPads>.perf-screen .cl-par i{margin-right:2px;}
+    #viewPads>.perf-screen .cl-par[data-p="start"] u,
+    #viewPads>.perf-screen .cl-par[data-p="end"] u{display:none;}   /* 0-100の値なので%は自明 */
+  }
+
+  /* 着信ランプ：鍵盤/PCキーが入ると光る＝メニューを開かずに「繋がっている」が見える */
+  .perf-screen .cl-mon{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;min-height:34px;
+    border:1px solid rgba(61,214,196,.22);border-radius:6px;}
+  .perf-screen .cl-mon i{width:7px;height:7px;border-radius:50%;background:rgba(61,214,196,.22);transition:.08s;}
+  .perf-screen .cl-mon.lit i{background:var(--teal);box-shadow:0 0 7px var(--teal);}
+  .perf-screen .cl-mon b{min-width:4ch;text-align:right;}
+  .perf-screen .cl-mon em{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;}
+  body.perf #viewPads.split.active{
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    grid-template-rows:auto auto minmax(0,1fr) auto auto;
+    grid-template-areas:
+      "screen screen screen screen screen screen screen screen"
+      "plk    plk    plk    plk    plk    plk    plk    plk"
+      "pads   pads   pads   pads   pads   pads   pads   pads"
+      "pats   pats   pats   pats   pats   pats   pats   pats"
+      "steps  steps  steps  steps  steps  steps  steps  steps";
+    gap:7px 10px; align-items:stretch; height:100%;
+  }
+  /* 画面いっぱいフィット（タブレット/PC横）：PADS/SEQ どちらでも縦が変わらないよう
+     body.perf ではなく「サイズ＋横向き」で適用＝ビュー切替で高さがジャンプしない */
+  @media (min-width:768px) and (orientation:landscape){
+    html{height:100%;overflow:hidden;}                              /* htmlのスクロールも止める（iOSは html が動く） */
+    body{height:100dvh;overflow:hidden;overscroll-behavior:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}   /* ラバーバンド抑止＋セーフエリア回避 */
+    .unit{height:100%;max-height:100%;display:flex;flex-direction:column;}
+    .body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+    .body>.view.active{flex:1 1 auto;min-height:0;}
+    /* ヘッダ/タブ(ロゴ・modebar)の圧縮も両ビュー共通に＝SEQ切替でサイズが変わらない（body.perfから移動） */
+    .top{padding-bottom:6px;margin-bottom:6px;gap:8px;}
+    .brand .logo{font-size:17px;}
+    .brand .model{font-size:9px;padding:2px 5px;letter-spacing:.18em;}
+    .modebar-row{margin:0 0 2px;gap:12px;}
+    .modebar{margin:0;}
+    .modebtn{padding:5px 12px;font-size:11px;min-height:0;}
+  }
+  body.perf .perf-screen{padding:7px 14px;gap:1px;}
+  body.perf .perf-screen .cl-row{line-height:1.4;}
+
+  body.perf .perf-plk{grid-area:plk;display:flex;align-items:center;gap:7px;}
+  body.perf .perf-plk .perf-plkbtn{flex:1 1 0;font-size:12px;padding:11px 3px;min-height:46px;letter-spacing:.04em;}
+  body.perf #viewPads.split>.strip{display:none;}              /* 演奏中は編集stripを隠す */
+  body.perf #viewPads.split>.msbar{display:none;}   /* MUTE/SOLOはトランスポート行へ移設予定→perfでは一旦非表示 */
+  body.perf #viewPads.split>.pads{grid-area:pads;max-width:none;height:100%;align-self:stretch;
+    grid-template-columns:repeat(8,1fr)!important;grid-template-rows:repeat(2,minmax(56px,1fr))!important;gap:6px;}   /* 低い窓でも56px下限 */
+  body.perf #viewPads.split>.pads .pad{aspect-ratio:auto;min-height:0;}
+  /* 情報窓＝コマンドライン風（複数行のターミナル表示で上段の空きを埋める） */
+  body.perf .perf-screen{grid-area:screen;display:flex;flex-direction:column;justify-content:center;gap:2px;
+    background:#0a0d10;border:1px solid var(--edge);border-radius:10px;padding:9px 16px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;letter-spacing:.03em;color:var(--teal);font-variant-numeric:tabular-nums;
+    box-shadow:inset 0 1px 4px rgba(0,0,0,.7);}
+  body.perf .perf-screen .cl-row{display:flex;gap:16px;align-items:center;line-height:1.55;flex-wrap:wrap;}
+  body.perf .perf-screen i{font-style:normal;font-size:10px;letter-spacing:.1em;opacity:.5;margin-right:4px;}
+  body.perf .perf-screen b{font-weight:700;}
+  body.perf .perf-screen .cl-note #clHint{font-size:10px;opacity:.5;letter-spacing:.02em;}
+  /* SEQ操作行：A-D / 小節1-4 / DUP / SELECT（パッド下の横一列） */
+  body.perf .perf-pats{grid-area:pats;display:flex;gap:7px;align-items:stretch;flex-wrap:nowrap;}
+  body.perf .perf-pats .perf-pat{flex:0 0 auto;min-width:40px;}
+  .perf-bar{flex:0 0 auto;min-width:32px;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:14px;
+    padding:10px 4px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
+  .perf-bar:active{transform:translateY(1px);}
+  .perf-bar.on{background:var(--teal);color:#06201d;border-color:var(--teal);font-weight:800;}   /* 選択中はベタ塗り＝一目で分かる（SEQの .patbtn.on と同じ作法） */
+  /* 現在再生中の小節/パターン＝アンバーの枠（編集中の緑とは別物・最前面） */
+  .perf-bar.playing,.perf-pat.playing{box-shadow:0 0 0 2px var(--amber), 0 0 10px rgba(255,180,80,.55)!important;position:relative;z-index:3;}
+  .perf-bar.barsep{margin-left:12px;}   /* A-D と小節群の間に余白 */
+  .perf-sel{flex:0 0 auto;margin-left:auto;background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:13px;
+    letter-spacing:.12em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
+  .perf-sel:active{transform:translateY(1px);}
+  .perf-sel.armed{background:linear-gradient(180deg,#5a4a22,#3a2e14);color:var(--amber);border-color:var(--amber);box-shadow:0 0 14px rgba(255,180,80,.45);}
+  body.select-arm #pads .pad{cursor:pointer;}
+  body.select-arm #pads .pad.sel{outline:2px solid var(--amber);outline-offset:-2px;}
+  /* デバイス調ボタン（パターンA-D） */
+  /* 中身あり＝右上にドット（A-D / 小節1-4 共通）。アンバーで点灯/非点灯どちらの背景でも視認 */
+  .perf-pat,.perf-bar{position:relative;}
+  .perf-pat.has::after,.perf-bar.has::after{content:"";position:absolute;top:4px;right:5px;width:5px;height:5px;
+    border-radius:50%;background:var(--amber);box-shadow:0 0 5px rgba(255,180,80,.8);}
+  .perf-pat{background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);
+    border:1px solid var(--edge);border-radius:9px;cursor:pointer;font:inherit;font-weight:700;font-size:16px;
+    letter-spacing:.1em;padding:10px;min-height:44px;transition:.08s;box-shadow:0 3px 7px rgba(0,0,0,.35);}
+  .perf-pat:active{transform:translateY(1px);}
+  .perf-pat.on{background:var(--teal);color:#06201d;border-color:var(--teal);font-weight:800;}
+  .perf-pat.queued{border-color:var(--amber);color:var(--amber);animation:spblink 1s ease-in-out infinite;}
+  /* P-LOCK行（演奏中いじり）。色は既存plockbtnと統一 */
+  .perf-plkbtn{background:var(--pad);border:1px solid var(--line);border-radius:8px;cursor:pointer;
+    font:inherit;font-size:10px;font-weight:700;letter-spacing:.04em;padding:8px 4px;min-height:42px;transition:.08s;}
+  .perf-plkbtn[data-lock="pitch"]{color:#3dd6c4;}
+  .perf-plkbtn[data-lock="level"]{color:#ff5db0;}
+  .perf-plkbtn[data-lock="filter"]{color:#b07cff;}
+  .perf-plkbtn[data-lock="delay"]{color:#5fd35f;}
+  .perf-plkbtn[data-lock="reverb"]{color:#5aa9ff;}
+  .perf-plkbtn[data-lock="pitch"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;}
+  .perf-plkbtn[data-lock="level"].on{background:#ff5db0;color:#2a0a1e;border-color:#ff5db0;}
+  .perf-plkbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
+  .perf-plkbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
+  .perf-plkbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
+  /* ● REC：P-LOCK操作をステップへ記録するトグル。v0.3.84までDOMに無く、記録機能が丸ごと到達不能だった */
+  .perf-plkbtn.perf-rec{color:var(--red);}
+  .perf-plkbtn.perf-rec.on{background:var(--red);color:#2a0808;border-color:var(--red);box-shadow:0 0 14px rgba(255,77,77,.45);}
+  .perf-plkbtn[data-lock="nudge"]{color:#ff965a;}
+  .perf-plkbtn[data-lock="nudge"].on{background:#ff965a;color:#2a1205;border-color:#ff965a;}
+  .perf-plkbtn[data-lock="edit"]{color:#e8e4d8;}
+  .perf-plkbtn[data-lock="edit"].on{background:#e8e4d8;color:#1a1a1a;border-color:#e8e4d8;}
+  /* P-LOCKページ：選択中のパッドは発音せず「効果量」を横フィルで表示（GRIDのlockfill流儀） */
+  body.perf-plock #viewPads.split>.pads .pad{overflow:hidden;}
+  body.perf-plock #viewPads.split>.pads .pad .lockfill{display:block;opacity:.85;}
+  body.perf-plock #viewPads.split>.pads .pad .lockv{display:flex;font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);}
+  body.perf-plock #viewPads.split>.pads .pad>.pad-wave,
+  body.perf-plock #viewPads.split>.pads .pad .nm,
+  body.perf-plock #viewPads.split>.pads .pad .n,body.perf-plock #viewPads.split>.pads .pad .k{opacity:.18;}
+  /* 縦向き(4×4選択)では回転を促す（body.perf-rotate は updatePerfMode が付ける） */
+  .perf-rotate{position:fixed;inset:0;z-index:9980;background:var(--bg);
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    color:var(--ink);font-size:18px;letter-spacing:.1em;line-height:1.9;}
+  .perf-rotate small{color:var(--dim);font-size:12px;letter-spacing:.2em;}
+  body.perf-rotate .perf-rotate{display:flex;}
+

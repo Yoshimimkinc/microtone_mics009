@@ -2,7 +2,12 @@
 
 ## What is this?
 microtone MICS009 — a browser-based 16-pad sampler/sequencer inspired by SP-1200 and MPC.
-Single HTML file (`index.html`), zero external dependencies. Pure Web Audio API.
+Ships as a single HTML file (`mics-609bc14b.html`), zero external dependencies. Pure Web Audio API.
+
+**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（45部品）。
+`node tools/build.mjs` が連結して `mics-609bc14b.html` を生成する。**生成物を直接編集しない**
+（関門 `build.mjs --check` が止める）。バージョンは `version.json` だけが正で、ビルドが差し込む。
+流れの全体は **`docs/dev-flow.md`**。
 
 ## Architecture
 
@@ -99,16 +104,22 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 可逆性/安全・静けさ・画面予算）は **`docs/ui-rules.md`** に体系化してある。
 新しいUIを足す前と、出す前に、この規則で自己採点する。
 
+## 開発の流れ（要点。詳細は `docs/dev-flow.md`）
+1. `src/` を直す → `node tools/build.mjs` → `node tools/gate.mjs`
+2. ブランチに push → GitHub Actions が **gate（関門）** と **pages（`/preview/<branch>/` に配置）** を回す
+3. **プレビューを実機で触ってから** PR → merge（main が本番URLに出る）。タグと Release は `release.yml` が自動で打つ
+4. 判断待ち・宿題は Issues に（`role:qa` `role:player` `role:feel` … のラベル）
+
 ## Checks before shipping
 `tools/check.mjs`（回帰・合否）／`tools/ui-audit.mjs`（UI規則のスコア）／
 `tools/deadcss.mjs`（未使用CSS）を出す前に回す。使い方は `tools/README.md`。
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.115
+MICS009 beta v0.3.117
 
-**Versioning rule**: bump by +0.0.1 on every change (even minor fixes). Update BOTH in the same commit:
-- `APP_VERSION` in `mics-609bc14b.html` (also the `<div id="splashVer">` static text)
-- `version.json` `"version"` (must equal APP_VERSION)
+**Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
+**編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
+`src/` の `__APP_VERSION__` にビルドが差し込むので自動で一致する（v0.3.116〜）。
 
 The splash shows `v<APP_VERSION>` and an update button. On boot it fetches `version.json`; if its version is strictly newer (semver) than the loaded build, the button highlights "新バージョン … 更新" (tap = cache-busting reload). Keeping the two equal per commit means a stale cached client correctly detects the newer deploy.

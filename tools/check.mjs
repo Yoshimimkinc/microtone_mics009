@@ -20,6 +20,12 @@ async function ready(p){
   await p.mouse.move(5,5); await p.mouse.down(); await p.mouse.up();
   await p.waitForTimeout(600);   // 起動タップ直後450msの入力シールドを消化（これは仕様なので時間待ち）
 }
+// 全画面から抜ける。Chromium 153 以降は全画面のまま setViewportSize すると
+// 「To resize minimized/maximized/fullscreen window, restore it to normal state first」で落ちる
+async function unFull(p){
+  try{ await p.evaluate(async()=>{ if(document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen().catch(()=>{}); }); }catch(e){}
+  await p.waitForTimeout(120);
+}
 async function run(w,h,mobile){
   const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
@@ -335,12 +341,14 @@ async function run(w,h,mobile){
   await p.evaluate(()=>document.getElementById('modeSeq').click()); await p.waitForTimeout(300);
   const seqBox=()=>p.evaluate(()=>{const b=document.getElementById('viewSeq').getBoundingClientRect();
     return [Math.round(b.width),Math.round(b.height)];});
+  await unFull(p);   // 起動タップで全画面に入っているとウィンドウを変えられない（CIのChromium 153で発覚 v0.3.117）
   await p.setViewportSize({width:Math.max(360,w-160), height:Math.max(460,h-220)});
   await p.waitForTimeout(500);
   const afterResize=await seqBox();
   await p.evaluate(()=>{document.getElementById('modePads').click(); document.getElementById('modeSeq').click();});
   await p.waitForTimeout(400);
   eq(`${V} SEQがウィンドウ変更に追従`, afterResize, await seqBox());
+  await unFull(p);
   await p.setViewportSize({width:w,height:h});
   await p.evaluate(()=>document.getElementById('modePads').click());
   await p.waitForTimeout(200);
