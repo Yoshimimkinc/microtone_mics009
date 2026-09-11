@@ -3,5 +3,21 @@
 # 有効化（初回だけ）:  git config core.hooksPath .githooks
 # どうしても飛ばすとき:  SKIP_GATE=1 git push   （理由をコミットメッセージに書くこと）
 [ -n "$SKIP_GATE" ] && { echo "[pre-push] SKIP_GATE=1 で関門を飛ばした"; exit 0; }
+
+# タグの push と ref の削除は中身を変えないので関門を回さない（v0.3.116：
+# タグを打とうとして「本体が居ない」で止められた事故の再発防止）
+only_skippable=1
+while read -r localref localsha remoteref remotesha; do
+  [ -z "$localref" ] && continue
+  case "$localref" in
+    refs/tags/*) continue ;;
+    "(delete)")  continue ;;
+  esac
+  case "$localsha" in
+    *[!0]*) only_skippable=0 ;;   # 全部0＝削除
+  esac
+done
+[ "$only_skippable" = 1 ] && { echo "[pre-push] タグ/削除のみ＝関門は回さない"; exit 0; }
+
 cd "$(git rev-parse --show-toplevel)" || exit 1
 node tools/gate.mjs || { echo; echo "[pre-push] 関門で止めた。直してから push すること。"; exit 1; }

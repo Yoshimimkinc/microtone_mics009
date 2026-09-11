@@ -1,0 +1,16 @@
+<!-- スマホ横向き（短い画面）＝縦に促すオーバーレイ。CSSメディアクエリのみで表示（iPad横は高さ大なので非対象） -->
+<div id="phoneRotate"><div>↻<br>縦にしてください<br><small>microtone はスマホでは縦向き</small></div></div>
+<!-- 起動スプラッシュ：最初のタップで全画面＋音声起動（アプリ風の没入） -->
+<div id="splash">
+  <div class="s-logo">micro<b>tone</b></div>
+  <div class="s-model">MICS009</div>
+  <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
+  <div class="s-ver" id="splashVer">v__APP_VERSION__</div>
+  <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
+  <form class="s-pass" id="splashPassForm" autocomplete="off">
+    <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
+    <button type="submit" class="s-enter">ENTER</button>
+    <div class="s-pass-msg" id="splashPassMsg"></div>
+  </form>
+  <div class="s-prompt">▶ TAP TO START</div>
+</div>

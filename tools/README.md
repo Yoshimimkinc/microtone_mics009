@@ -1,4 +1,15 @@
-# tools — 出す前に回す2本
+# tools — 作る1本と、出す前に回す関門
+
+## `build.mjs` — 開発はモジュール、公開は1ファイル
+```sh
+node tools/build.mjs           # src/ を連結して mics-609bc14b.html を作る
+node tools/build.mjs --check   # 現物と src が一致するか（関門の最初の項目）
+```
+順番は `src/manifest.json`。バージョンは `version.json` だけが正で、`__APP_VERSION__` に差し込む。
+**生成物（mics-*.html）を直接編集しない。** した場合 `--check` が「最初にズレる部品」を名指しで止める。
+詳細は `docs/dev-flow.md`。
+
+# 出す前に回す2本
 
 どちらも Playwright で**実機と同じ描画**を測る。目視やgrepでは出ない類のバグを拾うために置いてある。
 

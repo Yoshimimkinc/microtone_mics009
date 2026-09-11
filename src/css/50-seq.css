@@ -1,0 +1,61 @@
+  /* sequencer — 16-row grid */
+  .seq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;}
+  .melo-banner{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--teal);letter-spacing:.06em;}
+  .melo-banner .t{padding:5px 10px;font-size:10px;}
+  .pat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
+  .patbtn{position:relative;}
+  .patbtn.on{background:var(--amber);color:var(--hit-ink);}
+  .patbtn.playing{box-shadow:0 0 0 2px var(--teal);position:relative;z-index:2;}  /* 現在再生中を外枠で・最前面 */
+  .patbtn.queued{box-shadow:0 0 0 2px var(--teal);z-index:2;animation:spblink .8s ease-in-out infinite;}  /* 予約中＝点滅 */
+  .patbtn.has::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:.85;}  /* 中身ありドット */
+  .patbtn.dim{opacity:.4;}  /* ループ外の小節は薄く */
+  /* master VU */
+  .master-vu-wrap{position:relative;width:100%;height:16px;background:#0d1013;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px;}
+  .master-vu-bar{height:100%;width:0;border-radius:3px;
+    background:linear-gradient(90deg,var(--teal),var(--amber));transition:width .06s linear;}
+  .master-vu-bar.peak{background:linear-gradient(90deg,var(--amber),#ff4d4d);}
+  .master-ctrls{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;}
+  .master-ctrls .knob{flex:1 1 120px;max-width:180px;}
+  /* MASTER OUTPUT をモード切替ボタンの横に常設（横並び・コンパクト） */
+  .modebar-row{display:flex;align-items:center;gap:20px;margin:16px 0 20px;flex-wrap:wrap;}
+  .modebar-row .modebar{margin:0;}
+  .master-bar{flex:1 1 380px;min-width:260px;display:flex;align-items:center;gap:14px;
+    border-left:1px solid var(--line);padding-left:16px;}
+  .master-bar .master-vu-wrap{flex:0 0 70px;width:70px;margin-top:0;}
+  .master-bar .master-ctrls{flex:1;gap:14px;align-items:center;margin:0;}
+  .master-bar .master-ctrls .knob{flex:1 1 70px;max-width:150px;}
+
+  .colnums{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;margin-bottom:5px;min-width:500px;}
+  .colnums .cn{font-size:9px;color:var(--dim);text-align:center;font-variant-numeric:tabular-nums;}
+  .colnums .cn:nth-child(4n+2){color:var(--ink);}
+  .grid{display:flex;flex-direction:column;gap:3px;min-width:500px;flex:1 1 auto;min-height:0;}
+  .row{display:grid;grid-template-columns:60px repeat(16,1fr);gap:4px;align-items:stretch;flex:1 1 0;min-height:0;}
+  .row .rn{
+    font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.02em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
+    padding:2px 6px;border:1px solid transparent;border-radius:4px;align-self:center;
+  }
+  .row .rn:hover{border-color:var(--line);}
+  .row.sel .rn{color:var(--teal);border-color:var(--teal);}
+  .row .rn b{color:var(--ink);}
+  .step{
+    border-radius:4px;background:#1a1e23;border:1px solid var(--line);
+    cursor:pointer;transition:.08s;position:relative;min-height:0;
+  }
+  /* 全モード共通：16ステップを4グループの灰色グラデで可視化（OFFガイド。ONはテーマ色） */
+  /* 全モード共通：各拍(4ステップ)の中で暗→明のグラデを繰り返す＝拍内の位置が分かる（OFFガイド。ONはテーマ色） */
+  .step:nth-child(4n+2):not(.on){background:#353a42;}  /* 拍内1 (1,5,9,13): 暗 */
+  .step:nth-child(4n+3):not(.on){background:#5c636d;}  /* 拍内2 (2,6,10,14) */
+  .step:nth-child(4n):not(.on){background:#838a95;}    /* 拍内3 (3,7,11,15) */
+  .step:nth-child(4n+1):not(.on){background:#aab1bc;}  /* 拍内4 (4,8,12,16): 明 */
+  .step:nth-child(4n+2){border-left:2px solid #4a525c;}  /* 拍の区切り線 */
+  .step.on{background:var(--amber);border-color:color-mix(in srgb,var(--amber) 70%,#fff);box-shadow:0 0 8px rgba(var(--hit-glow-a),.35);}
+  .step.acc.on{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5);}
+  .grid.playcol .step.cursor{box-shadow:0 0 0 2px var(--teal) inset;}
+
+  .file{font-size:11px;}
+  .file label{color:var(--teal);cursor:pointer;text-transform:uppercase;letter-spacing:.14em;border:1px dashed var(--line);padding:6px 10px;border-radius:5px;display:inline-block;}
+  .file input{display:none;}
+  select.t{appearance:none;}
+  select.t:focus{box-shadow:0 0 0 2px var(--amber);outline:none;}

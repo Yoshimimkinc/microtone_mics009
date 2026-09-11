@@ -1,0 +1,19 @@
+  :root{
+    --bg:#121417;        /* graphite body */
+    --panel:#1b1f24;
+    --panel2:#23282f;
+    --edge:#0a0c0e;
+    --line:#32383f;
+    --ink:#e8e4d8;        /* off-white silkscreen */
+    --dim:#8b919a;
+    --well:#0d1013;        /* 窪み（セグ・readout・入力欄の受け皿） */
+    --well-ink:#e8e4d8;
+    --modal-deep:#161a1f;  /* モーダル/トースト/本体の下端色（明るいテーマではパネル色を入れる） */
+    --amber:#ff8a3d;      /* lit-pad amber */
+    --amber-dim:#7a4a26;
+    --teal:#3dd6c4;       /* active step / accent */
+    --red:#ff4d4d;
+    --pad:#2b3038;
+    --pad-face:#343b44;
+    --hit-c2:#c25e22; --hit-glow-a:255,138,61; --hit-ink:#2a1405;   /* 点灯LEDの色（スキンで差し替え） */
+  }

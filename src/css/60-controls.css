@@ -1,0 +1,72 @@
+  /* mode switch (実機風) */
+  .modebar{display:flex;gap:0;margin:8px 0 10px;
+    background:#0d1013;border:1px solid var(--edge);border-radius:8px;padding:5px;width:fit-content;
+    box-shadow:0 2px 6px rgba(0,0,0,.4) inset;}
+  .modebtn{
+    /* 非選択の文字も4.5:1を満たす濃さにする（--dim のままだと明るい盤で3.96:1） */
+    min-height:44px;background:transparent;color:color-mix(in srgb,var(--dim) 78%,var(--ink));border:1px solid transparent;
+    border-radius:5px;padding:10px 26px;font:inherit;font-size:13px;letter-spacing:.22em;
+    text-transform:uppercase;cursor:pointer;transition:.14s;display:flex;align-items:center;gap:9px;
+  }
+  .modebtn .led{width:7px;height:7px;border-radius:50%;background:#2c333b;box-shadow:0 0 0 1px #0a0c0e inset;transition:.14s;}
+  .modebtn:hover{color:var(--ink);}
+  .modebtn.on{background:var(--panel2);color:var(--ink);border-color:var(--line);}
+  .modebtn.on .led{background:var(--amber);box-shadow:0 0 8px var(--amber);}
+  .view{display:none;}
+  .view.active{display:block;}
+  #viewSeq.active{overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:column;}
+  /* mute / solo hold bar */
+  .msbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .msbtn{
+    display:flex;align-items:center;gap:6px;flex:0 0 auto;
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:6px;padding:8px 14px;font:inherit;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;cursor:pointer;transition:.1s;user-select:none;touch-action:none;min-height:44px;
+  }
+  .msbtn .d{width:7px;height:7px;border-radius:50%;background:#2c333b;box-shadow:0 0 0 1px #0a0c0e inset;transition:.1s;}
+  .msbtn.mute.armed{background:var(--red);color:#2a0808;border-color:var(--red);box-shadow:0 0 16px rgba(255,77,77,.5);}
+  .msbtn.mute.armed .d{background:#fff;box-shadow:0 0 8px #fff;}
+  .msbtn.solo.armed{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 16px rgba(61,214,196,.5);}
+  .msbtn.solo.armed .d{background:#06201d;box-shadow:0 0 6px #06201d;}
+  .msbtn.edit.armed{background:#5b9dff;color:#06183a;border-color:#5b9dff;box-shadow:0 0 16px rgba(91,157,255,.5);}
+  .msbtn.edit.armed .d{background:#06183a;}
+  /* スマホ用エフェクト選択子（PCでは perf の P-LOCK 行が担う） */
+  .msbtn.fx{display:none;}
+  .msbtn.fx[data-lock="delay"]{color:#5fd35f;}   .msbtn.fx[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;box-shadow:0 0 16px rgba(95,211,95,.5);}
+  .msbtn.fx[data-lock="reverb"]{color:#5aa9ff;}  .msbtn.fx[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;box-shadow:0 0 16px rgba(90,169,255,.5);}
+  .msbtn.fx.on .d{background:currentColor;}
+  /* MIX画面廃止に伴い、MUTE/SOLOはPADSバーに復活（M/Sの行き場をここに確保） */
+  .msbar .msbtn{justify-content:center;min-width:104px;}
+  /* EDIT mode：対象選択を促すパッドのほのかな点滅枠 */
+  body.edit-arm .pads .pad{cursor:pointer;}
+  body.edit-arm .pads .pad::after{content:"";position:absolute;inset:0;border:1px dashed rgba(91,157,255,.55);border-radius:9px;pointer-events:none;}
+  .pad.copysrc{box-shadow:0 0 0 2px #ffd24d inset,0 4px 8px rgba(0,0,0,.4);}
+  /* COPY元（パターン/小節）＝黄リング（パッドと同じ） */
+  .stepbtn.copysrc,.step.copysrc,.seg button.copysrc,
+  .perf-pat.copysrc,.perf-bar.copysrc,.patbtn.copysrc{box-shadow:0 0 0 2px #ffd24d inset, 0 0 10px rgba(255,210,77,.5)!important;z-index:3;}
+  /* EDIT中のドラッグ並べ替え：掴み元(copyarm=コピー待機)とドロップ先(droptgt) */
+  .pad.dragsrc{box-shadow:0 0 0 2px var(--teal) inset,0 6px 12px rgba(0,0,0,.5);opacity:.85;}
+  .pad.copyarm{box-shadow:0 0 0 2px #ffd24d inset,0 6px 12px rgba(0,0,0,.5);}
+  .pad.droptgt{box-shadow:0 0 0 2px var(--amber) inset,0 0 14px rgba(255,160,40,.5);}
+  /* pad mute/solo state */
+  .pad.muted{opacity:.4;}
+  .pad.muted::after{content:"M";position:absolute;top:7px;right:9px;font-size:11px;color:var(--red);font-weight:700;}
+  .pad.soloed{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
+  .pad.soloed::after{content:"S";position:absolute;top:7px;right:9px;font-size:11px;color:var(--teal);font-weight:700;}
+  /* Koala-style waveform strip */
+  .strip{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:12px 14px;margin-bottom:16px;}
+  .strip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;min-width:0;}
+  .strip-head .who{font-size:14px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;}
+  .strip-actions{display:flex;align-items:center;gap:10px;min-width:0;}
+  /* spanなので inline のままだと min-height が効かない（44px指定が無視されていた） */
+  .loadbtn{color:var(--teal);cursor:pointer;font-size:11px;letter-spacing:.14em;
+    display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);padding:5px 12px;border-radius:5px;}
+  .loadbtn:hover{border-color:var(--teal);}
+
+  body:not(.step-on) #viewPads .strip{padding:8px 14px;margin-bottom:6px;}
+  /* 窓波形撤去後、strip-headが唯一の中身。下マージンを消して上下中央に揃える（上寄り防止＋フォーカス枠の見切れ防止） */
+  body:not(.step-on) #viewPads .strip-head{margin-bottom:0;}
+  /* パッド内波形を主役に（撤去した窓波形の代わり） */
+  .pad>.pad-wave{opacity:.6;}
+  .pad.sel>.pad-wave{opacity:.85;}

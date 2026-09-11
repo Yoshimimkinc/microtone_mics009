@@ -1,0 +1,130 @@
+  /* responsive */
+  @media(max-width:767px){   /* 積み上げレイアウトを767pxまで＝splitの開始点と隙間なく接続 */
+    /* セーフエリア（ノッチ/ステータスバー/ホームバー）を避ける＝ロゴが時刻に重ならない */
+    body{padding:calc(6px + env(safe-area-inset-top)) calc(6px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));}
+    /* === スマホはアプリ全体を画面の高さに収める（PADSは縦スクロールさせない） === */
+    html,body{height:100%;}
+    html{overflow:hidden;}   /* iOS Safariはbody:hiddenでもhtmlが動く→明示ロックしないとスクロールする */
+    body,html:fullscreen body,html:-webkit-full-screen body{
+      display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden;}
+    html:fullscreen,html:-webkit-full-screen{overflow:hidden;}
+    .unit{flex:1;min-height:0;display:flex;flex-direction:column;}
+    html:fullscreen .unit,html:-webkit-full-screen .unit{margin:0;}
+    .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:0;}
+    .unit{padding:8px 10px 10px;border-radius:10px;}
+    .brand .logo{font-size:18px;}
+    .brand .model{display:none;}
+    /* スマホ：ロゴは PADS/SEQ の行へ移す（relocateLogo）。見出し行が1段減る＝約35px をパッドへ。ブランドは画面に残る（v0.3.111） */
+    .top .brand{display:none;}
+    .viewdots .logo{flex:0 0 auto;display:flex;align-items:center;font-size:18px;font-weight:700;letter-spacing:.02em;padding:0 10px 0 4px;color:var(--ink);}
+    .viewdots .logo b{color:var(--amber);}
+    .top{padding-bottom:8px;margin-bottom:6px;gap:7px;flex:0 0 auto;}
+    button.t{padding:6px 8px;font-size:10px;min-width:0;}
+    /* スマホ：transportはロゴと別行＝全幅。5ボタンを均等割りで大きく押しやすく */
+    .transport{gap:6px;flex-wrap:nowrap;flex-basis:100%;width:100%;}
+    .transport .ctrl{font-size:9px;}
+    .transport button.t{flex:1 1 0;min-width:0;font-size:13px;letter-spacing:.02em;padding:0 4px;min-height:50px;white-space:nowrap;overflow:hidden;text-overflow:clip;}
+    #bpm{max-width:84px;}
+    .modebar-row{margin:2px 0 6px;gap:12px;}
+    /* スマホ：MENUモーダルの設定行は縦積み・スライダー全幅（横並びだと潰れてラベルとスライダーが重なる） */
+    .modal .tempo-row{flex-direction:column;align-items:stretch!important;gap:14px!important;}
+    .modal .tempo-row .ctrl{width:100%;justify-content:space-between;}
+    .modal .tempo-row .ctrl input[type=range]{max-width:none;}
+    .modal .tempo-row #bpm{max-width:none;}
+    .modal .tempo-row #tap{align-self:stretch;min-height:40px;}
+    .modal .master-bar{flex-direction:column;align-items:stretch;gap:14px;min-width:0;}
+    .modal .master-bar .master-vu-wrap{width:100%!important;flex:0 0 auto;}
+    .modal .master-bar .master-ctrls{align-items:stretch;}
+    .modal .master-ctrls{flex-direction:column;align-items:stretch;gap:16px;}
+    .modal .master-ctrls .knob{flex:1 1 auto!important;max-width:none!important;width:100%;}
+    /* TEMPO/SWINGは2行目に（スライダーを広く） */
+    .tempo-row{display:flex;flex-basis:100%;width:100%;order:2;gap:12px;align-items:center;margin-top:4px;}
+    .tempo-row .ctrl:first-child{flex:1;}
+    .tempo-row #bpm{flex:1;max-width:none;}
+    /* Koala風：モードタブを全幅・均等に */
+    .modebar-row .modebar{flex:1;width:100%;}
+    .modebar .modebtn{flex:1;justify-content:center;padding-left:4px;padding-right:4px;letter-spacing:.12em;}
+    .modebtn{padding:6px 13px;font-size:13px;}
+    .msbtn{padding:6px 9px;font-size:11px;}   /* MUTE/SOLO/EDIT は「いまどのモードか」＝値扱い（§3） */
+    /* DADS：タッチターゲット確保（要所は44px目安、稀用ボタンは詰めつつ最低限） */
+    .modebtn{min-height:44px;}
+    #patSeg button,#barSeg button{min-height:40px;}
+    button.t,.msbtn,.loadbtn{min-height:44px;}   /* 演奏系（ui-rules.md §2）。34pxでは押し外す */
+    .toggle{min-height:34px;}
+    .seg button{min-height:34px;}
+    /* === スマホはKoala風：操作部コンパクト＋大きいパッド主役 === */
+    /* 情報窓はモバイルでは2行に圧縮（BPM/PAT/BAR＝積み残しだった「現在地」表示 ＋ 触れるパラメータ） */
+    #viewPads>.perf-screen{order:0;flex:0 0 auto;padding:6px 10px;margin-bottom:6px;font-size:11px;
+      position:sticky;top:0;z-index:5;}   /* 低い画面で中身がスクロールしても窓は上に貼り付く＝波形の上が欠けない（v0.3.105） */
+    #viewPads>.perf-screen .cl-trk{display:none;}
+    #viewPads>.perf-screen .cl-row{gap:10px;line-height:1.35;}
+    #viewPads>.perf-screen .cl-par{padding:3px 9px;}
+    .strip{padding:6px 9px;}
+
+    .seg button{padding:5px 10px;font-size:10px;}
+    /* Master はメニュー内に移設（masterBarはメニューで表示。常時非表示ルールは撤去） */
+    /* PADS：Koala風 ＝ 上に波形/編集、下に大きいパッド。画面高さにフィット（スクロールしない） */
+    /* 低い画面（実機Safariのバー込み 390×664 等）ではパッドの下限56pxが収まらないので、この中だけ縦スクロールを許す。
+       普段は溢れないのでスクロールは出ない */
+    #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:6px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
+    #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
+    /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
+    #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
+    /* 下段は常に見える：低い画面で中身がスクロールしても下に貼り付く（窓の上貼り付きと対）。
+       背景を敷かないと下を通るパッドが透ける（v0.3.107） */
+    #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin:4px 0 0;
+      position:sticky;bottom:0;z-index:5;background:var(--bg);padding-top:4px;}
+    /* スマホの下段は [MUTE] [DELAY] [REVERB]。SOLO と EDIT は出さない（TRIM/CHOPは窓の✂、空パッドは＋から） */
+    #viewPads>.msbar #holdSolo,#viewPads>.msbar #holdEdit{display:none;}
+    #viewPads>.msbar .msbtn.fx{display:flex;}
+    /* スマホ：EDIT行（MUTE/SOLO/EDIT）を均等3分割でフィル */
+    #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:6px;padding-right:6px;}
+    /* 移設したMUTE/SOLO(.t.arm)もEDITと同じ高さ・並びに揃える */
+    #viewPads>.msbar .ms-in-edit{min-height:44px;font-size:11px;letter-spacing:.04em;}
+    /* スマホ：strip-headを横幅いっぱいに。ファイル名は縮む(ellipsis)＝矢印/LOADと絶対に重ねない */
+    .strip-head{gap:6px;width:100%;}
+    .who-wrap{flex:1 1 auto;min-width:0;}
+    .strip-head .who{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}   /* 固定130pxを解除＝名前側が譲る */
+    .strip-head .stepnav{flex:0 0 auto;}
+    .strip-actions{flex:0 1 auto;min-width:0;gap:6px;}
+    .strip-actions .loadbtn{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:8px 10px;font-size:11px;white-space:nowrap;min-height:44px;display:flex;align-items:center;justify-content:center;}   /* LOAD/SMPLは演奏系＝44px（§2） */
+    .strip-head .stepnav{padding:6px 7px;}
+    /* スマホでも MUTE/SOLO/EDIT を表示（MIX廃止でM/Sの行き場をPADSに） */
+    #viewPads>.stepstrip{display:none!important;}   /* スマホは下段ステップ非表示（打ち込みはSEQ画面で） */
+    /* パッドは4×4で全16個を一度に表示。残り高さを4行で等分（正方形固定はやめて縮める） */
+    /* 縦の予算（v0.3.111）：窓/strip/下段の余白を gap(6px) に一本化＝ 390×664 で 16 枚が下段の上に収まる（§124） */
+    #viewPads.active>.perf-screen{margin-bottom:0;}
+    #viewPads.active>.strip{margin:0!important;padding-top:6px;padding-bottom:6px;}
+    #viewPads.active>.msbar{margin-top:0;padding-top:2px;}
+    .pads{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;max-width:100%!important;gap:6px;}
+    /* 下限44px（演奏系タップの規則値 §2）：これより潰すくらいなら縦スクロールさせる。
+       56px だと実機Safariの 390×664 で下2行が下段の裏に隠れた（v0.3.111）。ロゴ行の統合と合わせて 664 で16枚が収まる */
+    .pads .pad{aspect-ratio:auto!important;min-height:44px!important;padding:6px!important;}
+    /* モバイル：ぼかしグロー(box-shadow blur)とトランジションは毎ステップ再描画が重い→無効化（背景色での点灯は残す） */
+    .pad{transition:none!important;}
+    .pad.hit,.pad.hit.hit-acc{box-shadow:none!important;}
+
+    /* パッドは自然順（左上=1）。ドラムはPADS配列で9-16=下段に配置 */
+    /* === スマホ：3モードはタブを廃止し、スワイプ＋ドットで切替（スペース確保） === */
+    .modebar-row .modebar{display:none;}
+    .viewdots{display:flex;}
+    .modebar-row{margin:2px 0 4px;}
+
+    /* パッド数字はスマホで控えめに（重なり防止） */
+    .pads .pad .stepn{font-size:15px;}
+    .pads .pad .lockv{font-size:14px;}
+    /* SEQは固定高さの中で内部縦スクロール（PADSは収める方針と両立） */
+    #viewSeq.active{overflow-x:hidden;overflow-y:auto;display:block;height:100%;}
+    /* SEQヘッダの行数削減：ヒント省略・ラベル省略でPATTERN/BAR/DUPを1行に */
+    .seq-head{gap:6px;margin-bottom:8px;}
+    .pat-bar{gap:6px;}
+    .pat-bar .patlabel{display:none;}
+    .colnums,.grid{min-width:0;}
+    .grid{flex:none;height:auto;}
+    .row{flex:0 0 auto;}
+    .colnums,.row{grid-template-columns:44px repeat(16,1fr);gap:2px;}
+    .step{height:30px;}
+    .row .rn{font-size:10px;padding:2px 2px;letter-spacing:0;}
+    .colnums .cn{font-size:9px;}
+    .colnums .cn:not(:nth-child(4n+2)){visibility:hidden;}   /* 拍頭1,5,9,13だけ表示＝位置把握には十分で読める大きさに */
+  }
