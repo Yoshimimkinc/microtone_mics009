@@ -187,21 +187,14 @@ function renderPerfFills(){
     else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
   }
 }
-function perfRevertSnap(){    // perfSnap の元値へ16パッドを戻す
-  if(!perfSnap) return;
-  const p=perfSnap.param;
-  for(let i=0;i<16;i++){ const t=tracks[i];
-    if(p==="filter"){ t.cutoff=perfSnap.vals[i]; t.filter=perfSnap.filt[i]; } else t[PERF_BASE[p]]=perfSnap.vals[i];
-  }
-}
 function perfLockApply(prev){
-  // 直前のP-LOCKを抜けた（別へ/解放）→ REC OFFなら元値へ復帰
-  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
-    // REC OFF＝瞬間（復帰）／REC ONでもステップへ記録済みならbaseは復帰（オートメーションはlocksに在る）
-    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();
-    perfSnap=null;
-  }
-  // 新しいP-LOCKが有効＝16パッドの元値をスナップショット（復帰用）
+  // P-LOCKを抜けても**値は残す**（v0.3.119）。
+  // v0.3.118 までは REC OFF だと解放時に選択時のスナップショットへ巻き戻していた（Digitakt式の瞬間モジュレート）が、
+  //   ・スマホの DELAY/REVERB は巻き戻さない＝同じ操作なのに PC と挙動が違った
+  //   ・「解除してもう一度押すと数値がデフォルトに戻る」＝作り込んだ送り量が消える
+  // 送り量やフィルターは"作る"値なので残すのが正しい。戻したいときはパッドをダブルタップ（＝いじる前の値へ）。
+  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock) perfSnap=null;
+  // 新しいP-LOCKが有効＝16パッドの「いじる前の値」をスナップショット（ダブルタップで戻す基準）
   if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
     perfSnap={param:activeLock, vals:[], filt:[], recorded:false};
     for(let i=0;i<16;i++){ const t=tracks[i]; perfSnap.vals[i]= activeLock==="filter"?t.cutoff : t[PERF_BASE[activeLock]]; perfSnap.filt[i]=t.filter; }
@@ -227,7 +220,7 @@ function perfLockApply(prev){
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：演奏のみ（離すと戻る）"; });
+    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：ステップには書かない（値は残る）"; });
 })();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
@@ -237,8 +230,8 @@ function updatePerf(){
   const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
   document.body.classList.toggle("perf", four && land);
   document.body.classList.toggle("perf-rotate", four && !land && coarse);
-  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（REC OFFなら復帰）
-    if(perfSnap){ if(!perfRecArm || perfSnap.recorded) perfRevertSnap(); perfSnap=null; }
+  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（値はそのまま残す v0.3.119）
+    perfSnap=null;
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }

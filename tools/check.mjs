@@ -482,7 +482,30 @@ async function previewIsolated(){
   eq(`プレビュー分離 0 errors`, errs, []);
   await ctx.close();
 }
+// §16 P-LOCK は解除しても値が残る（v0.3.119）。PC(perf) とスマホで同じ挙動であること
+async function plockKeeps(){
+  for(const [w,h,mobile,sel,label] of [[1280,800,false,'#perfPlk .perf-plkbtn[data-lock="delay"]','perf'],
+                                        [390,844,true,'.msbar .msbtn.fx[data-lock="delay"]','mobile']]){
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    const send=()=>p.evaluate(()=>+tracks[0].delaySend.toFixed(3));
+    await p.evaluate(()=>{ tracks[0].delaySend=0; });
+    await p.click(sel);                                     // P-LOCK 選択
+    await p.evaluate(()=>{ tracks[0].delaySend=0.70; });    // パッドを左右ドラッグして 70% にしたのと同じ
+    await p.click(sel);                                     // 解除
+    const afterOff=await send();
+    await p.click(sel);                                     // もう一度適用
+    const afterOn=await send();
+    ok_(`P-LOCK(${label}) 解除しても値が残る`, afterOff===0.7, `${afterOff}（0.7のはず）`);
+    ok_(`P-LOCK(${label}) 再適用しても値が残る`, afterOn===0.7, `${afterOn}（0.7のはず）`);
+    eq(`P-LOCK(${label}) 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 await passGate();
+await plockKeeps();
 await iosLoad();
 await previewIsolated();
 await latency();
