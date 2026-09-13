@@ -1,13 +1,20 @@
 // ===== パラメーターロック（p-lock） =====
-// 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット
+// 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
 const PLOCKS = {
   pitch:  {min:-12, max:12,   def:0,     color:"61,214,196",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 半音
-  level:  {min:-30, max:6,    def:-4,    color:"255,93,176",  fmt:v=>Math.round(v)},                              // dB
   filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
   delay:  {min:0,   max:1,    def:0.3,   color:"95,211,95",   fmt:v=>Math.round(v*100)},                          // 送り%
   reverb: {min:0,   max:1,    def:0.3,   color:"90,169,255",  fmt:v=>Math.round(v*100)},                          // 送り%
   nudge:  {min:-50, max:50,   def:0,     color:"255,150,90",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 前後タイミング(ms)。-=前ノリ/+=後ノリ
 };
+// 古い .mics に残る廃止済みの P-LOCK（level: v0.3.124）を読み込み時に捨てる。空になったステップは丸ごと消す
+function stripLegacyLocks(locks){
+  if(!locks) return {};
+  for(const k of Object.keys(locks)){ const lk=locks[k]; if(!lk) { delete locks[k]; continue; }
+    delete lk.level;
+    if(Object.keys(lk).length===0) delete locks[k]; }
+  return locks;
+}
 function lockKey(pat,bar,step){ return pat+"_"+bar+"_"+step; }
 function getLockEdit(trackIdx, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(editPat,editBar,step)]; }
 function getLockPlay(trackIdx, pat, bar, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(pat,bar,step)]; }

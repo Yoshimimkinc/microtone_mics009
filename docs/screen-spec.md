@@ -113,7 +113,7 @@
 
 ### To-Be 構成（3画面→2画面）
 - **画面は PADS / SEQ の2つ**（MIXタブ・ドット・スワイプ対象から除外）。
-- **per-pad ミックス**：音量＝EDITのLevel＋P-LOCK level。ミュート/ソロ＝PADSの **MUTE/SOLO モード**（モバイルでも復活）。
+- **per-pad ミックス**：音量＝EDITのLevel（P-LOCK level は v0.3.124 で廃止 §135）。ミュート/ソロ＝PADSの **MUTE/SOLO モード**（モバイルでも復活）。
 - **Group音量（4）** と **FX（delay/reverb 量・ON/OFF）** と **Master音量** は **メニュー（⋮）内**へ移設（Master/Comp/Sound A/B と同居）。
 - **撤去**：16chフェーダー＋ch毎VU＋`syncMixLayout`/`mix4`、`#viewMix`、MIXモードボタン/ドット。
 - **音声配線は不変**：`groupBus`/`GROUP_OF`/FXノード/masterGain はそのまま。**UIだけ移設**。
@@ -1708,3 +1708,22 @@ FILTER はドラッグで cutoff。`filter=off` のパッドは LP に切り替�
 検査 `check.mjs` 6d を6つ・1行・幅44以上・溢れなし＋FILTER のドラッグに拡張。
 
 教訓：**共通化した後は「足す」が安い。** 経路と表示条件を先に一本化したから、ボタン3つがマークアップ3行で済んだ。
+
+## 135. LEVEL を P-LOCK から廃止（v0.3.124）
+「Level は全レベルで P-LOCK から廃止」。PC の演奏ページ・スマホの下段・ステップ記録・再生時の適用、すべてから外した。
+
+理由（単一の真）：パッドの音量は **EDIT の Level（`t.vol`）だけ**にする。MIX 画面を消したとき（§上の方）も
+「同じ状態を3箇所から触れて同期バグになった」のが理由だった。P-LOCK level はその名残で、演奏中に音量を
+いじる用途は MUTE と EDIT Level で足りる。
+
+消したもの（1件ずつ）：
+- `#perfPlk` の LEVEL ボタン、`#fxLevel`（スマホ下段）。下段は MUTE + PITCH/FILTER/DELAY/REVERB の5つ＝1つ約71px（頼まれた 2/3）
+- `PERF_BASE.level`、`PLOCKS.level`、ドラッグの丸め分岐（pads / step-strip）
+- `playVoice` の `plock.level` 上書き → `baseVol = t.vol`
+- CSS の `[data-lock="level"]` 5行
+
+古い `.mics` に残る `locks[*].level` は **読み込み時に `stripLegacyLocks` で捨てる**（空になったステップは丸ごと消す）。
+見えない値が音量を変え続けるのを防ぐ。音量が変わって聞こえる古いプロジェクトがあれば、EDIT の Level で合わせ直す。
+
+検査：`check.mjs` 6d に「`[data-lock="level"]` がDOMに無い／`PERF_BASE`・`PLOCKS` に level が無い／
+`stripLegacyLocks` が level を捨て空ステップを消す」を追加。下段は5つ・1行・幅44以上・溢れなし。

@@ -100,7 +100,7 @@ let perfRecArm = false;// Performance: REC ON=再生中いじりをステップ�
 let perfSnap = null;   // P-LOCK選択時に取った16パッドの「掛ける前の値」（解放でここへ戻る＝効果オフ／ダブルタップの基準）
 let perfLast = {};     // P-LOCKごとの「最後にいじった16パッドの値」（もう一度押すと復活する記憶 v0.3.121）
 let perfTapT = [];     // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）
-const PERF_BASE = {pitch:"tune", level:"vol", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 5つとも演奏のパラメータ・ページで同等に扱う
+const PERF_BASE = {pitch:"tune", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 4つとも演奏のパラメータ・ページで同等に扱う（LEVEL は v0.3.124 で P-LOCK から廃止 §135）
 // 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）
 function perfResetPad(i, param){
   if(!param || !PERF_BASE[param]) return;

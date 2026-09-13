@@ -191,15 +191,17 @@ async function run(w,h,mobile){
     if(stacked){ ok_(`${V} 16枚のパッドが下段の上に収まる（スクロール無し）`, g.n===16 && g.lastBot<=g.msTop, JSON.stringify(g)); ok_(`${V} パッド高さ ≥44px`, g.minH>=44, g.minH); }
     ok_(`${V} ロゴが画面に残る（${stacked?'PADS/SEQ行':'ヘッダ'}）`, g.logoVis && g.logoIn===(stacked?'dots':'top'), JSON.stringify(g));
   }
-  // 6d) スマホの下段は [MUTE][PITCH][LEVEL][FILTER][DELAY][REVERB]（SOLO/EDIT は出さない）。押してパッド左右ドラッグで値（v0.3.106→v0.3.123 §134）
+  // 6d) スマホの下段は [MUTE][PITCH][FILTER][DELAY][REVERB]（SOLO/EDIT は出さない）。押してパッド左右ドラッグで値（v0.3.106→v0.3.123 §134、LEVEL 廃止 v0.3.124 §135）
   if(mobile){
     const vis=await p.evaluate(()=>{const g=id=>{const e=document.getElementById(id); const r=e.getBoundingClientRect(); return r.height>0&&getComputedStyle(e).display!=='none'?Math.round(r.height):0;};
-      return {mute:g('holdMute'), solo:g('holdSolo'), edit:g('holdEdit'), pitch:g('fxPitch'), level:g('fxLevel'), filter:g('fxFilter'), delay:g('fxDelay'), reverb:g('fxReverb')};});
-    ok_(`${V} 下段は MUTE/PITCH/LEVEL/FILTER/DELAY/REVERB`, vis.mute>=44 && vis.pitch>=44 && vis.level>=44 && vis.filter>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo===0 && vis.edit===0, JSON.stringify(vis));
+      return {mute:g('holdMute'), solo:g('holdSolo'), edit:g('holdEdit'), pitch:g('fxPitch'), filter:g('fxFilter'), delay:g('fxDelay'), reverb:g('fxReverb'), levelBtns:document.querySelectorAll('[data-lock="level"]').length};});
+    ok_(`${V} 下段は MUTE/PITCH/FILTER/DELAY/REVERB`, vis.mute>=44 && vis.pitch>=44 && vis.filter>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo===0 && vis.edit===0, JSON.stringify(vis));
+    eq(`${V} 古い level ロックは読み込みで捨てる`, await p.evaluate(()=>stripLegacyLocks({a:{level:-10},b:{level:-10,pitch:2},c:null})), {b:{pitch:2}});
+    ok_(`${V} LEVEL の P-LOCK はどこにも無い（v0.3.124 §135）`, vis.levelBtns===0 && !(await p.evaluate(()=>('level' in PERF_BASE)||('level' in PLOCKS))), JSON.stringify(vis));
     // 6つが1行に収まり、幅44px以上・文字が溢れない（幅を2/3以下に詰めた分の検査）
     const row=await p.evaluate(()=>{ const bs=[...document.querySelectorAll('#viewPads>.msbar button')].filter(b=>getComputedStyle(b).display!=='none');
       return {n:bs.length, rows:new Set(bs.map(b=>Math.round(b.getBoundingClientRect().top))).size, minW:Math.min(...bs.map(b=>b.getBoundingClientRect().width)), over:bs.filter(b=>b.scrollWidth>b.clientWidth).map(b=>b.textContent.trim())}; });
-    ok_(`${V} 下段6つが1行・幅44px以上・溢れなし`, row.n===6 && row.rows===1 && row.minW>=44 && row.over.length===0, JSON.stringify(row));
+    ok_(`${V} 下段5つが1行・幅44px以上・溢れなし`, row.n===5 && row.rows===1 && row.minW>=44 && row.over.length===0, JSON.stringify(row));
     // FILTER：押してパッドを左右ドラッグ＝cutoff。filter=off のパッドは LP に切り替わって音が通る
     await p.evaluate(()=>{ tracks[4].filter="off"; tracks[4].cutoff=12000; });
     await p.click('#fxFilter'); await p.waitForTimeout(80);

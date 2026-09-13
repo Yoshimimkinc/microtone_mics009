@@ -52,7 +52,7 @@ if(stepStripEl){
       if(!stripDrag.undone){ pushUndo(); stripDrag.undone=true; }
       const spec=PLOCKS[activeLock]; let v;
       if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let l=Math.log(stripDrag.startVal)+(dx/180)*(lmax-lmin); l=Math.max(lmin,Math.min(lmax,l)); v=Math.exp(l); }
-      else { v=stripDrag.startVal+(dx/180)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); if(activeLock==="pitch"||activeLock==="level"||activeLock==="nudge") v=Math.round(v); }
+      else { v=stripDrag.startVal+(dx/180)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); if(activeLock==="pitch"||activeLock==="nudge") v=Math.round(v); }
       const pat=getPattern(selected); if(!(pat[stripDrag.s]>0)) pat[stripDrag.s]=1;   // 値を入れたら自動ON
       setLockEdit(selected, stripDrag.s, activeLock, v);
       paintStepStrip();

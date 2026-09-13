@@ -143,8 +143,8 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
     src.connect(filt); head = filt;
   }
   const env = AC.createGain();
-  // p-lock: level(dB) があれば音量を上書き
-  const baseVol = (plock && plock.level!=null) ? plock.level : t.vol;
+  // 音量は EDIT の Level（t.vol）だけ。P-LOCK level は v0.3.124 で廃止（古い .mics の level ロックは読み込み時に捨てる §135）
+  const baseVol = t.vol;
   const peak = dbToGain(baseVol + (accent?3:0));
   const toB = multiOut && t.outBus==="B";
   head.connect(env);

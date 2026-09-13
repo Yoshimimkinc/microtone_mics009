@@ -124,7 +124,7 @@ PADS.forEach((p,i)=>{
     let v;
     if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let lv=Math.log(perfDrag.orig)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv); }
     else { v=perfDrag.orig+(dx/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); }
-    if(perfDrag.param==="pitch"||perfDrag.param==="level") t[prop]=Math.round(v);
+    if(perfDrag.param==="pitch") t[prop]=Math.round(v);
     else t[prop]=v;                                       // filter(cutoff) / delay / reverb は連続値
     perfFillPad(i, perfDrag.param);                       // このパッドのフィルを更新（発音なし）
     const ps=document.getElementById("perfSel");          // 画面にライブ表示

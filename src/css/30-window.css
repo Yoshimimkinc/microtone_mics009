@@ -192,12 +192,10 @@
   .perf-plkbtn{background:var(--pad);border:1px solid var(--line);border-radius:8px;cursor:pointer;
     font:inherit;font-size:10px;font-weight:700;letter-spacing:.04em;padding:8px 4px;min-height:42px;transition:.08s;}
   .perf-plkbtn[data-lock="pitch"]{color:#3dd6c4;}
-  .perf-plkbtn[data-lock="level"]{color:#ff5db0;}
   .perf-plkbtn[data-lock="filter"]{color:#b07cff;}
   .perf-plkbtn[data-lock="delay"]{color:#5fd35f;}
   .perf-plkbtn[data-lock="reverb"]{color:#5aa9ff;}
   .perf-plkbtn[data-lock="pitch"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;}
-  .perf-plkbtn[data-lock="level"].on{background:#ff5db0;color:#2a0a1e;border-color:#ff5db0;}
   .perf-plkbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
   .perf-plkbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
   .perf-plkbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
