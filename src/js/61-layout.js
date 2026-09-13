@@ -180,8 +180,16 @@ function perfFillPad(i, param){
   if(el._lockfill){ el._lockfill.style.width=(norm*100).toFixed(1)+"%"; el._lockfill.style.background="rgb("+spec.color+")"; }
   if(el._lockv) el._lockv.textContent=spec.fmt(val);
 }
+// P-LOCK の塗り（.lockfill/.lockv）を出す条件。PC は演奏(body.perf)のとき、スマホは msbar の DELAY/REVERB が見えているとき。
+// v0.3.121 までは body.perf だけを見ていたので、スマホで送り量をドラッグしても塗りも数字も出なかった（§133）。
+function plockFillsOn(){
+  if(!(activeLock && PERF_BASE[activeLock])) return false;
+  if(document.body.classList.contains("perf")) return true;
+  const b=document.querySelector(".msbar .msbtn.fx[data-lock]");
+  return !!b && getComputedStyle(b).display!=="none";
+}
 function renderPerfFills(){
-  const param=(activeLock && PERF_BASE[activeLock] && document.body.classList.contains("perf"))?activeLock:null;
+  const param=plockFillsOn()?activeLock:null;
   for(let i=0;i<padsEl.children.length;i++){
     if(param) perfFillPad(i, param);
     else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
@@ -216,7 +224,7 @@ function perfLockApply(prev){
       if(activeLock==="filter"){ t.cutoff=last.vals[i]; t.filter=last.filt[i]; } else t[PERF_BASE[activeLock]]=last.vals[i]; } }
   }
   if(!(activeLock && PERF_BASE[activeLock])) perfSnap=null;
-  document.body.classList.toggle("perf-plock", !!(activeLock && PERF_BASE[activeLock] && document.body.classList.contains("perf")));
+  document.body.classList.toggle("perf-plock", plockFillsOn());
   renderPerfFills();
   if(typeof syncEditor==="function") syncEditor();
 }
@@ -251,6 +259,7 @@ function updatePerf(){
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
+  document.body.classList.toggle("perf-plock", plockFillsOn()); renderPerfFills();   // スマホ↔PC で塗りの条件を追従
   if(four && !wasPerf){
     // ベストエフォートで横向きロック（Android系のみ有効。iPad Safariは非対応＝回転オーバーレイが実質ガード）
     try{ if(screen.orientation && screen.orientation.lock){ const p=screen.orientation.lock("landscape"); if(p&&p.catch) p.catch(()=>{}); } }catch(_){}

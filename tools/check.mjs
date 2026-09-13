@@ -493,9 +493,15 @@ async function plockKeeps(){
     const send=()=>p.evaluate(()=>+tracks[0].delaySend.toFixed(3));
     await p.evaluate(()=>{ tracks[0].delaySend=0; });
     await p.click(sel);                                     // 選択（掛ける前＝0 を控える）
-    await p.evaluate(()=>{ tracks[0].delaySend=0.70; });    // パッドを左右ドラッグして 70% にしたのと同じ
+    await p.evaluate(()=>{ tracks[0].delaySend=0.70; perfFillPad(0,'delay'); });    // パッドを左右ドラッグして 70% にしたのと同じ
+    // 送り量が見える（v0.3.122：スマホでは body.perf が無く塗りが出なかった）
+    const vis=await p.evaluate(()=>{ const el=document.querySelector('#pads .pad'); const f=el.querySelector('.lockfill'), v=el.querySelector('.lockv');
+      return {cls:document.body.classList.contains('perf-plock'), fill:getComputedStyle(f).display, w:parseFloat(f.style.width), num:v.textContent.trim(), numd:getComputedStyle(v).display}; });
+    ok_(`P-LOCK(${label}) 送り量の塗りが見える`, vis.cls && vis.fill==='block' && vis.w>60, JSON.stringify(vis));
+    ok_(`P-LOCK(${label}) 送り量の数字が見える`, vis.numd==='flex' && vis.num.length>0, JSON.stringify(vis));
     await p.click(sel);                                     // 解除
     const off=await send();
+    ok_(`P-LOCK(${label}) 解除で塗りが消える`, !(await p.evaluate(()=>document.body.classList.contains('perf-plock'))), 'perf-plock が残る');
     await p.click(sel);                                     // もう一度
     const again=await send();
     await p.click(sel);                                     // 解除
