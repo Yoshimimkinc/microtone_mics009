@@ -709,6 +709,16 @@
   /* 編集モーダル */
   .modal.pe{width:min(440px,94vw);}
   /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
+  /* 名前の行（v0.3.120）：ここがサンプル名を変える唯一の入口 */
+  .pe-name{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-width:0;}
+  .pe-name-txt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:14px;letter-spacing:.04em;color:var(--ink);}
+  .pe-name-edit{flex:0 0 auto;min-width:34px;min-height:34px;background:transparent;border:1px solid var(--line);
+    border-radius:6px;color:var(--teal);font:inherit;font-size:14px;cursor:pointer;}
+  .pe-name-edit:hover{border-color:var(--teal);}
+  /* 入力は16px＝iOSが勝手に拡大しない（合言葉の入力欄と同じ理由） */
+  .pe-name-in{flex:1 1 auto;min-width:0;min-height:34px;padding:5px 10px;font:inherit;font-size:16px;
+    letter-spacing:.04em;background:var(--well);color:var(--well-ink);border:1px solid var(--teal);border-radius:6px;}
   .pe-sample{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
   .pe-sample .loadbtn{font-size:12px;padding:8px 14px;}
   .pe-sample-hint{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-left:auto;}
@@ -1010,7 +1020,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.118</div>
+  <div class="s-ver" id="splashVer">v0.3.120</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1159,6 +1169,13 @@
     <div class="modal-backdrop" id="padEditModal" style="display:none;">
       <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
         <div class="modal-head"><span id="peTitle">TRIM · CHOP</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+        <!-- 名前：唯一の変更入口（v0.3.120）。✎ を押すと入力箱が出る -->
+        <div class="pe-name">
+          <span class="pe-name-txt" id="peName">—</span>
+          <button class="pe-name-edit" id="peNameEdit" title="名前を変える" aria-label="名前を変える">✎</button>
+          <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
+                 spellcheck="false" aria-label="パッドの名前" hidden>
+        </div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
@@ -1301,7 +1318,7 @@
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 演奏のみ（離すと戻る）">REC</button>
+        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: ステップには書かない（いじった値はどちらも残る）">REC</button>
         <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
         <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
@@ -2026,8 +2043,8 @@ let peTarget=0;        // 波形エディタの対象パッド（窓とモーダ
 let peOpenedAt=0;      // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する
 let peV0=0, peV1=1;    // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
 let assignTarget=-1, _ledT=null;   // ASSIGN待機中のパッド（MIDI/PCキー共通）。起動時のselectPadより前に宣言する（TDZ回避）
-let perfRecArm = false;// Performance: REC ON=変更を保持（記録）/ OFF=P-LOCKキー解放で復帰
-let perfSnap = null;   // P-LOCKキー選択時に取った16パッドの元値（解放で復帰／ダブルタップ基準）
+let perfRecArm = false;// Performance: REC ON=再生中いじりをステップへ記録 / OFF=記録しない（いじった値はどちらも残る v0.3.119）
+let perfSnap = null;   // P-LOCK選択時に取った16パッドの「いじる前の値」（ダブルタップで戻す基準。解放しても巻き戻さない）
 let perfTapT = [];     // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）
 const PERF_BASE = {pitch:"tune", level:"vol", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 5つとも演奏のパラメータ・ページで同等に扱う
 // 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）
@@ -2659,7 +2676,7 @@ PADS.forEach((p,i)=>{
     const ps=document.getElementById("perfSel");          // 画面にライブ表示
     if(ps){ ps.textContent=String(i+1).padStart(2,"0")+" "+perfDrag.param.toUpperCase()+" ▸ "+spec.fmt(t[prop])+(perfRecArm?" ●REC":""); }
   });
-  const endPerfDrag=(e)=>{                                 // 値はP-LOCKキーを持っている間は保持（発音しない）。復帰はキー解放時。
+  const endPerfDrag=(e)=>{                                 // いじった値はそのまま残る（発音しない）。戻すのはダブルタップ。
     if(!perfDrag || perfDrag.pad!==i) return;
     perfDrag=null;
     if(typeof syncEditor==="function") syncEditor();
@@ -3792,13 +3809,53 @@ function refreshOpenPadEdit(i){
   const pem=document.getElementById("padEditModal");
   if(pem && pem.style.display==="flex" && i===peTarget) openPadEdit(i);
 }
+// 名前を変える唯一の経路（v0.3.120）。表示は t.name / PADS[i].name の2系統に分かれていたので両方を揃える。
+// 戻り値=実際に変わったか。空・同一は何もしない（Undoも積まない）
+function renameTrack(i, name){
+  const nm=String(name||"").replace(/\s+/g," ").trim().slice(0,16);
+  if(!nm || nm===tracks[i].name) return false;
+  pushUndo();
+  tracks[i].name=nm;
+  PADS[i].name=nm;                                    // SEQの行ラベルなど p.name を見る経路も追従
+  const el=padsEl.children[i] && padsEl.children[i].querySelector(".nm");
+  if(el) el.textContent=nm.slice(0,8).toUpperCase();  // パッド内は8文字（読込時と同じ作法）
+  if(typeof setDrumRowLabels==="function") setDrumRowLabels();
+  if(typeof syncEditor==="function") syncEditor();
+  if(typeof paintPerf==="function") paintPerf();
+  if(typeof scheduleAutosave==="function") scheduleAutosave();
+  return true;
+}
+// モーダルの名前表示を選択中のパッドへ合わせる
+function peNameSync(){
+  const el=document.getElementById("peName"); if(!el) return;
+  el.textContent=String(peTarget+1).padStart(2,"0")+" "+(tracks[peTarget].name||PADS[peTarget].name||"");
+}
+// ✎ を押す＝入力箱を出す / Enter＝確定 / Escape＝取消（モーダルは閉じない）
+(function(){
+  const btn=document.getElementById("peNameEdit"), inp=document.getElementById("peNameIn"),
+        txt=document.getElementById("peName");
+  if(!btn||!inp||!txt) return;
+  const show=on=>{ inp.hidden=!on; txt.hidden=on; btn.hidden=on; };
+  const open=()=>{ inp.value=tracks[peTarget].name||PADS[peTarget].name||""; show(true); inp.focus(); inp.select(); };
+  const close=commit=>{ if(commit) renameTrack(peTarget, inp.value); show(false); peNameSync(); };
+  btn.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); open(); });
+  inp.addEventListener("keydown",e=>{
+    e.stopPropagation();                               // Escapeでモーダルごと閉じない／打鍵でパッドが鳴らない
+    if(e.key==="Enter"){ e.preventDefault(); close(true); }
+    else if(e.key==="Escape"){ e.preventDefault(); close(false); }
+  });
+  inp.addEventListener("blur",()=>{ if(!inp.hidden) close(true); });
+  window.peNameCloseBox=()=>{ if(!inp.hidden) close(false); };   // モーダルを閉じる時に入力箱も畳む
+})();
 function openPadEdit(i){
   if(typeof clWaveTo==="function") clWaveTo("modal");   // 窓に出していた波形を回収してから開く
   if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
   const t=tracks[i];
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="TRIM / CHOP";   // 名前は背後（窓・strip・パッド）に出ている＝ここには出さない
+  document.getElementById("peTitle").textContent="TRIM / CHOP";
+  if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む
+  peNameSync();   // 名前はこの行に出す＝変える入口がここにしか無い（v0.3.120）
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
   // このモーダルに残るのは「入り組んだ設定」＝波形の切り出し（TRIM/REV/CHOP）と音源の差し替えだけ。
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
@@ -4626,21 +4683,14 @@ function renderPerfFills(){
     else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
   }
 }
-function perfRevertSnap(){    // perfSnap の元値へ16パッドを戻す
-  if(!perfSnap) return;
-  const p=perfSnap.param;
-  for(let i=0;i<16;i++){ const t=tracks[i];
-    if(p==="filter"){ t.cutoff=perfSnap.vals[i]; t.filter=perfSnap.filt[i]; } else t[PERF_BASE[p]]=perfSnap.vals[i];
-  }
-}
 function perfLockApply(prev){
-  // 直前のP-LOCKを抜けた（別へ/解放）→ REC OFFなら元値へ復帰
-  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
-    // REC OFF＝瞬間（復帰）／REC ONでもステップへ記録済みならbaseは復帰（オートメーションはlocksに在る）
-    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();
-    perfSnap=null;
-  }
-  // 新しいP-LOCKが有効＝16パッドの元値をスナップショット（復帰用）
+  // P-LOCKを抜けても**値は残す**（v0.3.119）。
+  // v0.3.118 までは REC OFF だと解放時に選択時のスナップショットへ巻き戻していた（Digitakt式の瞬間モジュレート）が、
+  //   ・スマホの DELAY/REVERB は巻き戻さない＝同じ操作なのに PC と挙動が違った
+  //   ・「解除してもう一度押すと数値がデフォルトに戻る」＝作り込んだ送り量が消える
+  // 送り量やフィルターは"作る"値なので残すのが正しい。戻したいときはパッドをダブルタップ（＝いじる前の値へ）。
+  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock) perfSnap=null;
+  // 新しいP-LOCKが有効＝16パッドの「いじる前の値」をスナップショット（ダブルタップで戻す基準）
   if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
     perfSnap={param:activeLock, vals:[], filt:[], recorded:false};
     for(let i=0;i<16;i++){ const t=tracks[i]; perfSnap.vals[i]= activeLock==="filter"?t.cutoff : t[PERF_BASE[activeLock]]; perfSnap.filt[i]=t.filter; }
@@ -4666,7 +4716,7 @@ function perfLockApply(prev){
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：演奏のみ（離すと戻る）"; });
+    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：ステップには書かない（値は残る）"; });
 })();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
@@ -4676,8 +4726,8 @@ function updatePerf(){
   const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
   document.body.classList.toggle("perf", four && land);
   document.body.classList.toggle("perf-rotate", four && !land && coarse);
-  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（REC OFFなら復帰）
-    if(perfSnap){ if(!perfRecArm || perfSnap.recorded) perfRevertSnap(); perfSnap=null; }
+  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（値はそのまま残す v0.3.119）
+    perfSnap=null;
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
@@ -5307,6 +5357,7 @@ async function applyProject(proj){
     for(let i=0;i<Math.min(proj.tracks.length,16);i++){
       const pt=proj.tracks[i], t=tracks[i];
       t.name=pt.name||PADS[i].name;
+      PADS[i].name=t.name;   // 表示は t.name に揃える（SEQの行ラベル等が読込後に既定へ戻らない v0.3.120）
       PADS[i].type=pt.type||"empty";
       PADS[i].voice=pt.voice||null;
       t.vol=pt.vol??-4; t.tune=pt.tune??0; t.scale=pt.scale??"off";
@@ -5376,7 +5427,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.118";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.120";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
