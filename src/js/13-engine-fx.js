@@ -96,8 +96,9 @@ let peTarget=0;        // 波形エディタの対象パッド（窓とモーダ
 let peOpenedAt=0;      // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する
 let peV0=0, peV1=1;    // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
 let assignTarget=-1, _ledT=null;   // ASSIGN待機中のパッド（MIDI/PCキー共通）。起動時のselectPadより前に宣言する（TDZ回避）
-let perfRecArm = false;// Performance: REC ON=再生中いじりをステップへ記録 / OFF=記録しない（いじった値はどちらも残る v0.3.119）
-let perfSnap = null;   // P-LOCK選択時に取った16パッドの「いじる前の値」（ダブルタップで戻す基準。解放しても巻き戻さない）
+let perfRecArm = false;// Performance: REC ON=再生中いじりをステップへ記録（解放しても基本値を保持）/ OFF=解放で掛ける前へ戻る
+let perfSnap = null;   // P-LOCK選択時に取った16パッドの「掛ける前の値」（解放でここへ戻る＝効果オフ／ダブルタップの基準）
+let perfLast = {};     // P-LOCKごとの「最後にいじった16パッドの値」（もう一度押すと復活する記憶 v0.3.121）
 let perfTapT = [];     // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）
 const PERF_BASE = {pitch:"tune", level:"vol", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 5つとも演奏のパラメータ・ページで同等に扱う
 // 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）

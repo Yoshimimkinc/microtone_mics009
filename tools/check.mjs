@@ -482,7 +482,7 @@ async function previewIsolated(){
   eq(`プレビュー分離 0 errors`, errs, []);
   await ctx.close();
 }
-// §16 P-LOCK は解除しても値が残る（v0.3.119）。PC(perf) とスマホで同じ挙動であること
+// §16 P-LOCK（v0.3.121）：解除＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活。PC(perf) とスマホで同じ
 async function plockKeeps(){
   for(const [w,h,mobile,sel,label] of [[1280,800,false,'#perfPlk .perf-plkbtn[data-lock="delay"]','perf'],
                                         [390,844,true,'.msbar .msbtn.fx[data-lock="delay"]','mobile']]){
@@ -492,14 +492,17 @@ async function plockKeeps(){
     await ready(p);
     const send=()=>p.evaluate(()=>+tracks[0].delaySend.toFixed(3));
     await p.evaluate(()=>{ tracks[0].delaySend=0; });
-    await p.click(sel);                                     // P-LOCK 選択
+    await p.click(sel);                                     // 選択（掛ける前＝0 を控える）
     await p.evaluate(()=>{ tracks[0].delaySend=0.70; });    // パッドを左右ドラッグして 70% にしたのと同じ
     await p.click(sel);                                     // 解除
-    const afterOff=await send();
-    await p.click(sel);                                     // もう一度適用
-    const afterOn=await send();
-    ok_(`P-LOCK(${label}) 解除しても値が残る`, afterOff===0.7, `${afterOff}（0.7のはず）`);
-    ok_(`P-LOCK(${label}) 再適用しても値が残る`, afterOn===0.7, `${afterOn}（0.7のはず）`);
+    const off=await send();
+    await p.click(sel);                                     // もう一度
+    const again=await send();
+    await p.click(sel);                                     // 解除
+    const off2=await send();
+    ok_(`P-LOCK(${label}) 解除で掛ける前の値へ戻る（効果オフ）`, off===0, `${off}（0のはず）`);
+    ok_(`P-LOCK(${label}) もう一度押すと前回の値が復活`, again===0.7, `${again}（0.7のはず）`);
+    ok_(`P-LOCK(${label}) 再解除でまた戻る`, off2===0, `${off2}（0のはず）`);
     eq(`P-LOCK(${label}) 0 errors`, errs, []);
     await ctx.close();
   }

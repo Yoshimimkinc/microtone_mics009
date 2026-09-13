@@ -96,10 +96,13 @@ function setActiveLock(p){
   activeLock=(activeLock===p)?null:p;
   document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock], .msbar .msbtn.fx[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
 }
-// スマホの DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの送り量（perfLockApply は呼ばない＝離しても戻らない、Undoで戻す）
+// スマホの DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの送り量。
+// PC の perf と同じく perfLockApply を通す＝解除で掛ける前へ戻り、もう一度押すと前回の値が復活（v0.3.121）
 document.querySelectorAll(".msbar .msbtn.fx").forEach(b=>b.addEventListener("click",()=>{
+  const prev=activeLock;
   setActiveLock(b.dataset.lock);
-  if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent = activeLock ? (b.textContent.trim()+"：パッドを左右にドラッグ＝送り量 / もう一度で解除") : "";
+  if(typeof perfLockApply==="function") perfLockApply(prev);
+  if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent = activeLock ? (b.textContent.trim()+"：パッドを左右にドラッグ＝送り量 / もう一度で解除（値は覚えている）") : "";
   if(typeof paintPerf==="function") paintPerf();
 }));
 function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); }
