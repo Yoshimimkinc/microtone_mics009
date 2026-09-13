@@ -1,6 +1,13 @@
     <div class="modal-backdrop" id="padEditModal" style="display:none;">
       <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
         <div class="modal-head"><span id="peTitle">TRIM · CHOP</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+        <!-- 名前：唯一の変更入口（v0.3.120）。✎ を押すと入力箱が出る -->
+        <div class="pe-name">
+          <span class="pe-name-txt" id="peName">—</span>
+          <button class="pe-name-edit" id="peNameEdit" title="名前を変える" aria-label="名前を変える">✎</button>
+          <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
+                 spellcheck="false" aria-label="パッドの名前" hidden>
+        </div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>

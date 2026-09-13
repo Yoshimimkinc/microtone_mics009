@@ -97,6 +97,7 @@ async function applyProject(proj){
     for(let i=0;i<Math.min(proj.tracks.length,16);i++){
       const pt=proj.tracks[i], t=tracks[i];
       t.name=pt.name||PADS[i].name;
+      PADS[i].name=t.name;   // 表示は t.name に揃える（SEQの行ラベル等が読込後に既定へ戻らない v0.3.120）
       PADS[i].type=pt.type||"empty";
       PADS[i].voice=pt.voice||null;
       t.vol=pt.vol??-4; t.tune=pt.tune??0; t.scale=pt.scale??"off";

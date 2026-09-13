@@ -504,7 +504,46 @@ async function plockKeeps(){
     await ctx.close();
   }
 }
+// §17 サンプル名の変更（v0.3.120）：EDITモーダルの名前行が唯一の入口。パッド・SEQ行ラベル・窓が追従する
+async function renameFlow(){
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(()=>{ selectPad(0); openPadEdit(0); });
+  await p.waitForTimeout(600);   // モーダルは開いた直後450msのクリックを捨てる仕様（peOpenedAt）
+  const shown=await p.$eval('#peName',e=>e.textContent.trim());
+  ok_(`名前変更 モーダルに名前が出る`, /^01\s+\S/.test(shown), shown);
+  ok_(`名前変更 入力箱は最初は隠れている`, await p.$eval('#peNameIn',e=>e.hidden), '出たまま');
+  await p.click('#peNameEdit'); await p.waitForTimeout(150);
+  ok_(`名前変更 ✎で入力箱が出る`, !(await p.$eval('#peNameIn',e=>e.hidden)), '出ない');
+  ok_(`名前変更 入力は16px（iOSが拡大しない）`, await p.$eval('#peNameIn',e=>parseFloat(getComputedStyle(e).fontSize)>=16), 'font-size<16px');
+  // Escape＝取消。モーダルは閉じない
+  await p.fill('#peNameIn','ZZZ'); await p.press('#peNameIn','Escape'); await p.waitForTimeout(150);
+  const esc=await p.evaluate(()=>({name:tracks[0].name, open:document.getElementById('padEditModal').style.display}));
+  ok_(`名前変更 Escapeで取消・モーダルは閉じない`, esc.name!=='ZZZ' && esc.open==='flex', JSON.stringify(esc));
+  // Enter＝確定。パッド・SEQ行ラベル・窓が追従する
+  await p.click('#peNameEdit'); await p.fill('#peNameIn','VERSE 1'); await p.press('#peNameIn','Enter');
+  await p.waitForTimeout(250);
+  const r=await p.evaluate(()=>({
+    name:tracks[0].name, pads:PADS[0].name,
+    pad:document.querySelector('#pads .pad .nm').textContent.trim(),
+    row:(document.querySelector('#grid .rn')||{}).textContent||'',
+    label:document.getElementById('peName').textContent.trim(),
+    boxHidden:document.getElementById('peNameIn').hidden}));
+  ok_(`名前変更 保存される`, r.name==='VERSE 1' && r.pads==='VERSE 1', JSON.stringify(r));
+  ok_(`名前変更 パッドが追従`, r.pad==='VERSE 1', r.pad);
+  ok_(`名前変更 SEQの行ラベルが追従`, /VERSE 1/.test(r.row), r.row);
+  ok_(`名前変更 行の表示と入力箱の畳み`, /VERSE 1/.test(r.label) && r.boxHidden===true, JSON.stringify(r));
+  // 空欄は無視（名前を消せない）
+  await p.click('#peNameEdit'); await p.fill('#peNameIn','   '); await p.press('#peNameIn','Enter');
+  await p.waitForTimeout(200);
+  ok_(`名前変更 空欄は無視`, (await p.evaluate(()=>tracks[0].name))==='VERSE 1', await p.evaluate(()=>tracks[0].name));
+  eq(`名前変更 0 errors`, errs, []);
+  await ctx.close();
+}
 await passGate();
+await renameFlow();
 await plockKeeps();
 await iosLoad();
 await previewIsolated();

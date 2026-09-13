@@ -149,13 +149,53 @@ function refreshOpenPadEdit(i){
   const pem=document.getElementById("padEditModal");
   if(pem && pem.style.display==="flex" && i===peTarget) openPadEdit(i);
 }
+// 名前を変える唯一の経路（v0.3.120）。表示は t.name / PADS[i].name の2系統に分かれていたので両方を揃える。
+// 戻り値=実際に変わったか。空・同一は何もしない（Undoも積まない）
+function renameTrack(i, name){
+  const nm=String(name||"").replace(/\s+/g," ").trim().slice(0,16);
+  if(!nm || nm===tracks[i].name) return false;
+  pushUndo();
+  tracks[i].name=nm;
+  PADS[i].name=nm;                                    // SEQの行ラベルなど p.name を見る経路も追従
+  const el=padsEl.children[i] && padsEl.children[i].querySelector(".nm");
+  if(el) el.textContent=nm.slice(0,8).toUpperCase();  // パッド内は8文字（読込時と同じ作法）
+  if(typeof setDrumRowLabels==="function") setDrumRowLabels();
+  if(typeof syncEditor==="function") syncEditor();
+  if(typeof paintPerf==="function") paintPerf();
+  if(typeof scheduleAutosave==="function") scheduleAutosave();
+  return true;
+}
+// モーダルの名前表示を選択中のパッドへ合わせる
+function peNameSync(){
+  const el=document.getElementById("peName"); if(!el) return;
+  el.textContent=String(peTarget+1).padStart(2,"0")+" "+(tracks[peTarget].name||PADS[peTarget].name||"");
+}
+// ✎ を押す＝入力箱を出す / Enter＝確定 / Escape＝取消（モーダルは閉じない）
+(function(){
+  const btn=document.getElementById("peNameEdit"), inp=document.getElementById("peNameIn"),
+        txt=document.getElementById("peName");
+  if(!btn||!inp||!txt) return;
+  const show=on=>{ inp.hidden=!on; txt.hidden=on; btn.hidden=on; };
+  const open=()=>{ inp.value=tracks[peTarget].name||PADS[peTarget].name||""; show(true); inp.focus(); inp.select(); };
+  const close=commit=>{ if(commit) renameTrack(peTarget, inp.value); show(false); peNameSync(); };
+  btn.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); open(); });
+  inp.addEventListener("keydown",e=>{
+    e.stopPropagation();                               // Escapeでモーダルごと閉じない／打鍵でパッドが鳴らない
+    if(e.key==="Enter"){ e.preventDefault(); close(true); }
+    else if(e.key==="Escape"){ e.preventDefault(); close(false); }
+  });
+  inp.addEventListener("blur",()=>{ if(!inp.hidden) close(true); });
+  window.peNameCloseBox=()=>{ if(!inp.hidden) close(false); };   // モーダルを閉じる時に入力箱も畳む
+})();
 function openPadEdit(i){
   if(typeof clWaveTo==="function") clWaveTo("modal");   // 窓に出していた波形を回収してから開く
   if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
   const t=tracks[i];
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="TRIM / CHOP";   // 名前は背後（窓・strip・パッド）に出ている＝ここには出さない
+  document.getElementById("peTitle").textContent="TRIM / CHOP";
+  if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む
+  peNameSync();   // 名前はこの行に出す＝変える入口がここにしか無い（v0.3.120）
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
   // このモーダルに残るのは「入り組んだ設定」＝波形の切り出し（TRIM/REV/CHOP）と音源の差し替えだけ。
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる

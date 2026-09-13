@@ -1,6 +1,16 @@
   /* 編集モーダル */
   .modal.pe{width:min(440px,94vw);}
   /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
+  /* 名前の行（v0.3.120）：ここがサンプル名を変える唯一の入口 */
+  .pe-name{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-width:0;}
+  .pe-name-txt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:14px;letter-spacing:.04em;color:var(--ink);}
+  .pe-name-edit{flex:0 0 auto;min-width:34px;min-height:34px;background:transparent;border:1px solid var(--line);
+    border-radius:6px;color:var(--teal);font:inherit;font-size:14px;cursor:pointer;}
+  .pe-name-edit:hover{border-color:var(--teal);}
+  /* 入力は16px＝iOSが勝手に拡大しない（合言葉の入力欄と同じ理由） */
+  .pe-name-in{flex:1 1 auto;min-width:0;min-height:34px;padding:5px 10px;font:inherit;font-size:16px;
+    letter-spacing:.04em;background:var(--well);color:var(--well-ink);border:1px solid var(--teal);border-radius:6px;}
   .pe-sample{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
   .pe-sample .loadbtn{font-size:12px;padding:8px 14px;}
   .pe-sample-hint{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-left:auto;}
