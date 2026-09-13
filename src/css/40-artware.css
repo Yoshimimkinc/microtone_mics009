@@ -57,12 +57,10 @@
     box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 3px 6px rgba(0,0,0,.4);}
   body.perf .perf-plkbtn[data-lock]::after{content:"";position:absolute;left:8px;right:8px;bottom:6px;height:2px;border-radius:2px;opacity:.5;pointer-events:none;}
   body.perf .perf-plkbtn[data-lock="pitch"]::after{background:#3dd6c4;}
-  body.perf .perf-plkbtn[data-lock="level"]::after{background:#ff5db0;}
   body.perf .perf-plkbtn[data-lock="filter"]::after{background:#b07cff;}
   body.perf .perf-plkbtn[data-lock="delay"]::after{background:#5fd35f;}
   body.perf .perf-plkbtn[data-lock="reverb"]::after{background:#5aa9ff;}
   body.perf .perf-plkbtn[data-lock="pitch"].on{box-shadow:0 0 16px -2px rgba(61,214,196,.6);}
-  body.perf .perf-plkbtn[data-lock="level"].on{box-shadow:0 0 16px -2px rgba(255,93,176,.6);}
   body.perf .perf-plkbtn[data-lock="filter"].on{box-shadow:0 0 16px -2px rgba(176,124,255,.6);}
   body.perf .perf-plkbtn[data-lock="delay"].on{box-shadow:0 0 16px -2px rgba(95,211,95,.6);}
   body.perf .perf-plkbtn[data-lock="reverb"].on{box-shadow:0 0 16px -2px rgba(90,169,255,.6);}

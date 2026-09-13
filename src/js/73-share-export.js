@@ -116,7 +116,7 @@ async function applyProject(proj){
         }
         for(let bar=0;bar<4;bar++) while(t.patterns[p][bar].length<STEPS) t.patterns[p][bar].push(0);
       }
-      t.locks = pt.locks ? JSON.parse(JSON.stringify(pt.locks)) : {};   // p-lock
+      t.locks = stripLegacyLocks(pt.locks ? JSON.parse(JSON.stringify(pt.locks)) : {});   // p-lock（廃止済みの level は捨てる §135）
       // audio
       if(pt.audio){
         const wav=b64ToUint8(pt.audio);

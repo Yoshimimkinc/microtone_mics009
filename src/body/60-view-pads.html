@@ -29,9 +29,8 @@
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
         <!-- スマホだけ：エフェクトの P-LOCK 選択子（押してからパッドを左右にドラッグ＝そのパッドの送り量。
              下段ステップ列を左右にドラッグ＝そのステップだけ）。SOLO/EDIT はスマホでは出さない（v0.3.106） -->
-        <!-- v0.3.123：PC の演奏ページと同じ5つ（PITCH/LEVEL/FILTER/DELAY/REVERB）。1行に収めるため幅は2/3以下（§134） -->
+        <!-- v0.3.123：PC の演奏ページと同じ並び（PITCH/FILTER/DELAY/REVERB）。1行に収めるため幅は2/3以下（§134）。LEVEL は v0.3.124 で廃止（§135） -->
         <button class="msbtn fx" id="fxPitch"  data-lock="pitch"><span class="d"></span>PITCH</button>
-        <button class="msbtn fx" id="fxLevel"  data-lock="level"><span class="d"></span>LEVEL</button>
         <button class="msbtn fx" id="fxFilter" data-lock="filter"><span class="d"></span>FILTER</button>
         <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
@@ -83,10 +82,9 @@
       </div>
       <!-- 左：BPM / Swing -->
       <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
-      <!-- 下：P-LOCK 5つ均等（GRIDと同じ並び）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
+      <!-- 下：P-LOCK 4つ均等（LEVEL は v0.3.124 で P-LOCK から廃止＝音量は EDIT の Level だけ §135）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
       <div class="perf-plk" id="perfPlk">
         <button class="perf-plkbtn" data-lock="pitch">PITCH</button>
-        <button class="perf-plkbtn" data-lock="level">LEVEL</button>
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
