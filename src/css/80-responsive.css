@@ -77,8 +77,12 @@
     /* スマホの下段は [MUTE] [DELAY] [REVERB]。SOLO と EDIT は出さない（TRIM/CHOPは窓の✂、空パッドは＋から） */
     #viewPads>.msbar #holdSolo,#viewPads>.msbar #holdEdit{display:none;}
     #viewPads>.msbar .msbtn.fx{display:flex;}
-    /* スマホ：EDIT行（MUTE/SOLO/EDIT）を均等3分割でフィル */
-    #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:6px;padding-right:6px;}
+    /* スマホ：下段 [MUTE][PITCH][LEVEL][FILTER][DELAY][REVERB] を1行に均等分割（v0.3.123 §134）。
+       6つで 390px なら1つ約58px＝以前の3つ時代の半分。高さ44pxは守る（演奏系タップの規則値 §2）。
+       幅を稼ぐため：点(.d)は出さない・字間を詰める・左右の余白は4px */
+    #viewPads>.msbar{gap:4px;}
+    #viewPads>.msbar .msbtn,#viewPads>.msbar .ms-in-edit{flex:1 1 0;min-width:0!important;padding-left:4px;padding-right:4px;font-size:10px;letter-spacing:.02em;gap:0;}
+    #viewPads>.msbar .msbtn .d{display:none;}
     /* 移設したMUTE/SOLO(.t.arm)もEDITと同じ高さ・並びに揃える */
     #viewPads>.msbar .ms-in-edit{min-height:44px;font-size:11px;letter-spacing:.04em;}
     /* スマホ：strip-headを横幅いっぱいに。ファイル名は縮む(ellipsis)＝矢印/LOADと絶対に重ねない */

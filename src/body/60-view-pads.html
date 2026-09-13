@@ -29,7 +29,11 @@
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
         <!-- スマホだけ：エフェクトの P-LOCK 選択子（押してからパッドを左右にドラッグ＝そのパッドの送り量。
              下段ステップ列を左右にドラッグ＝そのステップだけ）。SOLO/EDIT はスマホでは出さない（v0.3.106） -->
-        <button class="msbtn fx" id="fxDelay" data-lock="delay"><span class="d"></span>DELAY</button>
+        <!-- v0.3.123：PC の演奏ページと同じ5つ（PITCH/LEVEL/FILTER/DELAY/REVERB）。1行に収めるため幅は2/3以下（§134） -->
+        <button class="msbtn fx" id="fxPitch"  data-lock="pitch"><span class="d"></span>PITCH</button>
+        <button class="msbtn fx" id="fxLevel"  data-lock="level"><span class="d"></span>LEVEL</button>
+        <button class="msbtn fx" id="fxFilter" data-lock="filter"><span class="d"></span>FILTER</button>
+        <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
       </div>
 
