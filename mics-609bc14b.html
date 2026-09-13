@@ -1020,7 +1020,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.121</div>
+  <div class="s-ver" id="splashVer">v0.3.122</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4680,8 +4680,16 @@ function perfFillPad(i, param){
   if(el._lockfill){ el._lockfill.style.width=(norm*100).toFixed(1)+"%"; el._lockfill.style.background="rgb("+spec.color+")"; }
   if(el._lockv) el._lockv.textContent=spec.fmt(val);
 }
+// P-LOCK の塗り（.lockfill/.lockv）を出す条件。PC は演奏(body.perf)のとき、スマホは msbar の DELAY/REVERB が見えているとき。
+// v0.3.121 までは body.perf だけを見ていたので、スマホで送り量をドラッグしても塗りも数字も出なかった（§133）。
+function plockFillsOn(){
+  if(!(activeLock && PERF_BASE[activeLock])) return false;
+  if(document.body.classList.contains("perf")) return true;
+  const b=document.querySelector(".msbar .msbtn.fx[data-lock]");
+  return !!b && getComputedStyle(b).display!=="none";
+}
 function renderPerfFills(){
-  const param=(activeLock && PERF_BASE[activeLock] && document.body.classList.contains("perf"))?activeLock:null;
+  const param=plockFillsOn()?activeLock:null;
   for(let i=0;i<padsEl.children.length;i++){
     if(param) perfFillPad(i, param);
     else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
@@ -4716,7 +4724,7 @@ function perfLockApply(prev){
       if(activeLock==="filter"){ t.cutoff=last.vals[i]; t.filter=last.filt[i]; } else t[PERF_BASE[activeLock]]=last.vals[i]; } }
   }
   if(!(activeLock && PERF_BASE[activeLock])) perfSnap=null;
-  document.body.classList.toggle("perf-plock", !!(activeLock && PERF_BASE[activeLock] && document.body.classList.contains("perf")));
+  document.body.classList.toggle("perf-plock", plockFillsOn());
   renderPerfFills();
   if(typeof syncEditor==="function") syncEditor();
 }
@@ -4751,6 +4759,7 @@ function updatePerf(){
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
+  document.body.classList.toggle("perf-plock", plockFillsOn()); renderPerfFills();   // スマホ↔PC で塗りの条件を追従
   if(four && !wasPerf){
     // ベストエフォートで横向きロック（Android系のみ有効。iPad Safariは非対応＝回転オーバーレイが実質ガード）
     try{ if(screen.orientation && screen.orientation.lock){ const p=screen.orientation.lock("landscape"); if(p&&p.catch) p.catch(()=>{}); } }catch(_){}
@@ -5447,7 +5456,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.121";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.122";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
