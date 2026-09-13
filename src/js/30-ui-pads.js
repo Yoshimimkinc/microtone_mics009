@@ -130,7 +130,7 @@ PADS.forEach((p,i)=>{
     const ps=document.getElementById("perfSel");          // 画面にライブ表示
     if(ps){ ps.textContent=String(i+1).padStart(2,"0")+" "+perfDrag.param.toUpperCase()+" ▸ "+spec.fmt(t[prop])+(perfRecArm?" ●REC":""); }
   });
-  const endPerfDrag=(e)=>{                                 // いじった値はそのまま残る（発音しない）。戻すのはダブルタップ。
+  const endPerfDrag=(e)=>{                                 // 値はP-LOCKを持っている間は保持（発音しない）。解放で掛ける前へ戻り、次に押すと復活
     if(!perfDrag || perfDrag.pad!==i) return;
     perfDrag=null;
     if(typeof syncEditor==="function") syncEditor();
