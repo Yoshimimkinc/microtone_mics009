@@ -1010,7 +1010,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.118</div>
+  <div class="s-ver" id="splashVer">v0.3.119</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1301,7 +1301,7 @@
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 演奏のみ（離すと戻る）">REC</button>
+        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: ステップには書かない（いじった値はどちらも残る）">REC</button>
         <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
         <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
@@ -2026,8 +2026,8 @@ let peTarget=0;        // 波形エディタの対象パッド（窓とモーダ
 let peOpenedAt=0;      // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する
 let peV0=0, peV1=1;    // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
 let assignTarget=-1, _ledT=null;   // ASSIGN待機中のパッド（MIDI/PCキー共通）。起動時のselectPadより前に宣言する（TDZ回避）
-let perfRecArm = false;// Performance: REC ON=変更を保持（記録）/ OFF=P-LOCKキー解放で復帰
-let perfSnap = null;   // P-LOCKキー選択時に取った16パッドの元値（解放で復帰／ダブルタップ基準）
+let perfRecArm = false;// Performance: REC ON=再生中いじりをステップへ記録 / OFF=記録しない（いじった値はどちらも残る v0.3.119）
+let perfSnap = null;   // P-LOCK選択時に取った16パッドの「いじる前の値」（ダブルタップで戻す基準。解放しても巻き戻さない）
 let perfTapT = [];     // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）
 const PERF_BASE = {pitch:"tune", level:"vol", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 5つとも演奏のパラメータ・ページで同等に扱う
 // 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）
@@ -2659,7 +2659,7 @@ PADS.forEach((p,i)=>{
     const ps=document.getElementById("perfSel");          // 画面にライブ表示
     if(ps){ ps.textContent=String(i+1).padStart(2,"0")+" "+perfDrag.param.toUpperCase()+" ▸ "+spec.fmt(t[prop])+(perfRecArm?" ●REC":""); }
   });
-  const endPerfDrag=(e)=>{                                 // 値はP-LOCKキーを持っている間は保持（発音しない）。復帰はキー解放時。
+  const endPerfDrag=(e)=>{                                 // いじった値はそのまま残る（発音しない）。戻すのはダブルタップ。
     if(!perfDrag || perfDrag.pad!==i) return;
     perfDrag=null;
     if(typeof syncEditor==="function") syncEditor();
@@ -4626,21 +4626,14 @@ function renderPerfFills(){
     else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
   }
 }
-function perfRevertSnap(){    // perfSnap の元値へ16パッドを戻す
-  if(!perfSnap) return;
-  const p=perfSnap.param;
-  for(let i=0;i<16;i++){ const t=tracks[i];
-    if(p==="filter"){ t.cutoff=perfSnap.vals[i]; t.filter=perfSnap.filt[i]; } else t[PERF_BASE[p]]=perfSnap.vals[i];
-  }
-}
 function perfLockApply(prev){
-  // 直前のP-LOCKを抜けた（別へ/解放）→ REC OFFなら元値へ復帰
-  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
-    // REC OFF＝瞬間（復帰）／REC ONでもステップへ記録済みならbaseは復帰（オートメーションはlocksに在る）
-    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();
-    perfSnap=null;
-  }
-  // 新しいP-LOCKが有効＝16パッドの元値をスナップショット（復帰用）
+  // P-LOCKを抜けても**値は残す**（v0.3.119）。
+  // v0.3.118 までは REC OFF だと解放時に選択時のスナップショットへ巻き戻していた（Digitakt式の瞬間モジュレート）が、
+  //   ・スマホの DELAY/REVERB は巻き戻さない＝同じ操作なのに PC と挙動が違った
+  //   ・「解除してもう一度押すと数値がデフォルトに戻る」＝作り込んだ送り量が消える
+  // 送り量やフィルターは"作る"値なので残すのが正しい。戻したいときはパッドをダブルタップ（＝いじる前の値へ）。
+  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock) perfSnap=null;
+  // 新しいP-LOCKが有効＝16パッドの「いじる前の値」をスナップショット（ダブルタップで戻す基準）
   if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
     perfSnap={param:activeLock, vals:[], filt:[], recorded:false};
     for(let i=0;i<16;i++){ const t=tracks[i]; perfSnap.vals[i]= activeLock==="filter"?t.cutoff : t[PERF_BASE[activeLock]]; perfSnap.filt[i]=t.filter; }
@@ -4666,7 +4659,7 @@ function perfLockApply(prev){
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：演奏のみ（離すと戻る）"; });
+    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：ステップには書かない（値は残る）"; });
 })();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
@@ -4676,8 +4669,8 @@ function updatePerf(){
   const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
   document.body.classList.toggle("perf", four && land);
   document.body.classList.toggle("perf-rotate", four && !land && coarse);
-  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（REC OFFなら復帰）
-    if(perfSnap){ if(!perfRecArm || perfSnap.recorded) perfRevertSnap(); perfSnap=null; }
+  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKページを解放（値はそのまま残す v0.3.119）
+    perfSnap=null;
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
@@ -5376,7 +5369,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.118";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.119";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
