@@ -61,7 +61,7 @@ async function run(w,h,mobile){
   for(const id of['main','smpl','tone','asgn']){ eq(`${V} ページ切替 ${id}`, await page(id), id);
     fields[id]=await p.$$eval('#clPage .cl-par',e=>e.map(x=>x.dataset.p)); }
   eq(`${V} MAIN欄`,fields.main,['pitch','scale','level','delay','reverb']);   // FXはMAINの2行目（v0.3.108）
-  eq(`${V} SAMPLE欄`,fields.smpl,['start','end','loop']);
+  eq(`${V} SAMPLE欄`,fields.smpl,['loop']);   // START/END の数値欄は撤去（v0.3.126 §138）
   eq(`${V} TONE欄`,fields.tone,['filter','cutoff','reso','attack','fade']);
   eq(`${V} ASSIGN欄`,fields.asgn,['choke','out','midi','key']);
 
@@ -114,8 +114,22 @@ async function run(w,h,mobile){
   const b0=await p.evaluate(()=>bpmVal); await drag('.cl-par[data-p="bpm"]',100);
   const b1=await p.evaluate(()=>({v:bpmVal,slider:+document.getElementById('bpm').value,read:document.getElementById('bpmRead').textContent}));
   ok_(`${V} BPMドラッグ`, b1.v===b0+10 && b1.slider===b1.v && b1.read===b1.v.toFixed(1), JSON.stringify(b1));
-  await dbl('.cl-par[data-p="bpm"]');
-  ok_(`${V} BPMダブルクリック=100`, await p.evaluate(()=>bpmVal)===100, '100でない');
+  // BPM カードを叩く＝タップテンポ（v0.3.126 §137）。2連打は 100 へのリセットにならない
+  { await p.evaluate(()=>{ applyBpm(90); });
+    // 計算は時計を固定して決定的に（実時間で叩くと負荷で間隔が伸びて揺れる）：500ms×4 → 120.0
+    const calc=await p.evaluate(()=>{ const orig=performance.now; let t=1000; performance.now=()=>t;
+      try{ taps.length=0; for(let i=0;i<4;i++){ tapTempoDown(); t+=500; } return tapTempoUp(); } finally { performance.now=orig; taps.length=0; } });
+    ok_(`${V} タップテンポの計算（500ms×4 → 120.0）`, calc===120, `bpm=${calc}`);
+    // 配線は実際に叩いて確認：BPM カードを2回叩くとテンポが 90 から動く（値は環境の間隔次第なので範囲だけ）
+    await p.evaluate(()=>{ applyBpm(90); });
+    const bb=await box('.cl-par[data-p="bpm"]');
+    for(let i=0;i<3;i++){ await p.mouse.move(bb.x,bb.y); await p.mouse.down(); await p.mouse.up(); if(i<2) await p.waitForTimeout(400); }
+    await p.waitForTimeout(100);
+    const tb=await p.evaluate(()=>bpmVal);
+    ok_(`${V} BPMカードを叩く＝タップテンポ（配線）`, tb!==90 && tb>=60 && tb<=180, `bpm=${tb}`);
+    await dbl('.cl-par[data-p="bpm"]'); await p.waitForTimeout(100);
+    ok_(`${V} BPMの2連打は100へ戻さない`, (await p.evaluate(()=>bpmVal))!==100, '100に戻った');
+    ok_(`${V} メニューの TAP ボタンは無い`, !(await p.$('#tap')), '残っている'); }
   const sw0=await p.evaluate(()=>swingPct);
   await p.click('.cl-par[data-p="swing"]'); await p.waitForTimeout(90);
   ok_(`${V} SWGタップ`, (await p.evaluate(()=>swingPct))!==sw0, '変化なし');
@@ -142,12 +156,9 @@ async function run(w,h,mobile){
   await page('smpl');
   const st0=await p.evaluate(()=>tracks[selected].start);
   await drag('#peStart',60);
-  const st1=await p.evaluate(()=>({s:tracks[selected].start,f:document.querySelector('.cl-par[data-p="start"] b').textContent}));
-  ok_(`${V} ハンドル→数値欄`, st1.s>st0 && st1.f===(st1.s*100).toFixed(1), JSON.stringify(st1));
-  const hx=await p.$eval('#peStart',e=>Math.round(e.getBoundingClientRect().x));
-  await drag('.cl-par[data-p="start"]',60);
-  ok_(`${V} 数値欄→ハンドル`, (await p.$eval('#peStart',e=>Math.round(e.getBoundingClientRect().x)))!==hx, 'ハンドル動かず');
-  if(!mobile){ const wv=await box('.cl-waveslot .pe-wave'), fl=await box('.cl-par[data-p="start"]');
+  const st1=await p.evaluate(()=>({s:tracks[selected].start, fields:document.querySelectorAll('.cl-par[data-p="start"],.cl-par[data-p="end"]').length}));
+  ok_(`${V} ハンドル→t.start（数値欄は無い v0.3.126 §138）`, st1.s>st0 && st1.fields===0, JSON.stringify(st1));
+  if(!mobile){ const wv=await box('.cl-waveslot .pe-wave'), fl=await box('.cl-par[data-p="loop"]');
     ok_(`${V} 波形は欄の右`, wv.x>fl.x, `${wv.x} <= ${fl.x}`); }
 
   // 6b) 再生位置カーソル（v0.3.103）：SAMPLEページで手叩き／再生中に走り、他ページでは出ない

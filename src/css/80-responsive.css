@@ -31,7 +31,6 @@
     .modal .tempo-row .ctrl{width:100%;justify-content:space-between;}
     .modal .tempo-row .ctrl input[type=range]{max-width:none;}
     .modal .tempo-row #bpm{max-width:none;}
-    .modal .tempo-row #tap{align-self:stretch;min-height:40px;}
     .modal .master-bar{flex-direction:column;align-items:stretch;gap:14px;min-width:0;}
     .modal .master-bar .master-vu-wrap{width:100%!important;flex:0 0 auto;}
     .modal .master-bar .master-ctrls{align-items:stretch;}
