@@ -312,8 +312,11 @@
   @media (max-width:767px){
     /* 一番混むページ（ASSIGN=2行）と、波形を下に積むSAMPLEの両方を、同じ予約高さに収める */
     :root{--cl-page-h:78px;--cl-wave-h:78px;}
-    .perf-screen .cl-btn .cl-wide{display:none;}
-    .perf-screen .cl-btn .cl-narrow{display:inline;font-size:13px;}
+    /* ✂ は「✂」1文字に縮めない（小さ過ぎて NG v0.3.127 §139）。START/END の欄が消えて（§138）幅に余裕があるので
+       PC と同じ「✂ TRIM / CHOP」を出し、字を 13px に。高さは他の欄と同じ 34px（窓の寸法を動かさない＝不変性 §94）。
+       指の当たりは ::after で上下 5px ずつ広げて 44px 相当にする */
+    .perf-screen #clWave{position:relative;padding:6px 14px;font-size:13px;letter-spacing:.08em;}
+    .perf-screen #clWave::after{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px;}
     /* 横に並べる幅が無い：1カラムに戻し、概観レーンは畳む。波形は「予約の内数」に収めるので
        SAMPLEに移っても窓の高さは他のページと同じまま。細かい追い込みは TRIM/CHOP のモーダルで */
     .perf-screen.has-wave{display:flex;}
@@ -332,8 +335,6 @@
     #viewPads>.perf-screen>.cl-body .cl-row{gap:6px;}   /* 360幅で START/END/LOOP/✂ が1行に収まる限界。特異度を上げないと後方の ≤767 の gap:10px に負ける */
     #viewPads>.perf-screen .cl-par{padding:4px 6px;gap:3px;}
     #viewPads>.perf-screen .cl-par i{margin-right:2px;}
-    #viewPads>.perf-screen .cl-par[data-p="start"] u,
-    #viewPads>.perf-screen .cl-par[data-p="end"] u{display:none;}   /* 0-100の値なので%は自明 */
   }
 
   /* 着信ランプ：鍵盤/PCキーが入ると光る＝メニューを開かずに「繋がっている」が見える */
@@ -1023,7 +1024,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.126</div>
+  <div class="s-ver" id="splashVer">v0.3.127</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -5477,7 +5478,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.126";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.127";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
