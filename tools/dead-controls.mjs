@@ -15,7 +15,6 @@ const EXPECT=new Set([
   '#saveBtn','#exportWavBtn',              // ダウンロード＝DOMに出ない
   '#gtrBtn','#scrBtn',                     // 別ページを開く
   '#resetBtn',                             // confirm を出す（自動では承認しない）
-  '#tap',                                  // タップテンポは2回以上で効く
   '#undoBtn',                              // Undoスタックが空なら何も起きない（別途 check.mjs でUndoは検査）
   '#modeSeq',                              // SEQ画面で再タップ＝変化なしが正しい（PADS側は #modePads）
 ]);

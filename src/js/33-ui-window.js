@@ -13,9 +13,7 @@ const CL_SPEC={
           set:(t,v)=>{ t.scale=v; if(typeof refreshSeqMode==="function") refreshSeqMode(); },   // SEQの音階表示も連動
           fmt:v=>v.toUpperCase(), w:4},
   level: {lbl:"LEVEL", u:"dB", get:t=>t.vol,   set:(t,v)=>t.vol=v,  min:-30,max:6, st:1,px:8,  fmt:v=>String(v), w:3},
-  start: {lbl:"START", u:"%",  get:t=>t.start, set:(t,v)=>t.start=Math.min(v,(t.end??1)-0.004), min:0,max:1,st:0.002,px:3, fmt:v=>(v*100).toFixed(1), w:5, wave:1},
-  end:   {lbl:"END",   u:"%",  get:t=>t.end,   set:(t,v)=>t.end=Math.max(v,(t.start||0)+0.004), min:0,max:1,st:0.002,px:3, fmt:v=>(v*100).toFixed(1), w:5, wave:1,
-          zero:1},   // END の「0」は無音＝意味が無く、しかも START が動けなくなる罠。戻し先は末尾（BPM→100 と同じ「0が無い欄」の例外）
+  // START / END の数値欄は v0.3.126 で撤去（§138）：値（t.start / t.end）は波形のハンドルと TRIM/CHOP が書き、裏で使うだけ
   loop:  {lbl:"LOOP",  en:[false,true], get:t=>!!t.loop, set:(t,v)=>{ t.loop=v; if(v&&(t.loopStart==null||t.loopStart<t.start)) t.loopStart=t.start; }, fmt:v=>v?"ON":"OFF", w:3, wave:1},
   filter:{lbl:"FILTER",en:["off","lp","hp"], get:t=>t.filter||"off",
           set:(t,v)=>{ t.filter=v; if(v==="lp"&&t.cutoff>=10000) t.cutoff=3000; if(v==="hp"&&t.cutoff>=10000) t.cutoff=700; },
@@ -35,7 +33,7 @@ const CL_SPEC={
 };
 const CL_PAGES=[
   {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
-  {id:"smpl", lbl:"SAMPLE", f:["start","end","loop"],
+  {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
    b:[{id:"clWave",t:'<span class="cl-wide">✂ TRIM / CHOP</span><span class="cl-narrow">✂</span>'}]},
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
@@ -118,14 +116,16 @@ function paintClPage(){
   };
   scr.addEventListener("dblclick",e=>{   // マウス
     const el=e.target.closest(".cl-par"); if(!el) return;
-    e.preventDefault(); resetPar(el.dataset.p);
+    e.preventDefault(); if(el.dataset.p==="bpm") return;   // BPM は叩く＝タップテンポ（v0.3.126 §137）。2連打を0/100へのリセットと見なさない
+    resetPar(el.dataset.p);
   });
   let drag=null, lastTap=0, lastTapEl=null;
   scr.addEventListener("pointerdown",e=>{
     const el=e.target.closest(".cl-par"); if(!el) return;
     e.preventDefault();
     const k=el.dataset.p, sp=SPEC[k]; if(!sp||sp.ro) return;
-    if(!sp.en){                           // タッチ：同じ数値欄を素早く2回＝0へ
+    if(k==="bpm" && typeof tapTempoDown==="function") tapTempoDown();   // 押した瞬間の時刻がタップテンポの元（適用は離した時）
+    if(!sp.en && k!=="bpm"){              // タッチ：同じ数値欄を素早く2回＝0へ（BPM は除く＝タップテンポ）
       const now=Date.now();
       if(el===lastTapEl && now-lastTap<320){ lastTap=0; lastTapEl=null; drag=null; resetPar(k); return; }
       lastTap=now; lastTapEl=el;
@@ -157,6 +157,11 @@ function paintClPage(){
       pushUndo(); SET(sp,drag.pad,nx); after(drag.pad,sp,drag.k); paintClPage();
     }
     if(drag.moved){ lastTap=0; lastTapEl=null; }   // ドラッグした押下は「タップ」に数えない（直後の掴み直しを2連打と誤認して0に飛んでいた）
+    if(drag.k==="bpm" && typeof tapTempoUp==="function"){   // BPM カード：叩く＝タップテンポ／ドラッグ＝数値（ドラッグした押下はタップから外す）
+      if(drag.moved) tapTempoCancel();
+      else { const nb=tapTempoUp(); const el=drag.el; el.classList.add("tap-hit"); setTimeout(()=>el.classList.remove("tap-hit"),90);
+             if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent = nb!=null ? "TAP → "+nb.toFixed(1) : "TAP：続けて叩くとテンポになる（左右ドラッグ＝数値）"; }
+    }
     drag.el.classList.remove("tweak"); drag=null;
   };
   scr.addEventListener("pointerup",end); scr.addEventListener("pointercancel",end);

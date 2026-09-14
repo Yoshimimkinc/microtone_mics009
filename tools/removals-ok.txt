@@ -11,3 +11,6 @@ hint
 row
 # v0.3.101 窓の再生状態文字（■ STOP/▶ PLAY/● REC）を撤去（▶ボタン・RECボタン・窓の色変化と二重）
 _ct
+# v0.3.126 メニューの TAP ボタンを撤去。タップテンポは窓の BPM カードを叩く操作で代行（tapTempoDown/Up、§137）
+tapBtn [pointerdown]
+tapBtn

@@ -95,7 +95,7 @@
   }
   button.t:hover{border-color:var(--dim);}
   button.t.play.on{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 14px rgba(61,214,196,.4);}
-  button.t#tap.on{background:var(--amber);color:var(--hit-ink);border-color:var(--amber);}
+  .cl-par.tap-hit b{color:var(--amber)!important;}   /* BPM カードを叩いた瞬間の点灯（タップテンポ v0.3.126） */
   button.t.rec.on{background:var(--red);color:#2a0808;border-color:var(--red);}
   /* トランスポートのarmボタン（COPY/MUTE/SOLO）：armed=アンバー点灯 */
   button.t.arm{min-width:54px;padding:9px 11px;}

@@ -95,21 +95,24 @@ swing.addEventListener("change",()=>{
   if(typeof paintPerf==="function") paintPerf();
 });
 
-// tap tempo: 直近4タップの平均間隔。2秒空いたらリセット
-const tapBtn=document.getElementById("tap");
+// tap tempo: 直近4タップの平均間隔。2秒空いたらリセット。
+// v0.3.126：メニューの TAP ボタンを撤去し、窓の BPM カードを叩く操作で代行（§137）。
+// 時刻は押した瞬間（tapTempoDown）で取り、適用は離した時（tapTempoUp）＝ドラッグした押下はタップに数えない（tapTempoCancel）
 let taps=[];
-tapBtn.addEventListener("pointerdown",()=>{
+function tapTempoDown(){
   const now=performance.now();
   if(taps.length && now-taps[taps.length-1]>2000) taps=[];
   taps.push(now);
   if(taps.length>4) taps.shift();
-  if(taps.length>=2){
-    const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);
-    const newBpm=Math.min(180,Math.max(60, 60000/iv));
-    applyBpm(Math.round(newBpm*10)/10);   // タップテンポも同じ入口を通す（再生中の位相維持）
-  }
-  tapBtn.classList.add("on");setTimeout(()=>tapBtn.classList.remove("on"),90);
-});
+}
+function tapTempoCancel(){ taps.pop(); }
+function tapTempoUp(){
+  if(taps.length<2) return null;
+  const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);
+  const newBpm=Math.round(Math.min(180,Math.max(60, 60000/iv))*10)/10;
+  applyBpm(newBpm);   // タップテンポも同じ入口を通す（再生中の位相維持）
+  return newBpm;
+}
 const vol=document.getElementById("vol"),volVal=document.getElementById("volVal");
 vol.addEventListener("input",()=>{tracks[selected].vol=+vol.value;volVal.textContent=vol.value;});
 
