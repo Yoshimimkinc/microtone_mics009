@@ -304,7 +304,6 @@
      モーダル用の height:128px / min-height だけが残って40pxのままになる（v0.3.93までの実害） */
   .perf-screen .cl-waveslot #peWaveBox{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;}
   .perf-screen .cl-waveslot .pe-wave{height:auto;flex:1 1 auto;min-height:40px;margin:0;}
-  .perf-screen .cl-btn .cl-narrow{display:none;}
   .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
   .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
   body.perf .perf-screen.has-wave{display:grid;grid-template-columns:auto minmax(0,1fr);
@@ -312,9 +311,8 @@
   @media (max-width:767px){
     /* 一番混むページ（ASSIGN=2行）と、波形を下に積むSAMPLEの両方を、同じ予約高さに収める */
     :root{--cl-page-h:78px;--cl-wave-h:78px;}
-    /* ✂ は「✂」1文字に縮めない（小さ過ぎて NG v0.3.127 §139）。START/END の欄が消えて（§138）幅に余裕があるので
-       PC と同じ「✂ TRIM / CHOP」を出し、字を 13px に。高さは他の欄と同じ 34px（窓の寸法を動かさない＝不変性 §94）。
-       指の当たりは ::after で上下 5px ずつ広げて 44px 相当にする */
+    /* EDIT ボタン（旧 ✂）は「✂」1文字に縮めない（小さ過ぎて NG v0.3.127 §139）。文字「EDIT」を 13px で出す（v0.3.128）。
+       高さは他の欄と同じ 34px（窓の寸法を動かさない＝不変性 §94）。指の当たりは ::after で上下 5px ずつ広げて 44px 相当にする */
     .perf-screen #clWave{position:relative;padding:6px 14px;font-size:13px;letter-spacing:.08em;}
     .perf-screen #clWave::after{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px;}
     /* 横に並べる幅が無い：1カラムに戻し、概観レーンは畳む。波形は「予約の内数」に収めるので
@@ -1024,7 +1022,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.127</div>
+  <div class="s-ver" id="splashVer">v0.3.128</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -3167,7 +3165,7 @@ const CL_SPEC={
 const CL_PAGES=[
   {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
-   b:[{id:"clWave",t:'<span class="cl-wide">✂ TRIM / CHOP</span><span class="cl-narrow">✂</span>'}]},
+   b:[{id:"clWave",t:'EDIT'}]},   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
    x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
@@ -3876,7 +3874,7 @@ function openPadEdit(i){
   peTarget=i;
   const t=tracks[i];
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="TRIM / CHOP";
+  document.getElementById("peTitle").textContent="EDIT";   // ボタンと同じ名前（v0.3.128）
   if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む
   peNameSync();   // 名前はこの行に出す＝変える入口がここにしか無い（v0.3.120）
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
@@ -5478,7 +5476,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.127";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.128";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
