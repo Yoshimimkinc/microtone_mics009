@@ -893,7 +893,9 @@
     /* 低い画面（実機Safariのバー込み 390×664 等）ではパッドの下限56pxが収まらないので、この中だけ縦スクロールを許す。
        普段は溢れないのでスクロールは出ない */
     #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:6px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
-    #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
+    /* スマホは strip（‹名前› LOAD SMPL）を出さない（v0.3.125 §136）。浮いた約68pxはパッドへ（390×844 で1枚 92→109px、375×667 で 47→64px）。
+       LOAD/SMPL は EDIT モーダル（SAMPLE ページの ✂ / 空パッドの ＋）に既にある。PC は従来どおり */
+    #viewPads>.strip{display:none!important;}
     /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
     /* 下段は常に見える：低い画面で中身がスクロールしても下に貼り付く（窓の上貼り付きと対）。
@@ -1022,7 +1024,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.124</div>
+  <div class="s-ver" id="splashVer">v0.3.125</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1234,7 +1236,7 @@
     <!-- PADS view (Koala-style: waveform strip on top, pads below) -->
     <div class="view active split" id="viewPads">
 
-      <!-- waveform strip -->
+      <!-- waveform strip（PCのみ。スマホは出さない v0.3.125 §136：LOAD/SMPL は EDIT モーダルに、名前はパッドに、前後移動はパッドを叩く） -->
       <div class="strip">
         <div class="strip-head">
           <div class="who-wrap">
@@ -1245,7 +1247,6 @@
           <div class="strip-actions">
             <span class="loadbtn" id="loadBtn">LOAD</span>
             <span class="loadbtn" id="sampleBtn" style="color:var(--red);" title="声・音を録ってパッドに入れる">● SMPL</span>
-            <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
         <!-- ステータス/録音/抽出オーバーレイは .strip の外（position:fixed）へ移設＝perfで .strip を隠してもサンプリングUIが出る（v0.3.35） -->
@@ -1269,6 +1270,9 @@
         <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
       </div>
+
+      <!-- 音源ファイル入力：strip の外に置く（スマホは strip を出さない v0.3.125 §136。EDIT モーダルの ⤓ LOAD もこれを叩く） -->
+      <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
 
       <!-- 16 pads (主役)：4×4固定（8×2レイアウトは廃止） -->
       <div class="pads" id="pads"></div>
@@ -5467,7 +5471,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.124";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.125";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
