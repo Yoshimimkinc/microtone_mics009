@@ -34,7 +34,7 @@ const CL_SPEC={
 const CL_PAGES=[
   {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
-   b:[{id:"clWave",t:'<span class="cl-wide">✂ TRIM / CHOP</span><span class="cl-narrow">✂</span>'}]},
+   b:[{id:"clWave",t:'EDIT'}]},   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
    x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
