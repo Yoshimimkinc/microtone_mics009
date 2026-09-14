@@ -211,12 +211,11 @@ async function run(w,h,mobile){
     { const st=await p.evaluate(()=>{ const s=document.querySelector('#viewPads>.strip'); const pad=document.querySelector('#pads .pad').getBoundingClientRect();
         return {strip:getComputedStyle(s).display, padH:Math.round(pad.height), samp:!!document.getElementById('samp')}; });
       ok_(`${V} スマホは strip を出さない`, st.strip==='none' && st.samp, JSON.stringify(st));
-      // ✂ は SAMPLE ページで「✂ TRIM / CHOP」の表記・44px 以上（v0.3.127 §139）
+      // SAMPLE ページのボタンは文字「EDIT」（旧 ✂、v0.3.127→128 §139）：13px 以上・幅 56px 以上・他の欄と同じ 34px 高
       await page('smpl');
       const cw=await p.evaluate(()=>{ const b=document.getElementById('clWave'); const r=b.getBoundingClientRect();
-        const wide=b.querySelector('.cl-wide'), nar=b.querySelector('.cl-narrow');
-        return {h:Math.round(r.height), w:Math.round(r.width), wide:wide?getComputedStyle(wide).display:'-', narrow:nar?getComputedStyle(nar).display:'-'}; });
-      ok_(`${V} ✂ は TRIM / CHOP 表記・幅 100px 以上・他の欄と同じ 34px 高`, cw.h>=34 && cw.w>=100 && cw.wide!=='none' && cw.narrow==='none', JSON.stringify(cw));   // SAMPLE のまま次（✂ からモーダル）へ
+        return {h:Math.round(r.height), w:Math.round(r.width), t:b.textContent.trim(), fs:parseFloat(getComputedStyle(b).fontSize)}; });
+      ok_(`${V} EDIT ボタンは文字「EDIT」・13px・幅 56px 以上・34px 高`, cw.t==='EDIT' && cw.fs>=13 && cw.h>=34 && cw.w>=56, JSON.stringify(cw));   // SAMPLE のまま次（EDIT からモーダル）へ
       ok_(`${V} 浮いた高さがパッドへ（390×844 で 100px 以上）`, h<700 || st.padH>=100, `padH=${st.padH}`);
       await p.evaluate(()=>{ selectPad(0); openPadEdit(0); }); await p.waitForTimeout(600);
       const pe=await p.evaluate(()=>{ const g=id=>{ const e=document.getElementById(id); const r=e.getBoundingClientRect(); return getComputedStyle(e).display!=='none' && r.height>0 && r.width>0; }; return {load:g('peLoadBtn'), smpl:g('peSmplBtn')}; });

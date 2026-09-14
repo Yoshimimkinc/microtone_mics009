@@ -193,7 +193,7 @@ function openPadEdit(i){
   peTarget=i;
   const t=tracks[i];
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="TRIM / CHOP";
+  document.getElementById("peTitle").textContent="EDIT";   // ボタンと同じ名前（v0.3.128）
   if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む
   peNameSync();   // 名前はこの行に出す＝変える入口がここにしか無い（v0.3.120）
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。

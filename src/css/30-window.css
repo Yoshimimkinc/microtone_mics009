@@ -72,7 +72,6 @@
      モーダル用の height:128px / min-height だけが残って40pxのままになる（v0.3.93までの実害） */
   .perf-screen .cl-waveslot #peWaveBox{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;}
   .perf-screen .cl-waveslot .pe-wave{height:auto;flex:1 1 auto;min-height:40px;margin:0;}
-  .perf-screen .cl-btn .cl-narrow{display:none;}
   .perf-screen .cl-waveslot canvas{position:absolute;inset:0;}   /* canvasを絶対配置＝レイアウトに寸法を主張させない */
   .perf-screen .cl-waveslot .pe-wave .handle .cap{font-size:7px;}
   body.perf .perf-screen.has-wave{display:grid;grid-template-columns:auto minmax(0,1fr);
@@ -80,9 +79,8 @@
   @media (max-width:767px){
     /* 一番混むページ（ASSIGN=2行）と、波形を下に積むSAMPLEの両方を、同じ予約高さに収める */
     :root{--cl-page-h:78px;--cl-wave-h:78px;}
-    /* ✂ は「✂」1文字に縮めない（小さ過ぎて NG v0.3.127 §139）。START/END の欄が消えて（§138）幅に余裕があるので
-       PC と同じ「✂ TRIM / CHOP」を出し、字を 13px に。高さは他の欄と同じ 34px（窓の寸法を動かさない＝不変性 §94）。
-       指の当たりは ::after で上下 5px ずつ広げて 44px 相当にする */
+    /* EDIT ボタン（旧 ✂）は「✂」1文字に縮めない（小さ過ぎて NG v0.3.127 §139）。文字「EDIT」を 13px で出す（v0.3.128）。
+       高さは他の欄と同じ 34px（窓の寸法を動かさない＝不変性 §94）。指の当たりは ::after で上下 5px ずつ広げて 44px 相当にする */
     .perf-screen #clWave{position:relative;padding:6px 14px;font-size:13px;letter-spacing:.08em;}
     .perf-screen #clWave::after{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px;}
     /* 横に並べる幅が無い：1カラムに戻し、概観レーンは畳む。波形は「予約の内数」に収めるので
