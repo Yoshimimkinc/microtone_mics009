@@ -67,7 +67,9 @@
     /* 低い画面（実機Safariのバー込み 390×664 等）ではパッドの下限56pxが収まらないので、この中だけ縦スクロールを許す。
        普段は溢れないのでスクロールは出ない */
     #viewPads.active,#viewPads.split.active{display:flex;flex-direction:column;gap:6px;height:100%;overflow-x:hidden;overflow-y:auto;align-items:stretch;}   /* .split の align-items:start を打ち消し＝strip/pads等を全幅に */
-    #viewPads>.strip{order:1;margin:0;flex:0 0 auto;}
+    /* スマホは strip（‹名前› LOAD SMPL）を出さない（v0.3.125 §136）。浮いた約68pxはパッドへ（390×844 で1枚 92→109px、375×667 で 47→64px）。
+       LOAD/SMPL は EDIT モーダル（SAMPLE ページの ✂ / 空パッドの ＋）に既にある。PC は従来どおり */
+    #viewPads>.strip{display:none!important;}
     /* min-height:auto＝中身（4行×56px下限）より縮まない。0にすると低い画面で中身が溢れて下の MUTE/SOLO/EDIT 行を覆い、触れなくなる */
     #viewPads>.pads{order:2;max-width:100%;flex:1 1 auto;min-height:auto;align-self:stretch!important;}   /* 幅いっぱいに（split の align-self:start に特異度で勝てないので!important＝右の空き解消） */
     /* 下段は常に見える：低い画面で中身がスクロールしても下に貼り付く（窓の上貼り付きと対）。

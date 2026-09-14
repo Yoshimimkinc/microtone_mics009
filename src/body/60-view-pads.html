@@ -1,6 +1,6 @@
     <div class="view active split" id="viewPads">
 
-      <!-- waveform strip -->
+      <!-- waveform strip（PCのみ。スマホは出さない v0.3.125 §136：LOAD/SMPL は EDIT モーダルに、名前はパッドに、前後移動はパッドを叩く） -->
       <div class="strip">
         <div class="strip-head">
           <div class="who-wrap">
@@ -11,7 +11,6 @@
           <div class="strip-actions">
             <span class="loadbtn" id="loadBtn">LOAD</span>
             <span class="loadbtn" id="sampleBtn" style="color:var(--red);" title="声・音を録ってパッドに入れる">● SMPL</span>
-            <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
           </div>
         </div>
         <!-- ステータス/録音/抽出オーバーレイは .strip の外（position:fixed）へ移設＝perfで .strip を隠してもサンプリングUIが出る（v0.3.35） -->
@@ -35,6 +34,9 @@
         <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
       </div>
+
+      <!-- 音源ファイル入力：strip の外に置く（スマホは strip を出さない v0.3.125 §136。EDIT モーダルの ⤓ LOAD もこれを叩く） -->
+      <input type="file" id="samp" accept="audio/*,video/*" style="display:none;">
 
       <!-- 16 pads (主役)：4×4固定（8×2レイアウトは廃止） -->
       <div class="pads" id="pads"></div>

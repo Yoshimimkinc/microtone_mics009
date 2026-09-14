@@ -196,6 +196,15 @@ async function run(w,h,mobile){
     const vis=await p.evaluate(()=>{const g=id=>{const e=document.getElementById(id); const r=e.getBoundingClientRect(); return r.height>0&&getComputedStyle(e).display!=='none'?Math.round(r.height):0;};
       return {mute:g('holdMute'), solo:g('holdSolo'), edit:g('holdEdit'), pitch:g('fxPitch'), filter:g('fxFilter'), delay:g('fxDelay'), reverb:g('fxReverb'), levelBtns:document.querySelectorAll('[data-lock="level"]').length};});
     ok_(`${V} 下段は MUTE/PITCH/FILTER/DELAY/REVERB`, vis.mute>=44 && vis.pitch>=44 && vis.filter>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo===0 && vis.edit===0, JSON.stringify(vis));
+    // スマホは strip（‹名前› LOAD SMPL）を出さない。LOAD/SMPL は EDIT モーダルにある（v0.3.125 §136）
+    { const st=await p.evaluate(()=>{ const s=document.querySelector('#viewPads>.strip'); const pad=document.querySelector('#pads .pad').getBoundingClientRect();
+        return {strip:getComputedStyle(s).display, padH:Math.round(pad.height), samp:!!document.getElementById('samp')}; });
+      ok_(`${V} スマホは strip を出さない`, st.strip==='none' && st.samp, JSON.stringify(st));
+      ok_(`${V} 浮いた高さがパッドへ（390×844 で 100px 以上）`, h<700 || st.padH>=100, `padH=${st.padH}`);
+      await p.evaluate(()=>{ selectPad(0); openPadEdit(0); }); await p.waitForTimeout(600);
+      const pe=await p.evaluate(()=>{ const g=id=>{ const e=document.getElementById(id); const r=e.getBoundingClientRect(); return getComputedStyle(e).display!=='none' && r.height>0 && r.width>0; }; return {load:g('peLoadBtn'), smpl:g('peSmplBtn')}; });
+      ok_(`${V} EDIT モーダルに LOAD と SMPL が出る`, pe.load && pe.smpl, JSON.stringify(pe));
+      await p.click('#peClose'); await p.waitForTimeout(300); }
     eq(`${V} 古い level ロックは読み込みで捨てる`, await p.evaluate(()=>stripLegacyLocks({a:{level:-10},b:{level:-10,pitch:2},c:null})), {b:{pitch:2}});
     ok_(`${V} LEVEL の P-LOCK はどこにも無い（v0.3.124 §135）`, vis.levelBtns===0 && !(await p.evaluate(()=>('level' in PERF_BASE)||('level' in PLOCKS))), JSON.stringify(vis));
     // 6つが1行に収まり、幅44px以上・文字が溢れない（幅を2/3以下に詰めた分の検査）
