@@ -108,3 +108,51 @@
 - [x] `node tools/build.mjs --check` が通る
 - [x] `node tools/module-check.mjs` が通る
 - [x] `node tools/gate.mjs` が通る
+
+## Phase 2：論理的な責務分離（v0.3.130〜。段階的に進める）
+
+「ファイルを増やすこと自体を目的にしない」。まず論理分類を記録し、計画書が名指しする `30-ui-pads.js` から分ける。
+
+### 論理分類（現在のファイル → 目標の置き場）
+| 目標 | 現在のファイル | 状態 |
+|---|---|---|
+| `app/boot` | `00-boot.js` | 定数だけ（KEYMAP / PADS / STEPS）。Phase 3 で `app/state` を隣に置く |
+| `audio/*` | `10-engine-core` `11-engine-master` `12-engine-bus` `13-engine-fx` `21-voice` `22-presets` | 安定。`13-engine-fx` に `selected` / `activeLock` 等の**UI状態**が混ざっている（Phase 3 で `app/state` へ） |
+| `data/*` | `20-plock-undo`（p-lock と undo）、**`data/pads`（新）** | `31-ui-copy` の `swapPads` / `copyPattern` / `copyBar` は次の段で `data/` へ |
+| `ui/*` | **`ui/status` `ui/pads-view` `ui/performance-view` `ui/seq-view`（新）**、`32-ui-wave` `33-ui-window` `41-step-strip` `61-layout` `62-pattern-master` `51-edit-modal` `50-menu` `80-skin-version-splash` | `61-layout` の P-LOCK 表示（perfFillPad / renderPerfFills / perfLockApply）は `ui/performance-view` へ寄せる候補 |
+| `features/*` | `31-ui-copy`（COPY）、`52-chop` `70-sampling` `71-save-load` `72-midi` `73-share-export` `60-autosave` | `40-transport` は `audio/`（スケジューラ）と `ui/`（表示）が混在 |
+
+### 第1段：`30-ui-pads.js`（317行・責務9つ）を5つに（v0.3.130）
+コードは**そのまま移す**（動作を変えない）。唯一の手術は、パッド生成ループの中に埋まっていた P-LOCK 操作を
+`perfPadDown / perfPadMove / perfPadEnd` の3関数に切り出したこと（呼び出し順・中身は同じ）。
+
+| 新ファイル | @module | 中身 | 行 |
+|---|---|---|---:|
+| `js/ui/status.js` | `ui/status` | `sampNameEl`（トースト）。パッド以外からも使う共通の出口 | 19 |
+| `js/ui/pads-view.js` | `ui/pads-view` | `padsEl`／パッド生成／`selectPad`／`paintPadStates`／EDIT 中の並べ替え／`armMode` `copyArm` | 147 |
+| `js/ui/performance-view.js` | `ui/performance-view` | P-LOCK 選択中のパッド操作（横ドラッグ＝値、ダブルタップ＝戻す） | 47 |
+| `js/ui/seq-view.js` | `ui/seq-view` | SEQ グリッド生成／`paintSteps`／`moveCursors`（表示だけ） | 105 |
+| `js/data/pads.js` | `data/pads` | `copyPadSound`／`chopBaseName`／`nextChokeGroup`（データ更新の入口） | 27 |
+
+manifest では旧 `30-ui-pads.js` の位置にこの順で入る。`@module` 名は **`js/` からの相対パス**（`ui/pads-view`）にした。
+番号付きファイルは従来どおりファイル名（`chop`）。`module-check` が `@module` とパスの一致も見る。
+
+### 解析器の修正（この段で分かったこと）
+`PADS.forEach((p,i)=>{ … i===selected … })` のような**配列の同期コールバック**は読み込み時に走るのに、
+関数の中＝「後で実行」と扱っていたため `@depends` から `engine-fx`（`selected` の持ち主）が漏れていた。
+`forEach / map / filter / some / every / reduce / find / sort` の引数は読み込み時扱いにした
+（`addEventListener` / `setTimeout` / `requestAnimationFrame` / `MutationObserver` の引数は後で呼ばれるので含めない）。
+
+### 分離時の規則（計画書）に対する現状
+- `paintSteps` / `moveCursors` / `paintPadStates` は表示更新だけ ✔
+- `copyPadSound`（`data/pads`）はまだパッド名・SEQ 行名・波形の描画も自分でやる → 次の段で描画を `ui/` 側の関数へ
+- 音を鳴らす処理を描画関数に増やしていない ✔
+
+### 結果
+| 項目 | 結果 |
+|---|---|
+| 部品 | 45 → 49（JS 25 → 29） |
+| 最上位宣言 | 402 → 405（`perfPadDown / perfPadMove / perfPadEnd` の3つが増えた分。消えたものは無い） |
+| `module-check` | ✔ 問題なし（`ui/pads-view` `ui/seq-view` は `boot, engine-fx` に読み込み時依存） |
+| `lost-listeners`（origin/main 比） | 消えた登録 0／関数 0／要素参照 0（移しただけで何も失っていない） |
+| `gate` | ✔ 全関門クリア（回帰 全項目パス、無反応 0、deadcss 0） |

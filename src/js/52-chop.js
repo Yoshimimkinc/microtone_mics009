@@ -9,7 +9,7 @@
 //    playVoice, playing, pushUndo, refreshPadDisplay, sampNameEl, scaleSemi, selectPad, selected,
 //    setDelayTempo, stepIdx, stepTimeClean, stepTrackName, swingPct, switchView, toggleStepAt, tracks,
 //    trigger, vuHit
-// @depends engine-bus, engine-fx, ui-pads
+// @depends engine-bus, engine-fx, ui/pads-view
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
 function syncChopSeg(id,attr,val){
