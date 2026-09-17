@@ -1,3 +1,7 @@
+// @module skin-version-splash
+// @provides APP_VERSION
+// @uses AC, buildAllTrackWaves, drawAllPadWaves, previewName
+// @depends autosave
 // ---------- skin（AK / SP / RL）テーマ切替・選択を記憶 ----------
 (function(){
   const seg=document.getElementById("themeSeg"), KEY="mics-skin";

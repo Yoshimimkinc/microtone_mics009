@@ -1,3 +1,9 @@
+// @module menu
+// @provides -
+// @uses AC, _ckTimes, _ckUiT, _midiNoteTimes, _outMerger, applyFatBass, applySpChFilter, initMultiOut,
+//    loopZeroSnap, mainOut, metroOn, midiEnabled, midiSync, multiOut, outBGain, paintLatency, sampNameEl,
+//    spChFilterOn, spDacNode
+// @depends -
 // ===== Sound A/B トグル（メニュー） =====
 (function(){
   const dac=document.getElementById("dacLofiToggle");

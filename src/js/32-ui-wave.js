@@ -1,3 +1,9 @@
+// @module ui-wave
+// @provides _rsT, applyWaveSEQ, applyWaveStrip, buildAllTrackWaves, buildTrackWave, drawAllPadWaves,
+//    drawPadWave, padWaveInk, setCellWave, snapStartToOnset, syncEditor, trackWaveURL
+// @uses PADS, STEPS, getPattern, padsEl, paintSteps, rowEls, selected, stepBtns, tracks, viewPadsEl,
+//    viewSeqEl
+// @depends -
 // ---------- sample editor ---------- （窓波形は撤去：drawWave/ハンドル/カーソル機構は廃止）
 
 // Koala風：各パッドに小さな波形を描く

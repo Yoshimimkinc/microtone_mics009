@@ -1,3 +1,11 @@
+// @module edit-modal
+// @provides _ovCache, cropBufferToSelection, openPadEdit, peNameSync, pePlayRAF, pePlayheadRun,
+//    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+// @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
+//    clWaveTo, computeChopBounds, drawPadWave, padsEl, paintClPage, paintPerf, peOpenedAt, peTarget, peV0,
+//    peV1, pushUndo, sampNameEl, scheduleAutosave, setDrumRowLabels, snapStartToOnset, syncChopSeg,
+//    syncEditor, tracks, trigger
+// @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
 // 選択範囲[start,end]でバッファを切り出し、外側を破棄。バッファ差替でピッチキャッシュは自動破棄。

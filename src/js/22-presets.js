@@ -1,3 +1,7 @@
+// @module presets
+// @provides contentEnd, loadPresets, renderPreset
+// @uses AC, PADS, makeLofi, tracks
+// @depends -
 // ===== プリセット音をオフラインで生成して各パッドに焼き込む =====
 async function renderPreset(voice){
   const dur = 1.2, sr = AC.sampleRate;

@@ -1,3 +1,8 @@
+// @module engine-core
+// @provides AC, SP_DAC_RATE, decodeAudio, extractViaPlayback, isSilent, loopZeroSnap, masterGain,
+//    nearestZeroCross, spDacNode, spOut
+// @uses selected
+// @depends -
 // ===== MPC-style sampler engine (raw Web Audio) =====
 // 全パッドが1つのAudioContextを共有。発音はバッファを持つボイスをプールから確保。
 // 各ヒット = 1 AudioBufferSourceNode（使い切りだが正しい使い方=リークしない）。

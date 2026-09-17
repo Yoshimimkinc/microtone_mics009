@@ -1,3 +1,12 @@
+// @module layout
+// @provides IS_IOS, barHasContent, fitMobileHeight, landscapeMode, lockViewHeight, modeBtns, paintPerf,
+//    patHasContent, perfFillPad, perfFourUp, perfLockApply, perfReadVals, perfRevertSnap, plockFillsOn,
+//    refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, renderPerfFills, switchView, updatePerf
+// @uses PERF_BASE, PLOCKS, activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves,
+//    editBar, editPat, padsEl, paintClPage, paintSteps, perfLast, perfRecArm, perfSnap, playStep, playing,
+//    queuedPat, sampNameEl, setActiveLock, setEditBar, setEditPat, stepTrackName, swingPct, syncEditor,
+//    tracks, viewPadsEl
+// @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq")];
 function switchView(viewId){

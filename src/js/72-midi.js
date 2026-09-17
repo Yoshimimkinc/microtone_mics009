@@ -1,3 +1,9 @@
+// @module midi
+// @provides _ckTimes, _ckUiT, _midiNoteTimes, assignTo, clRetargetLearn, handleClock, handleMIDI, inBlink,
+//    midiBlink, midiEnabled, midiNoteName, midiSync
+// @uses AC, _ledT, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, paintPerf, playBtn,
+//    playVoice, playing, pushUndo, sampNameEl, selected, setDelayTempo, tracks, trigger
+// @depends -
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
 // 対応: PC/MacのChrome・Edge、Android Chrome。iOS SafariはWeb MIDI非対応

@@ -1,3 +1,14 @@
+// @module plock-undo
+// @provides NOTE_NAMES, PLOCKS, SCALES, clearLockEdit, dbToGain, doUndo, getLockEdit, getLockPlay,
+//    isMelodic, lockKey, melodicMode, noteLabel, paintMelodic, patLength, pushUndo, refreshSeqMode,
+//    restoreState, scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState, stripLegacyLocks,
+//    undoStack
+// @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
+//    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
+//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
+//    masterGain, nextChokeGroup, padsEl, paintMixer, paintPadStates, paintPatBar, paintSteps, playStep,
+//    playing, rowEls, saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
+// @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
 const PLOCKS = {

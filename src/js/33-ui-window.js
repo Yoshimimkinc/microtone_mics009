@@ -1,3 +1,9 @@
+// @module ui-window
+// @provides CL_PAGES, CL_SPEC, clPage, clSyncWave, clWaveTo, paintClPage, renderClPage
+// @uses assignTarget, bpmVal, midiNoteName, multiOut, openPadEdit, paintPadStates, paintPerf, peTarget,
+//    peV0, peV1, pushUndo, refreshOpenPadEdit, refreshSeqMode, renderPeOver, renderPeWave, sampNameEl,
+//    selected, swingPct, syncEditor, tapTempoCancel, tapTempoDown, tapTempoUp, tracks, warmPitch
+// @depends -
 // ===== 情報窓のパラメータを横ドラッグで編集（パッドを叩きながら追い込める＝モーダル不要の連続編集） =====
 // パッド1枚の編集項目を「カテゴリ＝ページ」に棚卸ししたもの（docs/screen-spec.md §96 の表と1:1）。
 // en=列挙（タップで送る） / min-max-st=数値（横ドラッグ＝データホイール） / ro=表示専用 / w=固定表示幅(ch)

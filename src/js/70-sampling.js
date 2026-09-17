@@ -1,3 +1,11 @@
+// @module sampling
+// @provides _gtrFrame, _lastRecWasResample, _resampling, closeGtrFrame, extractOverlayEl, finalizeRec,
+//    openSampleOverlay, pcmChunks, pcmLen, pcmMute, pcmPeak, pcmSrc, pcmTap, pickCaptureTarget, recActiveEl,
+//    recChoose, recOverlay, recStartMs, recStream, recTakeN, recTargetEl, recTimerId, startRec, stopRec
+// @uses AC, APP_VERSION, PADS, applyPadCategory, drawPadWave, finalClip, isSilent, makeLofi, openPadEdit,
+//    padsEl, peTarget, playBtn, pushUndo, refreshOpenPadEdit, sampNameEl, selectPad, selected, syncEditor,
+//    tracks
+// @depends -
 // ===== SAMPLING (Tab Audio / Mic) =====
 const recOverlay=document.getElementById("recOverlay");
 recOverlay.addEventListener("pointerdown",e=>e.stopPropagation());

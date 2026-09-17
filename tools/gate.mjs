@@ -19,6 +19,8 @@ const fails=[];
 if(run('build.mjs --check（src と公開HTMLの一致）',['tools/build.mjs','--check'])!==0) fails.push('build.mjs --check');
 // 0.5) 静的検査（1秒）：暗黙グローバル／存在しないid／バージョン3点一致
 if(run('static-check.mjs（静的：暗黙グローバル・不在id・版一致）',['tools/static-check.mjs'])!==0) fails.push('static-check.mjs');
+// 0.6) ファイル間の契約（1秒）：@module/@provides/@uses/@depends と実装の一致・連結順・二重宣言（Phase 1）
+if(run('module-check.mjs（ファイル間の依存：ヘッダと実装の一致・連結順・二重宣言）',['tools/module-check.mjs'])!==0) fails.push('module-check.mjs');
 // 1) 回帰（合否）
 if(run('check.mjs（回帰・合否）',['tools/check.mjs',PORT])!==0) fails.push('check.mjs');
 // 2) 押しても何も起きないコントロール（消したハンドラの検出）

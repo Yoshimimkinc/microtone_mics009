@@ -1,3 +1,12 @@
+// @module share-export
+// @provides _expBlob, _expBusy, _expName, applyProject, shareOrDownload
+// @uses AC, IS_IOS, PADS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applyPadCategory, autosaveNow,
+//    b64ToUint8, bpmVal, bufToWav, buildAllTrackWaves, compDrive, compOn, compThreshold, decodeAudio,
+//    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, grid,
+//    groupVol, makeLofi, makeSatCurve, masterGain, multiOut, outBGain, padsEl, paintMixer, paintPadStates,
+//    paintPatBar, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl, saturator,
+//    selectPad, setCompBypass, setDelayTempo, stopVoices, stripLegacyLocks, swingPct, tickDur, tracks
+// @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
   try{

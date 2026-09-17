@@ -1,3 +1,12 @@
+// @module engine-fx
+// @provides LOFI, PERF_BASE, _ledT, activeLock, applyFx, assignTarget, delaySend, displayBar, displayPat,
+//    echoFb, echoFbHP, echoFbLP, echoLfo, echoLfoDepth, echoSat, echoWet, editBar, editDrag, editPat,
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern, peOpenedAt, peTarget, peV0,
+//    peV1, perfDrag, perfLast, perfRecArm, perfResetPad, perfSnap, perfTapT, playBar, playPat, playStep,
+//    playing, queuedPat, recording, reverb, reverbLP, reverbPre, reverbSend, reverbWet, selected,
+//    setDelayTempo, stepIdx, tapeEcho, tracks
+// @uses AC, PADS, PLOCKS, STEPS, bpmVal, finalClip, perfFillPad, pushUndo, syncEditor, tapeDelay
+// @depends boot, engine-core, engine-master
 // ===== センドFX：RE-101風テープディレイ ＋ ホールリバーブ（マスター最終段からパラレル送り）=====
 // --- テープディレイ（RE-101風：リピートが徐々に暗くもこもこ＋テープ飽和＋僅かな揺れ） ---
 const delaySend = AC.createGain(); delaySend.gain.value = 0;     // FX量(0..1)

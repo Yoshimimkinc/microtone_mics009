@@ -1,3 +1,11 @@
+// @module ui-copy
+// @provides COPY_LABEL, arm, assignMS, bindHold, copyBar, copyName, copyPattern, copyTap, doCopy,
+//    padAtPoint, paintCopyHL, refreshAfterCopy, refreshPadDisplay, swapPads
+// @uses PADS, applyPadCategory, applyWaveSEQ, applyWaveStrip, armMode, buildTrackWave, clearLockEdit,
+//    copyArm, copyPadSound, drawPadWave, editBar, editPat, getLockEdit, getPattern, grid, lockKey, padsEl,
+//    paintPadStates, paintPatBar, paintPerf, paintStepStrip, paintSteps, pushUndo, sampNameEl,
+//    scheduleAutosave, selected, tracks
+// @depends -
 // ===== 汎用COPY：COPY中に「元→先」でパッド(音色+FX)/パターンA-D/小節1-4 をコピー。DUPの上位互換 =====
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ
   if(src===dst) return; pushUndo();
