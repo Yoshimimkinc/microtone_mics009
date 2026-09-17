@@ -12,7 +12,8 @@
 //   @module   論理モジュール名（ファイル名から番号を除いたもの。重複不可）
 //   @provides このファイルが最上位で宣言する関数・変数（他ファイルから見える名前）。static-check と同じ AST で導く
 //   @uses     他ファイルが提供する名前のうち、このファイルが参照するもの
-//   @depends  読み込み時（最上位の文・即時実行関数の中）に参照する他モジュール＝manifest でこのファイルより前に無いと壊れる
+//   @depends  読み込み時（最上位の文・即時実行関数・forEach 等の同期コールバックの中）に参照する他モジュール
+//             ＝manifest でこのファイルより前に無いと壊れる
 //             関数の中からの参照は実行が後なので @uses だけに載る（連結順に縛られない）
 //
 // 検査：1) @module 重複  2) @depends の不在  3) manifest 順で依存先が前に無い  4) @provides（＝最上位宣言）の重複
@@ -71,6 +72,16 @@ function isIIFE(n){
   return !!(p&&ts.isCallExpression(p)&&(p.expression===n||(ts.isParenthesizedExpression(p.expression)&&unparen(p.expression)===n)));
 }
 function unparen(n){ while(ts.isParenthesizedExpression(n)) n=n.expression; return n; }
+// 読み込み時に同期で呼ばれるコールバック：PADS.forEach(p=>…) のような配列の同期メソッドの引数。
+// addEventListener / setTimeout / requestAnimationFrame / MutationObserver の引数は後で呼ばれるので含めない
+const SYNC_METHODS=new Set(['forEach','map','filter','some','every','reduce','reduceRight','find','findIndex','findLast','flatMap','sort']);
+function isSyncCallback(n){
+  if(!(ts.isFunctionExpression(n)||ts.isArrowFunction(n))) return false;
+  let p=n.parent; while(p&&ts.isParenthesizedExpression(p)) p=p.parent;
+  if(!(p&&ts.isCallExpression(p)&&p.arguments.some(a=>unparen(a)===n))) return false;
+  const callee=unparen(p.expression);
+  return ts.isPropertyAccessExpression(callee)&&SYNC_METHODS.has(callee.name.text);
+}
 
 function analyze(code){
   const sf=ts.createSourceFile('x.js',code,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
@@ -86,7 +97,7 @@ function analyze(code){
     if(ts.isFunctionDeclaration(n)&&n.name){ if(atTop) top.set(n.name.text,'function'); else addFn(n.name.text,scope); }
     if(ts.isClassDeclaration(n)&&n.name){ if(atTop) top.set(n.name.text,'class'); else addFn(n.name.text,scope); }
     let inner=scope, innerLoad=load;
-    if(isFn(n)){ inner=[n.getStart(sf),n.getEnd()]; innerLoad=load&&isIIFE(n);
+    if(isFn(n)){ inner=[n.getStart(sf),n.getEnd()]; innerLoad=load&&(isIIFE(n)||isSyncCallback(n));
       if((ts.isFunctionExpression(n)||ts.isClassExpression(n))&&n.name) addFn(n.name.text,inner); }
     if(ts.isVariableDeclaration(n)){ const kind=(n.parent.flags&ts.NodeFlags.Const)?'const':(n.parent.flags&ts.NodeFlags.Let)?'let':'var';
       // let/const はブロックスコープ：ファイル直下の文だけが「提供」。for(let s…) や if{…} の中のものは
@@ -124,8 +135,8 @@ const files=jsParts.map((rel,idx)=>{
   const code=fs.readFileSync(new URL(rel,SRC),'utf8');
   const a=analyze(code);
   const header=parseHeader(code);
-  const defaultModule=path.basename(rel,'.js').replace(/^\d+-/,'');
-  return {rel, idx, code, header, module:header?header.module:defaultModule, top:a.top, refs:a.refs};
+  const defaultModule=rel.replace(/^js\//,'').replace(/\.js$/,'').replace(/(^|\/)\d+-/,'$1');   // js/ui/pads-view.js → ui/pads-view、js/30-x.js → x
+  return {rel, idx, code, header, module:defaultModule, top:a.top, refs:a.refs};   // @module はパス由来（動かしたら --write で追従）
 });
 const provider=new Map();   // name → file（最上位宣言の持ち主）
 const dupProvides=[];
@@ -178,6 +189,7 @@ for(const f of files){
   // 5) ヘッダ無し
   if(!f.header){ fails.push(`${f.rel}: ヘッダ（@module/@provides/@uses/@depends）が無い → node tools/module-check.mjs --write`); continue; }
   const h=f.header;
+  if(h.module!==f.module) fails.push(`${f.rel}: @module "${h.module}" はパス由来の "${f.module}" と違う → --write で揃う`);
   // 2) @depends の不在
   for(const d of h.depends) if(!byModule.has(d)) fails.push(`${f.rel}: @depends "${d}" というモジュールは無い`);
   // 3) manifest 順：依存先が前に無い

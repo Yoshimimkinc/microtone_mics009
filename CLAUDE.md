@@ -4,7 +4,7 @@
 microtone MICS009 — a browser-based 16-pad sampler/sequencer inspired by SP-1200 and MPC.
 Ships as a single HTML file (`mics-609bc14b.html`), zero external dependencies. Pure Web Audio API.
 
-**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（45部品）。
+**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（49部品）。
 `node tools/build.mjs` が連結して `mics-609bc14b.html` を生成する。**生成物を直接編集しない**
 （関門 `build.mjs --check` が止める）。バージョンは `version.json` だけが正で、ビルドが差し込む。
 流れの全体は **`docs/dev-flow.md`**。
@@ -106,7 +106,10 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 
 ## 開発の流れ（要点。詳細は `docs/dev-flow.md`）
 1. `src/` を直す → `node tools/build.mjs` → `node tools/gate.mjs`
-   - 各 `src/js/*.js` の先頭に **`@module / @provides / @uses / @depends`** がある（v0.3.129〜、`docs/maintainability-modularization-plan.md` Phase 1）。
+   - `src/js/` は番号付きファイル（旧来）と **責務別ディレクトリ `ui/` `data/`**（v0.3.130〜 Phase 2）が同居する。
+     新しい部品は責務別ディレクトリへ（`ui/pads-view` `ui/seq-view` `ui/performance-view` `ui/status` `data/pads`）。
+     旧 `30-ui-pads.js` はこの5つに分けた。分け方の記録は `docs/modularization-log.md` Phase 2
+   - 各 `src/js/**/*.js` の先頭に **`@module / @provides / @uses / @depends`** がある（v0.3.129〜、`docs/maintainability-modularization-plan.md` Phase 1）。
      触る前に `@uses` と `@depends` で影響範囲を見る。関数や変数を足した／消したら **`node tools/module-check.mjs --write`** で
      ヘッダを実装に合わせる（手で書かない。ズレは関門 `module-check` が止める）。記録は `docs/modularization-log.md`
 2. ブランチに push → GitHub Actions が **gate（関門）** と **pages（`/preview/<branch>/` に配置）** を回す
@@ -119,7 +122,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.129
+MICS009 beta v0.3.130
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
