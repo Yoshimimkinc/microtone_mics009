@@ -67,3 +67,44 @@
 - [x] 変更前の基準となるテスト結果がある（上表）
 - [x] ビルドと gate が通る
 - [x] 既存の失敗は無い
+
+## Phase 1：依存関係の明示（v0.3.129）
+
+実行方式は変えない（単純連結のまま）。各 `src/js/*.js` の先頭にヘッダを入れ、`tools/module-check.mjs` で実装と突き合わせる。
+
+### やったこと
+- **ヘッダは手書きしない。** `node tools/module-check.mjs --write` が TypeScript の構文解析で実装から導いて書く
+  （`@provides` ＝ ファイル直下の宣言、`@uses` ＝ 他ファイルの提供物への参照、`@depends` ＝ 読み込み時の参照先モジュール）。
+  計画書の「主要な契約だけ」ではなく**全部**を機械的に列挙した。人が選ぶと漏れるし、全部あれば「不一致」を検査できる
+- `@depends` の定義を「読み込み時に要る」に絞った。関数の中からの参照は実行が後で連結順に縛られないので `@uses` にだけ載る。
+  これで「manifest 順で依存先が前に無い」検査が意味を持つ（全部を depends にすると後ろのファイルも大量に入って必ず落ちる）
+- `tools/module-check.mjs`：6つの検査（計画書のとおり）＋「読み込み時に後ろのファイルの let/const を参照（TDZ）」を実装の問題として止める
+- `tools/gate.mjs` の static-check の直後に組み込んだ（ブラウザ不要・1秒。CI の gate と pre-push も同じ経路）
+- `@module` 名はファイル名から番号を除いたもの（`30-ui-pads.js` → `ui-pads`）。計画書 Phase 2 の論理分類（`ui/pads-view` 等）へは、
+  ファイルを動かす時に付け替える
+
+### 結果
+| 項目 | 結果 |
+|---|---|
+| ヘッダを入れたファイル | 25（`src/js/*.js` 全部） |
+| 最上位宣言（`@provides` の総数） | 402（同名の二重宣言 0） |
+| 読み込み時の前方参照 | 0（`@depends` は全て manifest で前にある） |
+| `node tools/module-check.mjs` | ✔ 問題なし |
+| `node tools/build.mjs --check` | ✔ 一致 |
+| `node tools/gate.mjs` | ✔ 全関門クリア |
+| 既存の動作 | 変更なし（差分はコメント行のみ。公開 HTML は 302KB → 315KB、gzip 後の差はごく小さい） |
+
+### 解析で分かったこと（Phase 2 以降の材料）
+- 読み込み時に他ファイルへ依存するのは 9 ファイルだけ。残りは関数の中からの参照だけ＝連結順を入れ替えても壊れない
+- `@uses` が多いのは `share-export`（52）、`chop`（51）、`ui-pads`（50）、`plock-undo`（41）、`transport`（39）。責務分離の候補はここ
+- `menu` は提供 0／使用 19＝配線だけのファイル。`boot` は提供 6／使用 0＝定数だけ
+
+### 未解決
+- ヘッダは公開 HTML にもコメントとして入る（build は連結するだけ）。削る必要が出たら build 側で先頭ヘッダだけ落とす
+- `@provides` は「ファイル直下の宣言」であり、`window.x=` での公開や、DOM の id による暗黙グローバル（static-check が見る）は含めない
+
+### 完了条件
+- [x] 既存の動作が変わらない
+- [x] `node tools/build.mjs --check` が通る
+- [x] `node tools/module-check.mjs` が通る
+- [x] `node tools/gate.mjs` が通る

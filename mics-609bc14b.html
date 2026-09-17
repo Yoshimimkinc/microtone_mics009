@@ -1022,7 +1022,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.128</div>
+  <div class="s-ver" id="splashVer">v0.3.129</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1365,6 +1365,10 @@
 </div>
 
 <script>
+// @module boot
+// @provides CODEMAP, KEYMAP, MELO_KEYS, PADS, STEPS, STEP_KEYS
+// @uses -
+// @depends -
 // Safari：複数の指/タップ重なりでのピンチ拡大を抑止（touch-actionだけでは防げない）
 ["gesturestart","gesturechange","gestureend"].forEach(ev=>
   document.addEventListener(ev, e=>e.preventDefault(), {passive:false}));
@@ -1400,6 +1404,11 @@ const CODEMAP = ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7",
 // 数字行(1-8)・Q行(9-16)のスライス・トリガとは別の行なので両立する（パッド毎の切替＝そのパッドのscale設定）
 const MELO_KEYS = ["a","s","d","f","g","h","j","k","l",";"];
 
+// @module engine-core
+// @provides AC, SP_DAC_RATE, decodeAudio, extractViaPlayback, isSilent, loopZeroSnap, masterGain,
+//    nearestZeroCross, spDacNode, spOut
+// @uses selected
+// @depends -
 // ===== MPC-style sampler engine (raw Web Audio) =====
 // 全パッドが1つのAudioContextを共有。発音はバッファを持つボイスをプールから確保。
 // 各ヒット = 1 AudioBufferSourceNode（使い切りだが正しい使い方=リークしない）。
@@ -1532,6 +1541,13 @@ function nearestZeroCross(data, idx, win){
   }).catch(()=>{ URL.revokeObjectURL(url); });
 })();
 
+// @module engine-master
+// @provides FAT_BASS_MIX, FAT_SHELF_DB, SP_COMP_CODE, THIN_BASS_MIX, applyFatBass, bassDcBlock, bassGain,
+//    bassLp, bassSat, bsCurve, comp, compNode, compThr, fatBassOn, fatShelf, finalClip, flutterDepth,
+//    flutterLfo, hissBuf, hissData, hissGain, hissHp, hissLen, hissLp, hissNode, isMobileHiss, mainOut,
+//    makeSatCurve, makeupGain, satIn, saturator, tapeDelay, wowDepth, wowLfo
+// @uses AC, spOut
+// @depends engine-core
 // ===== アナログ風マスターコンプ + サチュレーション =====
 // Chain: voices → masterGain → comp → saturator → makeupGain → destination
 const comp = AC.createDynamicsCompressor();
@@ -1724,6 +1740,13 @@ finalClip.curve = (()=>{ const N=4096, c=new Float32Array(N);
     c[i]=Math.sign(x)*(a<=0.7 ? a : 0.7+0.3*Math.tanh((a-0.7)/0.3)); }
   return c; })();
 finalClip.connect(mainOut);
+// @module engine-bus
+// @provides GROUP_OF, LIVE_DRY, SP_CH, _liveDuck, _liveDuckT, _outMerger, _rampCompRouting, applyGroupVol,
+//    applySpChFilter, bypassGain, compDrive, compMakeup, compOn, compThreshold, groupBus, groupVol,
+//    grpBiquad, grpInputNode, grpOut, initMultiOut, liveCompDuck, multiOut, outBGain, setCompBypass,
+//    spChFilterOn, spDynOpen, ssmNode
+// @uses AC, compNode, compThr, fatShelf, finalClip, mainOut, makeupGain, masterGain, sampNameEl, tapeDelay
+// @depends engine-core, engine-master
 // ===== OUT B（外部ミキサー2系統目＝ch3/4）：KO Sidekick等の4ch以上出力機器で有効 =====
 // OUT Bはドライ送り（12bit/パッドフィルター/エンベロープ後、グループFX・コンプ・テープの前）＝外部ミキサー側で処理する前提
 const outBGain=AC.createGain();
@@ -1950,6 +1973,15 @@ registerProcessor('ssm-2044', SSM2044);`;
   }).catch(()=>{ URL.revokeObjectURL(url); });
 })();
 
+// @module engine-fx
+// @provides LOFI, PERF_BASE, _ledT, activeLock, applyFx, assignTarget, delaySend, displayBar, displayPat,
+//    echoFb, echoFbHP, echoFbLP, echoLfo, echoLfoDepth, echoSat, echoWet, editBar, editDrag, editPat,
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern, peOpenedAt, peTarget, peV0,
+//    peV1, perfDrag, perfLast, perfRecArm, perfResetPad, perfSnap, perfTapT, playBar, playPat, playStep,
+//    playing, queuedPat, recording, reverb, reverbLP, reverbPre, reverbSend, reverbWet, selected,
+//    setDelayTempo, stepIdx, tapeEcho, tracks
+// @uses AC, PADS, PLOCKS, STEPS, bpmVal, finalClip, perfFillPad, pushUndo, syncEditor, tapeDelay
+// @depends boot, engine-core, engine-master
 // ===== センドFX：RE-101風テープディレイ ＋ ホールリバーブ（マスター最終段からパラレル送り）=====
 // --- テープディレイ（RE-101風：リピートが徐々に暗くもこもこ＋テープ飽和＋僅かな揺れ） ---
 const delaySend = AC.createGain(); delaySend.gain.value = 0;     // FX量(0..1)
@@ -2079,6 +2111,17 @@ function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar
 // 再生中（パターン×小節）へのアクセサ
 function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][playBar]; }
 
+// @module plock-undo
+// @provides NOTE_NAMES, PLOCKS, SCALES, clearLockEdit, dbToGain, doUndo, getLockEdit, getLockPlay,
+//    isMelodic, lockKey, melodicMode, noteLabel, paintMelodic, patLength, pushUndo, refreshSeqMode,
+//    restoreState, scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState, stripLegacyLocks,
+//    undoStack
+// @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
+//    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
+//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
+//    masterGain, nextChokeGroup, padsEl, paintMixer, paintPadStates, paintPatBar, paintSteps, playStep,
+//    playing, rowEls, saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
+// @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
 const PLOCKS = {
@@ -2220,6 +2263,13 @@ function refreshSeqMode(){
 
 function dbToGain(db){ return Math.pow(10, db/20); }
 
+// @module voice
+// @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, makeLofi, pitchBufferNN, playVoice,
+//    stopVoices, trigger, warmPitch
+// @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
+//    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
+//    playStep, playing, recording, reverbPre, sampNameEl, spDynOpen, tapeEcho, tracks, vuHit
+// @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
 function makeLofi(buffer){
@@ -2466,6 +2516,10 @@ function trigger(i, time, accent=false){
   }
 }
 
+// @module presets
+// @provides contentEnd, loadPresets, renderPreset
+// @uses AC, PADS, makeLofi, tracks
+// @depends -
 // ===== プリセット音をオフラインで生成して各パッドに焼き込む =====
 async function renderPreset(voice){
   const dur = 1.2, sr = AC.sampleRate;
@@ -2557,6 +2611,18 @@ async function loadPresets(){
   }));
 }
 
+// @module ui-pads
+// @provides _padCurStep, _selHeavyRAF, _seqCurStep, _stripCurStep, _toastTimer, applyPadCategory, armMode,
+//    chopBaseName, colnums, copyArm, copyPadSound, curStepFor, flashPad, grid, moveCursors, nextChokeGroup,
+//    padCategory, padKeyLabel, padsEl, paintPadStates, paintSteps, rowEls, sampNameEl, selectPad,
+//    selectPadHeavy, viewPadsEl, viewSeqEl
+// @uses AC, KEYMAP, PADS, PERF_BASE, PLOCKS, STEPS, activeLock, applyWaveSEQ, applyWaveStrip, arm, assignMS,
+//    clRetargetLearn, clSyncWave, clearLockEdit, copyTap, displayBar, displayPat, drawPadWave, editBar,
+//    editDrag, editPat, getPattern, isMelodic, melodicMode, openPadEdit, padAtPoint, paintMelodic,
+//    paintMixer, paintPatBar, paintPerf, paintStepStrip, perfDrag, perfFillPad, perfRecArm, perfResetPad,
+//    perfTapT, playStep, playVoice, playing, pushUndo, refreshSeqMode, scaleSemi, selected, stepBtns,
+//    stopVoices, swapPads, syncEditor, tracks, trigger, vuHit
+// @depends boot
 // ---------- UI build ----------
 const padsEl = document.getElementById("pads");
 const sampNameEl = document.getElementById("sampName");   // ステータス表示（多用するためキャッシュ）
@@ -2874,6 +2940,14 @@ function copyPadSound(src,dst){
   if(rn) rn.innerHTML=`<b>${String(dst+1).padStart(2,"0")}</b> ${nm}`;
   drawPadWave(dst);
 }
+// @module ui-copy
+// @provides COPY_LABEL, arm, assignMS, bindHold, copyBar, copyName, copyPattern, copyTap, doCopy,
+//    padAtPoint, paintCopyHL, refreshAfterCopy, refreshPadDisplay, swapPads
+// @uses PADS, applyPadCategory, applyWaveSEQ, applyWaveStrip, armMode, buildTrackWave, clearLockEdit,
+//    copyArm, copyPadSound, drawPadWave, editBar, editPat, getLockEdit, getPattern, grid, lockKey, padsEl,
+//    paintPadStates, paintPatBar, paintPerf, paintStepStrip, paintSteps, pushUndo, sampNameEl,
+//    scheduleAutosave, selected, tracks
+// @depends -
 // ===== 汎用COPY：COPY中に「元→先」でパッド(音色+FX)/パターンA-D/小節1-4 をコピー。DUPの上位互換 =====
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ
   if(src===dst) return; pushUndo();
@@ -3010,6 +3084,12 @@ window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&armMode) arm(armMode
 
 // pad layout：4×4固定（8×2レイアウトは廃止＝#viewPadsに常時split／#padsはcols4既定）
 
+// @module ui-wave
+// @provides _rsT, applyWaveSEQ, applyWaveStrip, buildAllTrackWaves, buildTrackWave, drawAllPadWaves,
+//    drawPadWave, padWaveInk, setCellWave, snapStartToOnset, syncEditor, trackWaveURL
+// @uses PADS, STEPS, getPattern, padsEl, paintSteps, rowEls, selected, stepBtns, tracks, viewPadsEl,
+//    viewSeqEl
+// @depends -
 // ---------- sample editor ---------- （窓波形は撤去：drawWave/ハンドル/カーソル機構は廃止）
 
 // Koala風：各パッドに小さな波形を描く
@@ -3129,6 +3209,12 @@ let _rsT=null;
   },120);
 }));
 
+// @module ui-window
+// @provides CL_PAGES, CL_SPEC, clPage, clSyncWave, clWaveTo, paintClPage, renderClPage
+// @uses assignTarget, bpmVal, midiNoteName, multiOut, openPadEdit, paintPadStates, paintPerf, peTarget,
+//    peV0, peV1, pushUndo, refreshOpenPadEdit, refreshSeqMode, renderPeOver, renderPeWave, sampNameEl,
+//    selected, swingPct, syncEditor, tapTempoCancel, tapTempoDown, tapTempoUp, tracks, warmPitch
+// @depends -
 // ===== 情報窓のパラメータを横ドラッグで編集（パッドを叩きながら追い込める＝モーダル不要の連続編集） =====
 // パッド1枚の編集項目を「カテゴリ＝ページ」に棚卸ししたもの（docs/screen-spec.md §96 の表と1:1）。
 // en=列挙（タップで送る） / min-max-st=数値（横ドラッグ＝データホイール） / ro=表示専用 / w=固定表示幅(ch)
@@ -3320,6 +3406,17 @@ function paintClPage(){
   renderClPage();
 })();
 
+// @module transport
+// @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, bpmVal, clickHi, clickLo,
+//    drawLoop, drawQueue, driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, playBtn, recBtn,
+//    schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec, stepTimeClean, swingDelayTicks,
+//    swingPct, tickDur, updateRecBtnLabel
+// @uses AC, PADS, PERF_BASE, STEPS, anySolo, clearBarIndicator, clearPatIndicator, displayBar, displayPat,
+//    editPat, flashPad, getLockPlay, getPlayPattern, isMelodic, kickVu, mainOut, moveCursors, paintSteps,
+//    patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat, playStep, playVoice, playing, pushUndo,
+//    queuedPat, recording, sampNameEl, scaleSemi, setLockPlay, stepIdx, stopVoices, tracks,
+//    updateBarIndicator, updatePatIndicator, vuHit
+// @depends -
 // ---------- transport (self-scheduling, lookahead) ----------
 let bpmVal = 100;
 let swingPct = 50;          // SP流 離散値: 50/54/58/63/67/71
@@ -3476,6 +3573,13 @@ recBtn.addEventListener("click",()=>{
   if(recording&&!playing) sampNameEl.textContent="● 記録待機 — ▶を押すと演奏を記録";
 });
 
+// @module step-strip
+// @provides paintStepStrip, setActiveLock, stepBtns, stepShift, stepStripEl, stepTrackName, stripDrag,
+//    toggleStepAt
+// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, clearLockEdit, copyTap, curStepFor, doUndo,
+//    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls,
+//    sampNameEl, selectPad, selected, setCellWave, setLockEdit, trackWaveURL, tracks, updateRecBtnLabel
+// @depends boot, plock-undo, transport
 // ===== GRID（Digitakt式）ステップ入力 =====
 function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
 function toggleStepAt(s, accent){
@@ -3588,6 +3692,12 @@ document.getElementById("stepPrev").addEventListener("click",()=>stepShift(-1));
 document.getElementById("stepNext").addEventListener("click",()=>stepShift(1));
 updateRecBtnLabel();
 document.getElementById("undoBtn").addEventListener("click", doUndo);
+// @module menu
+// @provides -
+// @uses AC, _ckTimes, _ckUiT, _midiNoteTimes, _outMerger, applyFatBass, applySpChFilter, initMultiOut,
+//    loopZeroSnap, mainOut, metroOn, midiEnabled, midiSync, multiOut, outBGain, paintLatency, sampNameEl,
+//    spChFilterOn, spDacNode
+// @depends -
 // ===== Sound A/B トグル（メニュー） =====
 (function(){
   const dac=document.getElementById("dacLofiToggle");
@@ -3679,6 +3789,14 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });   // 背景クリックで閉じる
 })();
 
+// @module edit-modal
+// @provides _ovCache, cropBufferToSelection, openPadEdit, peNameSync, pePlayRAF, pePlayheadRun,
+//    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+// @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
+//    clWaveTo, computeChopBounds, drawPadWave, padsEl, paintClPage, paintPerf, peOpenedAt, peTarget, peV0,
+//    peV1, pushUndo, sampNameEl, scheduleAutosave, setDrumRowLabels, snapStartToOnset, syncChopSeg,
+//    syncEditor, tracks, trigger
+// @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
 // 選択範囲[start,end]でバッファを切り出し、外側を破棄。バッファ差替でピッチキャッシュは自動破棄。
@@ -4096,6 +4214,18 @@ function openPadEdit(i){
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
 })();
 
+// @module chop
+// @provides DEFAULT_PROJECT, applyBpm, applyChop, bakePhrase, bpm, bpmRead, chopAnchor, chopBounds,
+//    chopDivN, chopMode, chopSens, chopTarget, computeChopBounds, detectOnsets, renderPhrase, swing,
+//    swingVal, syncChopSeg, tapTempoCancel, tapTempoDown, tapTempoUp, taps, vol, volVal
+// @uses AC, CODEMAP, KEYMAP, MELO_KEYS, PADS, STEP_KEYS, applyFx, applyGroupVol, applyPadCategory,
+//    assignTarget, assignTo, barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, drawPadWave,
+//    effectiveSwing, extractViaPlayback, flashPad, getPattern, inBlink, isMelodic, isSilent, makeLofi,
+//    nextChokeGroup, openPadEdit, padsEl, paintMixer, paintPadStates, paintPerf, pickCaptureTarget, playBtn,
+//    playVoice, playing, pushUndo, refreshPadDisplay, sampNameEl, scaleSemi, selectPad, selected,
+//    setDelayTempo, stepIdx, stepTimeClean, stepTrackName, swingPct, switchView, toggleStepAt, tracks,
+//    trigger, vuHit
+// @depends engine-bus, engine-fx, ui-pads
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
 function syncChopSeg(id,attr,val){
@@ -4435,6 +4565,12 @@ async function bakePhrase(){
     }
   }catch(e){ console.warn("phrase bake:", e); }
 }
+// @module autosave
+// @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarned, autosaveDbName,
+//    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave
+// @uses APP_VERSION, DEFAULT_PROJECT, applyProject, bakePhrase, buildProject, drawAllPadWaves, loadPresets,
+//    sampNameEl
+// @depends presets
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
 // 本番と同じ origin にプレビュー（/preview/<枝名>/）が並ぶ＝IndexedDB も共用になる。
@@ -4518,6 +4654,15 @@ loadPresets().then(async ()=>{
   drawAllPadWaves();
 });
 
+// @module layout
+// @provides IS_IOS, barHasContent, fitMobileHeight, landscapeMode, lockViewHeight, modeBtns, paintPerf,
+//    patHasContent, perfFillPad, perfFourUp, perfLockApply, perfReadVals, perfRevertSnap, plockFillsOn,
+//    refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, renderPerfFills, switchView, updatePerf
+// @uses PERF_BASE, PLOCKS, activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves,
+//    editBar, editPat, padsEl, paintClPage, paintSteps, perfLast, perfRecArm, perfSnap, playStep, playing,
+//    queuedPat, sampNameEl, setActiveLock, setEditBar, setEditPat, stepTrackName, swingPct, syncEditor,
+//    tracks, viewPadsEl
+// @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq")];
 function switchView(viewId){
@@ -4791,6 +4936,15 @@ window.addEventListener("load", updatePerf);
 setTimeout(updatePerf, 350);
 setInterval(()=>{ if(playing || document.body.classList.contains("perf")) paintPerf(); }, 200);   // 再生中は全レイアウトで窓を同期
 
+// @module pattern-master
+// @provides barSeg, chainLatencyMs, clearBarIndicator, clearPatIndicator, compToggle, kickVu, masterVuEl,
+//    masterVuLevel, paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat,
+//    updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
+// @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, compDrive, compMakeup, compNode, compOn,
+//    compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
+//    makeSatCurve, makeupGain, masterGain, paintSteps, patHasContent, patLength, playing, pushUndo,
+//    queuedPat, saturator, selectPad, setCompBypass, tapeDelay, tracks
+// @depends -
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
 const barSeg=document.getElementById("barSeg");
@@ -4907,6 +5061,14 @@ document.getElementById("kDrive").addEventListener("input",function(){
   saturator.curve=makeSatCurve(compDrive);
 });
 
+// @module sampling
+// @provides _gtrFrame, _lastRecWasResample, _resampling, closeGtrFrame, extractOverlayEl, finalizeRec,
+//    openSampleOverlay, pcmChunks, pcmLen, pcmMute, pcmPeak, pcmSrc, pcmTap, pickCaptureTarget, recActiveEl,
+//    recChoose, recOverlay, recStartMs, recStream, recTakeN, recTargetEl, recTimerId, startRec, stopRec
+// @uses AC, APP_VERSION, PADS, applyPadCategory, drawPadWave, finalClip, isSilent, makeLofi, openPadEdit,
+//    padsEl, peTarget, playBtn, pushUndo, refreshOpenPadEdit, sampNameEl, selectPad, selected, syncEditor,
+//    tracks
+// @depends -
 // ===== SAMPLING (Tab Audio / Mic) =====
 const recOverlay=document.getElementById("recOverlay");
 recOverlay.addEventListener("pointerdown",e=>e.stopPropagation());
@@ -5111,6 +5273,11 @@ async function finalizeRec(){
   }
 }
 
+// @module save-load
+// @provides b64ToUint8, bufToWav, buildProject, calcCrop, uint8ToB64, wavB64Cached
+// @uses APP_VERSION, PADS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold, fxDelayAmt,
+//    fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, shareOrDownload, swingPct, tracks
+// @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
 function bufToWav(buf, fromSamp, toSamp){
@@ -5216,6 +5383,12 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
 // GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）
 document.getElementById("gtrBtn").addEventListener("click",()=>{ window.open("guitar-strum.html?v="+APP_VERSION,"_blank"); });
 document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj-scratch.html?v="+APP_VERSION,"_blank"); });   // 版番号でキャッシュバスト＝常に最新のGTRを開く
+// @module midi
+// @provides _ckTimes, _ckUiT, _midiNoteTimes, assignTo, clRetargetLearn, handleClock, handleMIDI, inBlink,
+//    midiBlink, midiEnabled, midiNoteName, midiSync
+// @uses AC, _ledT, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, paintPerf, playBtn,
+//    playVoice, playing, pushUndo, sampNameEl, selected, setDelayTempo, tracks, trigger
+// @depends -
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
 // 対応: PC/MacのChrome・Edge、Android Chrome。iOS SafariはWeb MIDI非対応
@@ -5307,6 +5480,15 @@ function handleMIDI(data){
   }).catch(()=>{});
 })();
 
+// @module share-export
+// @provides _expBlob, _expBusy, _expName, applyProject, shareOrDownload
+// @uses AC, IS_IOS, PADS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applyPadCategory, autosaveNow,
+//    b64ToUint8, bpmVal, bufToWav, buildAllTrackWaves, compDrive, compOn, compThreshold, decodeAudio,
+//    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, grid,
+//    groupVol, makeLofi, makeSatCurve, masterGain, multiOut, outBGain, padsEl, paintMixer, paintPadStates,
+//    paintPatBar, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl, saturator,
+//    selectPad, setCompBypass, setDelayTempo, stopVoices, stripLegacyLocks, swingPct, tickDur, tracks
+// @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
   try{
@@ -5459,6 +5641,10 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 // .mics が灰色（選べない）になる。iOS では制限を外して何でも選べるようにし、中身は上の JSON 検証で弾く（§128 v0.3.115）
 if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("projFile"); if(pf) pf.removeAttribute("accept"); }
 
+// @module skin-version-splash
+// @provides APP_VERSION
+// @uses AC, buildAllTrackWaves, drawAllPadWaves, previewName
+// @depends autosave
 // ---------- skin（AK / SP / RL）テーマ切替・選択を記憶 ----------
 (function(){
   const seg=document.getElementById("themeSeg"), KEY="mics-skin";
@@ -5476,7 +5662,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.128";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.129";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

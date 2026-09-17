@@ -1,3 +1,10 @@
+// @module voice
+// @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, makeLofi, pitchBufferNN, playVoice,
+//    stopVoices, trigger, warmPitch
+// @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
+//    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
+//    playStep, playing, recording, reverbPre, sampNameEl, spDynOpen, tapeEcho, tracks, vuHit
+// @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
 function makeLofi(buffer){

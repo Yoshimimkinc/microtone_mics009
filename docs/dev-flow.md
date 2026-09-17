@@ -36,6 +36,8 @@ node tools/build.mjs --check   # 現物と src が一致しているか（関門
 
 1. `src/` を直す → `node tools/build.mjs`
 2. `node tools/gate.mjs`（手元の関門。`.githooks/pre-push` が push 時に自動で回す）
+   - JS の先頭ヘッダ（`@module/@provides/@uses/@depends`）は **`node tools/module-check.mjs --write` で実装に合わせる**。
+     手で書かない。ズレていると関門が止める（`docs/maintainability-modularization-plan.md` Phase 1）
 3. ブランチに push → **GitHub Actions が走る**
    - `gate` … 関門をもう一度回す。**PR が赤なら merge しない**。検査スクショは Artifacts に残る
    - `pages` … `/preview/<ブランチ名>/` に配置。**スマホで触って確かめてから main に出す**

@@ -1,3 +1,8 @@
+// @module save-load
+// @provides b64ToUint8, bufToWav, buildProject, calcCrop, uint8ToB64, wavB64Cached
+// @uses APP_VERSION, PADS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold, fxDelayAmt,
+//    fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, shareOrDownload, swingPct, tracks
+// @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
 function bufToWav(buf, fromSamp, toSamp){

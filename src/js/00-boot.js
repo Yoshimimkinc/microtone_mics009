@@ -1,3 +1,7 @@
+// @module boot
+// @provides CODEMAP, KEYMAP, MELO_KEYS, PADS, STEPS, STEP_KEYS
+// @uses -
+// @depends -
 // Safari：複数の指/タップ重なりでのピンチ拡大を抑止（touch-actionだけでは防げない）
 ["gesturestart","gesturechange","gestureend"].forEach(ev=>
   document.addEventListener(ev, e=>e.preventDefault(), {passive:false}));

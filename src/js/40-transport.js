@@ -1,3 +1,14 @@
+// @module transport
+// @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, bpmVal, clickHi, clickLo,
+//    drawLoop, drawQueue, driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, playBtn, recBtn,
+//    schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec, stepTimeClean, swingDelayTicks,
+//    swingPct, tickDur, updateRecBtnLabel
+// @uses AC, PADS, PERF_BASE, STEPS, anySolo, clearBarIndicator, clearPatIndicator, displayBar, displayPat,
+//    editPat, flashPad, getLockPlay, getPlayPattern, isMelodic, kickVu, mainOut, moveCursors, paintSteps,
+//    patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat, playStep, playVoice, playing, pushUndo,
+//    queuedPat, recording, sampNameEl, scaleSemi, setLockPlay, stepIdx, stopVoices, tracks,
+//    updateBarIndicator, updatePatIndicator, vuHit
+// @depends -
 // ---------- transport (self-scheduling, lookahead) ----------
 let bpmVal = 100;
 let swingPct = 50;          // SP流 離散値: 50/54/58/63/67/71

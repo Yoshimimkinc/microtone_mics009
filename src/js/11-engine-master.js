@@ -1,3 +1,10 @@
+// @module engine-master
+// @provides FAT_BASS_MIX, FAT_SHELF_DB, SP_COMP_CODE, THIN_BASS_MIX, applyFatBass, bassDcBlock, bassGain,
+//    bassLp, bassSat, bsCurve, comp, compNode, compThr, fatBassOn, fatShelf, finalClip, flutterDepth,
+//    flutterLfo, hissBuf, hissData, hissGain, hissHp, hissLen, hissLp, hissNode, isMobileHiss, mainOut,
+//    makeSatCurve, makeupGain, satIn, saturator, tapeDelay, wowDepth, wowLfo
+// @uses AC, spOut
+// @depends engine-core
 // ===== アナログ風マスターコンプ + サチュレーション =====
 // Chain: voices → masterGain → comp → saturator → makeupGain → destination
 const comp = AC.createDynamicsCompressor();

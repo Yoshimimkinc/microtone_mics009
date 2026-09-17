@@ -24,7 +24,7 @@ chromium の場所が特殊な環境では `PW_EXE` / `PW_PLAYWRIGHT` で明示�
 ```sh
 node tools/gate.mjs
 ```
-check（合否）→ dead-controls（無反応コントロール）→ lost-listeners（消えた登録）を回し、
+build --check → static-check → module-check → check（合否）→ dead-controls（無反応コントロール）→ lost-listeners（消えた登録）を回し、
 **1つでも落ちたら exit 1**。deadcss と ui-audit はレポートとして続けて出す。
 `.githooks/pre-push` がこれを自動で呼ぶ（初回だけ `git config core.hooksPath .githooks`）。
 どうしても飛ばすときは `SKIP_GATE=1 git push`（理由をコミットメッセージに書く）。
@@ -39,6 +39,22 @@ node tools/static-check.mjs
 2) 存在しない id への参照（`getElementById` / `querySelector("#…")`、ガードの有無つき）
 3) バージョン3点一致（`APP_VERSION` / `version.json` / `splashVer`）
 検出器は検査ワーカーW6の TypeScript AST 版を取り込んだもの。関門の最初に走る。
+
+## `module-check.mjs` — ファイル間の契約（ブラウザ不要・1秒）
+```sh
+node tools/module-check.mjs           # 検査（関門が呼ぶ）
+node tools/module-check.mjs --write   # 各 JS の先頭ヘッダを実装に合わせて書き直す
+node tools/module-check.mjs --print   # 書き直す前に中身を見る
+node tools/module-check.mjs --report  # docs 用の一覧（Markdown）
+```
+`src/js/*.js` の先頭にある `@module / @provides / @uses / @depends` を、**TypeScript の構文解析で実装から導いた値と突き合わせる**。
+- `@provides`：そのファイルがファイル直下で宣言する関数・変数（他ファイルから見える名前）
+- `@uses`：他ファイルの提供物のうち参照しているもの
+- `@depends`：読み込み時（最上位の文・即時実行関数）に参照する他モジュール＝manifest でこのファイルより**前**に無いと壊れる
+検査は 1) `@module` 重複 2) `@depends` の不在 3) 連結順で依存先が後ろ 4) 同名の最上位宣言が2ファイル 5) ヘッダ無し
+6) ヘッダと実装の過不足。**ヘッダは手で書かず `--write` で揃える**（不一致は関門が止める）。
+読み込み時に後ろのファイルの `let/const` を触る参照（連結順で未初期化）も実装の問題として止める。
+`static-check.mjs`（ファイルの中）と `module-check.mjs`（ファイルの間）で役割を分けている。
 
 ## `dead-controls.mjs` — 押しても何も起きないコントロール
 ```sh

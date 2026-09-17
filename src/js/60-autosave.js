@@ -1,3 +1,9 @@
+// @module autosave
+// @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarned, autosaveDbName,
+//    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave
+// @uses APP_VERSION, DEFAULT_PROJECT, applyProject, bakePhrase, buildProject, drawAllPadWaves, loadPresets,
+//    sampNameEl
+// @depends presets
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
 // 本番と同じ origin にプレビュー（/preview/<枝名>/）が並ぶ＝IndexedDB も共用になる。

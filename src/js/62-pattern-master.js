@@ -1,3 +1,12 @@
+// @module pattern-master
+// @provides barSeg, chainLatencyMs, clearBarIndicator, clearPatIndicator, compToggle, kickVu, masterVuEl,
+//    masterVuLevel, paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat,
+//    updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
+// @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, compDrive, compMakeup, compNode, compOn,
+//    compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
+//    makeSatCurve, makeupGain, masterGain, paintSteps, patHasContent, patLength, playing, pushUndo,
+//    queuedPat, saturator, selectPad, setCompBypass, tapeDelay, tracks
+// @depends -
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
 const barSeg=document.getElementById("barSeg");

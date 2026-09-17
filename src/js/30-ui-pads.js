@@ -1,3 +1,15 @@
+// @module ui-pads
+// @provides _padCurStep, _selHeavyRAF, _seqCurStep, _stripCurStep, _toastTimer, applyPadCategory, armMode,
+//    chopBaseName, colnums, copyArm, copyPadSound, curStepFor, flashPad, grid, moveCursors, nextChokeGroup,
+//    padCategory, padKeyLabel, padsEl, paintPadStates, paintSteps, rowEls, sampNameEl, selectPad,
+//    selectPadHeavy, viewPadsEl, viewSeqEl
+// @uses AC, KEYMAP, PADS, PERF_BASE, PLOCKS, STEPS, activeLock, applyWaveSEQ, applyWaveStrip, arm, assignMS,
+//    clRetargetLearn, clSyncWave, clearLockEdit, copyTap, displayBar, displayPat, drawPadWave, editBar,
+//    editDrag, editPat, getPattern, isMelodic, melodicMode, openPadEdit, padAtPoint, paintMelodic,
+//    paintMixer, paintPatBar, paintPerf, paintStepStrip, perfDrag, perfFillPad, perfRecArm, perfResetPad,
+//    perfTapT, playStep, playVoice, playing, pushUndo, refreshSeqMode, scaleSemi, selected, stepBtns,
+//    stopVoices, swapPads, syncEditor, tracks, trigger, vuHit
+// @depends boot
 // ---------- UI build ----------
 const padsEl = document.getElementById("pads");
 const sampNameEl = document.getElementById("sampName");   // ステータス表示（多用するためキャッシュ）

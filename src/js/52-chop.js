@@ -1,3 +1,15 @@
+// @module chop
+// @provides DEFAULT_PROJECT, applyBpm, applyChop, bakePhrase, bpm, bpmRead, chopAnchor, chopBounds,
+//    chopDivN, chopMode, chopSens, chopTarget, computeChopBounds, detectOnsets, renderPhrase, swing,
+//    swingVal, syncChopSeg, tapTempoCancel, tapTempoDown, tapTempoUp, taps, vol, volVal
+// @uses AC, CODEMAP, KEYMAP, MELO_KEYS, PADS, STEP_KEYS, applyFx, applyGroupVol, applyPadCategory,
+//    assignTarget, assignTo, barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, drawPadWave,
+//    effectiveSwing, extractViaPlayback, flashPad, getPattern, inBlink, isMelodic, isSilent, makeLofi,
+//    nextChokeGroup, openPadEdit, padsEl, paintMixer, paintPadStates, paintPerf, pickCaptureTarget, playBtn,
+//    playVoice, playing, pushUndo, refreshPadDisplay, sampNameEl, scaleSemi, selectPad, selected,
+//    setDelayTempo, stepIdx, stepTimeClean, stepTrackName, swingPct, switchView, toggleStepAt, tracks,
+//    trigger, vuHit
+// @depends engine-bus, engine-fx, ui-pads
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
 function syncChopSeg(id,attr,val){

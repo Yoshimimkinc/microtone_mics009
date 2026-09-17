@@ -1,3 +1,10 @@
+// @module engine-bus
+// @provides GROUP_OF, LIVE_DRY, SP_CH, _liveDuck, _liveDuckT, _outMerger, _rampCompRouting, applyGroupVol,
+//    applySpChFilter, bypassGain, compDrive, compMakeup, compOn, compThreshold, groupBus, groupVol,
+//    grpBiquad, grpInputNode, grpOut, initMultiOut, liveCompDuck, multiOut, outBGain, setCompBypass,
+//    spChFilterOn, spDynOpen, ssmNode
+// @uses AC, compNode, compThr, fatShelf, finalClip, mainOut, makeupGain, masterGain, sampNameEl, tapeDelay
+// @depends engine-core, engine-master
 // ===== OUT B（外部ミキサー2系統目＝ch3/4）：KO Sidekick等の4ch以上出力機器で有効 =====
 // OUT Bはドライ送り（12bit/パッドフィルター/エンベロープ後、グループFX・コンプ・テープの前）＝外部ミキサー側で処理する前提
 const outBGain=AC.createGain();
