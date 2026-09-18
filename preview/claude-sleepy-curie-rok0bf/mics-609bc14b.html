@@ -91,6 +91,9 @@
   body{touch-action:manipulation;}
   button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t,.pad{touch-action:manipulation;}
   body{-webkit-touch-callout:none;}
+  /* 楽器の画面：文字をなぞって選べない（長押し・ドラッグでラベルが青くならない）。入力欄だけは選べる（v0.3.131 §140） */
+  body{-webkit-user-select:none;user-select:none;}
+  input,textarea{-webkit-user-select:text;user-select:text;}
   body{
     background:#000;  /* アプリ外側（周りの余白）は常に黒 */
     color:var(--ink);
@@ -1022,7 +1025,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.130</div>
+  <div class="s-ver" id="splashVer">v0.3.131</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -2635,10 +2638,11 @@ new MutationObserver(()=>{
 }).observe(sampNameEl,{childList:true,characterData:true,subtree:true});
 // @module ui/pads-view
 // @provides _selHeavyRAF, applyPadCategory, armMode, copyArm, flashPad, padCategory, padKeyLabel, padsEl,
-//    paintPadStates, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
-// @uses AC, KEYMAP, PADS, applyWaveStrip, arm, assignMS, clRetargetLearn, clSyncWave, copyPadSound, copyTap,
-//    editDrag, isMelodic, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, refreshSeqMode, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
+//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
+// @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, assignMS, buildTrackWave, clRetargetLearn,
+//    clSyncWave, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic, openPadEdit, padAtPoint,
+//    paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove, refreshSeqMode,
+//    sampNameEl, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, engine-fx
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -2663,6 +2667,17 @@ function applyPadCategory(i){
   const el=padsEl.children[i]; if(!el) return;
   el.classList.remove("pcat-drum","pcat-bass","pcat-sample","pcat-empty");
   el.classList.add("pcat-"+padCategory(i));
+}
+// パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
+function refreshPadDisplay(i){
+  applyPadCategory(i);
+  const nm=tracks[i].name||PADS[i].name||"";
+  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
+  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
+  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
+  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
+  drawPadWave(i);
+  if(typeof buildTrackWave==="function"){ buildTrackWave(i); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip(); }  // 音色変更でステップ波形を再キャッシュ
 }
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
@@ -2723,8 +2738,8 @@ PADS.forEach((p,i)=>{
       return;
     }
     if(tgt>=0 && tgt!==i){
-      if(copy){ copyPadSound(i,tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
-      else    { swapPads(i,tgt);     sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      if(copy){ copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       flashPad(tgt);
     }
     // ドロップ先なし＝何もしない（EDITは維持して続けて並べ替え可）
@@ -2787,13 +2802,14 @@ function paintPadStates(){
   }
 }
 // @module ui/performance-view
-// @provides perfPadDown, perfPadEnd, perfPadMove
-// @uses PERF_BASE, PLOCKS, activeLock, paintPerf, perfDrag, perfFillPad, perfRecArm, perfResetPad, perfTapT,
-//    syncEditor, tracks
+// @provides perfFillPad, perfLockApply, perfPadDown, perfPadEnd, perfPadMove, perfReadVals, perfRevertSnap,
+//    plockFillsOn, renderPerfFills
+// @uses PERF_BASE, PLOCKS, activeLock, padsEl, paintPerf, perfDrag, perfLast, perfRecArm, perfResetPad,
+//    perfSnap, perfTapT, syncEditor, tracks
 // @depends -
 // ---------- Performance：P-LOCK 選択中のパッド操作（ライブ・モジュレート） ----------
 // 30-ui-pads.js のパッド生成ループに埋まっていた処理を関数に切り出した（v0.3.130 Phase 2）。呼び出し順・中身は同じ。
-// 表示側（perfFillPad／renderPerfFills／perfLockApply）はまだ 61-layout.js にある＝次の段で寄せる
+// 表示側（perfFillPad／renderPerfFills／perfLockApply）も 61-layout.js からここへ寄せた（v0.3.131 Phase 2 第2段）
 // パッドを押した：P-LOCK 選択中だけ受け持つ（true を返したらパッド側はそこで終わる）
 function perfPadDown(e,i,d){
   // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
@@ -2835,6 +2851,66 @@ function perfPadEnd(e,i){
   perfDrag=null;
   if(typeof syncEditor==="function") syncEditor();
   if(typeof paintPerf==="function") paintPerf();
+}
+
+// ---------- P-LOCK の塗り（.lockfill/.lockv）と、掛ける前の値の控え／復帰（61-layout.js から移動） ----------
+// P-LOCKパラメータ・ページ：選択中は16パッドを「効果量のフィル」表示（発音せず）、キー解放で元値へ復帰
+function perfFillPad(i, param){
+  if(!param || !PERF_BASE[param]) return;
+  const el=padsEl.children[i]; if(!el) return;
+  const spec=PLOCKS[param], val = param==="filter"?tracks[i].cutoff : tracks[i][PERF_BASE[param]];
+  let norm = spec.log ? (Math.log(val)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min)) : (val-spec.min)/(spec.max-spec.min);
+  norm=Math.max(0,Math.min(1,norm));
+  if(el._lockfill){ el._lockfill.style.width=(norm*100).toFixed(1)+"%"; el._lockfill.style.background="rgb("+spec.color+")"; }
+  if(el._lockv) el._lockv.textContent=spec.fmt(val);
+}
+// P-LOCK の塗り（.lockfill/.lockv）を出す条件。PC は演奏(body.perf)のとき、スマホは msbar の DELAY/REVERB が見えているとき。
+// v0.3.121 までは body.perf だけを見ていたので、スマホで送り量をドラッグしても塗りも数字も出なかった（§133）。
+function plockFillsOn(){
+  if(!(activeLock && PERF_BASE[activeLock])) return false;
+  if(document.body.classList.contains("perf")) return true;
+  const b=document.querySelector(".msbar .msbtn.fx[data-lock]");
+  return !!b && getComputedStyle(b).display!=="none";
+}
+function renderPerfFills(){
+  const param=plockFillsOn()?activeLock:null;
+  for(let i=0;i<padsEl.children.length;i++){
+    if(param) perfFillPad(i, param);
+    else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
+  }
+}
+function perfRevertSnap(){    // perfSnap（掛ける前の値）へ16パッドを戻す＝効果オフ
+  if(!perfSnap) return;
+  const p=perfSnap.param;
+  for(let i=0;i<16;i++){ const t=tracks[i];
+    if(p==="filter"){ t.cutoff=perfSnap.vals[i]; t.filter=perfSnap.filt[i]; } else t[PERF_BASE[p]]=perfSnap.vals[i];
+  }
+}
+function perfReadVals(p){     // いまの16パッドの値を控える（filter は cutoff と種別の両方）
+  const o={vals:[],filt:[]};
+  for(let i=0;i<16;i++){ const t=tracks[i]; o.vals[i]= p==="filter"?t.cutoff : t[PERF_BASE[p]]; o.filt[i]=t.filter; }
+  return o;
+}
+function perfLockApply(prev){
+  // 動き（v0.3.121）：**解放＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活**。
+  // v0.3.118 までは解放で戻るが記憶が無く「もう一度押すと素の値」だった。v0.3.119 は逆に解放しても残す形にしたが、
+  // 求められていたのは「エフェクトのON/OFF＋つまみ位置の記憶」。REC ON のときは従来どおり解放しても基本値を保持する。
+  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
+    perfLast[prev]=perfReadVals(prev);                          // 最後にいじった値を覚える
+    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();      // 掛ける前へ戻す（REC ON で未記録なら保持）
+    perfSnap=null;
+  }
+  // 新しいP-LOCKが有効＝掛ける前の値を控えてから、前回の記憶があれば復活させる
+  if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
+    perfSnap={param:activeLock, recorded:false, ...perfReadVals(activeLock)};
+    const last=perfLast[activeLock];
+    if(last){ for(let i=0;i<16;i++){ const t=tracks[i];
+      if(activeLock==="filter"){ t.cutoff=last.vals[i]; t.filter=last.filt[i]; } else t[PERF_BASE[activeLock]]=last.vals[i]; } }
+  }
+  if(!(activeLock && PERF_BASE[activeLock])) perfSnap=null;
+  document.body.classList.toggle("perf-plock", plockFillsOn());
+  renderPerfFills();
+  if(typeof syncEditor==="function") syncEditor();
 }
 // @module ui/seq-view
 // @provides _padCurStep, _seqCurStep, _stripCurStep, colnums, curStepFor, grid, moveCursors, paintSteps,
@@ -2949,12 +3025,12 @@ function moveCursors(){
   }
 }
 // @module data/pads
-// @provides chopBaseName, copyPadSound, nextChokeGroup
-// @uses PADS, applyPadCategory, drawPadWave, grid, padsEl, pushUndo, tracks
+// @provides chopBaseName, copyPadSound, nextChokeGroup, swapPads
+// @uses PADS, pushUndo, tracks
 // @depends -
 // ---------- パッドのデータ更新：コピー・スライス名・チョークグループの発行 ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。UI の描画とデータ更新を分ける入口。
-// copyPadSound はまだパッド名・SEQ 行名・波形の描画も自分で行う（次の段で paint 側へ寄せる）
+// copyPadSound / swapPads はデータだけ動かす。描画は呼び出し側が refreshPadDisplay（ui/pads-view）で行う（v0.3.131）
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
 // CHOPPYスライスの基準名（末尾の連番は剥がす＝再チョップでも増殖しない）
 function chopBaseName(i){ return (tracks[i].name||PADS[i].name||"").replace(/\s*\d+$/,"").trim()||"SLICE"; }
@@ -2970,23 +3046,25 @@ function copyPadSound(src,dst){
   d.name=s.name;
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
-  applyPadCategory(dst);
-  const nm=padsEl.children[src].querySelector(".nm").textContent;
-  padsEl.children[dst].querySelector(".nm").textContent=nm;
-  // SEQ画面の行名も更新
-  const rn=grid.children[dst].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(dst+1).padStart(2,"0")}</b> ${nm}`;
-  drawPadWave(dst);
 }
-// @module ui-copy
-// @provides COPY_LABEL, arm, assignMS, bindHold, copyBar, copyName, copyPattern, copyTap, doCopy,
-//    padAtPoint, paintCopyHL, refreshAfterCopy, refreshPadDisplay, swapPads
-// @uses PADS, applyPadCategory, applyWaveSEQ, applyWaveStrip, armMode, buildTrackWave, clearLockEdit,
-//    copyArm, copyPadSound, drawPadWave, editBar, editPat, getLockEdit, getPattern, grid, lockKey, padsEl,
-//    paintPadStates, paintPatBar, paintPerf, paintStepStrip, paintSteps, pushUndo, sampNameEl,
-//    scheduleAutosave, selected, tracks
+// パッドの音色設定をまるごと入れ替え（EDITドラッグの移動）。バッファ差替でピッチキャッシュは自動破棄。
+function swapPads(a,b){
+  if(a===b) return;
+  pushUndo();
+  const ta=tracks[a], tb=tracks[b];
+  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
+    const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
+  }
+  let t=PADS[a].type;  PADS[a].type=PADS[b].type;   PADS[b].type=t;
+  t=PADS[a].voice;     PADS[a].voice=PADS[b].voice;  PADS[b].voice=t;
+}
+
+// @module data/patterns
+// @provides copyBar, copyPattern
+// @uses editPat, pushUndo, tracks
 // @depends -
-// ===== 汎用COPY：COPY中に「元→先」でパッド(音色+FX)/パターンA-D/小節1-4 をコピー。DUPの上位互換 =====
+// ---------- パターン／小節のデータ更新：COPY の実体（DOM を触らない） ----------
+// 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ
   if(src===dst) return; pushUndo();
   for(let i=0;i<tracks.length;i++){ const t=tracks[i];
@@ -3004,13 +3082,23 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
       Object.keys(t.locks).forEach(k=>{ if(k.indexOf(ps)===0) t.locks[pd+k.slice(ps.length)]=JSON.parse(JSON.stringify(t.locks[k])); }); }
   }
 }
+// @module ui-copy
+// @provides COPY_LABEL, arm, assignMS, bindHold, copyName, copyTap, doCopy, padAtPoint, paintCopyHL,
+//    refreshAfterCopy
+// @uses applyWaveSEQ, applyWaveStrip, armMode, clearLockEdit, copyArm, copyBar, copyPadSound, copyPattern,
+//    editBar, editPat, getLockEdit, getPattern, lockKey, padsEl, paintPadStates, paintPatBar, paintPerf,
+//    paintStepStrip, paintSteps, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave, selected, tracks
+// @depends -
+// ===== 汎用COPY：COPY中に「元→先」でパッド(音色+FX)/パターンA-D/小節1-4 をコピー。DUPの上位互換 =====
+// データ更新（copyPattern / copyBar → data/patterns、copyPadSound / swapPads → data/pads）と
+// 描画（refreshPadDisplay → ui/pads-view）は v0.3.131（Phase 2 第2段）で外へ出した。ここは COPY の操作と表示だけ。
 const COPY_LABEL={pad:"パッド",pat:"パターン",bar:"小節",note:"ノート"};
 function copyName(type,idx){
   if(type==="note") return String(idx.t+1).padStart(2,"0")+"·"+(idx.s+1);   // 「トラック·ステップ」
   return type==="pad"?String(idx+1).padStart(2,"0"):(type==="pat"?"ABCD"[idx]:String(idx+1));
 }
 function doCopy(type,src,dst){
-  if(type==="pad") copyPadSound(src,dst);
+  if(type==="pad"){ copyPadSound(src,dst); refreshPadDisplay(dst); }   // データ更新（data/pads）→ 描画（ui/pads-view）
   else if(type==="pat") copyPattern(src,dst);
   else if(type==="bar") copyBar(src,dst);
   else if(type==="note"){   // ノート＝値＋P-LOCK全パラメータを引き継ぐ（別トラックへも可）
@@ -3036,7 +3124,7 @@ function paintCopyHL(){
     row.querySelectorAll(".step").forEach((c,si)=>
       c.classList.toggle("copysrc", isNote && copyArm.idx.t===ti && copyArm.idx.s===si)));
 }
-function refreshAfterCopy(type){ if(type==="pad") return;   // pad は copyPadSound が描画
+function refreshAfterCopy(type){ if(type==="pad") return;   // pad は doCopy が refreshPadDisplay で描画済み
   if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
   if(typeof paintPerf==="function") paintPerf(); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip();
 }
@@ -3057,29 +3145,6 @@ function padAtPoint(x,y){
   const pad=el&&el.closest&&el.closest(".pad");
   if(!pad || pad.parentElement!==padsEl) return -1;
   return +pad.dataset.i;
-}
-// パッドの音色設定をまるごと入れ替え（EDITドラッグの移動）。バッファ差替でピッチキャッシュは自動破棄。
-function swapPads(a,b){
-  if(a===b) return;
-  pushUndo();
-  const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
-    const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
-  }
-  let t=PADS[a].type;  PADS[a].type=PADS[b].type;   PADS[b].type=t;
-  t=PADS[a].voice;     PADS[a].voice=PADS[b].voice;  PADS[b].voice=t;
-  refreshPadDisplay(a); refreshPadDisplay(b);
-}
-// パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画
-function refreshPadDisplay(i){
-  applyPadCategory(i);
-  const nm=tracks[i].name||PADS[i].name||"";
-  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
-  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
-  drawPadWave(i);
-  if(typeof buildTrackWave==="function"){ buildTrackWave(i); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip(); }  // 音色変更でステップ波形を再キャッシュ
 }
 
 function assignMS(i){
@@ -4694,12 +4759,12 @@ loadPresets().then(async ()=>{
 
 // @module layout
 // @provides IS_IOS, barHasContent, fitMobileHeight, landscapeMode, lockViewHeight, modeBtns, paintPerf,
-//    patHasContent, perfFillPad, perfFourUp, perfLockApply, perfReadVals, perfRevertSnap, plockFillsOn,
-//    refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, renderPerfFills, switchView, updatePerf
-// @uses PERF_BASE, PLOCKS, activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves,
-//    editBar, editPat, padsEl, paintClPage, paintSteps, perfLast, perfRecArm, perfSnap, playStep, playing,
-//    queuedPat, sampNameEl, setActiveLock, setEditBar, setEditPat, stepTrackName, swingPct, syncEditor,
-//    tracks, viewPadsEl
+//    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
+//    updatePerf
+// @uses activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar, editPat,
+//    paintClPage, paintSteps, perfLast, perfLockApply, perfReadVals, perfRecArm, perfRevertSnap, perfSnap,
+//    playStep, playing, plockFillsOn, queuedPat, renderPerfFills, sampNameEl, setActiveLock, setEditBar,
+//    setEditPat, stepTrackName, swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq")];
@@ -4873,64 +4938,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
 }
-// P-LOCKパラメータ・ページ：選択中は16パッドを「効果量のフィル」表示（発音せず）、キー解放で元値へ復帰
-function perfFillPad(i, param){
-  if(!param || !PERF_BASE[param]) return;
-  const el=padsEl.children[i]; if(!el) return;
-  const spec=PLOCKS[param], val = param==="filter"?tracks[i].cutoff : tracks[i][PERF_BASE[param]];
-  let norm = spec.log ? (Math.log(val)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min)) : (val-spec.min)/(spec.max-spec.min);
-  norm=Math.max(0,Math.min(1,norm));
-  if(el._lockfill){ el._lockfill.style.width=(norm*100).toFixed(1)+"%"; el._lockfill.style.background="rgb("+spec.color+")"; }
-  if(el._lockv) el._lockv.textContent=spec.fmt(val);
-}
-// P-LOCK の塗り（.lockfill/.lockv）を出す条件。PC は演奏(body.perf)のとき、スマホは msbar の DELAY/REVERB が見えているとき。
-// v0.3.121 までは body.perf だけを見ていたので、スマホで送り量をドラッグしても塗りも数字も出なかった（§133）。
-function plockFillsOn(){
-  if(!(activeLock && PERF_BASE[activeLock])) return false;
-  if(document.body.classList.contains("perf")) return true;
-  const b=document.querySelector(".msbar .msbtn.fx[data-lock]");
-  return !!b && getComputedStyle(b).display!=="none";
-}
-function renderPerfFills(){
-  const param=plockFillsOn()?activeLock:null;
-  for(let i=0;i<padsEl.children.length;i++){
-    if(param) perfFillPad(i, param);
-    else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
-  }
-}
-function perfRevertSnap(){    // perfSnap（掛ける前の値）へ16パッドを戻す＝効果オフ
-  if(!perfSnap) return;
-  const p=perfSnap.param;
-  for(let i=0;i<16;i++){ const t=tracks[i];
-    if(p==="filter"){ t.cutoff=perfSnap.vals[i]; t.filter=perfSnap.filt[i]; } else t[PERF_BASE[p]]=perfSnap.vals[i];
-  }
-}
-function perfReadVals(p){     // いまの16パッドの値を控える（filter は cutoff と種別の両方）
-  const o={vals:[],filt:[]};
-  for(let i=0;i<16;i++){ const t=tracks[i]; o.vals[i]= p==="filter"?t.cutoff : t[PERF_BASE[p]]; o.filt[i]=t.filter; }
-  return o;
-}
-function perfLockApply(prev){
-  // 動き（v0.3.121）：**解放＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活**。
-  // v0.3.118 までは解放で戻るが記憶が無く「もう一度押すと素の値」だった。v0.3.119 は逆に解放しても残す形にしたが、
-  // 求められていたのは「エフェクトのON/OFF＋つまみ位置の記憶」。REC ON のときは従来どおり解放しても基本値を保持する。
-  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
-    perfLast[prev]=perfReadVals(prev);                          // 最後にいじった値を覚える
-    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();      // 掛ける前へ戻す（REC ON で未記録なら保持）
-    perfSnap=null;
-  }
-  // 新しいP-LOCKが有効＝掛ける前の値を控えてから、前回の記憶があれば復活させる
-  if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
-    perfSnap={param:activeLock, recorded:false, ...perfReadVals(activeLock)};
-    const last=perfLast[activeLock];
-    if(last){ for(let i=0;i<16;i++){ const t=tracks[i];
-      if(activeLock==="filter"){ t.cutoff=last.vals[i]; t.filter=last.filt[i]; } else t[PERF_BASE[activeLock]]=last.vals[i]; } }
-  }
-  if(!(activeLock && PERF_BASE[activeLock])) perfSnap=null;
-  document.body.classList.toggle("perf-plock", plockFillsOn());
-  renderPerfFills();
-  if(typeof syncEditor==="function") syncEditor();
-}
+// P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
 (function(){
   const $=id=>document.getElementById(id);
@@ -5700,7 +5708,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.130";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.131";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
