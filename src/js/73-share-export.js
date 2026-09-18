@@ -2,8 +2,8 @@
 // @provides _expBlob, _expBusy, _expName, applyProject, shareOrDownload
 // @uses AC, IS_IOS, PADS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applyPadCategory, autosaveNow,
 //    b64ToUint8, bpmVal, bufToWav, buildAllTrackWaves, compDrive, compOn, compThreshold, decodeAudio,
-//    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, grid,
-//    groupVol, makeLofi, makeSatCurve, masterGain, multiOut, outBGain, padsEl, paintMixer, paintPadStates,
+//    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol,
+//    makeLofi, makeSatCurve, masterGain, multiOut, outBGain, paintMixer, paintPadName, paintPadStates,
 //    paintPatBar, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl, saturator,
 //    selectPad, setCompBypass, setDelayTempo, stopVoices, stripLegacyLocks, swingPct, tickDur, tracks
 // @depends layout
@@ -136,9 +136,7 @@ async function applyProject(proj){
       }else if(pt.type==="empty"){
         t.buffer=null; t.rawBuffer=null;   // 空パッドとして保存されたものは、前に入っていた音を残さない（幽霊サンプル防止）
       }
-      padsEl.children[i].querySelector(".nm").textContent=t.name.slice(0,8).toUpperCase();
-      const rn=grid.children[i]?.querySelector(".rn");
-      if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${t.name}`;
+      paintPadName(i);
     }
     editPat=0; editBar=0;
     for(let i=0;i<PADS.length;i++) applyPadCategory(i);

@@ -616,7 +616,17 @@ async function copyPaint(){
   const m=await p.evaluate(()=>({ n5:tracks[5].name, n6:tracks[6].name, nm5:document.querySelectorAll('#pads .pad')[5].querySelector('.nm').textContent, nm6:document.querySelectorAll('#pads .pad')[6].querySelector('.nm').textContent,
     rn5:document.querySelectorAll('#grid .rn')[5].textContent, rn6:document.querySelectorAll('#grid .rn')[6].textContent, arm:armMode }));
   ok_(`MOVE ドラッグで入れ替え＝データと表示が両方追従`, m.n5==='SNARE Y' && m.n6==='KICK X' && m.nm5==='SNARE Y' && m.nm6==='KICK X' && /SNARE Y/.test(m.rn5) && /KICK X/.test(m.rn6), JSON.stringify(m));
-  ok_(`MOVE ↩ で戻る`, await p.evaluate(()=>{ doUndo(); return tracks[5].name==='KICK X' && tracks[6].name==='SNARE Y'; }), 'undo');
+  const u=await p.evaluate(()=>{ doUndo(); return { n5:tracks[5].name, n6:tracks[6].name, nm5:document.querySelectorAll('#pads .pad')[5].querySelector('.nm').textContent, rn6:document.querySelectorAll('#grid .rn')[6].textContent }; });
+  ok_(`MOVE ↩ で戻る（データも表示も）`, u.n5==='KICK X' && u.n6==='SNARE Y' && u.nm5==='KICK X' && /SNARE Y/.test(u.rn6), JSON.stringify(u));
+  // LOAD（#samp）：名前・パッド表示・SEQ 行名・カテゴリが揃う（v0.3.131 までは SEQ 行名とステップ波形が古いままだった）
+  const fsp=await import('node:fs/promises'); const wavPath='/tmp/ZEBRA.wav';
+  { const sr=8000, n=sr/2, b=Buffer.alloc(44+n*2); b.write('RIFF',0); b.writeUInt32LE(36+n*2,4); b.write('WAVEfmt ',8); b.writeUInt32LE(16,16); b.writeUInt16LE(1,20); b.writeUInt16LE(1,22);
+    b.writeUInt32LE(sr,24); b.writeUInt32LE(sr*2,28); b.writeUInt16LE(2,32); b.writeUInt16LE(16,34); b.write('data',36); b.writeUInt32LE(n*2,40);
+    for(let i=0;i<n;i++) b.writeInt16LE(Math.round(Math.sin(i/sr*2*Math.PI*440)*12000),44+i*2); await fsp.writeFile(wavPath,b); }
+  await p.evaluate(()=>{ arm('edit',false); selectPad(9); });
+  await p.setInputFiles('#samp', wavPath); await p.waitForTimeout(1500);
+  const l=await p.evaluate(()=>({ name:tracks[9].name, type:PADS[9].type, nm:document.querySelectorAll('#pads .pad')[9].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[9].textContent, cat:document.querySelectorAll('#pads .pad')[9].className }));
+  ok_(`LOAD 名前・パッド表示・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WA' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
   eq(`COPY/MOVE 0 errors`, errs, []);
   await ctx.close();
 }

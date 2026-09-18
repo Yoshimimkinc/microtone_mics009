@@ -4,7 +4,7 @@
 microtone MICS009 — a browser-based 16-pad sampler/sequencer inspired by SP-1200 and MPC.
 Ships as a single HTML file (`mics-609bc14b.html`), zero external dependencies. Pure Web Audio API.
 
-**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（50部品）。
+**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（51部品）。
 `node tools/build.mjs` が連結して `mics-609bc14b.html` を生成する。**生成物を直接編集しない**
 （関門 `build.mjs --check` が止める）。バージョンは `version.json` だけが正で、ビルドが差し込む。
 流れの全体は **`docs/dev-flow.md`**。
@@ -106,11 +106,11 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 
 ## 開発の流れ（要点。詳細は `docs/dev-flow.md`）
 1. `src/` を直す → `node tools/build.mjs` → `node tools/gate.mjs`
-   - `src/js/` は番号付きファイル（旧来）と **責務別ディレクトリ `ui/` `data/`**（v0.3.130〜 Phase 2）が同居する。
-     新しい部品は責務別ディレクトリへ（`ui/pads-view` `ui/seq-view` `ui/performance-view` `ui/status` `data/pads` `data/patterns`）。
+   - `src/js/` は番号付きファイル（旧来）と **責務別ディレクトリ `ui/` `data/` `audio/`**（v0.3.130〜 Phase 2）が同居する。
+     新しい部品は責務別ディレクトリへ（`ui/pads-view` `ui/seq-view` `ui/performance-view` `ui/status` `data/pads` `data/patterns` `audio/transport` `ui/transport-view`）。
      旧 `30-ui-pads.js` はこの5つに分けた（第1段）。第2段（v0.3.131）で COPY のデータ更新を `data/` へ、P-LOCK の塗りを
-     `ui/performance-view` へ移し、**データ更新は DOM を触らない・描画は `refreshPadDisplay` 等の描画関数だけ**という分け方にした。
-     記録は `docs/modularization-log.md` Phase 2
+     `ui/performance-view` へ移し、**データ更新は DOM を触らない・描画は `refreshPadDisplay` 等の描画関数だけ**という分け方にした。第3段（v0.3.132）でパッド名の描画を `paintPadName` に一本化し、`40-transport` を音（`audio/transport`）と
+     表示（`ui/transport-view`）に分けた。記録は `docs/modularization-log.md` Phase 2
    - 各 `src/js/**/*.js` の先頭に **`@module / @provides / @uses / @depends`** がある（v0.3.129〜、`docs/maintainability-modularization-plan.md` Phase 1）。
      触る前に `@uses` と `@depends` で影響範囲を見る。関数や変数を足した／消したら **`node tools/module-check.mjs --write`** で
      ヘッダを実装に合わせる（手で書かない。ズレは関門 `module-check` が止める）。記録は `docs/modularization-log.md`
@@ -124,7 +124,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.131
+MICS009 beta v0.3.132
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

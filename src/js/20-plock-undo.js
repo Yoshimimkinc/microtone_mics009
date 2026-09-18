@@ -6,8 +6,9 @@
 // @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
 //    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
-//    masterGain, nextChokeGroup, padsEl, paintMixer, paintPadStates, paintPatBar, paintSteps, playStep,
-//    playing, rowEls, saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
+//    masterGain, nextChokeGroup, paintMixer, paintPadName, paintPadStates, paintPatBar, paintSteps,
+//    playStep, playing, rowEls, saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct,
+//    tracks
 // @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
@@ -92,8 +93,7 @@ function restoreState(s){
     PADS[i].type=x.type;PADS[i].voice=x.voice;
     t.patterns=x.patterns;
     t.locks=x.locks?JSON.parse(JSON.stringify(x.locks)):{};
-    const nm=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-    if(nm) nm.textContent=(t.name||PADS[i].name).slice(0,8).toUpperCase();
+    paintPadName(i);   // パッド名と SEQ 行名（ui/pads-view）
   });
   const $=id=>document.getElementById(id);
   if($("bpm")){ $("bpm").value=s.bpm; $("bpmRead").textContent=s.bpm.toFixed(1); }
@@ -125,7 +125,7 @@ let melodicMode=false;   // 選択中パッドが音階モードか（SEQ盤面�
 function isMelodic(i){ return !!(tracks[i] && tracks[i].scale && tracks[i].scale!=="off"); }
 function scaleSemi(sc, idx){ if(sc==="chro"||!SCALES[sc]) return idx; const a=SCALES[sc]; return Math.floor(idx/a.length)*12 + a[idx%a.length]; }
 function noteLabel(sc, idx){ const s=scaleSemi(sc,idx); return NOTE_NAMES[((s%12)+12)%12]+Math.floor(s/12); }
-function setDrumRowLabels(){ for(let i=0;i<PADS.length;i++){ const rn=grid.children[i]&&grid.children[i].querySelector(".rn"); if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${tracks[i].name||PADS[i].name}`; } }
+function setDrumRowLabels(){ for(let i=0;i<PADS.length;i++) paintPadName(i); }   // メロディ表示（音名）から行名へ戻す
 function paintMelodic(){
   const pat=getPattern(selected);
   for(let r=0;r<PADS.length;r++){

@@ -2,13 +2,12 @@
 // @provides DEFAULT_PROJECT, applyBpm, applyChop, bakePhrase, bpm, bpmRead, chopAnchor, chopBounds,
 //    chopDivN, chopMode, chopSens, chopTarget, computeChopBounds, detectOnsets, renderPhrase, swing,
 //    swingVal, syncChopSeg, tapTempoCancel, tapTempoDown, tapTempoUp, taps, vol, volVal
-// @uses AC, CODEMAP, KEYMAP, MELO_KEYS, PADS, STEP_KEYS, applyFx, applyGroupVol, applyPadCategory,
-//    assignTarget, assignTo, barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, drawPadWave,
-//    effectiveSwing, extractViaPlayback, flashPad, getPattern, inBlink, isMelodic, isSilent, makeLofi,
-//    nextChokeGroup, openPadEdit, padsEl, paintMixer, paintPadStates, paintPerf, pickCaptureTarget, playBtn,
-//    playVoice, playing, pushUndo, refreshPadDisplay, sampNameEl, scaleSemi, selectPad, selected,
-//    setDelayTempo, stepIdx, stepTimeClean, stepTrackName, swingPct, switchView, toggleStepAt, tracks,
-//    trigger, vuHit
+// @uses AC, CODEMAP, KEYMAP, MELO_KEYS, PADS, STEP_KEYS, applyFx, applyGroupVol, assignTarget, assignTo,
+//    barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, effectiveSwing, extractViaPlayback, flashPad,
+//    getPattern, inBlink, isMelodic, isSilent, makeLofi, nextChokeGroup, openPadEdit, paintMixer,
+//    paintPadStates, paintPerf, pickCaptureTarget, playBtn, playVoice, playing, pushUndo, refreshPadDisplay,
+//    sampNameEl, scaleSemi, selectPad, selected, setDelayTempo, stepIdx, stepTimeClean, stepTrackName,
+//    swingPct, switchView, toggleStepAt, tracks, trigger, vuHit
 // @depends engine-bus, engine-fx, ui/pads-view
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
@@ -168,12 +167,10 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     tracks[target].start=0; tracks[target].end=1;
     tracks[target].loop=false; tracks[target].loopStart=0;
     PADS[target].type="sample";
-    applyPadCategory(target);
     tracks[target].name = f.name.slice(0,10);
     show("OK: "+f.name);
-    padsEl.children[target].querySelector(".nm").textContent=f.name.slice(0,8).toUpperCase();
+    refreshPadDisplay(target);   // カテゴリ色・名前・SEQ 行名・波形（v0.3.131 までは SEQ 行名とステップ波形が古いままだった）
     selectPad(target);   // 取り込み先パッドへフォーカスを移す（抽出中に別パッドを触っていても結果が見える）
-    drawPadWave(target);
     openPadEdit(target);   // 取り込み後は即EDIT＝波形で範囲(STRT/END)を指定→TRIMできる
   }catch(err){
     const m=(err&&err.message)?err.message:String(err);

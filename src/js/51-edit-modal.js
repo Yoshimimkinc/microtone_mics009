@@ -2,9 +2,9 @@
 // @provides _ovCache, cropBufferToSelection, openPadEdit, peNameSync, pePlayRAF, pePlayheadRun,
 //    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
-//    clWaveTo, computeChopBounds, drawPadWave, padsEl, paintClPage, paintPerf, peOpenedAt, peTarget, peV0,
-//    peV1, pushUndo, sampNameEl, scheduleAutosave, setDrumRowLabels, snapStartToOnset, syncChopSeg,
-//    syncEditor, tracks, trigger
+//    clWaveTo, computeChopBounds, drawPadWave, paintClPage, paintPadName, paintPerf, peOpenedAt, peTarget,
+//    peV0, peV1, pushUndo, sampNameEl, scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, tracks,
+//    trigger
 // @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
@@ -165,9 +165,7 @@ function renameTrack(i, name){
   pushUndo();
   tracks[i].name=nm;
   PADS[i].name=nm;                                    // SEQの行ラベルなど p.name を見る経路も追従
-  const el=padsEl.children[i] && padsEl.children[i].querySelector(".nm");
-  if(el) el.textContent=nm.slice(0,8).toUpperCase();  // パッド内は8文字（読込時と同じ作法）
-  if(typeof setDrumRowLabels==="function") setDrumRowLabels();
+  paintPadName(i);                                    // パッド内は8文字・SEQ 行名は全文（ui/pads-view が唯一の口）
   if(typeof syncEditor==="function") syncEditor();
   if(typeof paintPerf==="function") paintPerf();
   if(typeof scheduleAutosave==="function") scheduleAutosave();

@@ -4,7 +4,7 @@
 // @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, clearLockEdit, copyTap, curStepFor, doUndo,
 //    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls,
 //    sampNameEl, selectPad, selected, setCellWave, setLockEdit, trackWaveURL, tracks, updateRecBtnLabel
-// @depends boot, plock-undo, transport
+// @depends boot, plock-undo, ui/transport-view
 // ===== GRID（Digitakt式）ステップ入力 =====
 function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
 function toggleStepAt(s, accent){

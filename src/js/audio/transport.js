@@ -1,15 +1,13 @@
-// @module transport
+// @module audio/transport
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, bpmVal, clickHi, clickLo,
-//    drawLoop, drawQueue, driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, playBtn, recBtn,
-//    schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec, stepTimeClean, swingDelayTicks,
-//    swingPct, tickDur, updateRecBtnLabel
-// @uses AC, PADS, PERF_BASE, STEPS, anySolo, clearBarIndicator, clearPatIndicator, displayBar, displayPat,
-//    editPat, flashPad, getLockPlay, getPlayPattern, isMelodic, kickVu, mainOut, moveCursors, paintSteps,
-//    patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat, playStep, playVoice, playing, pushUndo,
-//    queuedPat, recording, sampNameEl, scaleSemi, setLockPlay, stepIdx, stopVoices, tracks,
-//    updateBarIndicator, updatePatIndicator, vuHit
+//    drawQueue, driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick,
+//    scheduleStep, scheduler, staggerSec, stepTimeClean, swingDelayTicks, swingPct, tickDur
+// @uses AC, PADS, PERF_BASE, STEPS, anySolo, getLockPlay, getPlayPattern, isMelodic, mainOut, patLength,
+//    perfDrag, perfRecArm, perfSnap, playBar, playPat, playVoice, pushUndo, queuedPat, scaleSemi,
+//    setLockPlay, stepIdx, stopVoices, tracks
 // @depends -
-// ---------- transport (self-scheduling, lookahead) ----------
+// ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
+// 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
 let bpmVal = 100;
 let swingPct = 50;          // SP流 離散値: 50/54/58/63/67/71
 
@@ -122,46 +120,3 @@ function scheduler(){
     if(++guard > STEPS) break;   // 1tickで最大1小節分まで（暴走防止）
   }
 }
-function drawLoop(){
-  const now = AC.currentTime;
-  let cur=null;
-  while(drawQueue.length && drawQueue[0].time < now){
-    const ev=drawQueue.shift();
-    cur=ev.step;
-    if(ev.hits) ev.hits.forEach(h=>{flashPad(h.pad,h.acc);if(typeof vuHit==="function")vuHit(h.pad,h.acc);});
-    if(ev.pat!==undefined){ displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
-  }
-  if(cur!==null){ playStep=cur; moveCursors(); }
-  if(playing) requestAnimationFrame(drawLoop);
-}
-
-const playBtn=document.getElementById("play");
-playBtn.addEventListener("click",async()=>{
-  if(AC.state!=="running") await AC.resume();
-  playing=!playing;
-  playBtn.classList.toggle("on",playing);
-  playBtn.textContent=playing?"■":"▶";   // アイコンのみ（文字なし）
-  if(playing){
-    stepIdx=0; playStep=0; drawQueue.length=0;
-    playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
-    tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
-    barStartTime=AC.currentTime+0.05;
-    schedTimer=setInterval(scheduler, INTERVAL);
-    requestAnimationFrame(drawLoop);
-    if(typeof kickVu==="function") kickVu();   // VUループ起動（停止中はアイドルで止まっている）
-  } else {
-    clearInterval(schedTimer); schedTimer=null;
-    drawQueue.length=0; playStep=0; paintSteps();
-    clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
-    tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
-  }
-});
-const recBtn=document.getElementById("rec");
-function updateRecBtnLabel(){
-  recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording);   // アイコンのみ
-}
-recBtn.addEventListener("click",()=>{
-  recording=!recording; if(recording) pushUndo(); updateRecBtnLabel();
-  if(recording&&!playing) sampNameEl.textContent="● 記録待機 — ▶を押すと演奏を記録";
-});
-

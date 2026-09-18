@@ -1,6 +1,6 @@
 // @module ui/pads-view
 // @provides _selHeavyRAF, applyPadCategory, armMode, copyArm, flashPad, padCategory, padKeyLabel, padsEl,
-//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
+//    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, assignMS, buildTrackWave, clRetargetLearn,
 //    clSyncWave, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic, openPadEdit, padAtPoint,
 //    paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove, refreshSeqMode,
@@ -30,14 +30,19 @@ function applyPadCategory(i){
   el.classList.remove("pcat-drum","pcat-bass","pcat-sample","pcat-empty");
   el.classList.add("pcat-"+padCategory(i));
 }
-// パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
-function refreshPadDisplay(i){
-  applyPadCategory(i);
+// パッド名の表示（パッド内は8文字・大文字／SEQ の行名は全文）。t.name → PADS[i].name の順。名前を書く唯一の口（v0.3.132）
+// v0.3.131 までは録音・LOAD・読込・undo・改名の5箇所がそれぞれ .nm を直書きしていて、整形の有無や SEQ 行名の更新漏れがあった
+function paintPadName(i){
   const nm=tracks[i].name||PADS[i].name||"";
   const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
   if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
   const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
   if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
+}
+// パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
+function refreshPadDisplay(i){
+  applyPadCategory(i);
+  paintPadName(i);
   drawPadWave(i);
   if(typeof buildTrackWave==="function"){ buildTrackWave(i); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip(); }  // 音色変更でステップ波形を再キャッシュ
 }
