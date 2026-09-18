@@ -55,6 +55,9 @@
   body{touch-action:manipulation;}
   button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t,.pad{touch-action:manipulation;}
   body{-webkit-touch-callout:none;}
+  /* 楽器の画面：文字をなぞって選べない（長押し・ドラッグでラベルが青くならない）。入力欄だけは選べる（v0.3.131 §140） */
+  body{-webkit-user-select:none;user-select:none;}
+  input,textarea{-webkit-user-select:text;user-select:text;}
   body{
     background:#000;  /* アプリ外側（周りの余白）は常に黒 */
     color:var(--ink);

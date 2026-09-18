@@ -592,7 +592,36 @@ async function renameFlow(){
   eq(`名前変更 0 errors`, errs, []);
   await ctx.close();
 }
+// §140 文字は選べない（楽器の画面）／Phase 2 第2段：COPY・MOVE はデータ更新（data/）→ 描画（refreshPadDisplay）の順で見た目が追従する
+async function copyPaint(){
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const us=await p.evaluate(()=>{ const g=s=>{ const el=document.querySelector(s); return el?getComputedStyle(el).userSelect:'(none)'; };
+    const inp=document.createElement('input'); inp.type='password'; document.body.appendChild(inp); const pass=getComputedStyle(inp).userSelect; inp.remove();   // 合言葉欄は起動後に消えるので同型で測る
+    return {body:g('body'), nm:g('#pads .pad .nm'), name:g('#peNameIn'), pass, rn:g('#grid .rn'), win:g('#clHint')}; });
+  ok_(`文字選択 本体・パッド・SEQ行名・窓は選べない`, us.body==='none' && us.nm==='none' && us.rn==='none' && us.win==='none', JSON.stringify(us));
+  ok_(`文字選択 入力欄（名前・合言葉）は選べる`, us.name==='text' && us.pass==='text', JSON.stringify(us));
+  // COPY（COPYモードの元→先＝doCopy）：名前・パッド表示・SEQ行名が先へ写る
+  await p.evaluate(()=>{ tracks[0].name='KICK X'; refreshPadDisplay(0); doCopy('pad',0,5); });
+  const c=await p.evaluate(()=>({ name:tracks[5].name, nm:document.querySelectorAll('#pads .pad')[5].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[5].textContent }));
+  ok_(`COPY パッド→パッドで名前・表示・行名が写る`, c.name==='KICK X' && c.nm==='KICK X' && /KICK X/.test(c.rn), JSON.stringify(c));
+  // MOVE（EDIT中のドラッグ）：入れ替え後に両方のパッド表示が追従
+  await p.evaluate(()=>{ tracks[6].name='SNARE Y'; refreshPadDisplay(6); arm('edit',true); });
+  const pads=await p.$$('#pads .pad'); const a=await pads[5].boundingBox(), b=await pads[6].boundingBox();
+  await p.mouse.move(a.x+a.width/2, a.y+a.height/2); await p.mouse.down();
+  for(let k=1;k<=6;k++) await p.mouse.move(a.x+a.width/2+(b.x-a.x)*k/6, a.y+a.height/2+(b.y-a.y)*k/6);
+  await p.mouse.up(); await p.waitForTimeout(150);
+  const m=await p.evaluate(()=>({ n5:tracks[5].name, n6:tracks[6].name, nm5:document.querySelectorAll('#pads .pad')[5].querySelector('.nm').textContent, nm6:document.querySelectorAll('#pads .pad')[6].querySelector('.nm').textContent,
+    rn5:document.querySelectorAll('#grid .rn')[5].textContent, rn6:document.querySelectorAll('#grid .rn')[6].textContent, arm:armMode }));
+  ok_(`MOVE ドラッグで入れ替え＝データと表示が両方追従`, m.n5==='SNARE Y' && m.n6==='KICK X' && m.nm5==='SNARE Y' && m.nm6==='KICK X' && /SNARE Y/.test(m.rn5) && /KICK X/.test(m.rn6), JSON.stringify(m));
+  ok_(`MOVE ↩ で戻る`, await p.evaluate(()=>{ doUndo(); return tracks[5].name==='KICK X' && tracks[6].name==='SNARE Y'; }), 'undo');
+  eq(`COPY/MOVE 0 errors`, errs, []);
+  await ctx.close();
+}
 await passGate();
+await copyPaint();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

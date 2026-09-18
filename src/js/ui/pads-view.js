@@ -1,9 +1,10 @@
 // @module ui/pads-view
 // @provides _selHeavyRAF, applyPadCategory, armMode, copyArm, flashPad, padCategory, padKeyLabel, padsEl,
-//    paintPadStates, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
-// @uses AC, KEYMAP, PADS, applyWaveStrip, arm, assignMS, clRetargetLearn, clSyncWave, copyPadSound, copyTap,
-//    editDrag, isMelodic, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, refreshSeqMode, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
+//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
+// @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, assignMS, buildTrackWave, clRetargetLearn,
+//    clSyncWave, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic, openPadEdit, padAtPoint,
+//    paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove, refreshSeqMode,
+//    sampNameEl, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, engine-fx
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -28,6 +29,17 @@ function applyPadCategory(i){
   const el=padsEl.children[i]; if(!el) return;
   el.classList.remove("pcat-drum","pcat-bass","pcat-sample","pcat-empty");
   el.classList.add("pcat-"+padCategory(i));
+}
+// パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
+function refreshPadDisplay(i){
+  applyPadCategory(i);
+  const nm=tracks[i].name||PADS[i].name||"";
+  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
+  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
+  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
+  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
+  drawPadWave(i);
+  if(typeof buildTrackWave==="function"){ buildTrackWave(i); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip(); }  // 音色変更でステップ波形を再キャッシュ
 }
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
@@ -88,8 +100,8 @@ PADS.forEach((p,i)=>{
       return;
     }
     if(tgt>=0 && tgt!==i){
-      if(copy){ copyPadSound(i,tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
-      else    { swapPads(i,tgt);     sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      if(copy){ copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       flashPad(tgt);
     }
     // ドロップ先なし＝何もしない（EDITは維持して続けて並べ替え可）

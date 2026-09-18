@@ -1,36 +1,20 @@
 // @module ui-copy
-// @provides COPY_LABEL, arm, assignMS, bindHold, copyBar, copyName, copyPattern, copyTap, doCopy,
-//    padAtPoint, paintCopyHL, refreshAfterCopy, refreshPadDisplay, swapPads
-// @uses PADS, applyPadCategory, applyWaveSEQ, applyWaveStrip, armMode, buildTrackWave, clearLockEdit,
-//    copyArm, copyPadSound, drawPadWave, editBar, editPat, getLockEdit, getPattern, grid, lockKey, padsEl,
-//    paintPadStates, paintPatBar, paintPerf, paintStepStrip, paintSteps, pushUndo, sampNameEl,
-//    scheduleAutosave, selected, tracks
+// @provides COPY_LABEL, arm, assignMS, bindHold, copyName, copyTap, doCopy, padAtPoint, paintCopyHL,
+//    refreshAfterCopy
+// @uses applyWaveSEQ, applyWaveStrip, armMode, clearLockEdit, copyArm, copyBar, copyPadSound, copyPattern,
+//    editBar, editPat, getLockEdit, getPattern, lockKey, padsEl, paintPadStates, paintPatBar, paintPerf,
+//    paintStepStrip, paintSteps, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave, selected, tracks
 // @depends -
 // ===== 汎用COPY：COPY中に「元→先」でパッド(音色+FX)/パターンA-D/小節1-4 をコピー。DUPの上位互換 =====
-function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ
-  if(src===dst) return; pushUndo();
-  for(let i=0;i<tracks.length;i++){ const t=tracks[i];
-    for(let bar=0;bar<t.patterns[src].length;bar++) t.patterns[dst][bar]=t.patterns[src][bar].slice();
-    if(t.locks){ Object.keys(t.locks).forEach(k=>{ if(k.indexOf(dst+"_")===0) delete t.locks[k]; });
-      Object.keys(t.locks).forEach(k=>{ if(k.indexOf(src+"_")===0) t.locks[dst+k.slice(String(src).length)]=JSON.parse(JSON.stringify(t.locks[k])); }); }
-  }
-}
-function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst へ（DUPの汎用版）
-  if(src===dst) return; pushUndo();
-  const ps=editPat+"_"+src+"_", pd=editPat+"_"+dst+"_";
-  for(let i=0;i<tracks.length;i++){ const t=tracks[i];
-    t.patterns[editPat][dst]=t.patterns[editPat][src].slice();
-    if(t.locks){ Object.keys(t.locks).forEach(k=>{ if(k.indexOf(pd)===0) delete t.locks[k]; });
-      Object.keys(t.locks).forEach(k=>{ if(k.indexOf(ps)===0) t.locks[pd+k.slice(ps.length)]=JSON.parse(JSON.stringify(t.locks[k])); }); }
-  }
-}
+// データ更新（copyPattern / copyBar → data/patterns、copyPadSound / swapPads → data/pads）と
+// 描画（refreshPadDisplay → ui/pads-view）は v0.3.131（Phase 2 第2段）で外へ出した。ここは COPY の操作と表示だけ。
 const COPY_LABEL={pad:"パッド",pat:"パターン",bar:"小節",note:"ノート"};
 function copyName(type,idx){
   if(type==="note") return String(idx.t+1).padStart(2,"0")+"·"+(idx.s+1);   // 「トラック·ステップ」
   return type==="pad"?String(idx+1).padStart(2,"0"):(type==="pat"?"ABCD"[idx]:String(idx+1));
 }
 function doCopy(type,src,dst){
-  if(type==="pad") copyPadSound(src,dst);
+  if(type==="pad"){ copyPadSound(src,dst); refreshPadDisplay(dst); }   // データ更新（data/pads）→ 描画（ui/pads-view）
   else if(type==="pat") copyPattern(src,dst);
   else if(type==="bar") copyBar(src,dst);
   else if(type==="note"){   // ノート＝値＋P-LOCK全パラメータを引き継ぐ（別トラックへも可）
@@ -56,7 +40,7 @@ function paintCopyHL(){
     row.querySelectorAll(".step").forEach((c,si)=>
       c.classList.toggle("copysrc", isNote && copyArm.idx.t===ti && copyArm.idx.s===si)));
 }
-function refreshAfterCopy(type){ if(type==="pad") return;   // pad は copyPadSound が描画
+function refreshAfterCopy(type){ if(type==="pad") return;   // pad は doCopy が refreshPadDisplay で描画済み
   if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
   if(typeof paintPerf==="function") paintPerf(); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip();
 }
@@ -77,29 +61,6 @@ function padAtPoint(x,y){
   const pad=el&&el.closest&&el.closest(".pad");
   if(!pad || pad.parentElement!==padsEl) return -1;
   return +pad.dataset.i;
-}
-// パッドの音色設定をまるごと入れ替え（EDITドラッグの移動）。バッファ差替でピッチキャッシュは自動破棄。
-function swapPads(a,b){
-  if(a===b) return;
-  pushUndo();
-  const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
-    const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
-  }
-  let t=PADS[a].type;  PADS[a].type=PADS[b].type;   PADS[b].type=t;
-  t=PADS[a].voice;     PADS[a].voice=PADS[b].voice;  PADS[b].voice=t;
-  refreshPadDisplay(a); refreshPadDisplay(b);
-}
-// パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画
-function refreshPadDisplay(i){
-  applyPadCategory(i);
-  const nm=tracks[i].name||PADS[i].name||"";
-  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
-  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
-  drawPadWave(i);
-  if(typeof buildTrackWave==="function"){ buildTrackWave(i); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip(); }  // 音色変更でステップ波形を再キャッシュ
 }
 
 function assignMS(i){

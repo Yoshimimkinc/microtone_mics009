@@ -156,3 +156,43 @@ manifest では旧 `30-ui-pads.js` の位置にこの順で入る。`@module` �
 | `module-check` | ✔ 問題なし（`ui/pads-view` `ui/seq-view` は `boot, engine-fx` に読み込み時依存） |
 | `lost-listeners`（origin/main 比） | 消えた登録 0／関数 0／要素参照 0（移しただけで何も失っていない） |
 | `gate` | ✔ 全関門クリア（回帰 全項目パス、無反応 0、deadcss 0） |
+
+### 第2段：データ更新と描画を分ける（v0.3.131）
+第1段の「分離時の規則に対する現状」で残した3点を片づけた。コードは**そのまま移す**が、今回は2箇所だけ手術がある
+（`copyPadSound` / `swapPads` から描画を抜き、呼び出し側が `refreshPadDisplay` を呼ぶ）。
+
+| 動かしたもの | 元 | 先 | 備考 |
+|---|---|---|---|
+| `copyPattern` / `copyBar` | `31-ui-copy` | **`js/data/patterns.js`（新、`data/patterns`）** | DOM を触らない。`doCopy` が呼ぶ |
+| `swapPads` | `31-ui-copy` | `data/pads` | 末尾の `refreshPadDisplay(a); refreshPadDisplay(b);` を抜いた（描画は呼び出し側） |
+| `copyPadSound` の描画部（カテゴリ色・パッド名・SEQ 行名・波形） | `data/pads` | 呼び出し側が `refreshPadDisplay(dst)` | `doCopy`（COPY モード）と `ui/pads-view` のドラッグ（長押しコピー）の2箇所 |
+| `refreshPadDisplay` | `31-ui-copy` | `ui/pads-view` | パッド表示を作り直す**唯一の口**。`52-chop` からも従来どおり呼ぶ |
+| `perfFillPad` `plockFillsOn` `renderPerfFills` `perfRevertSnap` `perfReadVals` `perfLockApply` | `61-layout` | `ui/performance-view` | 61-layout に残るのは `updatePerf` と `#perfPlk` の配線（これらは関数呼び出しなので順序は問わない） |
+
+`31-ui-copy` は COPY の操作・表示（`copyTap` `doCopy` `paintCopyHL`）と mode の arm（`arm` `bindHold` `assignMS`）だけになった。
+`61-layout` は 282 → 225 行、`31-ui-copy` は 144 → 105 行。
+
+#### 動作の差（意図したもの）
+- COPY / MOVE のあとに **ステップ波形（`buildTrackWave`）も作り直す**ようになった。旧 `copyPadSound` は
+  パッド名と波形は描き直したがステップ列の波形キャッシュは古いままだった（`refreshPadDisplay` はもともと作り直していた）
+- パッド名の表示は `tracks[i].name` から作る（8文字・大文字）。旧 `copyPadSound` はコピー元の**表示文字列**を写していたので、
+  録音直後（`70-sampling` が `.nm` に生の名前を入れる）のパッドをコピーすると先だけ整形されて見える。
+  表示の出どころが1つになった分だけ揃う方向。`70-sampling` 側の `.nm` 直書きは次の段で `refreshPadDisplay` に寄せる候補
+
+#### 検査
+`check.mjs` に `copyPaint`：COPY（`doCopy`）で名前・パッド表示・SEQ 行名が先へ写る／EDIT 中のドラッグ MOVE で
+データと表示が両方入れ替わる／`doUndo` で戻る。あわせて §140（文字選択の禁止）もここで見る。
+
+### 結果（第2段）
+| 項目 | 結果 |
+|---|---|
+| 部品 | 49 → 50（JS 29 → 30：`data/patterns` が増えた） |
+| 最上位宣言 | 405 → 405（増減なし＝移しただけ） |
+| `module-check` | ✔ 問題なし（`--write` でヘッダ6件を実装に合わせた） |
+| `lost-listeners`（origin/main 比） | 消えた登録 0／関数 0／要素参照 0 |
+| `gate` | ✔ 全関門クリア |
+
+### 次の段の候補
+- `70-sampling` / `52-chop` / `73-share-export` にある `.nm` の直書きを `refreshPadDisplay` へ（表示の出どころを1つに）
+- `perfRevertSnap` / `perfReadVals` は tracks を書き換える＝データ側。Phase 3 の `app/state` と一緒に置き場を決める
+- `40-transport` のスケジューラ（音）と表示の分離
