@@ -196,3 +196,34 @@ manifest では旧 `30-ui-pads.js` の位置にこの順で入る。`@module` �
 - `70-sampling` / `52-chop` / `73-share-export` にある `.nm` の直書きを `refreshPadDisplay` へ（表示の出どころを1つに）
 - `perfRevertSnap` / `perfReadVals` は tracks を書き換える＝データ側。Phase 3 の `app/state` と一緒に置き場を決める
 - `40-transport` のスケジューラ（音）と表示の分離
+
+### 第3段：パッド名の表示を1つの口に／transport を音と表示に分ける（v0.3.132）
+| 動かしたもの | 元 | 先 | 備考 |
+|---|---|---|---|
+| パッド名の描画（`.nm` 8文字大文字＋SEQ 行名 `.rn`） | `20-plock-undo`（undo 復元）`51-edit-modal`（改名）`52-chop`（LOAD）`70-sampling`（録音・GTR 取込）`73-share-export`（読込）の**5箇所の直書き** | **`paintPadName(i)`（`ui/pads-view`、新）** | `refreshPadDisplay` もこれを使う。`setDrumRowLabels` は `paintPadName` を16回呼ぶだけに |
+| LOAD・録音・GTR 取込のあとの描画（カテゴリ色＋名前＋波形） | それぞれが `applyPadCategory` `.nm` `drawPadWave` を並べていた | `refreshPadDisplay(i)` 1回 | |
+| スケジューラ（`bpmVal` `swingPct` tick 導出 `scheduleStep` `scheduler` メトロノーム） | `40-transport` | **`js/audio/transport.js`（新、`audio/transport`）** | 音の側。`audio/` ディレクトリの最初の住人 |
+| `drawLoop` ▶ / ● ボタン `updateRecBtnLabel` | `40-transport` | **`js/ui/transport-view.js`（新、`ui/transport-view`）** | `drawQueue` を rAF で消化して点灯・カーソル・パターン枠を描くだけ＝音は出さない |
+
+#### 直った不具合（直書きを1つにしたら見つかった）
+- **LOAD したパッドの SEQ 行名が古いままだった**（`52-chop` はパッド内の名前しか書き換えていなかった）。
+  録音（`70-sampling`）も同じ。`refreshPadDisplay` 経由でステップ列の波形キャッシュも作り直すようになった
+- GTR 取込は名前を整形せず（生の10文字）に書いていた → 他と同じ 8文字大文字に揃った
+
+#### 検査
+`check.mjs` `copyPaint` に追加：MOVE の undo で**表示も**戻る（`restoreState` → `paintPadName`）／
+LOAD（`#samp` に WAV）で名前・パッド表示・SEQ 行名・種別が揃う。
+
+### 結果（第3段）
+| 項目 | 結果 |
+|---|---|
+| 部品 | 50 → 51（JS 30 → 31：`audio/transport` と `ui/transport-view` が `40-transport` の代わりに入り、`paintPadName` が増えた） |
+| 最上位宣言 | 405 → 406（`paintPadName`） |
+| `module-check` | ✔ 問題なし（`--write` でヘッダ9件） |
+| `lost-listeners`（origin/main 比） | 消えた登録 0／関数 0／要素参照 0 |
+| `gate` | ✔ 全関門クリア |
+
+### 次の段の候補
+- `perfRevertSnap` / `perfReadVals` は tracks を書き換える＝データ側。Phase 3 の `app/state` と一緒に置き場を決める
+- `13-engine-fx` に混ざる UI 状態（`selected` `activeLock` `perfDrag` …）→ Phase 3 `app/state`
+- 番号付きファイルの残り（`31-ui-copy` → `features/copy`、`52-chop` → `features/chop` …）は、触る用事が出たときに動かす

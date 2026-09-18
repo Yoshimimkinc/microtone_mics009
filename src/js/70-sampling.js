@@ -2,9 +2,8 @@
 // @provides _gtrFrame, _lastRecWasResample, _resampling, closeGtrFrame, extractOverlayEl, finalizeRec,
 //    openSampleOverlay, pcmChunks, pcmLen, pcmMute, pcmPeak, pcmSrc, pcmTap, pickCaptureTarget, recActiveEl,
 //    recChoose, recOverlay, recStartMs, recStream, recTakeN, recTargetEl, recTimerId, startRec, stopRec
-// @uses AC, APP_VERSION, PADS, applyPadCategory, drawPadWave, finalClip, isSilent, makeLofi, openPadEdit,
-//    padsEl, peTarget, playBtn, pushUndo, refreshOpenPadEdit, sampNameEl, selectPad, selected, syncEditor,
-//    tracks
+// @uses AC, APP_VERSION, PADS, finalClip, isSilent, makeLofi, openPadEdit, peTarget, playBtn, pushUndo,
+//    refreshOpenPadEdit, refreshPadDisplay, sampNameEl, selectPad, selected, syncEditor, tracks
 // @depends -
 // ===== SAMPLING (Tab Audio / Mic) =====
 const recOverlay=document.getElementById("recOverlay");
@@ -78,7 +77,7 @@ window.addEventListener("message", async(e)=>{
     const t=tracks[selected];
     if(t && t.buffer){
       t.name=(e.data.label||"GTR").slice(0,10);
-      padsEl.children[selected].querySelector(".nm").textContent=t.name;
+      refreshPadDisplay(selected);
       sampNameEl.textContent="Sampled! "+t.name+" → PAD "+String(selected+1).padStart(2,"0");
       refreshOpenPadEdit(selected);
     }
@@ -196,13 +195,11 @@ async function finalizeRec(){
     tracks[selected].start=0;tracks[selected].end=1;
     tracks[selected].loop=false;tracks[selected].loopStart=0;
     PADS[selected].type="sample";
-    applyPadCategory(selected);
     const tn="TAKE "+(++recTakeN);   // 録るたびに名前が育つ（REC固定だとテイクの記憶が残らない）
     tracks[selected].name=tn;
-    padsEl.children[selected].querySelector(".nm").textContent=tn;
+    refreshPadDisplay(selected);   // カテゴリ色・名前・SEQ 行名・波形
     sampNameEl.textContent="Sampled! "+tn+" → PAD "+String(selected+1).padStart(2,"0")+" ("+(n/AC.sampleRate).toFixed(1)+"s)";
     selectPad(selected);   // 録音先パッドへフォーカス（読込時と挙動を揃える）
-    drawPadWave(selected);
     if(typeof syncEditor==="function") syncEditor();
     openPadEdit(selected);   // 取り込み後は即EDIT＝波形で範囲(STRT/END)を指定→TRIMできる
   }catch(e){
