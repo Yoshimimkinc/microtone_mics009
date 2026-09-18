@@ -35,6 +35,7 @@
   "js/ui/performance-view.js",
   "js/ui/seq-view.js",
   "js/data/pads.js",
+  "js/data/patterns.js",
   "js/31-ui-copy.js",
   "js/32-ui-wave.js",
   "js/33-ui-window.js",

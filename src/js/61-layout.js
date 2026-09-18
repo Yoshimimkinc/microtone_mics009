@@ -1,11 +1,11 @@
 // @module layout
 // @provides IS_IOS, barHasContent, fitMobileHeight, landscapeMode, lockViewHeight, modeBtns, paintPerf,
-//    patHasContent, perfFillPad, perfFourUp, perfLockApply, perfReadVals, perfRevertSnap, plockFillsOn,
-//    refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, renderPerfFills, switchView, updatePerf
-// @uses PERF_BASE, PLOCKS, activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves,
-//    editBar, editPat, padsEl, paintClPage, paintSteps, perfLast, perfRecArm, perfSnap, playStep, playing,
-//    queuedPat, sampNameEl, setActiveLock, setEditBar, setEditPat, stepTrackName, swingPct, syncEditor,
-//    tracks, viewPadsEl
+//    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
+//    updatePerf
+// @uses activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar, editPat,
+//    paintClPage, paintSteps, perfLast, perfLockApply, perfReadVals, perfRecArm, perfRevertSnap, perfSnap,
+//    playStep, playing, plockFillsOn, queuedPat, renderPerfFills, sampNameEl, setActiveLock, setEditBar,
+//    setEditPat, stepTrackName, swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq")];
@@ -179,64 +179,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
 }
-// P-LOCKパラメータ・ページ：選択中は16パッドを「効果量のフィル」表示（発音せず）、キー解放で元値へ復帰
-function perfFillPad(i, param){
-  if(!param || !PERF_BASE[param]) return;
-  const el=padsEl.children[i]; if(!el) return;
-  const spec=PLOCKS[param], val = param==="filter"?tracks[i].cutoff : tracks[i][PERF_BASE[param]];
-  let norm = spec.log ? (Math.log(val)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min)) : (val-spec.min)/(spec.max-spec.min);
-  norm=Math.max(0,Math.min(1,norm));
-  if(el._lockfill){ el._lockfill.style.width=(norm*100).toFixed(1)+"%"; el._lockfill.style.background="rgb("+spec.color+")"; }
-  if(el._lockv) el._lockv.textContent=spec.fmt(val);
-}
-// P-LOCK の塗り（.lockfill/.lockv）を出す条件。PC は演奏(body.perf)のとき、スマホは msbar の DELAY/REVERB が見えているとき。
-// v0.3.121 までは body.perf だけを見ていたので、スマホで送り量をドラッグしても塗りも数字も出なかった（§133）。
-function plockFillsOn(){
-  if(!(activeLock && PERF_BASE[activeLock])) return false;
-  if(document.body.classList.contains("perf")) return true;
-  const b=document.querySelector(".msbar .msbtn.fx[data-lock]");
-  return !!b && getComputedStyle(b).display!=="none";
-}
-function renderPerfFills(){
-  const param=plockFillsOn()?activeLock:null;
-  for(let i=0;i<padsEl.children.length;i++){
-    if(param) perfFillPad(i, param);
-    else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
-  }
-}
-function perfRevertSnap(){    // perfSnap（掛ける前の値）へ16パッドを戻す＝効果オフ
-  if(!perfSnap) return;
-  const p=perfSnap.param;
-  for(let i=0;i<16;i++){ const t=tracks[i];
-    if(p==="filter"){ t.cutoff=perfSnap.vals[i]; t.filter=perfSnap.filt[i]; } else t[PERF_BASE[p]]=perfSnap.vals[i];
-  }
-}
-function perfReadVals(p){     // いまの16パッドの値を控える（filter は cutoff と種別の両方）
-  const o={vals:[],filt:[]};
-  for(let i=0;i<16;i++){ const t=tracks[i]; o.vals[i]= p==="filter"?t.cutoff : t[PERF_BASE[p]]; o.filt[i]=t.filter; }
-  return o;
-}
-function perfLockApply(prev){
-  // 動き（v0.3.121）：**解放＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活**。
-  // v0.3.118 までは解放で戻るが記憶が無く「もう一度押すと素の値」だった。v0.3.119 は逆に解放しても残す形にしたが、
-  // 求められていたのは「エフェクトのON/OFF＋つまみ位置の記憶」。REC ON のときは従来どおり解放しても基本値を保持する。
-  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
-    perfLast[prev]=perfReadVals(prev);                          // 最後にいじった値を覚える
-    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();      // 掛ける前へ戻す（REC ON で未記録なら保持）
-    perfSnap=null;
-  }
-  // 新しいP-LOCKが有効＝掛ける前の値を控えてから、前回の記憶があれば復活させる
-  if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
-    perfSnap={param:activeLock, recorded:false, ...perfReadVals(activeLock)};
-    const last=perfLast[activeLock];
-    if(last){ for(let i=0;i<16;i++){ const t=tracks[i];
-      if(activeLock==="filter"){ t.cutoff=last.vals[i]; t.filter=last.filt[i]; } else t[PERF_BASE[activeLock]]=last.vals[i]; } }
-  }
-  if(!(activeLock && PERF_BASE[activeLock])) perfSnap=null;
-  document.body.classList.toggle("perf-plock", plockFillsOn());
-  renderPerfFills();
-  if(typeof syncEditor==="function") syncEditor();
-}
+// P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
 (function(){
   const $=id=>document.getElementById(id);
