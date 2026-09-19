@@ -1025,7 +1025,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.134</div>
+  <div class="s-ver" id="splashVer">v0.3.135</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -2291,8 +2291,8 @@ function refreshSeqMode(){
 function dbToGain(db){ return Math.pow(10, db/20); }
 
 // @module voice
-// @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, makeLofi, pitchBufferNN, playVoice,
-//    stopVoices, trigger, warmPitch
+// @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, hitVoice, makeLofi, pitchBufferNN,
+//    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
 //    playStep, playing, recording, reverbPre, sampNameEl, spDynOpen, tapeEcho, tracks, vuHit
@@ -2517,6 +2517,17 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   }
 }
 
+// 手叩きの共通部（音側だけ）：ループ系はトグル＝発音中なら止めて false、それ以外は鳴らして true。
+// loopPlaying を書くのはここと scheduler（audio/transport）だけ（v0.3.135 Phase 3 第3段）。表示（点灯・VU・記録）は呼び出し側
+function hitVoice(i, semi=0, accent=false){
+  const t=tracks[i];
+  if(t.loop && t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; return false; }
+  playVoice(i, AC.currentTime, accent, false, semi);
+  if(t.loop) t.loopPlaying=true;
+  return true;
+}
+// 全パッドの発音を止め、ループのトグル状態も戻す（停止・読込のとき）
+function stopAllVoices(when){ tracks.forEach(t=>{ stopVoices(t, when); t.loopPlaying=false; }); }
 // ---------- trigger (UI/seq 共通入口) ----------
 function trigger(i, time, accent=false){
   if(AC.state!=="running") AC.resume();
@@ -2527,13 +2538,8 @@ function trigger(i, time, accent=false){
     flashPad(i); return;
   }
   // ループ系は手叩きでトグル（ON→OFF→ON…）。発音中のトリガで止める＝短いノートも作れる
-  if(time==null && t.loop){
-    if(t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; flashPad(i); return; }
-    t.loopPlaying=true;
-  }
-  const when = (time!=null) ? time : AC.currentTime;
-  playVoice(i, when, accent, false);
-  flashPad(i);
+  if(time==null){ const on=hitVoice(i, 0, accent); flashPad(i); if(!on) return; }
+  else { playVoice(i, time, accent, false); flashPad(i); }
   if(typeof vuHit==="function") vuHit(i, accent);
   if(recording && playing){
     // 記録先は「いま鳴っている（表示中の）パターン/小節」。playPat/playBar はスケジューラが
@@ -2942,10 +2948,9 @@ function perfLockApply(prev){
 // @module ui/seq-view
 // @provides _padCurStep, _seqCurStep, _stripCurStep, colnums, curStepFor, grid, moveCursors, paintSteps,
 //    rowEls
-// @uses AC, PADS, STEPS, applyWaveSEQ, applyWaveStrip, armMode, clearLockEdit, copyTap, displayBar,
-//    displayPat, editBar, editPat, getPattern, melodicMode, paintMelodic, paintPatBar, paintStepStrip,
-//    playStep, playVoice, playing, pushUndo, scaleSemi, selectPad, selected, stepBtns, stopVoices, tracks,
-//    trigger, viewSeqEl, vuHit
+// @uses AC, PADS, STEPS, applyWaveSEQ, applyWaveStrip, armMode, copyTap, displayBar, displayPat, editBar,
+//    editPat, getPattern, hitVoice, melodicMode, paintMelodic, paintPatBar, paintStepStrip, playStep,
+//    playing, pushUndo, scaleSemi, selectPad, selected, setStep, stepBtns, tracks, trigger, viewSeqEl, vuHit
 // @depends boot, app/state
 // ---------- SEQ 画面：16×16 グリッドの生成・ステップ表示・再生カーソル ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。paintSteps/moveCursors は表示更新だけ（データは触らない）
@@ -2971,8 +2976,7 @@ PADS.forEach((p,i)=>{
     if(AC.state!=="running")await AC.resume();
     if(melodicMode){
       const pitchIdx=(PADS.length-1)-i, sel=selected, t=tracks[sel];
-      if(t.loop && t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; }   // 発音中の再トリガ＝止まる
-      else { playVoice(sel, AC.currentTime, false, false, scaleSemi(t.scale, pitchIdx)); if(t.loop) t.loopPlaying=true; if(typeof vuHit==="function") vuHit(sel, false); }
+      if(hitVoice(sel, scaleSemi(t.scale, pitchIdx))){ if(typeof vuHit==="function") vuHit(sel, false); }   // ループ系は発音中の再トリガ＝止まる（音側 hitVoice）
     }
     else { trigger(i); selectPad(i,true); }
   });
@@ -2988,13 +2992,11 @@ PADS.forEach((p,i)=>{
         const pitchIdx=(PADS.length-1)-i;                       // 行→音程
         const cur=getPattern(selected)[s];
         const nv=(cur===pitchIdx+1)?0:pitchIdx+1;               // モノ：その列の音程をセット/解除
-        getPattern(selected)[s]=nv;
-        if(nv===0) clearLockEdit(selected, s);                  // OFFにしたらp-lockも消す
+        setStep(selected, s, nv);                               // data/patterns（OFF なら p-lock も消える）
       } else {
         const cur=getPattern(i)[s];
         const nv = e.shiftKey ? (cur===2?0:2) : (cur?0:1);
-        getPattern(i)[s]=nv;
-        if(nv===0) clearLockEdit(i, s);                         // OFFにしたらp-lockも消す
+        setStep(i, s, nv);                                      // data/patterns（OFF なら p-lock も消える）
       }
       paintSteps(); paintPatBar();   // 中身ドット・小節長を更新
       if(typeof applyWaveSEQ==="function") applyWaveSEQ();   // 発音セルのみ波形を更新
@@ -3087,11 +3089,14 @@ function swapPads(a,b){
 }
 
 // @module data/patterns
-// @provides copyBar, copyPattern
-// @uses editPat, pushUndo, tracks
+// @provides copyBar, copyPattern, setStep
+// @uses clearLockEdit, editPat, getPattern, pushUndo, tracks
 // @depends -
-// ---------- パターン／小節のデータ更新：COPY の実体（DOM を触らない） ----------
+// ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
+// 編集中パターン（editPat/editBar）のステップを書く唯一の口（v0.3.135）。0=OFF / 1=ON / 2=アクセント / 音階モードは音程+1。
+// OFF にしたらそのステップの p-lock も消す。undo（pushUndo）と描画は呼び出し側
+function setStep(i, s, v){ getPattern(i)[s]=v; if(v===0) clearLockEdit(i, s); }
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ
   if(src===dst) return; pushUndo();
   for(let i=0;i<tracks.length;i++){ const t=tracks[i];
@@ -3542,8 +3547,8 @@ function paintClPage(){
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, getLockPlay,
 //    getPlayPattern, isMelodic, mainOut, patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat,
-//    playStep, playVoice, playing, pushUndo, queuedPat, scaleSemi, setLockPlay, stepIdx, stopVoices,
-//    swingPct, tracks
+//    playStep, playVoice, playing, pushUndo, queuedPat, scaleSemi, setLockPlay, stepIdx, stopAllVoices,
+//    stopVoices, swingPct, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -3650,7 +3655,7 @@ function stopTransport(){
   playing=false;
   clearInterval(schedTimer); schedTimer=null;
   drawQueue.length=0; playStep=0;
-  tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
+  stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
 }
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、
@@ -3723,9 +3728,9 @@ recBtn.addEventListener("click",()=>{
 // @module step-strip
 // @provides paintStepStrip, setActiveLock, stepBtns, stepShift, stepStripEl, stepTrackName, stripDrag,
 //    toggleStepAt
-// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, clearLockEdit, copyTap, curStepFor, doUndo,
-//    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls,
-//    sampNameEl, selectPad, selected, setCellWave, setLockEdit, trackWaveURL, tracks, updateRecBtnLabel
+// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, getLockEdit,
+//    getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls, sampNameEl, selectPad,
+//    selected, setCellWave, setLockEdit, setStep, trackWaveURL, tracks, updateRecBtnLabel
 // @depends boot, plock-undo, ui/transport-view
 // ===== GRID（Digitakt式）ステップ入力 =====
 function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
@@ -3733,8 +3738,7 @@ function toggleStepAt(s, accent){
   pushUndo();
   const pat=getPattern(selected); const cur=pat[s]||0;
   const nv = accent ? (cur===2?0:2) : (cur?0:1);
-  pat[s]=nv;
-  if(nv===0) clearLockEdit(selected, s);   // OFFにしたらそのステップのp-lockも消す
+  setStep(selected, s, nv);   // data/patterns（OFF ならそのステップの p-lock も消える）
   if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
   if(typeof paintPerf==="function") paintPerf();   // A-D/小節の「中身あり」ドットを更新
   if(typeof setCellWave==="function"){              // 発音セルのみ波形：変わった1セルだけ更新（軽量）
@@ -3782,7 +3786,7 @@ if(stepStripEl){
       const spec=PLOCKS[activeLock]; let v;
       if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let l=Math.log(stripDrag.startVal)+(dx/180)*(lmax-lmin); l=Math.max(lmin,Math.min(lmax,l)); v=Math.exp(l); }
       else { v=stripDrag.startVal+(dx/180)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); if(activeLock==="pitch"||activeLock==="nudge") v=Math.round(v); }
-      const pat=getPattern(selected); if(!(pat[stripDrag.s]>0)) pat[stripDrag.s]=1;   // 値を入れたら自動ON
+      if(!(getPattern(selected)[stripDrag.s]>0)) setStep(selected, stripDrag.s, 1);   // 値を入れたら自動ON（data/patterns）
       setLockEdit(selected, stripDrag.s, activeLock, v);
       paintStepStrip();
       sampNameEl.textContent="STEP "+String(stripDrag.s+1).padStart(2,"0")+" "+activeLock.toUpperCase()+" "+spec.fmt(v)+"  · "+stepTrackName();
@@ -5565,7 +5569,7 @@ function handleMIDI(data){
 //    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol,
 //    makeLofi, makeSatCurve, masterGain, multiOut, outBGain, paintMixer, paintPadName, paintPadStates,
 //    paintPatBar, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl, saturator,
-//    selectPad, setCompBypass, setDelayTempo, stopVoices, stripLegacyLocks, swingPct, tickDur, tracks
+//    selectPad, setCompBypass, setDelayTempo, stopAllVoices, stripLegacyLocks, swingPct, tickDur, tracks
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -5633,7 +5637,7 @@ document.getElementById("loadProjBtn").addEventListener("click",()=>{
 });
 async function applyProject(proj){
     // 読込前に鳴っている音を止め、ループ/予約状態をリセット（旧バッファの垂れ流し・状態ズレ防止）
-    tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });
+    stopAllVoices(AC.currentTime);
     queuedPat=null;
     // restore globals
     bpmVal=proj.bpm||100;
@@ -5738,7 +5742,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.134";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.135";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
