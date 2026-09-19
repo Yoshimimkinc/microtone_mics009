@@ -1,11 +1,11 @@
 // @module ui/pads-view
-// @provides _selHeavyRAF, applyPadCategory, armMode, copyArm, flashPad, padCategory, padKeyLabel, padsEl,
-//    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
-// @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, assignMS, buildTrackWave, clRetargetLearn,
-//    clSyncWave, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic, openPadEdit, padAtPoint,
-//    paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove, refreshSeqMode,
-//    sampNameEl, selected, swapPads, syncEditor, tracks, trigger
-// @depends boot, engine-fx
+// @provides _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl, paintPadName,
+//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
+// @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, buildTrackWave,
+//    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
+//    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
+//    refreshSeqMode, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
+// @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
 //   ui/status           … sampNameEl（トースト）
@@ -156,8 +156,6 @@ function selectPad(i, light){
 }
 
 // ---------- mute / solo ----------
-let armMode = null;  // null | "mute" | "solo" | "chop" | "edit" | "select"（chop＝COPY統合：複製/スライス、select＝選択のみ発音なし）
-let copyArm = null;  // COPY中の元 {type:"pad"|"pat"|"bar", idx}（汎用コピー）
 function padKeyLabel(i){ const k=tracks[i].key || KEYMAP[i]; return k ? String(k).toUpperCase() : ""; }   // ASSIGN優先、無ければ既定キー
 function paintPadStates(){
   for(let i=0;i<PADS.length;i++){

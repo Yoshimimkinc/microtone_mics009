@@ -1,11 +1,9 @@
 // @module engine-fx
-// @provides LOFI, PERF_BASE, _ledT, activeLock, applyFx, assignTarget, delaySend, displayBar, displayPat,
-//    echoFb, echoFbHP, echoFbLP, echoLfo, echoLfoDepth, echoSat, echoWet, editBar, editDrag, editPat,
-//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern, peOpenedAt, peTarget, peV0,
-//    peV1, perfDrag, perfLast, perfRecArm, perfResetPad, perfSnap, perfTapT, playBar, playPat, playStep,
-//    playing, queuedPat, recording, reverb, reverbLP, reverbPre, reverbSend, reverbWet, selected,
-//    setDelayTempo, stepIdx, tapeEcho, tracks
-// @uses AC, PADS, PLOCKS, STEPS, bpmVal, finalClip, perfFillPad, pushUndo, syncEditor, tapeDelay
+// @provides LOFI, PERF_BASE, _ledT, applyFx, delaySend, echoFb, echoFbHP, echoFbLP, echoLfo, echoLfoDepth,
+//    echoSat, echoWet, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern,
+//    perfResetPad, reverb, reverbLP, reverbPre, reverbSend, reverbWet, setDelayTempo, tapeEcho, tracks
+// @uses AC, PADS, PLOCKS, STEPS, bpmVal, editBar, editPat, finalClip, perfFillPad, perfSnap, playBar,
+//    playPat, pushUndo, syncEditor, tapeDelay
 // @depends boot, engine-core, engine-master
 // ===== センドFX：RE-101風テープディレイ ＋ ホールリバーブ（マスター最終段からパラレル送り）=====
 // --- テープディレイ（RE-101風：リピートが徐々に暗くもこもこ＋テープ飽和＋僅かな揺れ） ---
@@ -91,24 +89,8 @@ const tracks = PADS.map((p,i)=>({
 // SP風 12bit Lo-Fi 設定（全音源共通）
 const LOFI = { bits:12, targetRate:26040 }; // SP-1200 ≒ 26kHz
 
-let selected = 0;
-let playing = false;
-let stepIdx = 0;
-let playStep = 0;
-let recording = false;
-let editPat = 0;       // 編集中パターン 0-3 (A-D)
-let editBar = 0;       // 編集中の小節 0-3 (1-4)
-let activeLock = null; // 選択中のp-lockパラメータ（null=ON/OFFトグル）
-let editDrag = null;   // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）
-let perfDrag = null;   // Performance中のパッドドラッグ＝ライブ・モジュレート
-let peTarget=0;        // 波形エディタの対象パッド（窓とモーダルで共有する1実体）
-let peOpenedAt=0;      // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する
-let peV0=0, peV1=1;    // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ
-let assignTarget=-1, _ledT=null;   // ASSIGN待機中のパッド（MIDI/PCキー共通）。起動時のselectPadより前に宣言する（TDZ回避）
-let perfRecArm = false;// Performance: REC ON=再生中いじりをステップへ記録（解放しても基本値を保持）/ OFF=解放で掛ける前へ戻る
-let perfSnap = null;   // P-LOCK選択時に取った16パッドの「掛ける前の値」（解放でここへ戻る＝効果オフ／ダブルタップの基準）
-let perfLast = {};     // P-LOCKごとの「最後にいじった16パッドの値」（もう一度押すと復活する記憶 v0.3.121）
-let perfTapT = [];     // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）
+// UI・再生・編集・演奏の状態（selected / playing / editPat / activeLock / perf* …）は app/state.js へ移した（v0.3.133）
+let _ledT=null;   // ASSIGN の LED 点滅タイマ
 const PERF_BASE = {pitch:"tune", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 4つとも演奏のパラメータ・ページで同等に扱う（LEVEL は v0.3.124 で P-LOCK から廃止 §135）
 // 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）
 function perfResetPad(i, param){
@@ -125,11 +107,6 @@ function perfResetPad(i, param){
   perfFillPad(i, param);
   if(typeof syncEditor==="function") syncEditor();
 }
-let playPat = 0;       // 再生中パターン（スケジューラ用）
-let playBar = 0;       // 再生中の小節（スケジューラ用）
-let queuedPat = null;  // 予約中パターン（次の小節アタマで切替）
-let displayPat = 0;    // 表示中の再生パターン（drawLoop用）
-let displayBar = 0;    // 表示中の再生小節（drawLoop用）
 
 // 編集中（パターン×小節）へのアクセサ
 function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar]; }

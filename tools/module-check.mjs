@@ -88,6 +88,7 @@ function analyze(code){
   const top=new Map();            // 最上位宣言 name → kind
   const fnDecls=new Map();        // name → [ [start,end] ] 関数の中の宣言（影の判定用）
   const refs=[];                  // {name, pos, load:bool}
+  const writes=[];                // {name, pos} 代入（x= / x+= / x++）の左辺が識別子のもの
   const addFn=(name,scope)=>{ if(!fnDecls.has(name)) fnDecls.set(name,[]); fnDecls.get(name).push(scope); };
   const bind=(bn,kind,scope,atTop)=>{ if(!bn) return;
     if(ts.isIdentifier(bn)){ if(atTop) top.set(bn.text,kind); else addFn(bn.text,scope); }
@@ -121,13 +122,17 @@ function analyze(code){
       if(ts.isParameter(p)&&p.name===n) isRef=false;
       if(ts.isMetaProperty(p)) isRef=false;
       if(isRef) refs.push({name:n.text,pos:n.getStart(sf),load});
+      if(isRef){ let w=false;
+        if(ts.isBinaryExpression(p)&&p.left===n){ const k=p.operatorToken.kind; w = k>=ts.SyntaxKind.FirstAssignment && k<=ts.SyntaxKind.LastAssignment; }
+        if((ts.isPrefixUnaryExpression(p)||ts.isPostfixUnaryExpression(p))&&(p.operator===ts.SyntaxKind.PlusPlusToken||p.operator===ts.SyntaxKind.MinusMinusToken)) w=true;
+        if(w) writes.push({name:n.text,pos:n.getStart(sf)}); }
     }
     ts.forEachChild(n,c=>visit(c,inner,innerLoad));
   };
   visit(sf,null,true);
   // 影：関数の中で同名を宣言していればその中の参照は外を見ていない
   const shadowed=(name,pos)=>(fnDecls.get(name)||[]).some(([s,e])=>pos>=s&&pos<=e);
-  return {top, refs:refs.filter(r=>!shadowed(r.name,r.pos)), sf};
+  return {top, refs:refs.filter(r=>!shadowed(r.name,r.pos)), writes:writes.filter(r=>!shadowed(r.name,r.pos)), sf};
 }
 
 // ---------- 全ファイル ----------
@@ -136,7 +141,7 @@ const files=jsParts.map((rel,idx)=>{
   const a=analyze(code);
   const header=parseHeader(code);
   const defaultModule=rel.replace(/^js\//,'').replace(/\.js$/,'').replace(/(^|\/)\d+-/,'$1');   // js/ui/pads-view.js → ui/pads-view、js/30-x.js → x
-  return {rel, idx, code, header, module:defaultModule, top:a.top, refs:a.refs};   // @module はパス由来（動かしたら --write で追従）
+  return {rel, idx, code, header, module:defaultModule, top:a.top, refs:a.refs, writes:a.writes, sf:a.sf};   // @module はパス由来（動かしたら --write で追従）
 });
 const provider=new Map();   // name → file（最上位宣言の持ち主）
 const dupProvides=[];
@@ -205,6 +210,21 @@ for(const f of files) for(const name of f.loadRefs){ const g=provider.get(name);
   if(g.idx>f.idx && kind!=='function') fails.push(`${f.rel}: 読み込み時に ${g.rel} の ${kind} "${name}" を参照している（連結順で未初期化）`);
   else if(g.idx>f.idx) warn.push(`${f.rel}: 読み込み時に後ろの ${g.rel} の関数 "${name}" を呼ぶ（巻き上げで動くが順序依存）`); }
 
+// 7) app/state の @writers：状態を書いてよいモジュールは宣言行の @writers に挙げたものだけ（Phase 3「入口を限定する」）
+{ const st=files.find(f=>f.module==='app/state');
+  if(st){ const allow=new Map();   // name → Set(module)
+    for(const line of st.code.split('\n')){ const m=line.match(/^let\s+([^/]+?);?\s*\/\/.*@writers\s+(.+?)\s*$/); if(!m) continue;
+      const names=m[1].split(',').map(x=>x.trim().split('=')[0].trim()).filter(Boolean);
+      const mods=new Set(m[2]==='-'?[]:m[2].split(',').map(x=>x.trim()).filter(Boolean));
+      for(const nm of names) allow.set(nm,mods); }
+    for(const name of st.top.keys()) if(!allow.has(name)) fails.push(`${st.rel}: "${name}" の行に @writers が無い（書いてよいモジュールを列挙する。無ければ "-"）`);
+    const seen=new Map(); for(const [n,mods] of allow) seen.set(n,new Set());
+    for(const f of files){ if(f===st) continue; for(const w of f.writes){ if(!allow.has(w.name)||f.top.has(w.name)) continue;
+      seen.get(w.name).add(f.module);
+      if(!allow.get(w.name).has(f.module)){ const {line}=ts.getLineAndCharacterOfPosition(f.sf,w.pos);
+        fails.push(`${f.rel}:${line+1}: app/state の "${w.name}" を書いている。入口は ${[...allow.get(w.name)].join(', ')||'（無し）'} → 入口関数を呼ぶか、app/state.js の @writers に足す`); } } }
+    for(const [n,mods] of allow) for(const md of mods) if(!seen.get(n).has(md)) warn.push(`app/state: "${n}" の @writers にある ${md} はもう書いていない（列挙を減らせる）`);
+  } }
 for(const w of warn) console.log('  ⚠ '+w);
 for(const x of fails) console.log('  ✖ '+x);
 console.log(`モジュール ${files.length} / 最上位宣言 ${provider.size} / 警告 ${warn.length} / 問題 ${fails.length}`);

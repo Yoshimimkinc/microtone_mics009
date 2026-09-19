@@ -23,6 +23,7 @@
   "body/70-view-seq.html",
   "shell/20-script-open.html",
   "js/00-boot.js",
+  "js/app/state.js",
   "js/10-engine-core.js",
   "js/11-engine-master.js",
   "js/12-engine-bus.js",

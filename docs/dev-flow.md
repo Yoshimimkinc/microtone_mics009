@@ -6,7 +6,7 @@
 
 ```
 src/ ──(tools/build.mjs)──▶ mics-609bc14b.html ──▶ GitHub ──▶ Pages
- 51部品                        1ファイル（コミットする生成物）
+ 52部品                        1ファイル（コミットする生成物）
 ```
 
 ## 1. どこを触るか
@@ -16,7 +16,7 @@ src/ ──(tools/build.mjs)──▶ mics-609bc14b.html ──▶ GitHub ──
 | `src/shell/` | `<head>` / `</style></head><body>` / `<script>` / 末尾。触ることはほぼ無い |
 | `src/css/` | 9枚：base / theme / window / artware / seq / controls / editor / responsive / small-splash |
 | `src/body/` | 7枚：splash / header / menu-modal / pad-edit-modal / viewdots / view-pads / view-seq |
-| `src/js/` | 31枚：番号付き（boot / engine-* / plock-undo / voice / presets / ui-copy / ui-wave / ui-window / step-strip / menu / edit-modal / chop / autosave / layout / pattern-master / sampling / save-load / midi / share-export / skin-version-splash）＋ 責務別ディレクトリ `ui/`（status / pads-view / performance-view / seq-view）`data/`（pads / patterns）`audio/`（transport）＋ `ui/transport-view`。新しい部品は責務別ディレクトリへ（Phase 2、`docs/modularization-log.md`） |
+| `src/js/` | 32枚：番号付き（boot / engine-* / plock-undo / voice / presets / ui-copy / ui-wave / ui-window / step-strip / menu / edit-modal / chop / autosave / layout / pattern-master / sampling / save-load / midi / share-export / skin-version-splash）＋ 責務別ディレクトリ `ui/`（status / pads-view / performance-view / seq-view）`data/`（pads / patterns）`audio/`（transport）＋ `ui/transport-view`、`app/`（state：アプリ状態と `@writers`）。新しい部品は責務別ディレクトリへ（Phase 2、`docs/modularization-log.md`） |
 | `src/manifest.json` | 連結する順番。部品を足す/消すときだけ触る |
 
 **`mics-609bc14b.html` は直接編集しない。** 生成物なので次のビルドで消える。

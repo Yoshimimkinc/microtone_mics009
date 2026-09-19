@@ -227,3 +227,56 @@ LOAD（`#samp` に WAV）で名前・パッド表示・SEQ 行名・種別が揃
 - `perfRevertSnap` / `perfReadVals` は tracks を書き換える＝データ側。Phase 3 の `app/state` と一緒に置き場を決める
 - `13-engine-fx` に混ざる UI 状態（`selected` `activeLock` `perfDrag` …）→ Phase 3 `app/state`
 - 番号付きファイルの残り（`31-ui-copy` → `features/copy`、`52-chop` → `features/chop` …）は、触る用事が出たときに動かす
+
+## Phase 3：アプリ状態の集約（v0.3.133〜。段階的に進める）
+
+計画書の Phase 3 は「`AppState` オブジェクト＋アクセサを足し、直接代入を段階的に置き換える」。
+ただし `AppState.selected` と `let selected` が並ぶ期間は**真が2つ**になる（このプロジェクトが一番嫌う形）。
+そこで順番を変えた：**まず宣言の場所を1つにし、書く入口を機械で限定する**。オブジェクト化は入口が絞れてから判断する。
+
+### 第1段：`app/state.js` と `@writers`（v0.3.133）
+| 動かしたもの | 元 | 先 |
+|---|---|---|
+| `selected` `playing` `recording` `stepIdx` `playStep` `playPat` `playBar` `queuedPat` `displayPat` `displayBar` `editPat` `editBar` `activeLock` `editDrag` `perfDrag` `peTarget` `peOpenedAt` `peV0` `peV1` `assignTarget` `perfRecArm` `perfSnap` `perfLast` `perfTapT` | `13-engine-fx` | **`js/app/state.js`（新、`app/state`。manifest で `00-boot` の直後）** |
+| `melodicMode` | `20-plock-undo` | 同上 |
+| `armMode` `copyArm` | `ui/pads-view` | 同上 |
+| `bpmVal` `swingPct` | `audio/transport` | 同上 |
+
+中身も初期値も動かしていない。`_ledT`（ASSIGN の LED タイマ）は状態ではなく engine-fx の都合なので残した。
+`tracks` / `PADS` は計画書どおり最後（音源と保存形式に密）。
+
+#### `@writers`：状態を書いてよいモジュールを宣言行に書き、`module-check` が見張る
+```js
+let selected = 0;   // 選択中パッド   @writers ui/pads-view
+let bpmVal = 100;   // テンポ（保存）。書く入口は applyBpm（chop）   @writers chop, plock-undo, share-export
+```
+`module-check` の検査 7)：`app/state` の各変数について、代入（`x=` `x+=` `x++`）している他ファイルのモジュールが
+`@writers` に無ければ止める（`ファイル:行` を名指し）。逆に列挙にあるのに書いていないモジュールは警告（列挙を減らせる）。
+入れた時点で警告 0 ＝ 列挙は現実と一致している。
+
+#### 迷子の直書きを入口へ（この段で直したもの）
+| 場所 | 前 | 後 |
+|---|---|---|
+| `70-sampling` EDIT モーダルの LOAD / ● SMPL | `selected=peTarget`（選択表示は更新されない） | `selectPad(peTarget)` |
+| `72-midi` 外部クロック同期 | `bpmVal=…` ＋ `#bpm` `#bpmRead` を自前で更新（ディレイのテンポ追従・再生中の位相維持が無い） | `applyBpm(…)`（テンポの唯一の入口） |
+
+#### 書く入口の現状（`@writers` から）
+- 入口関数がある：`selected`→`selectPad`、`editPat/editBar`→`setEditPat/setEditBar`、`activeLock`→`setActiveLock`、`bpmVal`→`applyBpm`
+- 復元経路（`plock-undo` の `restoreState`、`share-export` の `applyProject`）は保存対象を直接書く。これは入口の一種として許容
+- 再生系（`playing` `stepIdx` …）は `audio/transport` と `ui/transport-view` の2つが書く。▶ の処理を `startTransport / stopTransport` に
+  まとめれば `ui/transport-view` は呼ぶだけになる → 次の段の候補
+
+### 結果（Phase 3 第1段）
+| 項目 | 結果 |
+|---|---|
+| 部品 | 51 → 52（JS 31 → 32：`app/state`） |
+| 最上位宣言 | 406 → 406（移しただけ） |
+| `module-check` | ✔ 問題なし・警告 0（検査 7 を追加。迷子の書き込みを故意に足すと `ファイル:行` で止まることを確認） |
+| `lost-listeners`（origin/main 比） | 消えた要素参照 2（`72-midi` の `bi` `br`：`applyBpm` に置換。`removals-ok.txt` に記録） |
+| `gate` | ✔ 全関門クリア |
+
+### 次の段の候補
+- ▶ / ■ を `startTransport / stopTransport`（`audio/transport`）にまとめ、`ui/transport-view` は呼ぶだけに
+- `perfRevertSnap / perfReadVals`（tracks を書く）を `data/` へ
+- `tracks` / `PADS` の書き手の一覧化（`@writers` と同じ仕組みで `t.xxx=` を数える）
+- Phase 4：開発用プレビュー（`tools/dev.html`）
