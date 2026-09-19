@@ -119,10 +119,16 @@ function analyze(code){
     if(ts.isCallExpression(n)&&ts.isPropertyAccessExpression(n.expression)&&ts.isIdentifier(n.expression.expression)&&(n.expression.expression.text==='tracks'||n.expression.expression.text==='PADS')
        &&['forEach','map','some','every','filter','find'].includes(n.expression.name.text)&&n.arguments[0]&&isFn(unparen(n.arguments[0]))){
       const fn=unparen(n.arguments[0]), p0=fn.parameters[0]; if(p0&&ts.isIdentifier(p0.name)) aliases.push({name:p0.name.text,root:n.expression.expression.text,scope:[fn.getStart(sf),fn.getEnd()]}); }
-    if(ts.isBinaryExpression(n)&&n.operatorToken.kind>=ts.SyntaxKind.FirstAssignment&&n.operatorToken.kind<=ts.SyntaxKind.LastAssignment&&ts.isPropertyAccessExpression(n.left)){
-      const obj=unparen(n.left.expression); let r=rootOf(obj); const pos=n.getStart(sf);
-      if(!r&&ts.isIdentifier(obj)){ const a=aliases.filter(a=>a.name===obj.text&&pos>=a.scope[0]&&pos<=a.scope[1]).pop(); if(a) r=a.root; }
-      if(r) propWrites.push({root:r,prop:n.left.name.text,pos}); }
+    // getPattern(i) / getPlayPattern(i) の別名（const pat=getPattern(i)）＝ tracks.patterns[·][·]
+    const isPatCall=(e)=>{ e=unparen(e); return ts.isCallExpression(e)&&ts.isIdentifier(e.expression)&&(e.expression.text==='getPattern'||e.expression.text==='getPlayPattern'); };
+    if(ts.isVariableDeclaration(n)&&ts.isIdentifier(n.name)&&n.initializer&&isPatCall(n.initializer)) aliases.push({name:n.name.text,root:'tracks.patterns[·][·]',scope:inner||[0,code.length]});
+    if(ts.isBinaryExpression(n)&&n.operatorToken.kind>=ts.SyntaxKind.FirstAssignment&&n.operatorToken.kind<=ts.SyntaxKind.LastAssignment&&(ts.isPropertyAccessExpression(n.left)||ts.isElementAccessExpression(n.left))){
+      // 左辺の鎖をほどく：base（識別子 / tracks[i] / getPattern(i)）＋ .prop と [·] の列
+      const pos=n.getStart(sf); const chain=[]; let e=unparen(n.left);
+      while((ts.isPropertyAccessExpression(e)||ts.isElementAccessExpression(e))&&!rootOf(e)&&!isPatCall(e)){ chain.unshift(ts.isPropertyAccessExpression(e)?'.'+e.name.text:'[·]'); e=unparen(e.expression); }
+      let r=rootOf(e); if(!r&&isPatCall(e)) r='tracks.patterns[·][·]';
+      if(!r&&ts.isIdentifier(e)){ const a=aliases.filter(a=>a.name===e.text&&pos>=a.scope[0]&&pos<=a.scope[1]).pop(); if(a) r=a.root; }
+      if(r&&chain.length) propWrites.push({key:r+chain.join(''),pos}); }
     if(ts.isCatchClause(n)&&n.variableDeclaration) bind(n.variableDeclaration.name,'catch',inner,false);
     if(ts.isIdentifier(n)){
       const p=n.parent; let isRef=true;
@@ -192,7 +198,7 @@ if(MODE==='write'){
 }
 if(MODE==='tracks'){   // tracks[i].xxx= / PADS[i].xxx= の書き手（Phase 3「tracks / PADS は最後に扱う」の下調べ。Markdown）
   const tbl=new Map();   // root.prop → Map(module → count)
-  for(const f of files) for(const w of f.propWrites){ const k=w.root+'.'+w.prop; if(!tbl.has(k)) tbl.set(k,new Map()); const m=tbl.get(k); m.set(f.module,(m.get(f.module)||0)+1); }
+  for(const f of files) for(const w of f.propWrites){ const k=w.key; if(!tbl.has(k)) tbl.set(k,new Map()); const m=tbl.get(k); m.set(f.module,(m.get(f.module)||0)+1); }
   console.log('| 書かれる属性 | 書き手（モジュール：回数） | 書き手の数 |'); console.log('|---|---|---:|');
   for(const [k,m] of [...tbl].sort((a,b)=>b[1].size-a[1].size||a[0].localeCompare(b[0]))) console.log(`| \`${k}\` | ${[...m].map(([md,c])=>`${md}:${c}`).join(', ')} | ${m.size} |`);
   console.log(`\n属性 ${tbl.size} 種 / 代入 ${[...tbl.values()].reduce((s,m)=>s+[...m.values()].reduce((a,b)=>a+b,0),0)} 箇所`);

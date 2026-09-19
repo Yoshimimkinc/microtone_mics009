@@ -4,8 +4,8 @@
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, getLockPlay,
 //    getPlayPattern, isMelodic, mainOut, patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat,
-//    playStep, playVoice, playing, pushUndo, queuedPat, scaleSemi, setLockPlay, stepIdx, stopVoices,
-//    swingPct, tracks
+//    playStep, playVoice, playing, pushUndo, queuedPat, scaleSemi, setLockPlay, stepIdx, stopAllVoices,
+//    stopVoices, swingPct, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -112,7 +112,7 @@ function stopTransport(){
   playing=false;
   clearInterval(schedTimer); schedTimer=null;
   drawQueue.length=0; playStep=0;
-  tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
+  stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
 }
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、

@@ -1,10 +1,9 @@
 // @module ui/seq-view
 // @provides _padCurStep, _seqCurStep, _stripCurStep, colnums, curStepFor, grid, moveCursors, paintSteps,
 //    rowEls
-// @uses AC, PADS, STEPS, applyWaveSEQ, applyWaveStrip, armMode, clearLockEdit, copyTap, displayBar,
-//    displayPat, editBar, editPat, getPattern, melodicMode, paintMelodic, paintPatBar, paintStepStrip,
-//    playStep, playVoice, playing, pushUndo, scaleSemi, selectPad, selected, stepBtns, stopVoices, tracks,
-//    trigger, viewSeqEl, vuHit
+// @uses AC, PADS, STEPS, applyWaveSEQ, applyWaveStrip, armMode, copyTap, displayBar, displayPat, editBar,
+//    editPat, getPattern, hitVoice, melodicMode, paintMelodic, paintPatBar, paintStepStrip, playStep,
+//    playing, pushUndo, scaleSemi, selectPad, selected, setStep, stepBtns, tracks, trigger, viewSeqEl, vuHit
 // @depends boot, app/state
 // ---------- SEQ 画面：16×16 グリッドの生成・ステップ表示・再生カーソル ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。paintSteps/moveCursors は表示更新だけ（データは触らない）
@@ -30,8 +29,7 @@ PADS.forEach((p,i)=>{
     if(AC.state!=="running")await AC.resume();
     if(melodicMode){
       const pitchIdx=(PADS.length-1)-i, sel=selected, t=tracks[sel];
-      if(t.loop && t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; }   // 発音中の再トリガ＝止まる
-      else { playVoice(sel, AC.currentTime, false, false, scaleSemi(t.scale, pitchIdx)); if(t.loop) t.loopPlaying=true; if(typeof vuHit==="function") vuHit(sel, false); }
+      if(hitVoice(sel, scaleSemi(t.scale, pitchIdx))){ if(typeof vuHit==="function") vuHit(sel, false); }   // ループ系は発音中の再トリガ＝止まる（音側 hitVoice）
     }
     else { trigger(i); selectPad(i,true); }
   });
@@ -47,13 +45,11 @@ PADS.forEach((p,i)=>{
         const pitchIdx=(PADS.length-1)-i;                       // 行→音程
         const cur=getPattern(selected)[s];
         const nv=(cur===pitchIdx+1)?0:pitchIdx+1;               // モノ：その列の音程をセット/解除
-        getPattern(selected)[s]=nv;
-        if(nv===0) clearLockEdit(selected, s);                  // OFFにしたらp-lockも消す
+        setStep(selected, s, nv);                               // data/patterns（OFF なら p-lock も消える）
       } else {
         const cur=getPattern(i)[s];
         const nv = e.shiftKey ? (cur===2?0:2) : (cur?0:1);
-        getPattern(i)[s]=nv;
-        if(nv===0) clearLockEdit(i, s);                         // OFFにしたらp-lockも消す
+        setStep(i, s, nv);                                      // data/patterns（OFF なら p-lock も消える）
       }
       paintSteps(); paintPatBar();   // 中身ドット・小節長を更新
       if(typeof applyWaveSEQ==="function") applyWaveSEQ();   // 発音セルのみ波形を更新

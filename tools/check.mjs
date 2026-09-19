@@ -638,6 +638,14 @@ async function copyPaint(){
     const r={ sel:selected, pe:peTarget, selCls:document.querySelectorAll('#pads .pad')[4].classList.contains('sel'), ov:document.getElementById('recOverlay').classList.contains('show') };
     document.getElementById('recCancel').click(); return r; });
   ok_(`モーダルの ● SMPL は selectPad 経由（選択表示も追従）`, sm.sel===4 && sm.pe===4 && sm.selCls===true && sm.ov===true, JSON.stringify(sm));
+  // Phase 3 第3段：loopPlaying は音側（hitVoice / scheduler）だけが書く。setStep はステップの唯一の書き口（OFF で p-lock も消える）
+  const lp=await p.evaluate(()=>{ const t=tracks[0]; const was=t.loop; t.loop=true; t.loopPlaying=false;
+    const a=hitVoice(0), s1=t.loopPlaying, b=hitVoice(0), s2=t.loopPlaying;      // 1回目＝鳴る（true）、2回目＝止まる（false）
+    hitVoice(0); stopAllVoices(AC.currentTime); const s3=t.loopPlaying; t.loop=was; return {a,s1,b,s2,s3}; });
+  ok_(`hitVoice ループ系は手叩きでトグル／stopAllVoices で全部戻る`, lp.a===true && lp.s1===true && lp.b===false && lp.s2===false && lp.s3===false, JSON.stringify(lp));
+  const ss=await p.evaluate(()=>{ setStep(1, 5, 2); setLockEdit(1, 5, 'pitch', 3); const v1=getPattern(1)[5], l1=!!getLockEdit(1,5);
+    setStep(1, 5, 0); const v0=getPattern(1)[5], l0=!!getLockEdit(1,5); return {v1,l1,v0,l0}; });
+  ok_(`setStep ON=値が入る／OFF=p-lock も消える`, ss.v1===2 && ss.l1===true && ss.v0===0 && ss.l0===false, JSON.stringify(ss));
   eq(`COPY/MOVE 0 errors`, errs, []);
   await ctx.close();
 }
