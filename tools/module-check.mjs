@@ -33,7 +33,7 @@ const SRC=new URL('src/',ROOT);
 const manifest=JSON.parse(fs.readFileSync(new URL('src/manifest.json',ROOT),'utf8'));
 const jsParts=manifest.parts.filter(p=>p.startsWith('js/')&&p.endsWith('.js'));
 const argv=process.argv.slice(2);
-const MODE=argv.includes('--write')?'write':argv.includes('--print')?'print':argv.includes('--report')?'report':'check';
+const MODE=argv.includes('--write')?'write':argv.includes('--print')?'print':argv.includes('--report')?'report':argv.includes('--tracks')?'tracks':'check';
 
 // ---------- ヘッダの読み書き ----------
 const TAGS=['module','provides','uses','depends'];
@@ -89,6 +89,8 @@ function analyze(code){
   const fnDecls=new Map();        // name → [ [start,end] ] 関数の中の宣言（影の判定用）
   const refs=[];                  // {name, pos, load:bool}
   const writes=[];                // {name, pos} 代入（x= / x+= / x++）の左辺が識別子のもの
+  const propWrites=[];            // {root:'tracks'|'PADS', prop, pos} tracks[i].xxx= / PADS[i].xxx=（別名 const t=tracks[i] も追う）
+  const aliases=[];               // {name, root, scope:[s,e]} tracks[i] / PADS[i] / tracks.forEach((t)=>…) の別名
   const addFn=(name,scope)=>{ if(!fnDecls.has(name)) fnDecls.set(name,[]); fnDecls.get(name).push(scope); };
   const bind=(bn,kind,scope,atTop)=>{ if(!bn) return;
     if(ts.isIdentifier(bn)){ if(atTop) top.set(bn.text,kind); else addFn(bn.text,scope); }
@@ -109,6 +111,18 @@ function analyze(code){
       else if(atTop){ const blk=ts.isVariableStatement(holder)?holder.parent:holder; bind(n.name,kind,[blk.getStart(sf),blk.getEnd()],false); }
       else bind(n.name,kind,inner,false); }
     if(ts.isParameter(n)) bind(n.name,'param',inner,false);
+    // tracks / PADS の別名：const t=tracks[i] ／ tracks.forEach((t,i)=>…) ／ for(const t of tracks)
+    const rootOf=(e)=>{ e=unparen(e); if(ts.isElementAccessExpression(e)&&ts.isIdentifier(e.expression)&&(e.expression.text==='tracks'||e.expression.text==='PADS')) return e.expression.text; return null; };
+    if(ts.isVariableDeclaration(n)&&ts.isIdentifier(n.name)&&n.initializer){ const r=rootOf(n.initializer); if(r) aliases.push({name:n.name.text,root:r,scope:inner||[0,code.length]}); }
+    if(ts.isForOfStatement(n)&&ts.isVariableDeclarationList(n.initializer)){ const d=n.initializer.declarations[0]; const e=unparen(n.expression);
+      if(d&&ts.isIdentifier(d.name)&&ts.isIdentifier(e)&&(e.text==='tracks'||e.text==='PADS')) aliases.push({name:d.name.text,root:e.text,scope:[n.getStart(sf),n.getEnd()]}); }
+    if(ts.isCallExpression(n)&&ts.isPropertyAccessExpression(n.expression)&&ts.isIdentifier(n.expression.expression)&&(n.expression.expression.text==='tracks'||n.expression.expression.text==='PADS')
+       &&['forEach','map','some','every','filter','find'].includes(n.expression.name.text)&&n.arguments[0]&&isFn(unparen(n.arguments[0]))){
+      const fn=unparen(n.arguments[0]), p0=fn.parameters[0]; if(p0&&ts.isIdentifier(p0.name)) aliases.push({name:p0.name.text,root:n.expression.expression.text,scope:[fn.getStart(sf),fn.getEnd()]}); }
+    if(ts.isBinaryExpression(n)&&n.operatorToken.kind>=ts.SyntaxKind.FirstAssignment&&n.operatorToken.kind<=ts.SyntaxKind.LastAssignment&&ts.isPropertyAccessExpression(n.left)){
+      const obj=unparen(n.left.expression); let r=rootOf(obj); const pos=n.getStart(sf);
+      if(!r&&ts.isIdentifier(obj)){ const a=aliases.filter(a=>a.name===obj.text&&pos>=a.scope[0]&&pos<=a.scope[1]).pop(); if(a) r=a.root; }
+      if(r) propWrites.push({root:r,prop:n.left.name.text,pos}); }
     if(ts.isCatchClause(n)&&n.variableDeclaration) bind(n.variableDeclaration.name,'catch',inner,false);
     if(ts.isIdentifier(n)){
       const p=n.parent; let isRef=true;
@@ -132,7 +146,7 @@ function analyze(code){
   visit(sf,null,true);
   // 影：関数の中で同名を宣言していればその中の参照は外を見ていない
   const shadowed=(name,pos)=>(fnDecls.get(name)||[]).some(([s,e])=>pos>=s&&pos<=e);
-  return {top, refs:refs.filter(r=>!shadowed(r.name,r.pos)), writes:writes.filter(r=>!shadowed(r.name,r.pos)), sf};
+  return {top, refs:refs.filter(r=>!shadowed(r.name,r.pos)), writes:writes.filter(r=>!shadowed(r.name,r.pos)), propWrites, sf};
 }
 
 // ---------- 全ファイル ----------
@@ -141,7 +155,7 @@ const files=jsParts.map((rel,idx)=>{
   const a=analyze(code);
   const header=parseHeader(code);
   const defaultModule=rel.replace(/^js\//,'').replace(/\.js$/,'').replace(/(^|\/)\d+-/,'$1');   // js/ui/pads-view.js → ui/pads-view、js/30-x.js → x
-  return {rel, idx, code, header, module:defaultModule, top:a.top, refs:a.refs, writes:a.writes, sf:a.sf};   // @module はパス由来（動かしたら --write で追従）
+  return {rel, idx, code, header, module:defaultModule, top:a.top, refs:a.refs, writes:a.writes, propWrites:a.propWrites, sf:a.sf};   // @module はパス由来（動かしたら --write で追従）
 });
 const provider=new Map();   // name → file（最上位宣言の持ち主）
 const dupProvides=[];
@@ -174,6 +188,14 @@ if(MODE==='write'){
     if(next!==f.code){ fs.writeFileSync(new URL(f.rel,SRC),next); n++; console.log(`書き直した: ${f.rel}`); }
   }
   console.log(`✔ module-check --write: ${n}件のヘッダを実装に合わせた${n?'（node tools/build.mjs を忘れずに）':''}`);
+  process.exit(0);
+}
+if(MODE==='tracks'){   // tracks[i].xxx= / PADS[i].xxx= の書き手（Phase 3「tracks / PADS は最後に扱う」の下調べ。Markdown）
+  const tbl=new Map();   // root.prop → Map(module → count)
+  for(const f of files) for(const w of f.propWrites){ const k=w.root+'.'+w.prop; if(!tbl.has(k)) tbl.set(k,new Map()); const m=tbl.get(k); m.set(f.module,(m.get(f.module)||0)+1); }
+  console.log('| 書かれる属性 | 書き手（モジュール：回数） | 書き手の数 |'); console.log('|---|---|---:|');
+  for(const [k,m] of [...tbl].sort((a,b)=>b[1].size-a[1].size||a[0].localeCompare(b[0]))) console.log(`| \`${k}\` | ${[...m].map(([md,c])=>`${md}:${c}`).join(', ')} | ${m.size} |`);
+  console.log(`\n属性 ${tbl.size} 種 / 代入 ${[...tbl.values()].reduce((s,m)=>s+[...m.values()].reduce((a,b)=>a+b,0),0)} 箇所`);
   process.exit(0);
 }
 if(MODE==='report'){

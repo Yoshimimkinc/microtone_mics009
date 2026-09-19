@@ -1,9 +1,8 @@
 // @module ui/transport-view
 // @provides drawLoop, playBtn, recBtn, updateRecBtnLabel
-// @uses AC, INTERVAL, barStartTime, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue,
-//    editPat, flashPad, kickVu, moveCursors, paintSteps, playBar, playPat, playStep, playing, pushUndo,
-//    queuedPat, recording, sampNameEl, schedTimer, scheduler, stepIdx, stopVoices, tracks,
-//    updateBarIndicator, updatePatIndicator, vuHit
+// @uses AC, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue, flashPad, kickVu,
+//    moveCursors, paintSteps, playStep, playing, pushUndo, recording, sampNameEl, startTransport,
+//    stopTransport, updateBarIndicator, updatePatIndicator, vuHit
 // @depends -
 // ---------- transport：表示とボタン（▶ / ●）。drawQueue を消化してパッド点灯・カーソル・パターン枠を描く ----------
 // 40-transport.js から分離（v0.3.132 Phase 2 第3段）。scheduler が積む drawQueue を rAF で消化するだけ＝音は出さない
@@ -21,24 +20,19 @@ function drawLoop(){
 }
 
 const playBtn=document.getElementById("play");
+// ▶ / ■：状態は startTransport / stopTransport（audio/transport）が書く。ここは表示だけ（v0.3.134）
+// 他所からの再生/停止（Space・MIDI Start/Stop・GTR・共有の試聴）は playBtn.click() でここを通る＝表示が必ず追従
 playBtn.addEventListener("click",async()=>{
   if(AC.state!=="running") await AC.resume();
-  playing=!playing;
+  if(!playing) startTransport(); else stopTransport();
   playBtn.classList.toggle("on",playing);
   playBtn.textContent=playing?"■":"▶";   // アイコンのみ（文字なし）
   if(playing){
-    stepIdx=0; playStep=0; drawQueue.length=0;
-    playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
-    tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
-    barStartTime=AC.currentTime+0.05;
-    schedTimer=setInterval(scheduler, INTERVAL);
     requestAnimationFrame(drawLoop);
     if(typeof kickVu==="function") kickVu();   // VUループ起動（停止中はアイドルで止まっている）
   } else {
-    clearInterval(schedTimer); schedTimer=null;
-    drawQueue.length=0; playStep=0; paintSteps();
+    paintSteps();
     clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
-    tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
   }
 });
 const recBtn=document.getElementById("rec");

@@ -113,8 +113,8 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
      表示（`ui/transport-view`）に分けた。記録は `docs/modularization-log.md` Phase 2
    - **アプリ状態（`selected` `playing` `editPat` `activeLock` `bpmVal` …）は `js/app/state.js` に集めてある**（v0.3.133〜 Phase 3）。
      各行の `@writers` に書いてよいモジュールを列挙してあり、他のファイルから代入すると関門 `module-check` が止める。
-     状態を変えるときは入口関数（`selectPad` `setEditPat` `setActiveLock` `applyBpm` …）を呼ぶ。新しい状態変数は
-     `app/state.js` に足して `@writers` を書く
+     状態を変えるときは入口関数（`selectPad` `setEditPat` `setActiveLock` `applyBpm` `startTransport` / `stopTransport` …）を呼ぶ。新しい状態変数は
+     `app/state.js` に足して `@writers` を書く。`tracks` / `PADS` の書き手は `node tools/module-check.mjs --tracks` で一覧できる
    - 各 `src/js/**/*.js` の先頭に **`@module / @provides / @uses / @depends`** がある（v0.3.129〜、`docs/maintainability-modularization-plan.md` Phase 1）。
      触る前に `@uses` と `@depends` で影響範囲を見る。関数や変数を足した／消したら **`node tools/module-check.mjs --write`** で
      ヘッダを実装に合わせる（手で書かない。ズレは関門 `module-check` が止める）。記録は `docs/modularization-log.md`
@@ -128,7 +128,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.133
+MICS009 beta v0.3.134
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

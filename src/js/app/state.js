@@ -21,15 +21,15 @@ let editDrag = null;    // EDIT中のパッド間ドラッグ並べ替え状態�
 let assignTarget=-1;    // ASSIGN待機中のパッド（MIDI/PCキー共通）  @writers ui-window, midi, chop
 
 // --- 再生（一時。bpm / swing は保存） ---
-let playing = false;    // 再生中か  @writers ui/transport-view
+let playing = false;    // 再生中か。入口は startTransport / stopTransport  @writers audio/transport
 let recording = false;  // ● REC（演奏をステップへ記録）  @writers ui/transport-view
-let stepIdx = 0;        // スケジューラが次に予約するステップ  @writers audio/transport, ui/transport-view
-let playStep = 0;       // 表示中のステップ（カーソル）  @writers ui/transport-view
-let playPat = 0;        // 再生中パターン（スケジューラ用）  @writers audio/transport, ui/transport-view
-let playBar = 0;        // 再生中の小節（スケジューラ用）  @writers audio/transport, ui/transport-view
-let queuedPat = null;   // 予約中パターン（次の小節アタマで切替）  @writers pattern-master, audio/transport, ui/transport-view, share-export
-let displayPat = 0;     // 表示中の再生パターン（drawLoop用）  @writers ui/transport-view
-let displayBar = 0;     // 表示中の再生小節（drawLoop用）  @writers ui/transport-view
+let stepIdx = 0;        // スケジューラが次に予約するステップ  @writers audio/transport
+let playStep = 0;       // 表示中のステップ（カーソル）  @writers audio/transport, ui/transport-view
+let playPat = 0;        // 再生中パターン（スケジューラ用）  @writers audio/transport
+let playBar = 0;        // 再生中の小節（スケジューラ用）  @writers audio/transport
+let queuedPat = null;   // 予約中パターン（次の小節アタマで切替）  @writers pattern-master, audio/transport, share-export
+let displayPat = 0;     // 表示中の再生パターン（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
+let displayBar = 0;     // 表示中の再生小節（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
 let bpmVal = 100;       // テンポ（保存）。書く入口は applyBpm（chop）  @writers chop, plock-undo, share-export
 let swingPct = 50;      // スウィング（保存）。SP流 離散値: 50/54/58/63/67/71  @writers chop, plock-undo, share-export
 

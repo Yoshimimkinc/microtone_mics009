@@ -280,3 +280,73 @@ let bpmVal = 100;   // テンポ（保存）。書く入口は applyBpm（chop�
 - `perfRevertSnap / perfReadVals`（tracks を書く）を `data/` へ
 - `tracks` / `PADS` の書き手の一覧化（`@writers` と同じ仕組みで `t.xxx=` を数える）
 - Phase 4：開発用プレビュー（`tools/dev.html`）
+
+### 第2段：▶ / ■ を `startTransport / stopTransport` に、`tracks` / `PADS` の書き手を一覧化（v0.3.134）
+| 動かしたもの | 元 | 先 |
+|---|---|---|
+| 再生開始（`playing=true`・ステップ/パターンの頭出し・`barStartTime`・スケジューラ起動） | `ui/transport-view` の ▶ ハンドラ | **`startTransport()`（`audio/transport`）** |
+| 停止（`playing=false`・スケジューラ停止・`stopVoices`・ループ状態リセット） | 同上 | **`stopTransport()`（`audio/transport`）** |
+
+▶ ボタンは `if(!playing) startTransport(); else stopTransport();` の後に**表示だけ**（ボタンの字・`drawLoop`・VU・カーソル消し）。
+Space / MIDI Start・Stop / GTR / 共有の試聴は従来どおり `playBtn.click()` でここを通る＝表示が必ず追従。
+`@writers`：`playing` `stepIdx` `playPat` `playBar` `queuedPat` から `ui/transport-view` が消え、再生系の書き手は `audio/transport` だけになった
+（`playStep` `displayPat` `displayBar` は `drawLoop` が進めるので両方）。
+
+#### `tracks` / `PADS` の書き手（`node tools/module-check.mjs --tracks`）
+計画書が「最後に扱う」とした `tracks` / `PADS` の下調べ。`tracks[i].xxx=` と、別名（`const t=tracks[i]` / `tracks.forEach(t=>…)` / `for(const t of tracks)`）
+経由の `t.xxx=` を数える。`t[prop]=` のような動的なキー（P-LOCK の適用など）は数えていない。
+
+| 書かれる属性 | 書き手（モジュール：回数） | 書き手の数 |
+|---|---|---:|
+| `tracks.start` | plock-undo:1, presets:1, data/pads:1, ui-wave:1, edit-modal:4, chop:3, sampling:1, share-export:1 | 8 |
+| `tracks.buffer` | plock-undo:1, presets:1, data/pads:1, edit-modal:1, chop:3, sampling:1, share-export:2 | 7 |
+| `tracks.end` | plock-undo:1, presets:2, data/pads:1, edit-modal:4, chop:3, sampling:1, share-export:1 | 7 |
+| `tracks.loopStart` | plock-undo:1, presets:1, data/pads:1, edit-modal:4, chop:3, sampling:1, share-export:1 | 7 |
+| `tracks.rawBuffer` | plock-undo:1, presets:1, data/pads:1, edit-modal:1, chop:3, sampling:1, share-export:2 | 7 |
+| `tracks.cutoff` | engine-fx:1, plock-undo:1, ui/performance-view:2, data/pads:1, chop:1, share-export:1 | 6 |
+| `tracks.filter` | engine-fx:1, plock-undo:1, ui/performance-view:3, data/pads:1, chop:1, share-export:1 | 6 |
+| `tracks.loop` | plock-undo:1, presets:1, data/pads:1, chop:3, sampling:1, share-export:1 | 6 |
+| `tracks.name` | plock-undo:1, data/pads:1, edit-modal:1, chop:3, sampling:2, share-export:1 | 6 |
+| `PADS.type` | plock-undo:1, data/pads:3, chop:3, sampling:1, share-export:1 | 5 |
+| `tracks.mute` | plock-undo:1, ui/pads-view:1, ui-copy:1, chop:1, share-export:1 | 5 |
+| `PADS.voice` | plock-undo:1, data/pads:3, chop:2, share-export:1 | 4 |
+| `tracks.choke` | plock-undo:1, data/pads:1, chop:2, share-export:1 | 4 |
+| `tracks.key` | plock-undo:1, data/pads:1, ui-window:1, share-export:1 | 4 |
+| `tracks.loopPlaying` | voice:2, ui/seq-view:2, audio/transport:5, share-export:1 | 4 |
+| `tracks.midiNote` | plock-undo:1, data/pads:1, ui-window:1, share-export:1 | 4 |
+| `tracks.reso` | plock-undo:1, data/pads:1, chop:1, share-export:1 | 4 |
+| `tracks.tune` | plock-undo:1, data/pads:1, chop:2, share-export:1 | 4 |
+| `tracks.vol` | plock-undo:1, data/pads:1, chop:2, share-export:1 | 4 |
+| `tracks.attack` | plock-undo:1, data/pads:1, share-export:1 | 3 |
+| `tracks.delaySend` | plock-undo:1, data/pads:1, share-export:1 | 3 |
+| `tracks.fade` | plock-undo:1, data/pads:1, share-export:1 | 3 |
+| `tracks.locks` | plock-undo:3, ui-copy:1, share-export:1 | 3 |
+| `tracks.outBus` | plock-undo:1, data/pads:1, share-export:1 | 3 |
+| `tracks.reverbSend` | plock-undo:1, data/pads:1, share-export:1 | 3 |
+| `tracks.scale` | plock-undo:1, data/pads:1, share-export:1 | 3 |
+| `tracks.solo` | plock-undo:1, ui-copy:1, share-export:1 | 3 |
+| `PADS.name` | edit-modal:1, share-export:1 | 2 |
+| `tracks.patterns` | plock-undo:1 | 1 |
+
+属性 29 種 / 代入 177 箇所
+
+読み方：
+- どの属性も `plock-undo`（undo 復元）と `share-export`（.mics 読込）と `data/pads`（COPY / MOVE）が書く。これは復元・複製の経路で、入口の一種
+- それ以外の「本当の編集入口」は属性ごとにほぼ1〜2箇所：`start/end/loopStart` は `edit-modal`（ハンドル）と `chop`（LOAD / CHOPPY）、
+  `cutoff/filter` は `ui/performance-view`（P-LOCK ドラッグ）と `chop`、`name` は `edit-modal`（改名）と `chop` `sampling`（取込名）
+- `loopPlaying` だけは音側（`voice` `audio/transport`）と表示側（`ui/seq-view`）の両方が書く＝Phase 3 の次の段で見る候補
+- `tracks.patterns` は `plock-undo` の復元だけ（ステップの ON/OFF は `patterns[p][b][s]=` の要素代入で、この表には出ない）
+
+### 結果（Phase 3 第2段）
+| 項目 | 結果 |
+|---|---|
+| 部品 | 52（変わらず） |
+| 最上位宣言 | 406 → 408（`startTransport` `stopTransport`） |
+| `module-check` | ✔ 問題なし・警告 0（`--tracks` レポートを追加） |
+| `check.mjs` | 7i に「▶ で startTransport（playing・スケジューラ・ボタン）」「■ で stopTransport（…カーソル・ボタン）」を追加 |
+| `gate` | ✔ 全関門クリア |
+
+### 次の段の候補
+- `loopPlaying` の書き手を音側に寄せる（`ui/seq-view` はトグル要求を投げるだけに）
+- ステップの ON/OFF（`patterns[p][b][s]=`）の書き手を `--tracks` に含める
+- Phase 4：開発用プレビュー（`tools/dev.html`）
