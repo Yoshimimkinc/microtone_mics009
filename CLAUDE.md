@@ -118,6 +118,8 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
    - 各 `src/js/**/*.js` の先頭に **`@module / @provides / @uses / @depends`** がある（v0.3.129〜、`docs/maintainability-modularization-plan.md` Phase 1）。
      触る前に `@uses` と `@depends` で影響範囲を見る。関数や変数を足した／消したら **`node tools/module-check.mjs --write`** で
      ヘッダを実装に合わせる（手で書かない。ズレは関門 `module-check` が止める）。記録は `docs/modularization-log.md`
+   - **ビルドなしで確かめる**：`python3 -m http.server 8137` → `http://localhost:8137/tools/dev.html`（`src/` を manifest の順に個別に読む。
+     エラーが `src/js/…:行` で出る。v0.3.136〜 Phase 4）。公開物ではないので、**最終確認は生成後の `mics-609bc14b.html`** で
 2. ブランチに push → GitHub Actions が **gate（関門）** と **pages（`/preview/<branch>/` に配置）** を回す
 3. **プレビューを実機で触ってから** PR → merge（main が本番URLに出る）。タグと Release は `release.yml` が自動で打つ
 4. 判断待ち・宿題は Issues に（`role:qa` `role:player` `role:feel` … のラベル）
@@ -128,7 +130,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.135
+MICS009 beta v0.3.136
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

@@ -391,3 +391,41 @@ Space / MIDI Start・Stop / GTR / 共有の試聴は従来どおり `playBtn.cli
 ### 次の段の候補
 - ● REC 中の手叩き記録（`voice` が `patterns[displayPat][displayBar][playStep]=` を直接書く）を `data/patterns` の `setStepAt` に
 - Phase 4：開発用プレビュー（`tools/dev.html`）
+
+## Phase 4：開発用プレビュー（v0.3.136）
+
+`tools/dev.html`。`src/manifest.json` の順に部品を**そのまま**読み込む（バージョンは `version.json` を差し込む）。
+ビルドを挟まずに直した部品を確かめられ、ブラウザのエラーが `src/js/…:行` で出る（各 JS に `//# sourceURL` を付ける）。
+
+```sh
+python3 -m http.server 8137      # リポジトリの根で
+# → http://localhost:8137/tools/dev.html
+```
+
+### 作り
+- `<base href="../">` でリポジトリの根を基準にする（`default.mics` `version.json` の相対パスが公開物と同じに解決する）
+- 外枠（`shell/*.html`）は読まず dev.html 自身が持つ。CSS は `<style data-src>`、body は `insertAdjacentHTML`、JS は `<script data-src>` に**同期**で差し込む
+- **先に全部 fetch してから一気に差し込む**。最初は部品ごとに `await fetch` していたら、`60-autosave` の `loadPresets().then(…)` が
+  `80-skin-version-splash` の `APP_VERSION` より先に走って `default.mics` を読めなかった（単一 HTML では起きない順序）
+- 単一 HTML では `<script>` が `load` より前に走るが、ここは `load` の後に差し込むので、差し込み終わりに `window.dispatchEvent(new Event('load'))`
+  を送る（`61-layout` の `lockViewHeight` / `relocate*` / `updatePerf` が `load` 待ち）
+
+### 単一 HTML との違い（知っておくこと）
+- 部品ごとに別の `<script>` ＝ **読み込み時に後ろの部品の関数を呼ぶと ReferenceError**（単一 HTML では巻き上げで動いてしまう）。
+  `module-check` が同じ条件を警告するので、警告 0 なら同じに動く。dev.html はその「巻き上げ頼み」を実行でも炙り出す
+- 公開物ではない（pages は `mics-609bc14b.html` だけを配る）。**最終確認は必ず生成後の `mics-609bc14b.html`**（計画書の制約）
+
+### 検査
+`check.mjs` に `devShell`：部品数が manifest どおり／バージョン差し込み・起動・`default.mics` 読込／`load` 待ちの処理が走る（1280×800 で perf）／0 errors。
+公開物の検査は他の項目が全部やる。dev.html は「壊れていない」ことだけ見る（部品を足したときに落ちる）。
+
+### 結果
+| 項目 | 結果 |
+|---|---|
+| 追加 | `tools/dev.html`（60行）。`src/` は触っていない |
+| `check.mjs` | `devShell` 4 項目 |
+| `gate` | ✔ 全関門クリア |
+
+## Phase 5（ES Modules 化）について
+計画書どおり**まだ入れない**。dev.html で「部品ごとに別スクリプト」の動作が得られたので、`import/export` に進む前に確認すべき
+「読み込み順への依存」は `module-check` の警告と dev.html の実行の両方で見える。必要になったら判断する。

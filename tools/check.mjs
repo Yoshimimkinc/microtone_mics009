@@ -649,8 +649,27 @@ async function copyPaint(){
   eq(`COPY/MOVE 0 errors`, errs, []);
   await ctx.close();
 }
+// Phase 4：開発用プレビュー（tools/dev.html＝src/ を個別に読む）が公開物と同じに起動する。
+// 公開物の検査はこのファイルの他の項目が全部やる。ここは「dev.html が壊れていない」ことだけ見る（部品を足した時に落ちる）
+async function devShell(){
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e))); p.on('console',m=>{ if(m.type()==='error'||m.type()==='warning') errs.push(m.type()+': '+m.text().slice(0,120)); });
+  await p.goto(`http://localhost:${PORT}/tools/dev.html`,{waitUntil:'load'});
+  await ready(p);
+  const man=JSON.parse(await (await import('node:fs/promises')).readFile('src/manifest.json','utf8'));
+  const ver=JSON.parse(await (await import('node:fs/promises')).readFile('version.json','utf8')).version;
+  const d=await p.evaluate(()=>({ shell:window.__DEV_SHELL__, ver:APP_VERSION, pads:document.querySelectorAll('#pads .pad').length, rows:document.querySelectorAll('#grid .row').length,
+    styles:document.querySelectorAll('style[data-src]').length, scripts:document.querySelectorAll('script[data-src]').length, b0:!!tracks[0].buffer, b9:!!tracks[9].buffer, perf:document.body.classList.contains('perf') }));
+  const css=man.parts.filter(x=>x.endsWith('.css')).length, js=man.parts.filter(x=>x.endsWith('.js')).length;
+  ok_(`dev.html 部品が manifest どおり（CSS ${css} / JS ${js}）`, d.styles===css && d.scripts===js && d.shell && d.shell.parts===man.parts.length-4, JSON.stringify(d.shell)+` styles=${d.styles} scripts=${d.scripts}`);
+  ok_(`dev.html バージョン差し込み・起動・default.mics`, d.ver===ver && d.pads===16 && d.rows===16 && d.b0 && d.b9, JSON.stringify(d));
+  ok_(`dev.html load 待ちの処理も走る（1280×800 は perf）`, d.perf===true, 'body.perf が無い');
+  eq(`dev.html 0 errors`, errs, []);
+  await ctx.close();
+}
 await passGate();
 await copyPaint();
+await devShell();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
