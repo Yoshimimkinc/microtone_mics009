@@ -46,6 +46,7 @@ node tools/module-check.mjs           # 検査（関門が呼ぶ）
 node tools/module-check.mjs --write   # 各 JS の先頭ヘッダを実装に合わせて書き直す
 node tools/module-check.mjs --print   # 書き直す前に中身を見る
 node tools/module-check.mjs --report  # docs 用の一覧（Markdown）
+node tools/module-check.mjs --tracks  # tracks[i].xxx= / PADS[i].xxx= の書き手一覧（Markdown。別名 const t=tracks[i] も追う）
 ```
 `src/js/*.js` の先頭にある `@module / @provides / @uses / @depends` を、**TypeScript の構文解析で実装から導いた値と突き合わせる**。
 - `@provides`：そのファイルがファイル直下で宣言する関数・変数（他ファイルから見える名前）

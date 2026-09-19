@@ -333,7 +333,11 @@ async function run(w,h,mobile){
   // 7i) ★どのレイアウトでも再生中は STEP/STATE が生きている（W6 NG-1・v0.3.98。perf限定で「--」「■ STOP」のままだった）
   await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(700);
   const live=await p.evaluate(()=>({step:document.getElementById('clStep').textContent, playing:document.querySelector('.perf-screen').classList.contains('playing')}));
+  const tpOn=await p.evaluate(()=>({playing, sched:schedTimer!==null, btn:document.getElementById('play').textContent}));
   await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
+  const tpOff=await p.evaluate(()=>({playing, sched:schedTimer, step:playStep, btn:document.getElementById('play').textContent, cur:document.querySelectorAll('#grid .step.cursor').length}));
+  ok_(`${V} ▶ で startTransport（playing・スケジューラ・ボタン）`, tpOn.playing===true && tpOn.sched===true && tpOn.btn==='■', JSON.stringify(tpOn));
+  ok_(`${V} ■ で stopTransport（playing・スケジューラ・カーソル・ボタン）`, tpOff.playing===false && tpOff.sched===null && tpOff.step===0 && tpOff.btn==='▶' && tpOff.cur===0, JSON.stringify(tpOff));
   ok_(`${V} 再生中にSTEPが進む表示`, /^\d\d\/16$/.test(live.step), live.step);
   ok_(`${V} 再生中は窓が点く（.playing）`, live.playing===true, 'playing クラスが無い');   // 文字の ▶ PLAY は撤去（▶ボタンと二重）
 
