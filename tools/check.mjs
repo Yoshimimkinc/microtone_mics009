@@ -627,6 +627,13 @@ async function copyPaint(){
   await p.setInputFiles('#samp', wavPath); await p.waitForTimeout(1500);
   const l=await p.evaluate(()=>({ name:tracks[9].name, type:PADS[9].type, nm:document.querySelectorAll('#pads .pad')[9].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[9].textContent, cat:document.querySelectorAll('#pads .pad')[9].className }));
   ok_(`LOAD 名前・パッド表示・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WA' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
+  // Phase 3：EDIT モーダルの ● SMPL / LOAD は selected を直書きせず selectPad（入口）を通る＝エディタ側の選択表示も追従
+  await p.evaluate(()=>{ document.getElementById('peClose').click(); selectPad(0); openPadEdit(4); });
+  await p.waitForTimeout(600);
+  const sm=await p.evaluate(()=>{ document.getElementById('peSmplBtn').click();
+    const r={ sel:selected, pe:peTarget, selCls:document.querySelectorAll('#pads .pad')[4].classList.contains('sel'), ov:document.getElementById('recOverlay').classList.contains('show') };
+    document.getElementById('recCancel').click(); return r; });
+  ok_(`モーダルの ● SMPL は selectPad 経由（選択表示も追従）`, sm.sel===4 && sm.pe===4 && sm.selCls===true && sm.ov===true, JSON.stringify(sm));
   eq(`COPY/MOVE 0 errors`, errs, []);
   await ctx.close();
 }

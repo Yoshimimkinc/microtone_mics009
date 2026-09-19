@@ -5,7 +5,7 @@
 //    displayPat, editBar, editPat, getPattern, melodicMode, paintMelodic, paintPatBar, paintStepStrip,
 //    playStep, playVoice, playing, pushUndo, scaleSemi, selectPad, selected, stepBtns, stopVoices, tracks,
 //    trigger, viewSeqEl, vuHit
-// @depends boot, engine-fx
+// @depends boot, app/state
 // ---------- SEQ 画面：16×16 グリッドの生成・ステップ表示・再生カーソル ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。paintSteps/moveCursors は表示更新だけ（データは触らない）
 // column numbers (1..16)

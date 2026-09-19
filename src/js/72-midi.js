@@ -1,8 +1,8 @@
 // @module midi
 // @provides _ckTimes, _ckUiT, _midiNoteTimes, assignTo, clRetargetLearn, handleClock, handleMIDI, inBlink,
 //    midiBlink, midiEnabled, midiNoteName, midiSync
-// @uses AC, _ledT, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, paintPerf, playBtn,
-//    playVoice, playing, pushUndo, sampNameEl, selected, setDelayTempo, tracks, trigger
+// @uses AC, _ledT, applyBpm, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, playBtn,
+//    playVoice, playing, pushUndo, sampNameEl, selected, tracks, trigger
 // @depends -
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
@@ -25,11 +25,7 @@ function handleClock(b0){
     const span=_ckTimes[_ckTimes.length-1]-_ckTimes[0];
     const bpm=60000/((span/(_ckTimes.length-1))*24);
     if(bpm>=40 && bpm<=250 && Math.abs(bpm-bpmVal)>0.3){
-      bpmVal=Math.round(bpm*10)/10;
-      const bi=document.getElementById("bpm"); if(bi) bi.value=bpmVal;
-      const br=document.getElementById("bpmRead"); if(br) br.textContent=bpmVal.toFixed(1);
-      if(typeof setDelayTempo==="function") setDelayTempo();
-      if(typeof paintPerf==="function") paintPerf();   // PerformanceのBPM表示が固まらないように
+      applyBpm(Math.round(bpm*10)/10);   // テンポの入口は applyBpm（表示・ディレイ・再生中の位相維持まで一括。v0.3.133）
       if(!_ckUiT){ _ckUiT=1; sampNameEl.textContent="SYNC — EXT CLOCK"; }   // 告知は最初の1回だけ。以後BPM表示だけ静かに追従
     }
   }

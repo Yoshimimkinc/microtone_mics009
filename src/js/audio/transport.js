@@ -1,15 +1,14 @@
 // @module audio/transport
-// @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, bpmVal, clickHi, clickLo,
-//    drawQueue, driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick,
-//    scheduleStep, scheduler, staggerSec, stepTimeClean, swingDelayTicks, swingPct, tickDur
-// @uses AC, PADS, PERF_BASE, STEPS, anySolo, getLockPlay, getPlayPattern, isMelodic, mainOut, patLength,
-//    perfDrag, perfRecArm, perfSnap, playBar, playPat, playVoice, pushUndo, queuedPat, scaleSemi,
-//    setLockPlay, stepIdx, stopVoices, tracks
+// @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
+//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
+//    scheduler, staggerSec, stepTimeClean, swingDelayTicks, tickDur
+// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, getLockPlay, getPlayPattern, isMelodic, mainOut,
+//    patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat, playVoice, pushUndo, queuedPat, scaleSemi,
+//    setLockPlay, stepIdx, stopVoices, swingPct, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
-let bpmVal = 100;
-let swingPct = 50;          // SP流 離散値: 50/54/58/63/67/71
+// bpmVal / swingPct は app/state.js（書く入口は applyBpm と swing の change）
 
 // SP-1200: シーケンサー解像度 24PPQ。16分音符 = 6tick。
 // 全ステップの時刻をマスタークロック（tick）から絶対位置で導出する。

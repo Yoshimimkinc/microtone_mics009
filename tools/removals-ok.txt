@@ -14,3 +14,6 @@ _ct
 # v0.3.126 メニューの TAP ボタンを撤去。タップテンポは窓の BPM カードを叩く操作で代行（tapTempoDown/Up、§137）
 tapBtn [pointerdown]
 tapBtn
+# v0.3.133 MIDI クロック同期の BPM 直書き（bpmVal= と #bpm/#bpmRead の直接更新）を applyBpm（テンポの唯一の入口）に置換。Phase 3 app/state の @writers
+bi
+br

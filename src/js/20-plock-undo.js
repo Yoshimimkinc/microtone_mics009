@@ -1,14 +1,13 @@
 // @module plock-undo
 // @provides NOTE_NAMES, PLOCKS, SCALES, clearLockEdit, dbToGain, doUndo, getLockEdit, getLockPlay,
-//    isMelodic, lockKey, melodicMode, noteLabel, paintMelodic, patLength, pushUndo, refreshSeqMode,
-//    restoreState, scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState, stripLegacyLocks,
-//    undoStack
+//    isMelodic, lockKey, noteLabel, paintMelodic, patLength, pushUndo, refreshSeqMode, restoreState,
+//    scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState, stripLegacyLocks, undoStack
 // @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
 //    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
-//    masterGain, nextChokeGroup, paintMixer, paintPadName, paintPadStates, paintPatBar, paintSteps,
-//    playStep, playing, rowEls, saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct,
-//    tracks
+//    masterGain, melodicMode, nextChokeGroup, paintMixer, paintPadName, paintPadStates, paintPatBar,
+//    paintSteps, playStep, playing, rowEls, saturator, scheduleAutosave, selectPad, selected, setCompBypass,
+//    swingPct, tracks
 // @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
@@ -121,7 +120,6 @@ function doUndo(){ const s=undoStack.pop(); if(!s) return; restoreState(s); }
 // ===== 音階モード（モノ・ベース打ち込み） =====
 const SCALES={ maj:[0,2,4,5,7,9,11], min:[0,2,3,5,7,8,10], pent:[0,3,5,7,10] };  // chroは半音=idx
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-let melodicMode=false;   // 選択中パッドが音階モードか（SEQ盤面の表示を切替）
 function isMelodic(i){ return !!(tracks[i] && tracks[i].scale && tracks[i].scale!=="off"); }
 function scaleSemi(sc, idx){ if(sc==="chro"||!SCALES[sc]) return idx; const a=SCALES[sc]; return Math.floor(idx/a.length)*12 + a[idx%a.length]; }
 function noteLabel(sc, idx){ const s=scaleSemi(sc,idx); return NOTE_NAMES[((s%12)+12)%12]+Math.floor(s/12); }

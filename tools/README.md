@@ -54,6 +54,8 @@ node tools/module-check.mjs --report  # docs 用の一覧（Markdown）
 検査は 1) `@module` 重複 2) `@depends` の不在 3) 連結順で依存先が後ろ 4) 同名の最上位宣言が2ファイル 5) ヘッダ無し
 6) ヘッダと実装の過不足。**ヘッダは手で書かず `--write` で揃える**（不一致は関門が止める）。
 読み込み時に後ろのファイルの `let/const` を触る参照（連結順で未初期化）も実装の問題として止める。
+7) **`app/state` の `@writers`**（v0.3.133）：`js/app/state.js` の各 `let` 行末に `@writers mod, mod`（無ければ `-`）。
+そこに無いモジュールがその変数へ代入（`x=` `x+=` `x++`）していれば `ファイル:行` で止める。列挙にあるのに書いていなければ警告。
 `static-check.mjs`（ファイルの中）と `module-check.mjs`（ファイルの間）で役割を分けている。
 
 ## `dead-controls.mjs` — 押しても何も起きないコントロール

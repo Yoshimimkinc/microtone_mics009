@@ -35,8 +35,8 @@ document.getElementById("sampleBtn").addEventListener("click",()=>{ pickCaptureT
 // EDITモーダル内の LOAD / ● SMPL：編集中パッド(peTarget)を取り込み先にして既存フローを再利用
 (function(){
   const pl=document.getElementById("peLoadBtn"), ps=document.getElementById("peSmplBtn");
-  if(pl) pl.addEventListener("click",()=>{ selected=peTarget; document.getElementById("samp").click(); });
-  if(ps) ps.addEventListener("click",()=>{ selected=peTarget; openSampleOverlay(); });
+  if(pl) pl.addEventListener("click",()=>{ selectPad(peTarget); document.getElementById("samp").click(); });   // selected の入口は selectPad（v0.3.133）
+  if(ps) ps.addEventListener("click",()=>{ selectPad(peTarget); openSampleOverlay(); });
 })();
 document.getElementById("recResmp").addEventListener("click",()=>{ _resampling=true; startRec(); });
 // ===== Guitar（GTR）から録る：同一オリジンiframeで演奏→PCMをpostMessageで受領（画面遷移なし＝ビートを失わない） =====
