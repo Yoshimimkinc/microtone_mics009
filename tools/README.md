@@ -30,6 +30,17 @@ build --check → static-check → module-check → check（合否）→ dead-co
 どうしても飛ばすときは `SKIP_GATE=1 git push`（理由をコミットメッセージに書く）。
 意図した撤去は `tools/removals-ok.txt` に理由つきで書かないと lost-listeners で止まる。
 
+## `dev.html` — 開発用プレビュー（ビルドなしで src/ を触る）
+```sh
+python3 -m http.server 8137          # リポジトリの根で
+# → http://localhost:8137/tools/dev.html
+```
+`src/manifest.json` の順に部品を**そのまま**読み込む（バージョンは `version.json` を差し込む）。ビルドを挟まずに直した部品を確かめられ、
+ブラウザのエラーが `src/js/…:行` で出る（各 JS に `//# sourceURL` を付ける）。公開物ではない（pages は `mics-609bc14b.html` だけを配る）。
+**最終確認は必ず生成後の `mics-609bc14b.html`**（`check.mjs` の他の項目はそれを検査する。`dev.html` 自身は `check.mjs` の
+「dev.html …」3項目で壊れていないことだけ見る）。単一 HTML との違いは部品ごとに別 `<script>` になること＝読み込み時に後ろの部品を
+触ると落ちる（`module-check` が同じ条件で警告する）。
+
 ## `static-check.mjs` — 静的検査（ブラウザ不要・1秒）
 ```sh
 node tools/static-check.mjs

@@ -18,6 +18,7 @@ src/ ──(tools/build.mjs)──▶ mics-609bc14b.html ──▶ GitHub ──
 | `src/body/` | 7枚：splash / header / menu-modal / pad-edit-modal / viewdots / view-pads / view-seq |
 | `src/js/` | 32枚：番号付き（boot / engine-* / plock-undo / voice / presets / ui-copy / ui-wave / ui-window / step-strip / menu / edit-modal / chop / autosave / layout / pattern-master / sampling / save-load / midi / share-export / skin-version-splash）＋ 責務別ディレクトリ `ui/`（status / pads-view / performance-view / seq-view）`data/`（pads / patterns）`audio/`（transport）＋ `ui/transport-view`、`app/`（state：アプリ状態と `@writers`）。新しい部品は責務別ディレクトリへ（Phase 2、`docs/modularization-log.md`） |
 | `src/manifest.json` | 連結する順番。部品を足す/消すときだけ触る |
+| `tools/dev.html` | 開発用プレビュー：`src/` を manifest の順に個別に読む（ビルド不要。`python3 -m http.server 8137` → `/tools/dev.html`）。公開物ではない |
 
 **`mics-609bc14b.html` は直接編集しない。** 生成物なので次のビルドで消える。
 うっかり直接編集しても関門（`build.mjs --check`）が「最初にズレる部品」を名指しで止める。

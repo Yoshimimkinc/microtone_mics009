@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#121417">
+<!--
+  開発用プレビュー（Phase 4、docs/maintainability-modularization-plan.md）
+  src/ の部品を manifest.json の順に「そのまま」読み込む。ビルド（tools/build.mjs）を挟まずに直した部品を確かめられ、
+  ブラウザのエラーが「どの部品の何行目か」で出る（各 JS に //# sourceURL=src/js/… を付ける）。
+    起動:  python3 -m http.server 8137   （リポジトリの根で）
+    開く:  http://localhost:8137/tools/dev.html
+  公開物ではない（pages は mics-609bc14b.html だけを配る）。最終確認は必ず生成後の mics-609bc14b.html で行う。
+  連結との違い：単一 HTML は1つの <script> なので後ろの関数宣言も巻き上げで呼べるが、ここは部品ごとに別の <script>＝
+  読み込み時に後ろの部品を触ると ReferenceError になる。module-check が同じ条件で警告するので、警告 0 なら同じに動く。
+-->
+<base href="../">
+<title>microtone MICS009 · DEV (src/)</title>
+<link rel="icon" href="data:,">
+</head>
+<body>
+<script>
+(async()=>{
+  const t0=performance.now();
+  const man=await (await fetch('src/manifest.json',{cache:'no-store'})).json();
+  const version=(await (await fetch('version.json',{cache:'no-store'})).json()).version;
+  const text=async p=>{ const r=await fetch('src/'+p,{cache:'no-store'}); if(!r.ok) throw new Error('部品が読めない: src/'+p+' ('+r.status+')'); return (await r.text()).split(man.placeholder).join(version); };
+  const SKIP=new Set(['shell/00-head.html','shell/10-style-end.html','shell/20-script-open.html','shell/90-tail.html']);   // 外枠は dev.html 自身が持つ
+  // 先に全部読んでから一気に差し込む（途中で await を挟むと、前の部品の Promise が後ろの部品より先に走って
+  // 単一 HTML と順序が変わる。例：60-autosave の loadPresets().then が 80-… の APP_VERSION を見る）
+  const parts=man.parts.filter(p=>!SKIP.has(p));
+  const bodies=await Promise.all(parts.map(text));
+  parts.forEach((p,i)=>{ const body=bodies[i];
+    if(p.endsWith('.css')){ const s=document.createElement('style'); s.dataset.src='src/'+p; s.textContent=body; document.head.appendChild(s); }
+    else if(p.startsWith('body/')){ document.body.insertAdjacentHTML('beforeend', body); }
+    else if(p.endsWith('.js')){ const s=document.createElement('script'); s.dataset.src='src/'+p; s.textContent=body+'\n//# sourceURL=src/'+p; document.body.appendChild(s); }   // 同期実行＝manifest の順
+    else throw new Error('扱えない部品: '+p); });
+  // 単一 HTML では <script> が load より前に走る。ここでは load の後に差し込むので、window の load 待ち
+  //（61-layout の lockViewHeight / relocate* / updatePerf など）へ同じ合図を送る
+  window.dispatchEvent(new Event('load'));
+  window.__DEV_SHELL__={parts:parts.length, version, ms:Math.round(performance.now()-t0)};
+  console.log('%cDEV shell: src/ の部品 '+parts.length+' 個を読み込み（v'+version+'、'+window.__DEV_SHELL__.ms+'ms）','color:#3dd6c4');
+})().catch(e=>{ console.error(e); document.body.insertAdjacentHTML('beforeend','<pre style="color:#ff4d4d;padding:16px;font:14px/1.5 monospace;white-space:pre-wrap">DEV shell: '+String(e&&e.message||e).replace(/</g,'&lt;')+'\n\nリポジトリの根で python3 -m http.server 8137 を起動し、http://localhost:8137/tools/dev.html を開く</pre>'); });
+</script>
+</body>
+</html>
