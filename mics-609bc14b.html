@@ -1025,7 +1025,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.133</div>
+  <div class="s-ver" id="splashVer">v0.3.134</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1430,15 +1430,15 @@ let editDrag = null;    // EDIT中のパッド間ドラッグ並べ替え状態�
 let assignTarget=-1;    // ASSIGN待機中のパッド（MIDI/PCキー共通）  @writers ui-window, midi, chop
 
 // --- 再生（一時。bpm / swing は保存） ---
-let playing = false;    // 再生中か  @writers ui/transport-view
+let playing = false;    // 再生中か。入口は startTransport / stopTransport  @writers audio/transport
 let recording = false;  // ● REC（演奏をステップへ記録）  @writers ui/transport-view
-let stepIdx = 0;        // スケジューラが次に予約するステップ  @writers audio/transport, ui/transport-view
-let playStep = 0;       // 表示中のステップ（カーソル）  @writers ui/transport-view
-let playPat = 0;        // 再生中パターン（スケジューラ用）  @writers audio/transport, ui/transport-view
-let playBar = 0;        // 再生中の小節（スケジューラ用）  @writers audio/transport, ui/transport-view
-let queuedPat = null;   // 予約中パターン（次の小節アタマで切替）  @writers pattern-master, audio/transport, ui/transport-view, share-export
-let displayPat = 0;     // 表示中の再生パターン（drawLoop用）  @writers ui/transport-view
-let displayBar = 0;     // 表示中の再生小節（drawLoop用）  @writers ui/transport-view
+let stepIdx = 0;        // スケジューラが次に予約するステップ  @writers audio/transport
+let playStep = 0;       // 表示中のステップ（カーソル）  @writers audio/transport, ui/transport-view
+let playPat = 0;        // 再生中パターン（スケジューラ用）  @writers audio/transport
+let playBar = 0;        // 再生中の小節（スケジューラ用）  @writers audio/transport
+let queuedPat = null;   // 予約中パターン（次の小節アタマで切替）  @writers pattern-master, audio/transport, share-export
+let displayPat = 0;     // 表示中の再生パターン（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
+let displayBar = 0;     // 表示中の再生小節（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
 let bpmVal = 100;       // テンポ（保存）。書く入口は applyBpm（chop）  @writers chop, plock-undo, share-export
 let swingPct = 50;      // スウィング（保存）。SP流 離散値: 50/54/58/63/67/71  @writers chop, plock-undo, share-export
 
@@ -3539,10 +3539,11 @@ function paintClPage(){
 // @module audio/transport
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
 //    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
-//    scheduler, staggerSec, stepTimeClean, swingDelayTicks, tickDur
-// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, getLockPlay, getPlayPattern, isMelodic, mainOut,
-//    patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat, playVoice, pushUndo, queuedPat, scaleSemi,
-//    setLockPlay, stepIdx, stopVoices, swingPct, tracks
+//    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
+// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, getLockPlay,
+//    getPlayPattern, isMelodic, mainOut, patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat,
+//    playStep, playVoice, playing, pushUndo, queuedPat, scaleSemi, setLockPlay, stepIdx, stopVoices,
+//    swingPct, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -3635,6 +3636,22 @@ function scheduleClick(when, acc){
   const g=AC.createGain(); g.gain.value=0.7;
   s2.connect(g); g.connect(mainOut); s2.start(Math.max(when,AC.currentTime));
 }
+// 再生の開始／停止（状態とスケジューラだけ。ボタンの表示・カーソル・VU は ui/transport-view が呼んだ後に描く）
+// v0.3.133 までは ▶ ボタンのハンドラが状態を直接書いていた。入口をここに置き、app/state の再生系は audio/transport だけが書く（Phase 3 第2段）
+function startTransport(){
+  playing=true;
+  stepIdx=0; playStep=0; drawQueue.length=0;
+  playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
+  tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
+  barStartTime=AC.currentTime+0.05;
+  schedTimer=setInterval(scheduler, INTERVAL);
+}
+function stopTransport(){
+  playing=false;
+  clearInterval(schedTimer); schedTimer=null;
+  drawQueue.length=0; playStep=0;
+  tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
+}
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、
   // バー基準を現在時刻へ引き直して取り戻す
@@ -3659,10 +3676,9 @@ function scheduler(){
 }
 // @module ui/transport-view
 // @provides drawLoop, playBtn, recBtn, updateRecBtnLabel
-// @uses AC, INTERVAL, barStartTime, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue,
-//    editPat, flashPad, kickVu, moveCursors, paintSteps, playBar, playPat, playStep, playing, pushUndo,
-//    queuedPat, recording, sampNameEl, schedTimer, scheduler, stepIdx, stopVoices, tracks,
-//    updateBarIndicator, updatePatIndicator, vuHit
+// @uses AC, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue, flashPad, kickVu,
+//    moveCursors, paintSteps, playStep, playing, pushUndo, recording, sampNameEl, startTransport,
+//    stopTransport, updateBarIndicator, updatePatIndicator, vuHit
 // @depends -
 // ---------- transport：表示とボタン（▶ / ●）。drawQueue を消化してパッド点灯・カーソル・パターン枠を描く ----------
 // 40-transport.js から分離（v0.3.132 Phase 2 第3段）。scheduler が積む drawQueue を rAF で消化するだけ＝音は出さない
@@ -3680,24 +3696,19 @@ function drawLoop(){
 }
 
 const playBtn=document.getElementById("play");
+// ▶ / ■：状態は startTransport / stopTransport（audio/transport）が書く。ここは表示だけ（v0.3.134）
+// 他所からの再生/停止（Space・MIDI Start/Stop・GTR・共有の試聴）は playBtn.click() でここを通る＝表示が必ず追従
 playBtn.addEventListener("click",async()=>{
   if(AC.state!=="running") await AC.resume();
-  playing=!playing;
+  if(!playing) startTransport(); else stopTransport();
   playBtn.classList.toggle("on",playing);
   playBtn.textContent=playing?"■":"▶";   // アイコンのみ（文字なし）
   if(playing){
-    stepIdx=0; playStep=0; drawQueue.length=0;
-    playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
-    tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
-    barStartTime=AC.currentTime+0.05;
-    schedTimer=setInterval(scheduler, INTERVAL);
     requestAnimationFrame(drawLoop);
     if(typeof kickVu==="function") kickVu();   // VUループ起動（停止中はアイドルで止まっている）
   } else {
-    clearInterval(schedTimer); schedTimer=null;
-    drawQueue.length=0; playStep=0; paintSteps();
+    paintSteps();
     clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
-    tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });   // ループ音を止めてトグル状態もリセット
   }
 });
 const recBtn=document.getElementById("rec");
@@ -5727,7 +5738,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.133";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.134";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
