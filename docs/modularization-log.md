@@ -350,3 +350,44 @@ Space / MIDI Start・Stop / GTR / 共有の試聴は従来どおり `playBtn.cli
 - `loopPlaying` の書き手を音側に寄せる（`ui/seq-view` はトグル要求を投げるだけに）
 - ステップの ON/OFF（`patterns[p][b][s]=`）の書き手を `--tracks` に含める
 - Phase 4：開発用プレビュー（`tools/dev.html`）
+
+### 第3段：`loopPlaying` を音側へ、ステップの書き口を `setStep` に（v0.3.135）
+| 動かしたもの | 元 | 先 |
+|---|---|---|
+| 手叩きのループ・トグル（発音中なら止める／鳴らして `loopPlaying=true`） | `21-voice` の `trigger` と `ui/seq-view` の行名クリック（音階モード）の**2箇所に同じ分岐** | **`hitVoice(i, semi, accent)`（`21-voice`）**。戻り値 true=鳴った。表示（点灯・VU・記録）は呼び出し側 |
+| 全パッド停止＋ループ状態リセット | `stopTransport`（`audio/transport`）と `applyProject`（`share-export`）の同じ1行 | **`stopAllVoices(when)`（`21-voice`）** |
+| ステップの ON/OFF（`getPattern(i)[s]=v` ＋ OFF なら `clearLockEdit`） | `ui/seq-view`（通常・音階の2箇所）と `41-step-strip`（`toggleStepAt`、ドラッグの自動 ON） | **`setStep(i, s, v)`（`data/patterns`）** |
+
+`loopPlaying` の書き手は `voice` と `audio/transport`（スケジューラ）だけになった。`ui/seq-view` は音を出す判断をしない。
+
+#### `--tracks` の拡張：要素代入も数える
+`t.patterns[p][b][s]=` / `getPattern(i)[s]=` / `t.locks[k]=` / `t[prop]=` のような **`[…]` を含む代入**も追う（`[·]` で表す。
+`const pat=getPattern(i)` の別名は `tracks.patterns[·][·]` として扱う）。増えた行：
+
+| `tracks.patterns[·][·][·]` | voice:1, data/patterns:1, ui-copy:1 | 3 |
+| `tracks[·]` | engine-fx:1, ui/performance-view:4, data/pads:2, midi:2 | 4 |
+| `tracks.locks` | plock-undo:3, ui-copy:1, share-export:1 | 3 |
+| `tracks.locks[·]` | plock-undo:2, data/patterns:2, ui-copy:1 | 3 |
+| `tracks.loopPlaying` | voice:3, audio/transport:4 | 2 |
+| `tracks.patterns[·][·]` | data/patterns:2, share-export:3 | 2 |
+| `tracks.locks[·][·]` | plock-undo:2 | 1 |
+| `tracks.patterns` | plock-undo:1 | 1 |
+
+読み方：
+- `tracks.patterns[·][·][·]`（ステップ1つ）は `data/patterns`（`setStep`）のほか、`ui-copy`（ノートの COPY）と `voice`（● REC 中の手叩きを
+  `trigger` が直接書く）。`step-strip` の「値を入れたら自動 ON」も `setStep` に寄せた。次の段で `voice` の分を `setStepAt(i,p,b,s,v)` に寄せる候補
+- `tracks[·]`（`t[prop]=`：キーが動的）は P-LOCK の適用（`ui/performance-view` `engine-fx`）、COPY（`data/pads`）、MIDI CC（`midi`）
+- `tracks.locks[·]` は `plock-undo`（`setLockEdit` 等の入口）と `data/patterns`（COPY）と `ui-copy`（ノート COPY）
+
+### 結果（Phase 3 第3段）
+| 項目 | 結果 |
+|---|---|
+| 部品 | 52（変わらず） |
+| 最上位宣言 | 408 → 411（`hitVoice` `stopAllVoices` `setStep`） |
+| `--tracks` | 29 属性・177 箇所 → 34 種・199 箇所（要素代入を含めた分。`loopPlaying` の書き手 4 → 2） |
+| `check.mjs` | `hitVoice` のトグルと `stopAllVoices`／`setStep` の ON・OFF（OFF で p-lock も消える）を追加 |
+| `gate` | ✔ 全関門クリア |
+
+### 次の段の候補
+- ● REC 中の手叩き記録（`voice` が `patterns[displayPat][displayBar][playStep]=` を直接書く）を `data/patterns` の `setStepAt` に
+- Phase 4：開発用プレビュー（`tools/dev.html`）

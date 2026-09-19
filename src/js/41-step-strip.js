@@ -1,9 +1,9 @@
 // @module step-strip
 // @provides paintStepStrip, setActiveLock, stepBtns, stepShift, stepStripEl, stepTrackName, stripDrag,
 //    toggleStepAt
-// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, clearLockEdit, copyTap, curStepFor, doUndo,
-//    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls,
-//    sampNameEl, selectPad, selected, setCellWave, setLockEdit, trackWaveURL, tracks, updateRecBtnLabel
+// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, getLockEdit,
+//    getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls, sampNameEl, selectPad,
+//    selected, setCellWave, setLockEdit, setStep, trackWaveURL, tracks, updateRecBtnLabel
 // @depends boot, plock-undo, ui/transport-view
 // ===== GRID（Digitakt式）ステップ入力 =====
 function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
@@ -11,8 +11,7 @@ function toggleStepAt(s, accent){
   pushUndo();
   const pat=getPattern(selected); const cur=pat[s]||0;
   const nv = accent ? (cur===2?0:2) : (cur?0:1);
-  pat[s]=nv;
-  if(nv===0) clearLockEdit(selected, s);   // OFFにしたらそのステップのp-lockも消す
+  setStep(selected, s, nv);   // data/patterns（OFF ならそのステップの p-lock も消える）
   if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
   if(typeof paintPerf==="function") paintPerf();   // A-D/小節の「中身あり」ドットを更新
   if(typeof setCellWave==="function"){              // 発音セルのみ波形：変わった1セルだけ更新（軽量）
@@ -60,7 +59,7 @@ if(stepStripEl){
       const spec=PLOCKS[activeLock]; let v;
       if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let l=Math.log(stripDrag.startVal)+(dx/180)*(lmax-lmin); l=Math.max(lmin,Math.min(lmax,l)); v=Math.exp(l); }
       else { v=stripDrag.startVal+(dx/180)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); if(activeLock==="pitch"||activeLock==="nudge") v=Math.round(v); }
-      const pat=getPattern(selected); if(!(pat[stripDrag.s]>0)) pat[stripDrag.s]=1;   // 値を入れたら自動ON
+      if(!(getPattern(selected)[stripDrag.s]>0)) setStep(selected, stripDrag.s, 1);   // 値を入れたら自動ON（data/patterns）
       setLockEdit(selected, stripDrag.s, activeLock, v);
       paintStepStrip();
       sampNameEl.textContent="STEP "+String(stripDrag.s+1).padStart(2,"0")+" "+activeLock.toUpperCase()+" "+spec.fmt(v)+"  · "+stepTrackName();

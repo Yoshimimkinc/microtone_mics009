@@ -5,7 +5,7 @@
 //    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol,
 //    makeLofi, makeSatCurve, masterGain, multiOut, outBGain, paintMixer, paintPadName, paintPadStates,
 //    paintPatBar, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl, saturator,
-//    selectPad, setCompBypass, setDelayTempo, stopVoices, stripLegacyLocks, swingPct, tickDur, tracks
+//    selectPad, setCompBypass, setDelayTempo, stopAllVoices, stripLegacyLocks, swingPct, tickDur, tracks
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -73,7 +73,7 @@ document.getElementById("loadProjBtn").addEventListener("click",()=>{
 });
 async function applyProject(proj){
     // 読込前に鳴っている音を止め、ループ/予約状態をリセット（旧バッファの垂れ流し・状態ズレ防止）
-    tracks.forEach(t=>{ stopVoices(t, AC.currentTime); t.loopPlaying=false; });
+    stopAllVoices(AC.currentTime);
     queuedPat=null;
     // restore globals
     bpmVal=proj.bpm||100;

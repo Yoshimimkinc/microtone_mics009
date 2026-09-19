@@ -1,6 +1,6 @@
 // @module voice
-// @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, makeLofi, pitchBufferNN, playVoice,
-//    stopVoices, trigger, warmPitch
+// @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, hitVoice, makeLofi, pitchBufferNN,
+//    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
 //    playStep, playing, recording, reverbPre, sampNameEl, spDynOpen, tapeEcho, tracks, vuHit
@@ -225,6 +225,17 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   }
 }
 
+// 手叩きの共通部（音側だけ）：ループ系はトグル＝発音中なら止めて false、それ以外は鳴らして true。
+// loopPlaying を書くのはここと scheduler（audio/transport）だけ（v0.3.135 Phase 3 第3段）。表示（点灯・VU・記録）は呼び出し側
+function hitVoice(i, semi=0, accent=false){
+  const t=tracks[i];
+  if(t.loop && t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; return false; }
+  playVoice(i, AC.currentTime, accent, false, semi);
+  if(t.loop) t.loopPlaying=true;
+  return true;
+}
+// 全パッドの発音を止め、ループのトグル状態も戻す（停止・読込のとき）
+function stopAllVoices(when){ tracks.forEach(t=>{ stopVoices(t, when); t.loopPlaying=false; }); }
 // ---------- trigger (UI/seq 共通入口) ----------
 function trigger(i, time, accent=false){
   if(AC.state!=="running") AC.resume();
@@ -235,13 +246,8 @@ function trigger(i, time, accent=false){
     flashPad(i); return;
   }
   // ループ系は手叩きでトグル（ON→OFF→ON…）。発音中のトリガで止める＝短いノートも作れる
-  if(time==null && t.loop){
-    if(t.loopPlaying){ stopVoices(t, AC.currentTime); t.loopPlaying=false; flashPad(i); return; }
-    t.loopPlaying=true;
-  }
-  const when = (time!=null) ? time : AC.currentTime;
-  playVoice(i, when, accent, false);
-  flashPad(i);
+  if(time==null){ const on=hitVoice(i, 0, accent); flashPad(i); if(!on) return; }
+  else { playVoice(i, time, accent, false); flashPad(i); }
   if(typeof vuHit==="function") vuHit(i, accent);
   if(recording && playing){
     // 記録先は「いま鳴っている（表示中の）パターン/小節」。playPat/playBar はスケジューラが

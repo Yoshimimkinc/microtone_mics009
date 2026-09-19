@@ -1,9 +1,12 @@
 // @module data/patterns
-// @provides copyBar, copyPattern
-// @uses editPat, pushUndo, tracks
+// @provides copyBar, copyPattern, setStep
+// @uses clearLockEdit, editPat, getPattern, pushUndo, tracks
 // @depends -
-// ---------- パターン／小節のデータ更新：COPY の実体（DOM を触らない） ----------
+// ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
+// 編集中パターン（editPat/editBar）のステップを書く唯一の口（v0.3.135）。0=OFF / 1=ON / 2=アクセント / 音階モードは音程+1。
+// OFF にしたらそのステップの p-lock も消す。undo（pushUndo）と描画は呼び出し側
+function setStep(i, s, v){ getPattern(i)[s]=v; if(v===0) clearLockEdit(i, s); }
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ
   if(src===dst) return; pushUndo();
   for(let i=0;i<tracks.length;i++){ const t=tracks[i];
