@@ -3,7 +3,7 @@
 //    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
-//    playStep, playing, recording, reverbPre, sampNameEl, spDynOpen, tapeEcho, tracks, vuHit
+//    playStep, playing, recording, reverbPre, sampNameEl, setStepAt, spDynOpen, tapeEcho, tracks, vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -252,7 +252,7 @@ function trigger(i, time, accent=false){
   if(recording && playing){
     // 記録先は「いま鳴っている（表示中の）パターン/小節」。playPat/playBar はスケジューラが
     // 100ms先行して小節頭で進めているので、小節末の手叩きが次の小節／次パターンに入っていた
-    tracks[i].patterns[displayPat][displayBar][playStep] = accent?2:1;
+    setStepAt(i, displayPat, displayBar, playStep, accent?2:1);   // data/patterns
     paintSteps();
   }
 }

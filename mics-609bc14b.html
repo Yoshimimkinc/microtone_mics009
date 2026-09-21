@@ -1025,7 +1025,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.136</div>
+  <div class="s-ver" id="splashVer">v0.3.137</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -2295,7 +2295,7 @@ function dbToGain(db){ return Math.pow(10, db/20); }
 //    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
-//    playStep, playing, recording, reverbPre, sampNameEl, spDynOpen, tapeEcho, tracks, vuHit
+//    playStep, playing, recording, reverbPre, sampNameEl, setStepAt, spDynOpen, tapeEcho, tracks, vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -2544,7 +2544,7 @@ function trigger(i, time, accent=false){
   if(recording && playing){
     // 記録先は「いま鳴っている（表示中の）パターン/小節」。playPat/playBar はスケジューラが
     // 100ms先行して小節頭で進めているので、小節末の手叩きが次の小節／次パターンに入っていた
-    tracks[i].patterns[displayPat][displayBar][playStep] = accent?2:1;
+    setStepAt(i, displayPat, displayBar, playStep, accent?2:1);   // data/patterns
     paintSteps();
   }
 }
@@ -3089,7 +3089,7 @@ function swapPads(a,b){
 }
 
 // @module data/patterns
-// @provides copyBar, copyPattern, setStep
+// @provides copyBar, copyPattern, setStep, setStepAt
 // @uses clearLockEdit, editPat, getPattern, pushUndo, tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
@@ -3097,6 +3097,8 @@ function swapPads(a,b){
 // 編集中パターン（editPat/editBar）のステップを書く唯一の口（v0.3.135）。0=OFF / 1=ON / 2=アクセント / 音階モードは音程+1。
 // OFF にしたらそのステップの p-lock も消す。undo（pushUndo）と描画は呼び出し側
 function setStep(i, s, v){ getPattern(i)[s]=v; if(v===0) clearLockEdit(i, s); }
+// 任意のパターン p・小節 b のステップを書く（● REC 中の手叩き＝鳴っている小節へ記録。p-lock は触らない）
+function setStepAt(i, p, b, s, v){ tracks[i].patterns[p][b][s]=v; }
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ
   if(src===dst) return; pushUndo();
   for(let i=0;i<tracks.length;i++){ const t=tracks[i];
@@ -5742,7 +5744,7 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.136";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.137";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

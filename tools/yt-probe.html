@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><title>YouTube seek latency probe</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;background:#121417;color:#e8e4d8;margin:0;padding:12px}#pl{width:100%;max-width:640px;aspect-ratio:16/9;background:#000}
+button{font:inherit;padding:8px 14px;margin:6px 6px 6px 0;border-radius:6px;border:1px solid #32383f;background:#23282f;color:#e8e4d8}pre{white-space:pre-wrap;color:#3dd6c4}</style></head>
+<body>
+<!-- docs/youtube-trigger-study.md §5：IFrame Player API の seekTo → PLAYING までの時間を測る（公開物ではない）
+     開き方: python3 -m http.server 8137 → http://localhost:8137/tools/yt-probe.html?v=<動画ID>  （file:// では IFrame API が動かない） -->
+<h3>YouTube seek latency probe</h3>
+<div id="pl"></div>
+<div><button id="go">seek ×20 を測る</button><button id="one">1回だけ（タップ＝ユーザー操作扱い）</button> <span id="st">読み込み中…</span></div>
+<pre id="out"></pre>
+<h3>貼った位置から 2 秒を「自分のタブの音」で録る（SMPL の下調べ・PC の Chrome/Edge）</h3>
+<div><input id="url" placeholder="https://youtu.be/ID?t=83 を貼る" style="width:100%;max-width:640px;font:inherit;padding:8px;background:#0d1013;color:#e8e4d8;border:1px solid #32383f;border-radius:6px"></div>
+<div><button id="cap">この位置から 2 秒録る（共有ダイアログで「このタブ」＋タブの音声）</button><button id="play" disabled>録れた音を再生</button> <span id="st2"></span></div>
+<pre id="out2"></pre>
+<script>
+const v=new URLSearchParams(location.search).get('v')||'M7lc1UVf-VE';   // 既定は YouTube Developers のデモ動画
+const out=document.getElementById('out'), st=document.getElementById('st'); let P=null, t0=0, res=[], waiting=false;
+const tag=document.createElement('script'); tag.src='https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+function onYouTubeIframeAPIReady(){ P=new YT.Player('pl',{videoId:v,playerVars:{playsinline:1,controls:1,rel:0},events:{
+  onReady:()=>{ st.textContent='準備OK（'+v+'）。先に一度再生してバッファさせてから測る'; },
+  onStateChange:e=>{ if(e.data===YT.PlayerState.PLAYING && waiting){ waiting=false; const ms=performance.now()-t0; res.push(ms); log(); } },
+  onError:e=>{ st.textContent='onError '+e.data+'（101/150=埋め込み不可、2=ID 不正）'; } }}); }
+function log(){ const s=[...res].sort((a,b)=>a-b); const med=s[Math.floor(s.length/2)], worst=s[s.length-1];
+  out.textContent=`回数 ${res.length}  中央値 ${med.toFixed(0)}ms  最悪 ${worst.toFixed(0)}ms  最良 ${s[0].toFixed(0)}ms\n`+res.map(x=>x.toFixed(0)).join(', ')+'\nUA: '+navigator.userAgent; }
+async function seekOnce(){ const d=P.getDuration()||60; const to=5+Math.random()*Math.max(1,d-10); P.pauseVideo(); await new Promise(r=>setTimeout(r,300));
+  waiting=true; t0=performance.now(); P.seekTo(to,true); P.playVideo(); await new Promise(r=>setTimeout(r,1500)); if(waiting){ waiting=false; res.push(1500); log(); } }
+document.getElementById('one').onclick=()=>{ if(P) seekOnce(); };
+// ---- 自分のタブの音で録る（docs §8 SMPL の下調べ）----
+function parseYt(u){ try{ const x=new URL(u.trim()); let id=null, t=0;
+  if(/youtu\.be$/.test(x.hostname)) id=x.pathname.slice(1).split('/')[0]; else if(/youtube\.com$/.test(x.hostname)) id=x.searchParams.get('v')||(x.pathname.match(/\/(embed|shorts|live)\/([\w-]{11})/)||[])[2];
+  const ts=x.searchParams.get('t')||x.searchParams.get('start')||''; const m=ts.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/); if(m) t=(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);
+  return id&&/^[\w-]{11}$/.test(id)?{id,t}:null; }catch(_){ return null; } }
+let stream=null, AC=null, captured=null; const st2=document.getElementById('st2'), out2=document.getElementById('out2');
+document.getElementById('cap').onclick=async()=>{
+  const q=parseYt(document.getElementById('url').value); if(!q){ st2.textContent='URL が読めない（youtu.be/ID?t=83 か watch?v=ID&t=83）'; return; }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){ st2.textContent='この環境は getDisplayMedia が無い（iOS/Safari）＝SMPL は不可'; return; }
+  try{ if(!stream){ stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true,preferCurrentTab:true,selfBrowserSurface:'include',systemAudio:'exclude'}); }
+  }catch(e){ st2.textContent='共有できなかった: '+e.name; return; }
+  if(!stream.getAudioTracks().length){ st2.textContent='音声トラックが無い＝ダイアログで「タブの音声を共有」にチェック'; stream.getTracks().forEach(x=>x.stop()); stream=null; return; }
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)(); await AC.resume();
+  if(P.getVideoData().video_id!==q.id) P.loadVideoById(q.id, q.t); else P.seekTo(q.t,true);
+  P.playVideo(); st2.textContent='再生→録音中…';
+  const src=AC.createMediaStreamSource(new MediaStream(stream.getAudioTracks())); const chunks=[]; const sp=AC.createScriptProcessor(4096,1,1);
+  sp.onaudioprocess=e=>chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); src.connect(sp); sp.connect(AC.destination);
+  const t1=performance.now(); await new Promise(r=>setTimeout(r,2000+400)); sp.disconnect(); src.disconnect();
+  const n=chunks.reduce((a,c)=>a+c.length,0), pcm=new Float32Array(n); let o=0; for(const c of chunks){ pcm.set(c,o); o+=c.length; }
+  let pk=0, sum=0, first=-1; for(let i=0;i<n;i++){ const a=Math.abs(pcm[i]); if(a>pk) pk=a; sum+=a*a; if(first<0&&a>0.01) first=i; }
+  captured=AC.createBuffer(1,n,AC.sampleRate); captured.getChannelData(0).set(pcm); document.getElementById('play').disabled=false;
+  const rms=Math.sqrt(sum/n); out2.textContent=`${q.id} t=${q.t}s  録音 ${(n/AC.sampleRate).toFixed(2)}s（${AC.sampleRate}Hz）  peak ${pk.toFixed(3)}  RMS ${rms.toFixed(3)}  音が出始めるまで ${first<0?'—（無音＝取れていない）':(first/AC.sampleRate*1000).toFixed(0)+'ms'}\n`+(pk<0.01?'✖ 無音：共有で「タブの音声」が入っていないか、動画が埋め込み不可':'✔ 取れている（この道で SMPL が作れる）');
+  st2.textContent='完了（'+Math.round(performance.now()-t1)+'ms）'; P.pauseVideo(); };
+document.getElementById('play').onclick=()=>{ if(!captured) return; const s=AC.createBufferSource(); s.buffer=captured; s.connect(AC.destination); s.start(); };
+document.getElementById('go').onclick=async()=>{ if(!P) return; res=[]; for(let i=0;i<20;i++) await seekOnce(); st.textContent='完了'; };
+</script>
+</body></html>
