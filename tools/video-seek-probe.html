@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>local video seek probe</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;background:#121417;color:#e8e4d8;margin:0;padding:12px}video{width:100%;max-width:640px;background:#000}
+button{font:inherit;padding:8px 14px;margin:6px 6px 6px 0;border-radius:6px;border:1px solid #32383f;background:#23282f;color:#e8e4d8}pre{white-space:pre-wrap;color:#3dd6c4}</style></head>
+<body>
+<!-- docs/video-pad-study.md §7：手元の動画ファイルの seek の速さを測る（公開物ではない） -->
+<h3>local video seek probe</h3>
+<input type="file" id="f" accept="video/*"><br>
+<video id="v" muted playsinline preload="auto"></video>
+<div><button id="go" disabled>停止中 ×20 → 再生中 ×20 を測る</button> <span id="st">動画を選ぶ</span></div>
+<pre id="out"></pre>
+<script>
+const v=document.getElementById('v'), st=document.getElementById('st'), out=document.getElementById('out'), go=document.getElementById('go');
+document.getElementById('f').onchange=e=>{ const f=e.target.files[0]; if(!f) return; v.src=URL.createObjectURL(f); st.textContent=f.name+' '+(f.size/1e6).toFixed(1)+'MB 読み込み中…';
+  v.oncanplaythrough=()=>{ st.textContent=f.name+' '+v.videoWidth+'×'+v.videoHeight+' '+v.duration.toFixed(1)+'s'; go.disabled=false; }; v.onerror=()=>{ st.textContent='この動画は再生できない（'+(v.error&&v.error.code)+'）'; }; };
+const stats=a=>{ const s=[...a].sort((x,y)=>x-y); return `中央値 ${s[Math.floor(s.length/2)].toFixed(1)} / p90 ${s[Math.floor(s.length*0.9)].toFixed(1)} / 最悪 ${s[s.length-1].toFixed(1)} ms`; };
+async function seekOnce(t){ const t0=performance.now(); const fr=('requestVideoFrameCallback' in v)?new Promise(r=>v.requestVideoFrameCallback(()=>r(performance.now()-t0))):Promise.resolve(null);
+  const sk=new Promise(r=>v.addEventListener('seeked',()=>r(performance.now()-t0),{once:true})); v.currentTime=t; const a=await sk; const b=await Promise.race([fr,new Promise(r=>setTimeout(()=>r(null),800))]); return {a,b}; }
+go.onclick=async()=>{ go.disabled=true; const d=v.duration, rnd=()=>0.5+Math.random()*Math.max(1,d-1); const A=[],Af=[],B=[],Bf=[];
+  v.pause(); for(let i=0;i<20;i++){ const r=await seekOnce(rnd()); A.push(r.a); if(r.b!=null) Af.push(r.b); await new Promise(x=>setTimeout(x,80)); }
+  try{ await v.play(); }catch(e){ out.textContent='play() が拒否: '+e.name; }
+  for(let i=0;i<20;i++){ const r=await seekOnce(rnd()); B.push(r.a); if(r.b!=null) Bf.push(r.b); await new Promise(x=>setTimeout(x,150)); }
+  const t0=performance.now(); for(let i=0;i<16;i++){ v.currentTime=rnd(); await new Promise(x=>setTimeout(x,60)); } await new Promise(r=>{ if(!v.seeking) r(); else v.addEventListener('seeked',r,{once:true}); }); const burst=performance.now()-t0; v.pause();
+  out.textContent=`停止中  seeked: ${stats(A)}\n停止中  フレーム: ${Af.length?stats(Af):'（rVFC なし）'}\n再生中  seeked: ${stats(B)}\n再生中  フレーム: ${Bf.length?stats(Bf):'（rVFC なし）'}\n60ms×16 連打 合計 ${burst.toFixed(0)}ms（960 に近ければ取りこぼし無し）\n${v.videoWidth}×${v.videoHeight}  UA: ${navigator.userAgent}`; go.disabled=false; };
+</script>
+</body></html>
