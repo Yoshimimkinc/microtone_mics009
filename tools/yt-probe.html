@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><title>YouTube seek latency probe</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;background:#121417;color:#e8e4d8;margin:0;padding:12px}#pl{width:100%;max-width:640px;aspect-ratio:16/9;background:#000}
+button{font:inherit;padding:8px 14px;margin:6px 6px 6px 0;border-radius:6px;border:1px solid #32383f;background:#23282f;color:#e8e4d8}pre{white-space:pre-wrap;color:#3dd6c4}</style></head>
+<body>
+<!-- docs/youtube-trigger-study.md §5：IFrame Player API の seekTo → PLAYING までの時間を測る（公開物ではない）
+     開き方: python3 -m http.server 8137 → http://localhost:8137/tools/yt-probe.html?v=<動画ID>  （file:// では IFrame API が動かない） -->
+<h3>YouTube seek latency probe</h3>
+<div id="pl"></div>
+<div><button id="go">seek ×20 を測る</button><button id="one">1回だけ（タップ＝ユーザー操作扱い）</button> <span id="st">読み込み中…</span></div>
+<pre id="out"></pre>
+<script>
+const v=new URLSearchParams(location.search).get('v')||'M7lc1UVf-VE';   // 既定は YouTube Developers のデモ動画
+const out=document.getElementById('out'), st=document.getElementById('st'); let P=null, t0=0, res=[], waiting=false;
+const tag=document.createElement('script'); tag.src='https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+function onYouTubeIframeAPIReady(){ P=new YT.Player('pl',{videoId:v,playerVars:{playsinline:1,controls:1,rel:0},events:{
+  onReady:()=>{ st.textContent='準備OK（'+v+'）。先に一度再生してバッファさせてから測る'; },
+  onStateChange:e=>{ if(e.data===YT.PlayerState.PLAYING && waiting){ waiting=false; const ms=performance.now()-t0; res.push(ms); log(); } },
+  onError:e=>{ st.textContent='onError '+e.data+'（101/150=埋め込み不可、2=ID 不正）'; } }}); }
+function log(){ const s=[...res].sort((a,b)=>a-b); const med=s[Math.floor(s.length/2)], worst=s[s.length-1];
+  out.textContent=`回数 ${res.length}  中央値 ${med.toFixed(0)}ms  最悪 ${worst.toFixed(0)}ms  最良 ${s[0].toFixed(0)}ms\n`+res.map(x=>x.toFixed(0)).join(', ')+'\nUA: '+navigator.userAgent; }
+async function seekOnce(){ const d=P.getDuration()||60; const to=5+Math.random()*Math.max(1,d-10); P.pauseVideo(); await new Promise(r=>setTimeout(r,300));
+  waiting=true; t0=performance.now(); P.seekTo(to,true); P.playVideo(); await new Promise(r=>setTimeout(r,1500)); if(waiting){ waiting=false; res.push(1500); log(); } }
+document.getElementById('one').onclick=()=>{ if(P) seekOnce(); };
+document.getElementById('go').onclick=async()=>{ if(!P) return; res=[]; for(let i=0;i<20;i++) await seekOnce(); st.textContent='完了'; };
+</script>
+</body></html>

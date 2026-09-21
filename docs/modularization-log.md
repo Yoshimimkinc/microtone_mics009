@@ -429,3 +429,8 @@ python3 -m http.server 8137      # リポジトリの根で
 ## Phase 5（ES Modules 化）について
 計画書どおり**まだ入れない**。dev.html で「部品ごとに別スクリプト」の動作が得られたので、`import/export` に進む前に確認すべき
 「読み込み順への依存」は `module-check` の警告と dev.html の実行の両方で見える。必要になったら判断する。
+
+## Phase 3 第4段：● REC 中の手叩き記録を `setStepAt` に（v0.3.137）
+`trigger`（`21-voice`）が `tracks[i].patterns[displayPat][displayBar][playStep]=` を直接書いていた最後の1件を
+`setStepAt(i, p, b, s, v)`（`data/patterns`）に寄せた。これで `tracks.patterns[·][·][·]` の書き手は `data/patterns`（`setStep` / `setStepAt`）と
+`ui-copy`（ノートの COPY）だけ。計画書 Phase 3 の候補はここまでで一区切り。
