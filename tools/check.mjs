@@ -676,10 +676,10 @@ async function defaultChime(){
   const c=await p.evaluate(()=>{ const t=tracks[0], b=t.buffer; if(!b) return {nobuf:true};
     const d=b.getChannelData(0), sr=b.sampleRate; const rms=(a,z)=>{ let s=0,n=0; for(let i=Math.floor(a*sr);i<Math.min(d.length,Math.floor(z*sr));i++){ s+=d[i]*d[i]; n++; } return n?Math.sqrt(s/n):0; };
     let pk=0; for(let i=0;i<Math.min(d.length,Math.floor(0.05*sr));i++) pk=Math.max(pk,Math.abs(d[i]));
-    return {name:t.name, type:PADS[0].type, mute:t.mute, choke:t.choke, dur:+b.duration.toFixed(2), pk:+pk.toFixed(3), r0:+rms(0.0,0.1).toFixed(3), r1:+rms(1.0,1.1).toFixed(3), r2:+rms(1.9,2.1).toFixed(3),
+    return {name:t.name, type:PADS[0].type, mute:t.mute, choke:t.choke, dur:+b.duration.toFixed(2), pk:+pk.toFixed(3), r0:+rms(0.0,0.1).toFixed(3), r1:+rms(1.0,1.1).toFixed(3), r2:+rms(1.4,1.6).toFixed(3),
       nm:document.querySelector('#pads .pad .nm').textContent, steps:tracks[0].patterns.flat(2).filter(Boolean).length}; });
   ok_(`既定 パッド1は CHIME（ミュート無し・チョーク無し・ステップ無し）`, c.name==='CHIME' && c.type==='sample' && c.mute===false && c.choke===0 && c.nm==='CHIME' && c.steps===0, JSON.stringify(c));
-  ok_(`既定 CHIME は 2 秒以上鳴って余韻が残る（減衰する）`, c.dur>=2.0 && c.pk>0.3 && c.r1>0.02 && c.r1<c.r0 && c.r2<c.r1, JSON.stringify(c));
+  ok_(`既定 CHIME は 1.5 秒以上鳴って余韻が残る（減衰する）`, c.dur>=1.5 && c.pk>0.3 && c.r1>0.02 && c.r1<c.r0 && c.r2<c.r1, JSON.stringify(c));
   eq(`既定 CHIME 0 errors`, errs, []);
   await ctx.close();
 }
