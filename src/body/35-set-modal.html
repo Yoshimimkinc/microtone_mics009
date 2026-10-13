@@ -1,0 +1,37 @@
+    <!-- SET（セットリスト）：曲の並び・NEXT/PREV・LIVE（v0.3.141 §143） -->
+    <div class="modal-backdrop" id="setModal" style="display:none;">
+      <div class="modal set" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+        <div class="modal-head"><span id="setTitle">SET</span><button class="t" id="setClose" aria-label="Close">✕</button></div>
+        <div class="set-list" id="setList"></div>
+        <div class="set-row-add">
+          <input class="set-name" id="setNameIn" type="text" maxlength="24" placeholder="曲名（空なら SONG n）" autocomplete="off">
+          <button class="t" id="setAdd" title="いま鳴らしている曲をセットの末尾に足す">＋ いまの曲</button>
+          <button class="t" id="setDel" title="選んでいる曲をセットから外す">削除</button>
+        </div>
+        <div class="modal-btns set-nav">
+          <button class="t" id="setPrev">◀ PREV</button>
+          <button class="t" id="setNext">NEXT ▶</button>
+          <button class="t" id="setLive" title="画面を消さない・離脱を確認・編集系を触れなくする">LIVE</button>
+        </div>
+        <div class="modal-btns">
+          <button class="t" id="setLoad" title=".micset を読む">読む</button>
+          <button class="t" id="setSave" title=".micset を保存（全曲の音を同梱）">保存</button>
+          <input type="file" id="setFile" accept=".micset,.json" style="display:none;">
+        </div>
+        <div class="set-hint" id="setHint">曲を作って「＋ いまの曲」。本番は LIVE → NEXT で小節頭に次の曲へ。</div>
+      </div>
+    </div>
+    <!-- LIVE 画面：大きな NEXT と経過。パッドへ戻っても LIVE LOCK は続く -->
+    <div class="live-runner" id="liveRunner" style="display:none;">
+      <div class="live-head"><span class="live-badge">LIVE</span><span class="live-clock" id="liveClock">0:00</span><button class="t" id="liveOff" title="LIVE を解除">解除</button></div>
+      <div class="live-now"><b id="liveIdx">—</b><span id="liveName">セットが空</span><em id="liveBpm"></em></div>
+      <div class="live-next" id="liveNextName"></div>
+      <div class="live-big">
+        <button class="t live-prev" id="livePrev">◀</button>
+        <button class="t live-go" id="liveNext">NEXT ▶</button>
+      </div>
+      <div class="live-foot">
+        <button class="t" id="livePlay">▶ / ■</button>
+        <button class="t" id="livePads">パッドへ</button>
+      </div>
+    </div>

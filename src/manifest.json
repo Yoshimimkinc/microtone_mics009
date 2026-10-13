@@ -10,6 +10,7 @@
   "css/40-artware.css",
   "css/50-seq.css",
   "css/60-controls.css",
+  "css/65-set.css",
   "css/70-editor.css",
   "css/80-responsive.css",
   "css/90-small-splash.css",
@@ -17,6 +18,7 @@
   "body/10-splash.html",
   "body/20-header.html",
   "body/30-menu-modal.html",
+  "body/35-set-modal.html",
   "body/40-pad-edit-modal.html",
   "body/50-viewdots.html",
   "body/60-view-pads.html",
@@ -37,6 +39,7 @@
   "js/ui/seq-view.js",
   "js/data/pads.js",
   "js/data/patterns.js",
+  "js/data/set.js",
   "js/31-ui-copy.js",
   "js/32-ui-wave.js",
   "js/33-ui-window.js",
@@ -53,6 +56,7 @@
   "js/71-save-load.js",
   "js/72-midi.js",
   "js/73-share-export.js",
+  "js/ui/set-view.js",
   "js/80-skin-version-splash.js",
   "shell/90-tail.html"
  ]

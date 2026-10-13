@@ -667,9 +667,61 @@ async function devShell(){
   eq(`dev.html 0 errors`, errs, []);
   await ctx.close();
 }
+// §143 SET：曲を並べ、NEXT で小節頭に切り替わる。.micset の保存/読込、LIVE LOCK
+async function liveSet(){
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); try{ await idbOp("readwrite",st=>st.delete("set")); }catch(_){} });
+  // 3 曲：名前と BPM を変えて「＋ いまの曲」
+  const built=await p.evaluate(async()=>{ const out=[]; for(let k=0;k<3;k++){ tracks[0].name='S'+k; paintPadName(0); applyBpm(90+10*k); out.push(await setAddCurrent(k===1?'':'SONG-'+k)); }
+    return {out, n:setSongs.length, cur:setCur, names:setSongs.map(s=>s.name), bpms:setSongs.map(s=>s.proj.bpm), dec:setSongs.every(s=>s.dec&&s.dec[0]&&s.dec[0].lofi)}; });
+  ok_(`SET ＋いまの曲 ×3（名前・BPM・復号済み）`, built.n===3 && built.cur===0 && built.names.join(',')==='SONG-0,SONG 2,SONG-2' && built.bpms.join(',')==='90,100,110' && built.dec, JSON.stringify(built));
+  // 止まっているとき：選ぶと即差し替え
+  const now=await p.evaluate(()=>{ queueSong(1); return {cur:setCur, q:queuedSong, name:tracks[0].name, bpm:bpmVal, nm:document.querySelector('#pads .pad .nm').textContent}; });
+  ok_(`SET 停止中の選択は即差し替え（曲名・BPM・パッド表示）`, now.cur===1 && now.q===null && now.name==='S1' && now.bpm===100 && now.nm==='S1', JSON.stringify(now));
+  // 鳴っているとき：NEXT は予約 → 小節頭で切替（切替直後は playBar=0・stepIdx≤1）
+  await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(300);
+  const q=await p.evaluate(()=>{ setNext(); return {q:queuedSong, cur:setCur, name:tracks[0].name}; });
+  ok_(`SET 再生中の NEXT は予約（まだ切り替わらない）`, q.q===2 && q.cur===1 && q.name==='S1', JSON.stringify(q));
+  await p.waitForFunction(()=>setCur===2, null, {timeout:6000});
+  const sw=await p.evaluate(()=>({cur:setCur, q:queuedSong, name:tracks[0].name, bpm:bpmVal, playBar, playPat, step:stepIdx, playing}));
+  ok_(`SET 小節頭で切替（曲名・BPM・小節頭から・再生は続く）`, sw.cur===2 && sw.q===null && sw.name==='S2' && sw.bpm===110 && sw.playBar===0 && sw.playPat===0 && sw.step<=1 && sw.playing===true, JSON.stringify(sw));
+  const last=await p.evaluate(()=>setNext());
+  ok_(`SET 最後の曲で NEXT は何もしない`, last===false, String(last));
+  await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
+  // .micset の保存→読込（往復）
+  const rt=await p.evaluate(async()=>{ const f=buildSetFile(); const txt=JSON.stringify(f); setClear(); const n=await loadSetFile(JSON.parse(txt)); return {n, cur:setCur, names:setSongs.map(s=>s.name), kind:f.kind, name:tracks[0].name}; });
+  ok_(`SET .micset 往復（3 曲・cur・いまの曲）`, rt.kind==='micset' && rt.n===3 && rt.cur===2 && rt.names.length===3 && rt.name==='S2', JSON.stringify(rt));
+  // ファイルから（#setFile）
+  { const fsP=await import('node:fs/promises'); const f=`${SHOT}/set3.micset`; await fsP.writeFile(f, await p.evaluate(()=>JSON.stringify(buildSetFile())));
+    await p.evaluate(()=>setClear()); await p.setInputFiles('#setFile',f); await p.waitForFunction(()=>setSongs.length===3, null, {timeout:8000});
+    ok_(`SET #setFile で読める`, await p.evaluate(()=>setSongs.length===3 && setCur===2), 'not loaded'); }
+  // IndexedDB に残る → リロードで復元（曲の並びだけ。いまの曲は自動保存）
+  await p.waitForTimeout(1200);
+  await p.reload({waitUntil:'load'}); await ready(p); await p.waitForFunction(()=>typeof setSongs!=='undefined' && setSongs.length===3, null, {timeout:15000});
+  ok_(`SET リロードで復元（3 曲・cur）`, await p.evaluate(()=>setSongs.length===3 && setCur===2), await p.evaluate(()=>setSongs.length+'/'+setCur));
+  // モーダルと LIVE
+  await p.evaluate(()=>{ document.getElementById('menuBtn').click(); document.getElementById('setBtn').click(); });
+  const md=await p.evaluate(()=>({open:document.getElementById('setModal').style.display, rows:document.querySelectorAll('#setList .set-row').length, on:document.querySelector('#setList .set-row.on b').textContent, menu:document.getElementById('menuModal').style.display}));
+  ok_(`SET モーダル（3 行・現在が点灯・メニューは閉じる）`, md.open==='flex' && md.rows===3 && md.on==='03' && md.menu==='none', JSON.stringify(md));
+  await p.evaluate(()=>document.getElementById('setLive').click());
+  const lv=await p.evaluate(()=>({live:document.body.classList.contains('live'), runner:document.getElementById('liveRunner').style.display, modal:document.getElementById('setModal').style.display, idx:document.getElementById('liveIdx').textContent, edit:getComputedStyle(document.getElementById('holdEdit')).pointerEvents}));
+  ok_(`LIVE：body.live・LIVE 画面・編集系ロック`, lv.live===true && lv.runner==='flex' && lv.modal==='none' && lv.idx==='3 / 3' && lv.edit==='none', JSON.stringify(lv));
+  await p.evaluate(()=>document.getElementById('livePrev').click());
+  const pv=await p.evaluate(()=>({cur:setCur, idx:document.getElementById('liveIdx').textContent, name:tracks[0].name}));
+  ok_(`LIVE PREV（停止中＝即）`, pv.cur===1 && pv.idx==='2 / 3' && pv.name==='S1', JSON.stringify(pv));
+  await p.evaluate(()=>document.getElementById('liveOff').click());
+  ok_(`LIVE 解除`, await p.evaluate(()=>!document.body.classList.contains('live') && document.getElementById('liveRunner').style.display==='none'), 'still live');
+  await p.evaluate(async()=>{ setClear(); await clearAutosave(); });
+  eq(`SET 0 errors`, errs, []);
+  await ctx.close();
+}
 await passGate();
 await copyPaint();
 await devShell();
+await liveSet();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

@@ -1817,3 +1817,33 @@ SEQ 画面の行名（`.rn`）とステップ列の波形キャッシュは古�
 **v0.3.140 追記：中止。**「やっぱり中止」→ `default.mics` のパッド1を元の PHRASE 1（ミュート・2ステップ）に戻した。検査 `defaultChime` も外した。
 レシピ（2800Hz・1.6 秒／1760Hz・2.2 秒）はこの節に残す。入れ直すときは同じ値で作れる。
 
+## 143. SET：ライブのセットリスト（v0.3.141）
+「マイクロトーンのライブは 10〜12 曲の短いヒップホップ。最適な機能を」→ 提案 9 項目のうち **1：SET ＋ NEXT（小節頭で切替）＋ LIVE LOCK** を実装。
+
+### 何ができるか
+- **SET**（メニュー ⋮ → Live → SET）：曲（`.mics` の中身）を並べる。「＋ いまの曲」で画面の状態をセットの末尾に足す（名前は入力欄、空なら SONG n）。
+  行をタップで曲を選ぶ。**止まっていれば即差し替え、鳴っていれば次の小節頭で切替**（もう一度タップで予約取消。パターン A〜D の予約と同じ型）。
+- **NEXT / PREV**：隣の曲へ（同じ予約の作法）。最後の曲で NEXT は何もしない（「最後の曲」とだけ言う）。
+- **全曲を先に復号してメモリに置く**（`dec`）ので、切替で読み込みが走らない。差し替えはスケジューラの小節頭で同期に終わる
+  （`applyProject(proj,{dec,deferPaint,stopAt})`：復号済みなら `await` を踏まない。重い再描画は次フレーム。古い音は小節頭の時刻で止める）。
+  BPM は曲ごと。小節頭の時刻は旧テンポで確定してから新テンポに変わる（`barStartTime` を進めた後に `bpmVal` が変わる）。
+- **保存 / 読む**：`.micset`（JSON。`{kind:"micset", cur, songs:[{name, proj}]}`。各曲の音は `.mics` と同じ形で同梱）。
+  **IndexedDB にも残す**（自動保存と同じ DB の `"set"`）：リロードしても曲の並びが戻る（いまの曲は自動保存が戻す）。
+- **LIVE**：LIVE 画面（大きな NEXT / PREV、何曲目・曲名・BPM、曲の経過時間、▶/■、「パッドへ」）＋ **LIVE LOCK**
+  （`body.live`：Wake Lock で画面を消さない、閉じる/リロードに確認、EDIT・COPY・SEQ・RESET・LOAD・SMPL を薄くして触れなくする。寸法は動かさない）。
+  「パッドへ」で LIVE 画面を閉じてもロックは続く（戻るはメニュー → SET → LIVE 画面）。解除は LIVE 画面の「解除」。
+
+### 作り
+- `data/set`（状態と入口：`setAddCurrent` `setRemove` `queueSong` `switchSongNow` `setNext/Prev` `buildSetFile` `loadSetFile` `setPersist/Restore`）、
+  `ui/set-view`（モーダルと LIVE 画面の描画・配線）、`body/35-set-modal.html`、`css/65-set.css`。
+  状態 `setSongs` `setCur` `queuedSong` `liveOn` は `app/state` に（`@writers` は `data/set` と `ui/set-view`）。
+- スケジューラ（`audio/transport`）の小節頭：`if(queuedSong!==null){ switchSongNow(queuedSong, barStartTime); playPat=0; playBar=0; }`
+
+### 決めたこと・宿題
+- 窓（情報窓）には SET の行を足していない（行が増えると窓が伸びて不変性 §94 に触れる）。曲名は LIVE 画面とトーストで出す
+- **パッド画面から 1 タップの NEXT は無い**（LIVE 画面を開いておくのが本番の形）。パッドを叩きながら NEXT したいなら段 2 でフットスイッチ（MIDI CC）か窓のカード化
+- 切替の作法は「即」だけ（ブレイク 1 小節／前曲の最後を残す は段 2）。曲の構成の自動運転（SONG）と BREAK も段 2
+- 「＋ いまの曲」は `buildProject` の切り詰め後の音（保存と同じ）から復号し直す＝セットの音と保存の音が一致する。12 曲で数十 MB、復号は曲あたり 1 秒弱
+
+検査：`check.mjs` `liveSet`：＋いまの曲 ×3／停止中は即差し替え／再生中の NEXT は予約→小節頭で切替（playBar=0・stepIdx≤1・BPM）／最後の曲／`.micset` 往復／`#setFile`／リロードで復元／モーダル／LIVE（body.live・ロック・PREV・解除）／0 errors。
+
