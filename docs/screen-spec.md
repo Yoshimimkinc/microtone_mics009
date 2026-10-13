@@ -1847,3 +1847,7 @@ SEQ 画面の行名（`.rn`）とステップ列の波形キャッシュは古�
 
 検査：`check.mjs` `liveSet`：＋いまの曲 ×3／停止中は即差し替え／再生中の NEXT は予約→小節頭で切替（playBar=0・stepIdx≤1・BPM）／最後の曲／`.micset` 往復／`#setFile`／リロードで復元／モーダル／LIVE（body.live・ロック・PREV・解除）／0 errors。
 
+**v0.3.142 追記：没。**「没 戻して」→ SET / LIVE のコード（`data/set` `ui/set-view` `body/35-set-modal` `css/65-set`、`app/state` の 4 変数、
+`applyProject` の opts、スケジューラの小節頭の分岐、起動時の `setRestore`、メニューの SET、検査 `liveSet`）を全部外し、v0.3.140 の形に戻した。
+この節は経緯として残す（作り方・決めたこと・宿題は上のとおり。再開するなら v0.3.141 のコミット ce73f28 / #174 から取れる）。
+

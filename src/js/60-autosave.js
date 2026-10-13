@@ -2,7 +2,7 @@
 // @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarned, autosaveDbName,
 //    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave
 // @uses APP_VERSION, DEFAULT_PROJECT, applyProject, bakePhrase, buildProject, drawAllPadWaves, loadPresets,
-//    sampNameEl, setRestore
+//    sampNameEl
 // @depends presets
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
@@ -63,7 +63,6 @@ async function loadAutosave(){
 async function clearAutosave(){ try{ await idbOp("readwrite", st=>st.delete(AUTOSAVE.key)); }catch(e){} }
 
 loadPresets().then(async ()=>{
-  if(typeof setRestore==="function") setRestore();   // SET（v0.3.141）：曲の並びを復号して持つだけ（いまの曲は下の自動保存/既定が決める）
   // 既定プロジェクト＝同梱の default.mics（ユーザーのビート：フレーズ＋ドラム＋パターン）。
   // ドラム9-16はsynthプリセットなので音声は同梱せず起動時に再生成（軽量化）。フレーズ1-4のみ音声同梱。
   const saved=await loadAutosave();

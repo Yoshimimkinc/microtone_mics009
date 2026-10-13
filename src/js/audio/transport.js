@@ -4,8 +4,8 @@
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, getLockPlay,
 //    getPlayPattern, isMelodic, mainOut, patLength, perfDrag, perfRecArm, perfSnap, playBar, playPat,
-//    playStep, playVoice, playing, pushUndo, queuedPat, queuedSong, scaleSemi, setLockPlay, stepIdx,
-//    stopAllVoices, stopVoices, swingPct, switchSongNow, tracks
+//    playStep, playVoice, playing, pushUndo, queuedPat, scaleSemi, setLockPlay, stepIdx, stopAllVoices,
+//    stopVoices, swingPct, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -132,8 +132,6 @@ function scheduler(){
       // 小節アタマ：予約があれば次パターンへ切替、無ければ同パターン内の次小節（書いた分でループ）
       if(queuedPat !== null){ playPat = queuedPat; playBar = 0; queuedPat = null; }
       else { playBar++; if(playBar >= patLength(playPat)) playBar = 0; }
-      // SET：予約された曲へは小節頭で差し替える（音は barStartTime で止める。dec 済みなので同期＝予約は遅れない）
-      if(queuedSong !== null){ switchSongNow(queuedSong, barStartTime); playPat = 0; playBar = 0; }
     }
     if(++guard > STEPS) break;   // 1tickで最大1小節分まで（暴走防止）
   }
