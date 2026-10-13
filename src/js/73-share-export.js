@@ -4,9 +4,8 @@
 //    b64ToUint8, bpmVal, bufToWav, buildAllTrackWaves, compDrive, compOn, compThreshold, decodeAudio,
 //    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol,
 //    makeLofi, makeSatCurve, masterGain, multiOut, outBGain, paintMixer, paintPadName, paintPadStates,
-//    paintPatBar, paintPerf, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl,
-//    saturator, selectPad, setCompBypass, setDelayTempo, stopAllVoices, stripLegacyLocks, swingPct, tickDur,
-//    tracks
+//    paintPatBar, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl, saturator,
+//    selectPad, setCompBypass, setDelayTempo, stopAllVoices, stripLegacyLocks, swingPct, tickDur, tracks
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -72,11 +71,9 @@ document.getElementById("exportWavBtn").addEventListener("click",async()=>{
 document.getElementById("loadProjBtn").addEventListener("click",()=>{
   document.getElementById("projFile").click();
 });
-async function applyProject(proj, opts){
-    // opts（v0.3.141 SET）：dec=復号済みの音（await せず同期で差し替わる＝小節頭の曲切替）／deferPaint=重い再描画を次フレームへ／stopAt=古い音を止める時刻
-    const dec=opts&&opts.dec;
+async function applyProject(proj){
     // 読込前に鳴っている音を止め、ループ/予約状態をリセット（旧バッファの垂れ流し・状態ズレ防止）
-    stopAllVoices((opts&&opts.stopAt)||AC.currentTime);
+    stopAllVoices(AC.currentTime);
     queuedPat=null;
     // restore globals
     bpmVal=proj.bpm||100;
@@ -131,14 +128,11 @@ async function applyProject(proj, opts){
       t.locks = stripLegacyLocks(pt.locks ? JSON.parse(JSON.stringify(pt.locks)) : {});   // p-lock（廃止済みの level は捨てる §135）
       // audio
       if(pt.audio){
-        if(dec&&dec[i]){ t.rawBuffer=dec[i].raw; t.buffer=dec[i].lofi; }   // 事前復号（SET）
-        else {
-          const wav=b64ToUint8(pt.audio);
-          const ab=wav.buffer.slice(wav.byteOffset,wav.byteOffset+wav.byteLength);
-          const decoded=await decodeAudio(ab);
-          t.rawBuffer=decoded;
-          t.buffer=makeLofi(decoded);
-        }
+        const wav=b64ToUint8(pt.audio);
+        const ab=wav.buffer.slice(wav.byteOffset,wav.byteOffset+wav.byteLength);
+        const decoded=await decodeAudio(ab);
+        t.rawBuffer=decoded;
+        t.buffer=makeLofi(decoded);
       }else if(pt.type==="empty"){
         t.buffer=null; t.rawBuffer=null;   // 空パッドとして保存されたものは、前に入っていた音を残さない（幽霊サンプル防止）
       }
@@ -146,8 +140,7 @@ async function applyProject(proj, opts){
     }
     editPat=0; editBar=0;
     for(let i=0;i<PADS.length;i++) applyPadCategory(i);
-    const paint=()=>{ selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); };
-    if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();   // 小節頭の切替ではスケジューラを待たせない
+    selectPad(0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves();
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;

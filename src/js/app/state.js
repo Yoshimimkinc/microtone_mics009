@@ -1,8 +1,7 @@
 // @module app/state
 // @provides activeLock, armMode, assignTarget, bpmVal, copyArm, displayBar, displayPat, editBar, editDrag,
-//    editPat, liveOn, melodicMode, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm,
-//    perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSong, recording, selected,
-//    setCur, setSongs, stepIdx, swingPct
+//    editPat, melodicMode, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm, perfSnap,
+//    perfTapT, playBar, playPat, playStep, playing, queuedPat, recording, selected, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -40,12 +39,6 @@ let editBar = 0;        // 編集中の小節 0-3 (1-4)。入口は setEditBar�
 let peTarget=0;         // 波形エディタの対象パッド（窓とモーダルで共有する1実体）  @writers ui-window, edit-modal
 let peOpenedAt=0;       // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する  @writers edit-modal
 let peV0=0, peV1=1;     // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ  @writers ui-window, edit-modal
-
-// --- SET（ライブのセットリスト。v0.3.141 §143）---
-let setSongs = [];      // [{name, proj, dec}] 曲の並び。proj=.mics の中身、dec=復号済みの音（切替で待たない）  @writers data/set
-let setCur = -1;        // いま鳴っている／選んでいる曲（-1=セット無し）  @writers data/set
-let queuedSong = null;  // 予約中の曲（次の小節頭で切替。null=なし）  @writers data/set
-let liveOn = false;     // LIVE LOCK（画面を消さない・離脱確認・編集系を触れなくする）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
 let activeLock = null;  // 選択中のp-lockパラメータ（null=ON/OFFトグル）。入口は setActiveLock（step-strip）  @writers step-strip

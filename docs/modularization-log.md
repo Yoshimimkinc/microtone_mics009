@@ -438,4 +438,5 @@ python3 -m http.server 8137      # リポジトリの根で
 ## 部品の追加（v0.3.141 SET）
 `data/set`（セットのデータと入口。DOM を触らない）と `ui/set-view`（モーダル・LIVE 画面の描画と配線）。状態は `app/state` に 4 つ足して `@writers` を書いた。
 `applyProject` は `opts` で復号済みの音を受けられるようになり、小節頭の曲切替が同期で終わる。部品 52 → 56（CSS 1・body 1・JS 2）。
+**v0.3.142 で没（戻した）**：部品 56 → 52。`app/state` も 4 変数を外した。
 

@@ -17,3 +17,39 @@ tapBtn
 # v0.3.133 MIDI クロック同期の BPM 直書き（bpmVal= と #bpm/#bpmRead の直接更新）を applyBpm（テンポの唯一の入口）に置換。Phase 3 app/state の @writers
 bi
 br
+# v0.3.142 SET / LIVE（v0.3.141 §143）を没で全部撤去。再開は ce73f28 / #174 から
+$("liveNext") [click]
+$("liveOff") [click]
+$("livePads") [click]
+$("livePlay") [click]
+$("livePrev") [click]
+$("setAdd") [click]
+$("setBtn") [click]
+$("setClose") [click]
+$("setDel") [click]
+$("setFile") [change]
+$("setLive") [click]
+$("setLoad") [click]
+$("setNameIn") [change]
+$("setNext") [click]
+$("setPrev") [click]
+$("setSave") [click]
+setListEl [click]
+setModalEl [click]
+_liveUnload
+buildSetFile
+closeSet
+fmtClock
+openSet
+paintSet
+queueSong
+setClear
+setLiveOn
+setNext
+setPersist
+setPrev
+setRemove
+setRenameSong
+setSongElapsed
+switchSongNow
+setModalEl
