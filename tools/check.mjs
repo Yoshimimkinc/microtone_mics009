@@ -684,7 +684,7 @@ async function setMode(){
     const st=await p.evaluate(()=>({mode:setMode, body:document.body.classList.contains('setmode'), page:clPage, cells:document.querySelectorAll('#setGrid .setpad').length, empty:document.querySelectorAll('#setGrid .setpad.empty').length,
       padsHidden:getComputedStyle(document.getElementById('pads')).display==='none', keysSet:getComputedStyle(document.getElementById('clKeysSet')).display, keys:getComputedStyle(document.getElementById('clKeys')).display, bar:getComputedStyle(document.getElementById('setBar')).display,
       padsActive:document.getElementById('viewPads').classList.contains('active')}));
-    ok_(`${V} スイッチ 1 タップで SET（窓=SET ページ・格子 16・#pads 隠す・A-D キー・下段）`, st.mode && st.body && st.page==='set' && st.cells===16 && st.empty===16 && st.padsHidden && st.keysSet==='flex' && st.keys==='none' && st.bar==='flex' && st.padsActive, JSON.stringify(st));
+    ok_(`${V} スイッチ 1 タップで SET（窓=SET ページ・格子 16・#pads 隠す・A-D キー・下段）`, st.mode && st.body && st.page==='set' && st.cells===16 && st.empty===16 && st.padsHidden && st.keysSet==='grid' && st.keys==='none' && st.bar==='flex' && st.padsActive, JSON.stringify(st));
     const d1=await dims();
     ok_(`${V} 窓の高さは PADS と同じ（不変性）`, d0.scr && d1.scr && d0.scr[1]===d1.scr[1] && d0.scr[0]===d1.scr[0], `${JSON.stringify(d0.scr)} → ${JSON.stringify(d1.scr)}`);
     ok_(`${V} 枠の寸法はパッドと同じ`, d0.pad && d1.setpad && Math.abs(d0.pad[1]-d1.setpad[1])<=1 && Math.abs(d0.pad[0]-d1.setpad[0])<=1 && d1.setpad[1]>=44, `${JSON.stringify(d0.pad)} vs ${JSON.stringify(d1.setpad)}`);
