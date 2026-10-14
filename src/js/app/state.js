@@ -1,8 +1,8 @@
 // @module app/state
 // @provides activeLock, armMode, assignTarget, bpmVal, copyArm, displayBar, displayPat, editBar, editDrag,
-//    editPat, liveOn, melodicMode, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm,
-//    perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected,
-//    setCur, setMode, setSlots, stepIdx, swingPct
+//    editPat, melodicMode, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm, perfSnap,
+//    perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected, setCur,
+//    setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -46,7 +46,6 @@ let setSlots = new Array(16).fill(null);   // 16 のセット（常に 16 ある
 let setCur = 0;         // いまのセット（0..15。PADS / SEQ が見せるのはこのセット）  @writers data/set, share-export
 let queuedSet = null;   // 予約中のセット（次の小節頭で切替。null=なし）  @writers data/set, share-export
 let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格子が枠）  @writers ui/set-view
-let liveOn = false;     // LIVE LOCK（画面を消さない・離脱確認・編集系を触れなくする）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
 let activeLock = null;  // 選択中のp-lockパラメータ（null=ON/OFFトグル）。入口は setActiveLock（step-strip）  @writers step-strip

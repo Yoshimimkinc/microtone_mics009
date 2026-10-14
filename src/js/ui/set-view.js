@@ -1,13 +1,11 @@
 // @module ui/set-view
-// @provides _clPagePrev, _liveUnload, _liveWake, _setInfo, _snapPatHas, _wakeLock, fmtClock, paintSet,
-//    setGridEl, setLiveOn, setModeEnter
-// @uses arm, armMode, bpmVal, clPage, copySetTo, editPat, liveOn, paintPerf, playing, queueSet, queuedSet,
-//    renderClPage, resetSet, sampNameEl, setCur, setEditPat, setElapsed, setLiveArm, setMode, setName,
-//    setNext, setPrev, setSlots, tracks
+// @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, setGridEl, setModeEnter
+// @uses arm, armMode, bpmVal, clPage, copySetTo, editPat, paintPerf, playing, queueSet, queuedSet,
+//    renderClPage, resetSet, sampNameEl, setCur, setEditPat, setElapsed, setMode, setName, setSlots, tracks
 // @depends -
-// ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）、情報窓の SET ページ、下段 ◀ / NEXT / LIVE ----------
+// ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
-// 状態を書くのは data/set の入口（queueSet / switchSetNow / copySetTo / resetSet / setNext / setPrev …）と setMode / liveOn（ここ）だけ
+// 状態を書くのは data/set の入口（queueSet / switchSetNow / copySetTo / resetSet …）と setMode（ここ）だけ。下段の ◀ / NEXT / LIVE は v0.3.145 で撤去（パッド自体が切替）
 const setGridEl=document.getElementById("setGrid");
 let _clPagePrev="main";
 function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); }
@@ -31,7 +29,7 @@ function paintSet(){
   if(!setGridEl) return;
   const $=id=>document.getElementById(id);
   for(let k=0;k<16;k++){ const d=setGridEl.children[k]; if(!d) continue; const info=_setInfo(k);
-    d.classList.toggle("on",k===setCur); d.classList.toggle("queued",k===queuedSet); d.classList.toggle("fresh",info.fresh);
+    d.classList.toggle("on",k===setCur); d.classList.toggle("playing",k===setCur&&playing); d.classList.toggle("queued",k===queuedSet); d.classList.toggle("fresh",info.fresh);
     d.querySelector(".nm").textContent = info.name;
     d.querySelector(".tag").textContent = k===setCur ? (playing?"NOW":"SEL") : (k===queuedSet ? "NEXT" : "");
     d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
@@ -44,8 +42,6 @@ function paintSet(){
   if($("clSetNext")){ $("clSetNext").textContent = nx ? String(queuedSet+1).padStart(2,"0")+" "+nx : (setCur<15 ? String(setCur+2).padStart(2,"0")+" "+setName(setCur+1) : "—");
     const w=$("clSetNext").closest(".cl-par"); if(w) w.classList.toggle("queued", !!nx); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.classList.toggle("on", +b.dataset.pat===editPat));
-  if($("setNext")){ $("setNext").textContent = queuedSet!==null ? "予約中 ▶ 取消" : "NEXT ▶"; $("setNext").classList.toggle("queued", queuedSet!==null); }
-  if($("setLive")) $("setLive").classList.toggle("on", liveOn);
 }
 // モードの出入り（switchView から）：情報窓のページを SET ページ⇄元のページに
 function setModeEnter(on){
@@ -55,27 +51,11 @@ function setModeEnter(on){
   if(setMode){ _clPagePrev = clPage==="set" ? "main" : clPage; clPage="set"; renderClPage(); paintSet(); }
   else { clPage=_clPagePrev||"main"; renderClPage(); }
 }
-// LIVE LOCK：画面を消さない（Wake Lock）・離脱の確認・編集系を薄くして触れなくする（CSS）。▶ 中の変化は ■ で戻る（data/set）
-let _wakeLock=null;
-async function _liveWake(on){
-  try{ if(on){ if(navigator.wakeLock && !_wakeLock) _wakeLock=await navigator.wakeLock.request("screen"); }
-       else if(_wakeLock){ await _wakeLock.release(); _wakeLock=null; } }catch(_){ _wakeLock=null; }
-}
-function _liveUnload(e){ e.preventDefault(); e.returnValue=""; }
-function setLiveOn(on){
-  liveOn=!!on;
-  document.body.classList.toggle("live", liveOn);
-  if(liveOn){ window.addEventListener("beforeunload",_liveUnload); _liveWake(true); if(playing) setLiveArm(); }
-  else { window.removeEventListener("beforeunload",_liveUnload); _liveWake(false); }
-  sampNameEl.textContent = liveOn ? "LIVE：画面を消さない／編集系はロック／鳴らしている間の変化は ■ で戻る" : "LIVE 解除";
-  paintSet(); if(typeof paintPerf==="function") paintPerf();
-}
-document.addEventListener("visibilitychange",()=>{ if(liveOn && document.visibilityState==="visible") _liveWake(true); });   // 復帰で取り直す
 (function(){
   const $=id=>document.getElementById(id);
   const say=t=>{ sampNameEl.textContent=t; if(typeof paintPerf==="function") paintPerf(); };
   const launch=()=>{ const b=$("play"); if(b && !playing) b.click(); };   // ポン出し：止まっていれば鳴らす
-  const told=(ok,dir)=>{ if(!ok){ say(dir>0?"SET：最後のセット":"SET：最初のセット"); return; }
+  const told=(ok)=>{ if(!ok) return;
     const k=queuedSet!==null?queuedSet:setCur;
     say(queuedSet!==null ? "予約 ▸ "+String(k+1).padStart(2,"0")+" "+setName(k)+"（次の小節頭で）" : "▸ "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); };
   // セットを叩く＝ポン出し（鳴っていれば次の小節頭で切替、止まっていれば切替して ▶）。COPY 中＝いまのセットをそこへコピー。長押し 2 回＝既定のキットに戻す
@@ -89,11 +69,8 @@ document.addEventListener("visibilitychange",()=>{ if(liveOn && document.visibil
     const k=+d.dataset.k;
     if(armMode==="chop"){ if(copySetTo(k)){ say("COPY ▸ SET "+String(k+1).padStart(2,"0")+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); return; }
     if(k===setCur){ if(!playing){ launch(); say("▶ "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); } return; }
-    const was=playing; told(queueSet(k), +1); if(!was) launch(); paintSet(); };
+    const was=playing; told(queueSet(k)); if(!was) launch(); paintSet(); };
   if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",()=>{ clearTimeout(lp); lp=null; }); setGridEl.addEventListener("pointerleave",()=>{ clearTimeout(lp); lp=null; }); }
-  if($("setPrev")) $("setPrev").addEventListener("click",()=>told(setPrev(),-1));
-  if($("setNext")) $("setNext").addEventListener("click",()=>told(setNext(),+1));
-  if($("setLive")) $("setLive").addEventListener("click",()=>setLiveOn(!liveOn));
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
-  setInterval(()=>{ if(setMode){ const c=$("clSetTime"); if(c) c.textContent=fmtClock(setElapsed()); const d=setGridEl&&setGridEl.children[setCur]; if(d){ const t=d.querySelector(".tag"), v=playing?"NOW":"SEL"; if(t.textContent!==v) t.textContent=v; } } }, 500);
+  setInterval(()=>{ if(setMode){ const c=$("clSetTime"); if(c) c.textContent=fmtClock(setElapsed()); const d=setGridEl&&setGridEl.children[setCur]; if(d){ const t=d.querySelector(".tag"), v=playing?"NOW":"SEL"; if(t.textContent!==v) t.textContent=v; d.classList.toggle("playing",playing); } } }, 500);
 })();
