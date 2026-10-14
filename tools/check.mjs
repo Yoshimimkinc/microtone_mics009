@@ -667,9 +667,83 @@ async function devShell(){
   eq(`dev.html 0 errors`, errs, []);
   await ctx.close();
 }
+// §144 SET モード：上段スイッチで情報窓が SET 演奏モード・格子が 16 の枠。叩いて切替（小節頭）。■ で枠の状態に戻る。.micset・リロード・LIVE
+async function setMode(){
+  for(const [w,h,mobile] of [[390,844,true],[1280,800,false]]){
+    const V=`SET ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    await p.evaluate(async()=>{ await clearAutosave(); try{ await idbOp("readwrite",st=>st.delete("set")); }catch(_){} });
+    const dims=()=>p.evaluate(()=>{ const r=s=>{ const e=document.querySelector(s); if(!e) return null; const b=e.getBoundingClientRect(); return [Math.round(b.width),Math.round(b.height)]; };
+      return {scr:r('.perf-screen'), pad:r('#pads .pad'), setpad:r('#setGrid .setpad'), grid:r('#setGrid'), pads:r('#pads')}; });
+    const d0=await dims();
+    // 上段スイッチ（スマホ=vdot / PC=modebar）で SET へ：1 タップ
+    await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(250);
+    const st=await p.evaluate(()=>({mode:setMode, body:document.body.classList.contains('setmode'), page:clPage, cells:document.querySelectorAll('#setGrid .setpad').length, empty:document.querySelectorAll('#setGrid .setpad.empty').length,
+      padsHidden:getComputedStyle(document.getElementById('pads')).display==='none', keysSet:getComputedStyle(document.getElementById('clKeysSet')).display, keys:getComputedStyle(document.getElementById('clKeys')).display, bar:getComputedStyle(document.getElementById('setBar')).display,
+      padsActive:document.getElementById('viewPads').classList.contains('active')}));
+    ok_(`${V} スイッチ 1 タップで SET（窓=SET ページ・格子 16・#pads 隠す・A-D キー・下段）`, st.mode && st.body && st.page==='set' && st.cells===16 && st.empty===16 && st.padsHidden && st.keysSet==='grid' && st.keys==='none' && st.bar==='flex' && st.padsActive, JSON.stringify(st));
+    const d1=await dims();
+    ok_(`${V} 窓の高さは PADS と同じ（不変性）`, d0.scr && d1.scr && d0.scr[1]===d1.scr[1] && d0.scr[0]===d1.scr[0], `${JSON.stringify(d0.scr)} → ${JSON.stringify(d1.scr)}`);
+    ok_(`${V} 枠の寸法はパッドと同じ`, d0.pad && d1.setpad && Math.abs(d0.pad[1]-d1.setpad[1])<=1 && Math.abs(d0.pad[0]-d1.setpad[0])<=1 && d1.setpad[1]>=44, `${JSON.stringify(d0.pad)} vs ${JSON.stringify(d1.setpad)}`);
+    // 空の枠を叩く＝いまの 16 パッドを入れる（3 つ、名前と BPM を変えて）
+    for(let k=0;k<3;k++){ await p.evaluate(k=>{ tracks[0].name='S'+k; paintPadName(0); applyBpm(88+6*k); },k); await p.click(`#setGrid .setpad[data-k="${k}"]`); await p.waitForFunction(k=>setSlots[k]&&setSlots[k].dec, k, {timeout:8000}); }
+    const made=await p.evaluate(()=>({n:setCount(), cur:setCur, names:setSlots.slice(0,3).map(s=>s.name), bpms:setSlots.slice(0,3).map(s=>s.proj.bpm), now:document.querySelector('#setGrid .setpad.on .n span').textContent, no:document.getElementById('clSetNo').textContent, name:document.getElementById('clSetName').textContent}));
+    ok_(`${V} 空の枠を叩く＝入る（3 枠・NOW は最初の枠・窓に番号と名前）`, made.n===3 && made.cur===0 && made.names.join(',')==='SET 1,SET 2,SET 3' && made.bpms.join(',')==='88,94,100' && made.now==='01' && made.no==='01' && made.name==='SET 1', JSON.stringify(made));
+    // 止まっているとき：枠を叩くと即差し替え
+    await p.click('#setGrid .setpad[data-k="1"]'); await p.waitForTimeout(200);
+    const now=await p.evaluate(()=>({cur:setCur, q:queuedSet, name:tracks[0].name, bpm:bpmVal, nm:document.querySelector('#pads .pad .nm').textContent}));
+    ok_(`${V} 停止中に枠を叩く＝即差し替え（名前・BPM・パッド表示）`, now.cur===1 && now.q===null && now.name==='S1' && now.bpm===94 && now.nm==='S1', JSON.stringify(now));
+    // 鳴っているとき：叩く＝予約 → 小節頭で切替。切替直後は playBar=0・stepIdx≤1
+    await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(300);
+    await p.click('#setGrid .setpad[data-k="2"]'); await p.waitForTimeout(80);
+    const q=await p.evaluate(()=>({q:queuedSet, cur:setCur, name:tracks[0].name, tag:document.querySelector('#setGrid .setpad[data-k="2"] .tag').textContent, btn:document.getElementById('setNext').textContent}));
+    ok_(`${V} 再生中に叩く＝予約（NEXT の印・ボタンが取消に）`, q.q===2 && q.cur===1 && q.name==='S1' && q.tag==='NEXT' && /取消/.test(q.btn), JSON.stringify(q));
+    await p.waitForFunction(()=>setCur===2, null, {timeout:6000});
+    const sw=await p.evaluate(()=>({cur:setCur, q:queuedSet, name:tracks[0].name, bpm:bpmVal, playBar, playPat, step:stepIdx, playing}));
+    ok_(`${V} 小節頭で切替（名前・BPM・小節頭から・再生は続く）`, sw.cur===2 && sw.q===null && sw.name==='S2' && sw.bpm===100 && sw.playBar===0 && sw.playPat===0 && sw.step<=1 && sw.playing===true, JSON.stringify(sw));
+    // 演奏中の変化（ステップ・ミュート）は ■ で枠の状態に戻る。選択パッドは保つ
+    await p.evaluate(()=>{ selectPad(5); setStep(3, 7, 1); tracks[9].mute=true; });
+    await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(300);
+    const rv=await p.evaluate(()=>({step:getPattern(3)[7], mute:tracks[9].mute, sel:selected, msg:sampNameEl.textContent, cur:setCur}));
+    ok_(`${V} ■ で枠の状態に戻る（ステップ・ミュートが戻り、選択パッドは保つ）`, rv.step===0 && rv.mute===false && rv.sel===5 && /戻した/.test(rv.msg) && rv.cur===2, JSON.stringify(rv));
+    // NEXT / PREV（下段）
+    await p.click('#setPrev'); await p.waitForTimeout(200);
+    ok_(`${V} ◀ で前の枠（停止中＝即）`, await p.evaluate(()=>setCur===1 && tracks[0].name==='S1'), await p.evaluate(()=>setCur+'/'+tracks[0].name));
+    const endN=await p.evaluate(()=>{ queueSet(2); return setNext(); });
+    ok_(`${V} 最後の枠で NEXT は何もしない`, endN===false, String(endN));
+    // .micset 往復・#setFile
+    const rt=await p.evaluate(async()=>{ const f=buildSetFile(); const txt=JSON.stringify(f); setClear(); const n=await loadSetFile(JSON.parse(txt)); return {n, cur:setCur, kind:f.kind, slots:f.slots.length, name:tracks[0].name}; });
+    ok_(`${V} .micset 往復（3 枠・cur・いまの枠）`, rt.kind==='micset' && rt.slots===16 && rt.n===3 && rt.cur===2 && rt.name==='S2', JSON.stringify(rt));
+    { const fsP=await import('node:fs/promises'); const f=`${SHOT}/set3-${w}.micset`; await fsP.writeFile(f, await p.evaluate(()=>JSON.stringify(buildSetFile())));
+      await p.evaluate(()=>setClear()); await p.setInputFiles('#setFile',f); await p.waitForFunction(()=>setCount()===3, null, {timeout:8000});
+      ok_(`${V} #setFile で読める`, await p.evaluate(()=>setCount()===3 && setCur===2), 'not loaded'); }
+    // リロードで枠が戻る
+    await p.waitForTimeout(1200);
+    await p.reload({waitUntil:'load'}); await ready(p); await p.waitForFunction(()=>typeof setSlots!=='undefined' && setCount()===3, null, {timeout:15000});
+    ok_(`${V} リロードで枠が戻る（3 枠・cur）`, await p.evaluate(()=>setCount()===3 && setCur===2), await p.evaluate(()=>setCount()+'/'+setCur));
+    // LIVE
+    await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(200);
+    await p.click('#setLive'); await p.waitForTimeout(100);
+    const lv=await p.evaluate(()=>({live:liveOn, body:document.body.classList.contains('live'), edit:getComputedStyle(document.getElementById('holdEdit')).pointerEvents, on:document.getElementById('setLive').classList.contains('on')}));
+    ok_(`${V} LIVE：body.live・編集系ロック・ボタン点灯`, lv.live && lv.body && lv.edit==='none' && lv.on, JSON.stringify(lv));
+    await p.click('#setLive'); await p.waitForTimeout(100);
+    ok_(`${V} LIVE 解除`, await p.evaluate(()=>!liveOn && !document.body.classList.contains('live')), 'still live');
+    // 戻る：PADS に 1 タップ（#pads が戻り、窓は元のページ）
+    await p.click(mobile ? '#viewDots .vdot[data-view="viewPads"]' : '#modePads'); await p.waitForTimeout(200);
+    const back=await p.evaluate(()=>({mode:setMode, page:clPage, pads:getComputedStyle(document.getElementById('pads')).display, grid:getComputedStyle(document.getElementById('setGrid')).display}));
+    ok_(`${V} PADS へ戻る（窓は MAIN・格子は #pads）`, back.mode===false && back.page==='main' && back.pads!=='none' && back.grid==='none', JSON.stringify(back));
+    await p.evaluate(async()=>{ setClear(); await clearAutosave(); });
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 await passGate();
 await copyPaint();
 await devShell();
+await setMode();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

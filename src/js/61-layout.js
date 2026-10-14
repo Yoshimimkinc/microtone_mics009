@@ -5,18 +5,21 @@
 // @uses activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar, editPat,
 //    paintClPage, paintSteps, perfLast, perfLockApply, perfReadVals, perfRecArm, perfRevertSnap, perfSnap,
 //    playStep, playing, plockFillsOn, queuedPat, renderPerfFills, sampNameEl, setActiveLock, setEditBar,
-//    setEditPat, stepTrackName, swingPct, tracks, viewPadsEl
+//    setEditPat, setMode, setModeEnter, stepTrackName, swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
-const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq")];
+const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
 function switchView(viewId){
-  modeBtns.forEach(b=>{ const on=b.dataset.view===viewId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
+  // SET（v0.3.143 §144）：独立した view ではなく PADS 画面の「状態」。情報窓が SET 演奏モード、格子が 16 の枠になる（寸法は同じ）
+  const modeId=viewId; const inSet=(viewId==="viewSet"); if(inSet) viewId="viewPads";
+  if(typeof setModeEnter==="function") setModeEnter(inSet);
+  modeBtns.forEach(b=>{ const on=b.dataset.view===modeId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
   if(viewId==="viewPads"){ drawAllPadWaves(); }
   if(viewId==="viewSeq") paintSteps();
   // スマホのモードドット同期（●PADS 〇SEQ）
   const dots=document.getElementById("viewDots");
-  if(dots){ dots.querySelectorAll(".vdot").forEach(d=>d.classList.toggle("on",d.dataset.view===viewId)); }
+  if(dots){ dots.querySelectorAll(".vdot").forEach(d=>d.classList.toggle("on",d.dataset.view===modeId)); }
   lockViewHeight();
   if(typeof updatePerf==="function") updatePerf();
 }
@@ -25,9 +28,9 @@ document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("clic
 
 // スマホ：左右スワイプで PADS/SEQ/MIX を切替（p-lock記録中やスライダー上は無効）
 (function(){
-  const order=["viewPads","viewSeq"];
+  const order=["viewPads","viewSeq","viewSet"];
   let sx=0,sy=0,st=0,sEl=null,tracking=false;
-  const curView=()=>order.find(id=>{const el=document.getElementById(id);return el&&el.classList.contains("active");})||"viewPads";
+  const curView=()=>(typeof setMode!=="undefined"&&setMode)?"viewSet":(order.find(id=>{const el=document.getElementById(id);return el&&el.classList.contains("active");})||"viewPads");
   addEventListener("touchstart",(e)=>{
     if(innerWidth>600||e.touches.length!==1){ tracking=false; return; }
     const t=e.touches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); sEl=e.target; tracking=true;

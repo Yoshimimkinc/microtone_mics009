@@ -440,3 +440,7 @@ python3 -m http.server 8137      # リポジトリの根で
 `applyProject` は `opts` で復号済みの音を受けられるようになり、小節頭の曲切替が同期で終わる。部品 52 → 56（CSS 1・body 1・JS 2）。
 **v0.3.142 で没（戻した）**：部品 56 → 52。`app/state` も 4 変数を外した。
 
+## 部品の追加（v0.3.143 SET モード §144）
+`data/set`（16 の枠のデータと入口。DOM を触らない）と `ui/set-view`（格子・窓の SET ページ・下段・メニューの配線）、`css/65-set.css`。
+状態 `setSlots` `setCur` `queuedSet` `setMode` `liveOn` は `app/state` に `@writers` つき。`applyProject` は `opts`（dec / deferPaint / stopAt / keepSel）を受ける。部品 52 → 55。
+

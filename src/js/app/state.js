@@ -1,7 +1,8 @@
 // @module app/state
 // @provides activeLock, armMode, assignTarget, bpmVal, copyArm, displayBar, displayPat, editBar, editDrag,
-//    editPat, melodicMode, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm, perfSnap,
-//    perfTapT, playBar, playPat, playStep, playing, queuedPat, recording, selected, stepIdx, swingPct
+//    editPat, liveOn, melodicMode, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm,
+//    perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected,
+//    setCur, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -39,6 +40,13 @@ let editBar = 0;        // 編集中の小節 0-3 (1-4)。入口は setEditBar�
 let peTarget=0;         // 波形エディタの対象パッド（窓とモーダルで共有する1実体）  @writers ui-window, edit-modal
 let peOpenedAt=0;       // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する  @writers edit-modal
 let peV0=0, peV1=1;     // 波形の表示窓（0..1正規化）。ホイール/ピンチでズーム、ダブルタップで全体へ  @writers ui-window, edit-modal
+
+// --- SET モード（16 の枠に 16 パッドの状態を入れ、叩いて切り替える。v0.3.143 §144）---
+let setSlots = new Array(16).fill(null);   // 枠 k = null | {name, proj, dec}（proj=.mics の中身、dec=復号済みの音）  @writers data/set
+let setCur = -1;        // いま鳴っている枠（-1=どの枠も選んでいない）  @writers data/set
+let queuedSet = null;   // 予約中の枠（次の小節頭で切替。null=なし）  @writers data/set
+let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格子が枠）  @writers ui/set-view
+let liveOn = false;     // LIVE LOCK（画面を消さない・離脱確認・編集系を触れなくする）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
 let activeLock = null;  // 選択中のp-lockパラメータ（null=ON/OFFトグル）。入口は setActiveLock（step-strip）  @writers step-strip
