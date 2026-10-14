@@ -1,5 +1,5 @@
 // @module presets
-// @provides contentEnd, loadPresets, renderPreset
+// @provides PRESET_BUFS, contentEnd, loadPresets, renderPreset
 // @uses AC, PADS, makeLofi, tracks
 // @depends -
 // ===== プリセット音をオフラインで生成して各パッドに焼き込む =====
@@ -74,6 +74,8 @@ function contentEnd(buf){
   let last=0; for(let k=n-1;k>=0;k--){ if(Math.abs(d[k])>thr){ last=k; break; } }
   return Math.max(0.05, Math.min(1, last/n + 0.03));   // 少し余白
 }
+// プリセット（synth 9-16）の音と既定値。セットの初期化と、audio を同梱しない .mics の復元に使う（v0.3.144 §145）
+const PRESET_BUFS=[];
 async function loadPresets(){
   // 順次awaitせず全プリセットを並列生成→ブート高速化
   await Promise.all(PADS.map(async (p,i)=>{
@@ -89,6 +91,7 @@ async function loadPresets(){
         tracks[i].loopStart=Math.min(0.9,(8*per)/dur);
         tracks[i].end=Math.min(1,(24*per)/dur);
       }
+      PRESET_BUFS[i]={raw, buf:tracks[i].buffer, start:tracks[i].start, end:tracks[i].end, loop:tracks[i].loop, loopStart:tracks[i].loopStart};
     }catch(e){console.warn("preset fail",i,e);}
   }));
 }

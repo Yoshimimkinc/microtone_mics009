@@ -326,7 +326,7 @@ async function run(w,h,mobile){
     return Math.abs(t1-t0)<1e-6; }), 'stepTimeClean が動いた');
   // 7g) ★空パッドとして保存されたものを読むと前の音が消える（W4 NG-3・v0.3.98）
   eq(`${V} 空パッドのLoadで幽霊サンプルが残らない`, await p.evaluate(async()=>{
-    const pr=JSON.parse(JSON.stringify(buildProject())); pr.tracks[1].audio=null; pr.tracks[1].type='empty'; pr.tracks[1].name='EMPTY';
+    const pr=JSON.parse(JSON.stringify(buildProject())); const tr=pr.sets[pr.cur].tracks; tr[1].audio=null; tr[1].type='empty'; tr[1].name='EMPTY';
     await applyProject(pr); return [!!tracks[1].buffer, PADS[1].type]; }), [false,'empty']);
   await p.evaluate(async()=>{ await applyProject(JSON.parse(JSON.stringify(buildProject()))); });
 
@@ -372,7 +372,7 @@ async function run(w,h,mobile){
   eq(`${V} リロードで復元`, restored, {name:"CHKTAKE",tune:9,step:1,bpm:111.5,buf:true});
   // 10b) ★Load した .mics は自動保存に乗る＝次回起動で「読む前」に戻らない（W4 NG-1・v0.3.98）
   {
-    const B=await p.evaluate(()=>{const pr=buildProject(); pr.tracks[0].name='LOADED1'; return JSON.stringify(pr);});
+    const B=await p.evaluate(()=>{const pr=buildProject(); pr.sets[pr.cur].tracks[0].name='LOADED1'; return JSON.stringify(pr);});
     const fsP=await import('node:fs/promises'); const f=`${SHOT}/projB.mics`; await fsP.writeFile(f,B);
     await p.setInputFiles('#projFile',f); await p.waitForTimeout(900);
     const saved=await p.evaluate(async()=>{ const r=await idbOp("readonly",st=>st.get(AUTOSAVE.key)); return !!(r&&r.json&&r.json.includes('"LOADED1"')); });
@@ -501,7 +501,7 @@ async function iosLoad(){
     // 中身の検証は残る：壊れたファイルは弾き、正しい .mics は読める
     const r=await p.evaluate(async()=>{ const inp=document.getElementById('projFile'); const fire=f=>{ const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); };
       fire(new File(['not json'],'broken.mics')); await new Promise(r=>setTimeout(r,300)); const bad=sampNameEl.textContent;
-      const proj=buildProject(); proj.bpm=123.5; fire(new File([JSON.stringify(proj)],'x.mics')); await new Promise(r=>setTimeout(r,800)); return {bad, bpm:bpmVal, msg:sampNameEl.textContent}; });
+      const proj=buildProject(); proj.sets[proj.cur].bpm=123.5; fire(new File([JSON.stringify(proj)],'x.mics')); await new Promise(r=>setTimeout(r,800)); return {bad, bpm:bpmVal, msg:sampNameEl.textContent}; });
     ok_(`iOS読込 壊れたファイルは弾く`, /FAILED/.test(r.bad), r.bad);
     ok_(`iOS読込 正しい .mics は読める`, r.bpm===123.5 && /LOADED/.test(r.msg), JSON.stringify(r));
     eq(`iOS読込 0 errors`, errs, []);
@@ -667,7 +667,8 @@ async function devShell(){
   eq(`dev.html 0 errors`, errs, []);
   await ctx.close();
 }
-// §144 SET モード：上段スイッチで情報窓が SET 演奏モード・格子が 16 の枠。叩いて切替（小節頭）。■ で枠の状態に戻る。.micset・リロード・LIVE
+// §145 SET モード：ファイル全体 = 16 セット。上段スイッチで情報窓が SET 演奏モード・格子が 16 セットのポン出し。
+// 叩く＝切替（鳴っていれば小節頭）＋止まっていれば ▶。切替で前のセットの変更は残る（退避）。v3 の保存/読込・v2 の読込・リロード・COPY・LIVE
 async function setMode(){
   for(const [w,h,mobile] of [[390,844,true],[1280,800,false]]){
     const V=`SET ${w}x${h}`;
@@ -675,67 +676,76 @@ async function setMode(){
     const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
     await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
     await ready(p);
-    await p.evaluate(async()=>{ await clearAutosave(); try{ await idbOp("readwrite",st=>st.delete("set")); }catch(_){} });
+    await p.evaluate(async()=>{ await clearAutosave(); });
     const dims=()=>p.evaluate(()=>{ const r=s=>{ const e=document.querySelector(s); if(!e) return null; const b=e.getBoundingClientRect(); return [Math.round(b.width),Math.round(b.height)]; };
-      return {scr:r('.perf-screen'), pad:r('#pads .pad'), setpad:r('#setGrid .setpad'), grid:r('#setGrid'), pads:r('#pads')}; });
+      return {scr:r('.perf-screen'), pad:r('#pads .pad'), setpad:r('#setGrid .setpad')}; });
     const d0=await dims();
+    const boot=await p.evaluate(()=>({cur:setCur, n:setSlots.filter(Boolean).length, names:[setName(0),setName(1),setName(15)], fresh1:!!setSlots[1] && setSlots[1].tracks[8].buffer===PRESET_BUFS[8].buf && setSlots[1].tracks[0].buffer===null}));
+    ok_(`${V} 起動時から 16 セット（SET 1 = 既定プロジェクト、他は既定のキット）`, boot.cur===0 && boot.n===16 && boot.names.join(',')==='SET 1,SET 2,SET 16' && boot.fresh1, JSON.stringify(boot));
     // 上段スイッチ（スマホ=vdot / PC=modebar）で SET へ：1 タップ
     await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(250);
-    const st=await p.evaluate(()=>({mode:setMode, body:document.body.classList.contains('setmode'), page:clPage, cells:document.querySelectorAll('#setGrid .setpad').length, empty:document.querySelectorAll('#setGrid .setpad.empty').length,
+    const st=await p.evaluate(()=>({mode:setMode, body:document.body.classList.contains('setmode'), page:clPage, cells:document.querySelectorAll('#setGrid .setpad').length, fresh:document.querySelectorAll('#setGrid .setpad.fresh').length,
       padsHidden:getComputedStyle(document.getElementById('pads')).display==='none', keysSet:getComputedStyle(document.getElementById('clKeysSet')).display, keys:getComputedStyle(document.getElementById('clKeys')).display, bar:getComputedStyle(document.getElementById('setBar')).display,
-      padsActive:document.getElementById('viewPads').classList.contains('active')}));
-    ok_(`${V} スイッチ 1 タップで SET（窓=SET ページ・格子 16・#pads 隠す・A-D キー・下段）`, st.mode && st.body && st.page==='set' && st.cells===16 && st.empty===16 && st.padsHidden && st.keysSet==='grid' && st.keys==='none' && st.bar==='flex' && st.padsActive, JSON.stringify(st));
+      sel:document.querySelector('#setGrid .setpad.on .n span').textContent, tag:document.querySelector('#setGrid .setpad.on .tag').textContent}));
+    ok_(`${V} スイッチ 1 タップで SET（窓=SET ページ・16 セット・SET 1 が SEL・15 は既定のまま）`, st.mode && st.body && st.page==='set' && st.cells===16 && st.fresh===15 && st.padsHidden && st.keysSet==='grid' && st.keys==='none' && st.bar==='flex' && st.sel==='01' && st.tag==='SEL', JSON.stringify(st));
     const d1=await dims();
     ok_(`${V} 窓の高さは PADS と同じ（不変性）`, d0.scr && d1.scr && d0.scr[1]===d1.scr[1] && d0.scr[0]===d1.scr[0], `${JSON.stringify(d0.scr)} → ${JSON.stringify(d1.scr)}`);
-    ok_(`${V} 枠の寸法はパッドと同じ`, d0.pad && d1.setpad && Math.abs(d0.pad[1]-d1.setpad[1])<=1 && Math.abs(d0.pad[0]-d1.setpad[0])<=1 && d1.setpad[1]>=44, `${JSON.stringify(d0.pad)} vs ${JSON.stringify(d1.setpad)}`);
-    // 空の枠を叩く＝いまの 16 パッドを入れる（3 つ、名前と BPM を変えて）
-    for(let k=0;k<3;k++){ await p.evaluate(k=>{ tracks[0].name='S'+k; paintPadName(0); applyBpm(88+6*k); },k); await p.click(`#setGrid .setpad[data-k="${k}"]`); await p.waitForFunction(k=>setSlots[k]&&setSlots[k].dec, k, {timeout:8000}); }
-    const made=await p.evaluate(()=>({n:setCount(), cur:setCur, names:setSlots.slice(0,3).map(s=>s.name), bpms:setSlots.slice(0,3).map(s=>s.proj.bpm), now:document.querySelector('#setGrid .setpad.on .n span').textContent, no:document.getElementById('clSetNo').textContent, name:document.getElementById('clSetName').textContent}));
-    ok_(`${V} 空の枠を叩く＝入る（3 枠・NOW は最初の枠・窓に番号と名前）`, made.n===3 && made.cur===0 && made.names.join(',')==='SET 1,SET 2,SET 3' && made.bpms.join(',')==='88,94,100' && made.now==='01' && made.no==='01' && made.name==='SET 1', JSON.stringify(made));
-    // 止まっているとき：枠を叩くと即差し替え
-    await p.click('#setGrid .setpad[data-k="1"]'); await p.waitForTimeout(200);
-    const now=await p.evaluate(()=>({cur:setCur, q:queuedSet, name:tracks[0].name, bpm:bpmVal, nm:document.querySelector('#pads .pad .nm').textContent}));
-    ok_(`${V} 停止中に枠を叩く＝即差し替え（名前・BPM・パッド表示）`, now.cur===1 && now.q===null && now.name==='S1' && now.bpm===94 && now.nm==='S1', JSON.stringify(now));
-    // 鳴っているとき：叩く＝予約 → 小節頭で切替。切替直後は playBar=0・stepIdx≤1
-    await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(300);
-    await p.click('#setGrid .setpad[data-k="2"]'); await p.waitForTimeout(80);
-    const q=await p.evaluate(()=>({q:queuedSet, cur:setCur, name:tracks[0].name, tag:document.querySelector('#setGrid .setpad[data-k="2"] .tag').textContent, btn:document.getElementById('setNext').textContent}));
-    ok_(`${V} 再生中に叩く＝予約（NEXT の印・ボタンが取消に）`, q.q===2 && q.cur===1 && q.name==='S1' && q.tag==='NEXT' && /取消/.test(q.btn), JSON.stringify(q));
-    await p.waitForFunction(()=>setCur===2, null, {timeout:6000});
-    const sw=await p.evaluate(()=>({cur:setCur, q:queuedSet, name:tracks[0].name, bpm:bpmVal, playBar, playPat, step:stepIdx, playing}));
-    ok_(`${V} 小節頭で切替（名前・BPM・小節頭から・再生は続く）`, sw.cur===2 && sw.q===null && sw.name==='S2' && sw.bpm===100 && sw.playBar===0 && sw.playPat===0 && sw.step<=1 && sw.playing===true, JSON.stringify(sw));
-    // 演奏中の変化（ステップ・ミュート）は ■ で枠の状態に戻る。選択パッドは保つ
-    await p.evaluate(()=>{ selectPad(5); setStep(3, 7, 1); tracks[9].mute=true; });
-    await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(300);
-    const rv=await p.evaluate(()=>({step:getPattern(3)[7], mute:tracks[9].mute, sel:selected, msg:sampNameEl.textContent, cur:setCur}));
-    ok_(`${V} ■ で枠の状態に戻る（ステップ・ミュートが戻り、選択パッドは保つ）`, rv.step===0 && rv.mute===false && rv.sel===5 && /戻した/.test(rv.msg) && rv.cur===2, JSON.stringify(rv));
-    // NEXT / PREV（下段）
-    await p.click('#setPrev'); await p.waitForTimeout(200);
-    ok_(`${V} ◀ で前の枠（停止中＝即）`, await p.evaluate(()=>setCur===1 && tracks[0].name==='S1'), await p.evaluate(()=>setCur+'/'+tracks[0].name));
-    const endN=await p.evaluate(()=>{ queueSet(2); return setNext(); });
-    ok_(`${V} 最後の枠で NEXT は何もしない`, endN===false, String(endN));
-    // .micset 往復・#setFile
-    const rt=await p.evaluate(async()=>{ const f=buildSetFile(); const txt=JSON.stringify(f); setClear(); const n=await loadSetFile(JSON.parse(txt)); return {n, cur:setCur, kind:f.kind, slots:f.slots.length, name:tracks[0].name}; });
-    ok_(`${V} .micset 往復（3 枠・cur・いまの枠）`, rt.kind==='micset' && rt.slots===16 && rt.n===3 && rt.cur===2 && rt.name==='S2', JSON.stringify(rt));
-    { const fsP=await import('node:fs/promises'); const f=`${SHOT}/set3-${w}.micset`; await fsP.writeFile(f, await p.evaluate(()=>JSON.stringify(buildSetFile())));
-      await p.evaluate(()=>setClear()); await p.setInputFiles('#setFile',f); await p.waitForFunction(()=>setCount()===3, null, {timeout:8000});
-      ok_(`${V} #setFile で読める`, await p.evaluate(()=>setCount()===3 && setCur===2), 'not loaded'); }
-    // リロードで枠が戻る
-    await p.waitForTimeout(1200);
-    await p.reload({waitUntil:'load'}); await ready(p); await p.waitForFunction(()=>typeof setSlots!=='undefined' && setCount()===3, null, {timeout:15000});
-    ok_(`${V} リロードで枠が戻る（3 枠・cur）`, await p.evaluate(()=>setCount()===3 && setCur===2), await p.evaluate(()=>setCount()+'/'+setCur));
-    // LIVE
-    await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(200);
+    ok_(`${V} セットの寸法はパッドと同じ`, d0.pad && d1.setpad && Math.abs(d0.pad[1]-d1.setpad[1])<=1 && Math.abs(d0.pad[0]-d1.setpad[0])<=1 && d1.setpad[1]>=44, `${JSON.stringify(d0.pad)} vs ${JSON.stringify(d1.setpad)}`);
+    // SET 1 に印（名前・BPM・ステップ）→ SET 2 を叩く＝ポン出し（切替＋▶）。SET 2 は既定のキット（1-8 空・9-16 プリセット・BPM 100）
+    await p.evaluate(()=>{ tracks[0].name='S1'; paintPadName(0); applyBpm(88); setStep(8,0,1); });
+    await p.click('#setGrid .setpad[data-k="1"]'); await p.waitForTimeout(400);
+    const s2=await p.evaluate(()=>({cur:setCur, playing, name:tracks[0].name, type0:PADS[0].type, buf0:!!tracks[0].buffer, kick:!!tracks[8].buffer && tracks[8].buffer===PRESET_BUFS[8].buf, bpm:bpmVal, steps:tracks.reduce((a,t)=>a+t.patterns.flat(2).filter(Boolean).length,0),
+      saved:setSlots[0].tracks[0].name, savedBpm:setSlots[0].bpm, savedStep:setSlots[0].tracks[8].patterns[0][0][0], tag:document.querySelector('#setGrid .setpad[data-k="1"] .tag').textContent, undo:undoStack.length}));
+    ok_(`${V} セットを叩く＝ポン出し（SET 2 へ切替・▶・既定のキット）／SET 1 の変更は退避される／undo は空`, s2.cur===1 && s2.playing===true && s2.name==='PAD 1' && s2.type0==='empty' && !s2.buf0 && s2.kick && s2.bpm===100 && s2.steps===0 && s2.saved==='S1' && s2.savedBpm===88 && s2.savedStep===1 && s2.tag==='NOW' && s2.undo===0, JSON.stringify(s2));
+    // 鳴っているとき：叩く＝予約 → 小節頭で切替（SET 1 の状態が戻る）。切替直後は playBar=0・stepIdx≤1
+    await p.evaluate(()=>{ setStep(9,4,1); });   // SET 2 に 1 ステップ（退避されるか）
+    await p.click('#setGrid .setpad[data-k="0"]'); await p.waitForTimeout(80);
+    const q=await p.evaluate(()=>({q:queuedSet, cur:setCur, tag:document.querySelector('#setGrid .setpad[data-k="0"] .tag').textContent, btn:document.getElementById('setNext').textContent}));
+    ok_(`${V} 再生中に叩く＝予約（NEXT の印・ボタンが取消に）`, q.q===0 && q.cur===1 && q.tag==='NEXT' && /取消/.test(q.btn), JSON.stringify(q));
+    await p.waitForFunction(()=>setCur===0, null, {timeout:6000});
+    const sw=await p.evaluate(()=>({cur:setCur, q:queuedSet, name:tracks[0].name, bpm:bpmVal, step:tracks[8].patterns[0][0][0], playBar, playPat, idx:stepIdx, playing, s2step:setSlots[1].tracks[9].patterns[0][0][4]}));
+    ok_(`${V} 小節頭で切替（SET 1 の名前・BPM・ステップが戻る・小節頭から・再生は続く）／SET 2 の打ち込みも退避`, sw.cur===0 && sw.q===null && sw.name==='S1' && sw.bpm===88 && sw.step===1 && sw.playBar===0 && sw.playPat===0 && sw.idx<=1 && sw.playing===true && sw.s2step===1, JSON.stringify(sw));
+    // LIVE でなければ、鳴らしている間の変化は ■ で残る
+    await p.evaluate(()=>{ setStep(3,7,1); });
+    await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(250);
+    ok_(`${V} LIVE でなければ ■ で打ち込みは残る`, await p.evaluate(()=>getPattern(3)[7]===1 && !playing), 'reverted');
+    // LIVE：▶ で控え、鳴らしている間の変化（ステップ・ミュート）は ■ で戻る。選択パッドは保つ
     await p.click('#setLive'); await p.waitForTimeout(100);
-    const lv=await p.evaluate(()=>({live:liveOn, body:document.body.classList.contains('live'), edit:getComputedStyle(document.getElementById('holdEdit')).pointerEvents, on:document.getElementById('setLive').classList.contains('on')}));
-    ok_(`${V} LIVE：body.live・編集系ロック・ボタン点灯`, lv.live && lv.body && lv.edit==='none' && lv.on, JSON.stringify(lv));
+    await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(250);
+    await p.evaluate(()=>{ selectPad(5); setStep(3, 9, 1); tracks[9].mute=true; });
+    await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(300);
+    const rv=await p.evaluate(()=>({step:getPattern(3)[9], kept:getPattern(3)[7], mute:tracks[9].mute, sel:selected, msg:sampNameEl.textContent, live:liveOn}));
+    ok_(`${V} LIVE：■ で演奏前の状態に戻る（ステップ・ミュート）／前からの打ち込みは残る／選択パッドは保つ`, rv.step===0 && rv.kept===1 && rv.mute===false && rv.sel===5 && /戻した/.test(rv.msg) && rv.live, JSON.stringify(rv));
     await p.click('#setLive'); await p.waitForTimeout(100);
     ok_(`${V} LIVE 解除`, await p.evaluate(()=>!liveOn && !document.body.classList.contains('live')), 'still live');
-    // 戻る：PADS に 1 タップ（#pads が戻り、窓は元のページ）
+    // COPY：COPY を押してセットを叩く＝いまのセットを写す
+    await p.evaluate(()=>arm('chop',true)); await p.click('#setGrid .setpad[data-k="4"]'); await p.waitForTimeout(150);
+    const cp=await p.evaluate(()=>({name:setSlots[4].tracks[0].name, bpm:setSlots[4].bpm, step:setSlots[4].tracks[3].patterns[0][0][7], arm:armMode, cur:setCur, setname:setName(4)}));
+    ok_(`${V} COPY ＋セット＝いまのセットを写す（名前・BPM・ステップ）`, cp.name==='S1' && cp.bpm===88 && cp.step===1 && cp.arm===null && cp.cur===0 && cp.setname==='SET 5', JSON.stringify(cp));
+    // ◀ / NEXT ▶（停止中＝即）
+    await p.click('#setNext'); await p.waitForTimeout(200);
+    ok_(`${V} NEXT ▶ で次のセット（停止中＝即）`, await p.evaluate(()=>setCur===1 && tracks[0].name==='PAD 1' && tracks[9].patterns[0][0][4]===1), await p.evaluate(()=>setCur+'/'+tracks[0].name));
+    await p.click('#setPrev'); await p.waitForTimeout(200);
+    ok_(`${V} ◀ で前のセット`, await p.evaluate(()=>setCur===0 && tracks[0].name==='S1'), await p.evaluate(()=>setCur+'/'+tracks[0].name));
+    // v3 の保存 → 読込（16 セットが戻る。触っていないプリセットは音を同梱しない）
+    const rt=await p.evaluate(async()=>{ const f=buildProject(); const txt=JSON.stringify(f); const size=txt.length;
+      const presetAudio=f.sets[1].tracks[8].audio; await applyProject(JSON.parse(txt));
+      return {v:f.version, cur:f.cur, n:f.sets.length, presetAudio, size, back:tracks[0].name, s2:setSlots[1].tracks[9].patterns[0][0][4], s5:setSlots[4].tracks[0].name, bpm:bpmVal}; });
+    ok_(`${V} .mics v3 往復（16 セット・cur・各セットの中身・プリセットは同梱しない）`, rt.v===3 && rt.cur===0 && rt.n===16 && rt.presetAudio===null && rt.back==='S1' && rt.s2===1 && rt.s5==='S1' && rt.bpm===88, JSON.stringify(rt));
+    // v2（旧ファイル）＝丸ごと SET 1、他は既定のキット
+    const v2=await p.evaluate(async()=>{ const f=buildProject(); const old={version:2, bpm:95, swing:63, comp:f.comp, masterVol:f.masterVol, tracks:f.sets[0].tracks}; old.tracks[0].name='OLD1';
+      await applyProject(old); return {cur:setCur, name:tracks[0].name, bpm:bpmVal, s2fresh:setSlots[1].tracks[0].buffer===null && setSlots[1].tracks[9].patterns[0][0][4]===0}; });
+    ok_(`${V} v2 の .mics は SET 1 に入り、他は既定のキット`, v2.cur===0 && v2.name==='OLD1' && v2.bpm===95 && v2.s2fresh, JSON.stringify(v2));
+    // リロード：自動保存（v3）で 16 セットが戻る
+    await p.evaluate(async()=>{ await applyProject(JSON.parse(JSON.stringify(buildProject()))); setRename(2,'THIRD'); await autosaveNow(true); });
+    await p.reload({waitUntil:'load'}); await ready(p);
+    ok_(`${V} リロードで 16 セットが戻る（名前も）`, await p.evaluate(()=>setSlots.filter(Boolean).length===16 && setName(2)==='THIRD' && tracks[0].name==='OLD1'), await p.evaluate(()=>setSlots.filter(Boolean).length+'/'+setName(2)+'/'+tracks[0].name));
+    // 戻る：PADS に 1 タップ
+    await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(150);
     await p.click(mobile ? '#viewDots .vdot[data-view="viewPads"]' : '#modePads'); await p.waitForTimeout(200);
     const back=await p.evaluate(()=>({mode:setMode, page:clPage, pads:getComputedStyle(document.getElementById('pads')).display, grid:getComputedStyle(document.getElementById('setGrid')).display}));
     ok_(`${V} PADS へ戻る（窓は MAIN・格子は #pads）`, back.mode===false && back.page==='main' && back.pads!=='none' && back.grid==='none', JSON.stringify(back));
-    await p.evaluate(async()=>{ setClear(); await clearAutosave(); });
+    await p.evaluate(async()=>{ await clearAutosave(); });
     eq(`${V} 0 errors`, errs, []);
     await ctx.close();
   }

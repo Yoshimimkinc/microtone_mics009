@@ -53,3 +53,14 @@ setRenameSong
 setSongElapsed
 switchSongNow
 setModalEl
+# v0.3.144 §145 ファイル全体が 16 セットになったので .micset（別ファイル）は廃止。メニューの SET 読む / 保存 と、枠の管理関数を撤去
+$("setFile") [change]
+$("setLoadBtn") [click]
+$("setSaveBtn") [click]
+_patHas
+buildSetFile
+setClear
+setCount
+setNextSlot
+setPersist
+setRemove

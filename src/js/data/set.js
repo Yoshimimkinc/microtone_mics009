@@ -1,99 +1,122 @@
 // @module data/set
-// @provides _setPersistT, _setStart, buildSetFile, decodeProject, loadSetFile, queueSet, setClear, setCount,
-//    setElapsed, setNext, setNextSlot, setPersist, setPrev, setRemove, setRename, setRestore, setRevert,
-//    setStore, switchSetNow
-// @uses AC, APP_VERSION, applyProject, b64ToUint8, buildProject, decodeAudio, idbOp, makeLofi, paintSet,
-//    playing, queuedSet, scheduleAutosave, setCur, setSlots
+// @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _liveSnap, _setStart,
+//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, queueSet, resetSet, setElapsed,
+//    setLiveArm, setName, setNext, setPrev, setRename, setRevert, setsFromProject, snapshotSet, switchSetNow
+// @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
+//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, liveOn, makeLofi,
+//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat,
+//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, snapshotState,
+//    stopAllVoices, stripLegacyLocks, swingPct
 // @depends -
-// ---------- SET：16 の枠に「16 パッドの状態（.mics の中身＋復号済みの音）」を入れ、叩いて切り替える。DOM は触らない ----------
-// v0.3.143 §144。枠の中のシーケンスは A B C D（いままでどおり）。切替は queueSet → スケジューラが小節頭で switchSetNow。
-// 約束：枠を選んで鳴らしている間に PADS / SEQ でつけた変化は一時。■ で止めると枠の状態に戻る（setRevert）。残すなら枠に上書き（setStore）。
-let _setStart=0;   // いまの枠が始まった時刻（performance.now）。経過表示用
-// .mics の中身（proj）の音を復号する → dec[i]={raw,lofi}（音の無いパッドは null）
-async function decodeProject(proj){
-  const dec=[];
-  for(let i=0;i<Math.min(proj.tracks.length,16);i++){ const pt=proj.tracks[i];
-    if(pt&&pt.audio){ const wav=b64ToUint8(pt.audio); const ab=wav.buffer.slice(wav.byteOffset,wav.byteOffset+wav.byteLength);
-      const raw=await decodeAudio(ab); dec[i]={raw, lofi:makeLofi(raw)}; }
-    else dec[i]=null; }
-  return dec;
+// ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
+// v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
+// いまのセット（setCur）は live の tracks / PADS / bpmVal / swingPct が正。他のセットは setSlots[k] に snapshotSet の形で持つ。
+// 切替 = いまのを snapshot に退避 → 次の snapshot を tracks へ（音は復号済みの参照なので同期）。再生中は小節頭（queuedSet）。
+// DOM は触らない（表示は ui/set-view）。
+let _setStart=0;   // いまのセットが始まった時刻（performance.now）。経過表示用
+let _liveSnap=null;   // LIVE 中の ▶ で取った、いまのセットの状態（■ で戻す＝演奏中の変化は一時）
+const SET_TRACK_DEFAULT={vol:-4,tune:0,scale:"off",start:0,end:1,loop:false,loopStart:0,filter:"off",cutoff:12000,reso:0.7,attack:0,fade:3,delaySend:0,reverbSend:0,outBus:"A",midiNote:null,key:null,choke:0,mute:false,solo:false};
+function _emptyPatterns(){ return Array.from({length:4},()=>Array.from({length:4},()=>new Array(STEPS).fill(0))); }
+// 既定のキット（1-8 空、9-16 プリセット）の 1 トラック snapshot
+function _defaultTrackSnap(i){
+  const p=PADS[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
+  const synth = i>=8 && pr;
+  return Object.assign({}, SET_TRACK_DEFAULT, {
+    name: synth ? (["KICK","SNARE","HAT","OHAT","CLAP","RIM","TOM","SINBASS"][i-8]||p.name) : ("PAD "+(i+1)),
+    type: synth ? "synth" : "empty", voice: synth ? ["kick","snare","hat","ohat","clap","rim","tom","sinbass"][i-8] : null,
+    buffer: synth ? pr.buf : null, rawBuffer: synth ? pr.raw : null,
+    start: synth ? pr.start : 0, end: synth ? pr.end : 1, loop: synth ? pr.loop : false, loopStart: synth ? pr.loopStart : 0,
+    choke: (synth && (i===10||i===11)) ? 1 : 0, scale: (synth && i===15) ? "chro" : "off",
+    patterns:_emptyPatterns(), locks:{} });
 }
-function setCount(){ return setSlots.filter(Boolean).length; }
-// いまの 16 パッドの状態を枠 k に入れる（上書きも同じ）。音は buildProject の切り詰め後の WAV から復号し直す（保存と同じ音＝再現性）
-async function setStore(k, name){
-  if(k<0||k>15) return false;
-  const proj=buildProject(); const dec=await decodeProject(proj);
-  const nm=(name||(setSlots[k]&&setSlots[k].name)||"").trim()||("SET "+(k+1));
-  setSlots[k]={name:nm, proj, dec};
-  if(setCur<0 || setCur===k){ setCur=k; _setStart=performance.now(); }
-  setPersist();
-  return true;
+function defaultSetSnapshot(k){ return {name:"SET "+(k+1), bpm:100, swing:67, tracks:PADS.map((_,i)=>_defaultTrackSnap(i))}; }
+// いまのセット（live）を snapshot に
+function snapshotSet(){ return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:snapshotState().tracks}; }
+function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:JSON.parse(JSON.stringify(x.locks||{}))}))}; }
+// .mics のセット（v3 の sets[k]、または v2 のファイル丸ごと）を snapshot に（音を復号。audio の無い synth はプリセット）
+async function decodeSetData(sd,k){
+  const snap=defaultSetSnapshot(k);
+  if(!sd||!Array.isArray(sd.tracks)) return snap;
+  snap.name=String(sd.name||("SET "+(k+1))).slice(0,24); snap.bpm=+sd.bpm||100; snap.swing=+sd.swing||50;
+  for(let i=0;i<Math.min(sd.tracks.length,16);i++){ const pt=sd.tracks[i]; if(!pt) continue; const x=snap.tracks[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
+    x.name=pt.name||x.name; x.type=pt.type||"empty"; x.voice=pt.voice||null;
+    x.vol=pt.vol??-4; x.tune=pt.tune??0; x.scale=pt.scale??"off";
+    x.filter=pt.filter??"off"; x.cutoff=pt.cutoff??12000; x.reso=pt.reso??0.7;
+    x.attack=pt.attack??0; x.fade=pt.fade??3; x.delaySend=pt.delaySend??0; x.reverbSend=pt.reverbSend??0; x.outBus=pt.outBus||"A"; x.midiNote=pt.midiNote??null; x.key=pt.key??null;
+    x.choke=pt.choke??0; x.mute=pt.mute??false; x.solo=pt.solo??false;
+    // パターン（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
+    x.patterns=_emptyPatterns();
+    if(pt.patterns) for(let p=0;p<4;p++){ const pat=pt.patterns[p]; if(!Array.isArray(pat)) continue;
+      if(typeof pat[0]==="number"){ x.patterns[p][0]=pat.slice(0,STEPS); }
+      else for(let bar=0;bar<4&&bar<pat.length;bar++) if(Array.isArray(pat[bar])) x.patterns[p][bar]=pat[bar].slice(0,STEPS);
+      for(let bar=0;bar<4;bar++) while(x.patterns[p][bar].length<STEPS) x.patterns[p][bar].push(0); }
+    x.locks=stripLegacyLocks(pt.locks ? JSON.parse(JSON.stringify(pt.locks)) : {});
+    if(pt.audio){ const wav=b64ToUint8(pt.audio); const ab=wav.buffer.slice(wav.byteOffset,wav.byteOffset+wav.byteLength);
+      const raw=await decodeAudio(ab); x.rawBuffer=raw; x.buffer=makeLofi(raw);
+      x.start=pt.start??0; x.end=pt.end??1; x.loop=pt.loop??false; x.loopStart=pt.loopStart??0; }
+    else if(x.type==="synth" && pr){ x.buffer=pr.buf; x.rawBuffer=pr.raw;   // 同梱しないプリセット＝起動時の音。未指定の値はプリセット既定
+      x.start=pt.start??pr.start; x.end=pt.end??pr.end; x.loop=pt.loop??pr.loop; x.loopStart=pt.loopStart??pr.loopStart; }
+    else { x.buffer=null; x.rawBuffer=null; x.start=pt.start??0; x.end=pt.end??1; x.loop=pt.loop??false; x.loopStart=pt.loopStart??0; }   // 空パッド（幽霊サンプル防止）
+  }
+  return snap;
 }
-function setRename(k,name){ if(!setSlots[k]) return; const nm=(name||"").trim(); if(!nm) return; setSlots[k].name=nm.slice(0,24); setPersist(); }
-function setRemove(k){
-  if(!setSlots[k]) return;
-  setSlots[k]=null;
-  if(queuedSet===k) queuedSet=null;
-  if(setCur===k) setCur=-1;
-  setPersist();
-}
-function setClear(){ setSlots=new Array(16).fill(null); setCur=-1; queuedSet=null; setPersist(); }
-// .micset（JSON）：{kind:"micset", version:2, cur, slots:[null|{name,proj}]×16}。v1（songs の並び）も読める
-function buildSetFile(){ return {version:2, kind:"micset", app:APP_VERSION, cur:setCur, slots:setSlots.map(s=>s?{name:s.name, proj:s.proj}:null)}; }
-async function loadSetFile(obj){
-  if(!obj||obj.kind!=="micset") throw new Error("not a .micset");
-  const src=Array.isArray(obj.slots)?obj.slots.slice(0,16):(Array.isArray(obj.songs)?obj.songs.slice(0,16):null);
-  if(!src||!src.some(Boolean)) throw new Error("empty .micset");
+// ファイル → 16 の snapshot と cur（v3 は sets、v2 / 既定プロジェクトは丸ごと SET 1）。cur から復号する
+async function setsFromProject(proj){
+  const v3 = proj && Array.isArray(proj.sets);
+  const sets = v3 ? proj.sets : [proj];
+  let cur = v3 ? (+proj.cur||0) : 0; if(!(cur>=0&&cur<16)) cur=0;
   const slots=new Array(16).fill(null);
-  for(let k=0;k<src.length;k++){ const s=src[k]; if(!s) continue; if(!s.proj||!s.proj.tracks) throw new Error("bad slot "+k);
-    slots[k]={name:String(s.name||("SET "+(k+1))).slice(0,24), proj:s.proj, dec:await decodeProject(s.proj)}; }
-  setSlots=slots; queuedSet=null;
-  let k=+obj.cur; if(!(k>=0&&k<16&&slots[k])) k=slots.findIndex(Boolean);
-  setCur=-1; queueSet(k);
-  setPersist();
-  return slots.filter(Boolean).length;
+  slots[cur]=await decodeSetData(sets[cur],cur);
+  for(let k=0;k<16;k++){ if(k===cur) continue; slots[k]=await decodeSetData(sets[k],k); }
+  return {slots, cur};
 }
-// 枠を叩く：止まっていれば今すぐ差し替え、鳴っていれば次の小節頭で（同じ枠をもう一度＝予約取消）。NOW の枠を叩いても何もしない
+// snapshot を live（tracks / PADS / bpm / swing）へ。opts: deferPaint（重い再描画は次フレーム）/ keepSel（選択パッド・編集位置を保つ）
+function applySetSnapshot(s, opts){
+  const keepSel=!!(opts&&opts.keepSel), selWas=selected;
+  for(let i=0;i<16;i++) applyTrackSnapshot(i, s.tracks[i]);
+  bpmVal=s.bpm||100; swingPct=s.swing||50;
+  const $=id=>document.getElementById(id);
+  if($("bpm")){ $("bpm").value=bpmVal; $("bpmRead").textContent=bpmVal.toFixed(1); }
+  if($("swing")) $("swing").value=swingPct;
+  if(typeof setDelayTempo==="function") setDelayTempo();
+  if(!keepSel){ editPat=0; editBar=0; }
+  for(let i=0;i<PADS.length;i++) applyPadCategory(i);
+  const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
+  if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();
+}
+// 切替の実体（スケジューラが小節頭に呼ぶ／止まっているときは queueSet から直接）。いまのを退避 → 次を live へ。音は stopAt で止める
+function switchSetNow(k, stopAt){
+  if(!(k>=0&&k<16)||k===setCur) return;
+  if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k);
+  setSlots[setCur]=snapshotSet();                 // いまのセットを退避（live が正だったぶんを書き戻す）
+  stopAllVoices(stopAt||AC.currentTime); queuedPat=null;
+  setCur=k; queuedSet=null; _setStart=performance.now();
+  applySetSnapshot(setSlots[k], {deferPaint:true});
+  if(liveOn && playing) _liveSnap=_cloneSnap(setSlots[k]);   // LIVE 中は新しいセットの保存状態を控える（■ で戻す）
+  clearUndo();                                     // 別のセットの状態へ戻すのは事故
+  if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// セットを叩く：止まっていれば今すぐ差し替え、鳴っていれば次の小節頭で（同じセットをもう一度＝予約取消）。NOW を叩いても何もしない（false）
 function queueSet(k){
-  if(!setSlots[k]) return false;
+  if(!(k>=0&&k<16)) return false;
   if(playing){ if(k===setCur&&queuedSet===null) return false; queuedSet = (queuedSet===k) ? null : k; return true; }
   if(k===setCur) return false;
   switchSetNow(k, AC.currentTime); return true;
 }
-// 差し替えの実体（スケジューラが小節頭に呼ぶ／止まっているときは queueSet から直接）。音は stopAt で止める
-function switchSetNow(k, stopAt){
-  const s=setSlots[k]; if(!s) return;
-  setCur=k; queuedSet=null; _setStart=performance.now();
-  applyProject(s.proj, {dec:s.dec, deferPaint:true, stopAt});   // dec があるので await なしで同期に終わる
-  if(typeof scheduleAutosave==="function") scheduleAutosave();   // リロードしても「いまの枠」に戻る
-}
-// ■ で止めたとき：枠の保存状態に戻す（演奏中の変化は一時）。戻したら true
+function setNext(){ return setCur<15 ? queueSet(setCur+1) : false; }
+function setPrev(){ return setCur>0 ? queueSet(setCur-1) : false; }
+// いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
+function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+// セットを既定のキットに戻す（長押し 2 回）。NOW には使わない
+function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; setSlots[k]=defaultSetSnapshot(k); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+function setRename(k,name){ const nm=(name||"").trim(); if(!nm||!(k>=0&&k<16)) return; if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k); setSlots[k].name=nm.slice(0,24); if(typeof scheduleAutosave==="function") scheduleAutosave(); }
+function setName(k){ return (setSlots[k]&&setSlots[k].name)||("SET "+(k+1)); }
+function setElapsed(){ return (performance.now()-_setStart)/1000; }
+// LIVE：▶ でいまのセットの状態を控え、■ で戻す（演奏中の変化は一時）。LIVE でなければ何もしない＝打ち込みは残る
+function setLiveArm(){ _liveSnap = liveOn ? snapshotSet() : null; }
 function setRevert(){
-  const s=setCur>=0?setSlots[setCur]:null; if(!s) return false;
-  applyProject(s.proj, {dec:s.dec, keepSel:true});
+  if(!_liveSnap) return false;
+  const s=_liveSnap; _liveSnap=null;
+  applySetSnapshot(s, {keepSel:true});
   return true;
-}
-function setNextSlot(k,dir){ for(let i=1;i<16;i++){ const j=k+dir*i; if(j<0||j>15) return -1; if(setSlots[j]) return j; } return -1; }
-function setNext(){ const j=setNextSlot(setCur<0?-1:setCur, +1); return j>=0 ? queueSet(j) : false; }
-function setPrev(){ const j=setNextSlot(setCur<0?16:setCur, -1); return j>=0 ? queueSet(j) : false; }
-function setElapsed(){ return setCur<0?0:(performance.now()-_setStart)/1000; }
-// 保存：自動保存と同じ IndexedDB に "set" で（リロードしても枠が残る）。復号済みの音は入れず、起動時に復号し直す
-let _setPersistT=0;
-function setPersist(){ clearTimeout(_setPersistT); _setPersistT=setTimeout(async()=>{ try{
-  if(typeof idbOp!=="function") return;
-  if(!setCount()){ await idbOp("readwrite", st=>st.delete("set")); return; }
-  await idbOp("readwrite", st=>st.put({at:Date.now(), json:JSON.stringify(buildSetFile())}, "set"));
-}catch(e){ console.warn("set persist:", e); } }, 800); }
-async function setRestore(){   // 起動時：枠を復号して持つだけ（いまの 16 パッドは自動保存が先に復元している＝適用しない）
-  try{ if(typeof idbOp!=="function") return false;
-    const rec=await idbOp("readonly", st=>st.get("set")); if(!rec||!rec.json) return false;
-    const obj=JSON.parse(rec.json); if(!obj||obj.kind!=="micset") return false;
-    const src=Array.isArray(obj.slots)?obj.slots.slice(0,16):(Array.isArray(obj.songs)?obj.songs.slice(0,16):[]);
-    const slots=new Array(16).fill(null);
-    for(let k=0;k<src.length;k++){ const s=src[k]; if(s&&s.proj&&s.proj.tracks) slots[k]={name:s.name, proj:s.proj, dec:await decodeProject(s.proj)}; }
-    setSlots=slots; queuedSet=null;
-    const k=+obj.cur; setCur=(k>=0&&k<16&&slots[k])?k:-1; _setStart=performance.now();
-    if(typeof paintSet==="function") paintSet();
-    return true;
-  }catch(e){ console.warn("set restore:", e); return false; }
 }

@@ -1,7 +1,8 @@
 // @module plock-undo
-// @provides NOTE_NAMES, PLOCKS, SCALES, clearLockEdit, dbToGain, doUndo, getLockEdit, getLockPlay,
-//    isMelodic, lockKey, noteLabel, paintMelodic, patLength, pushUndo, refreshSeqMode, restoreState,
-//    scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState, stripLegacyLocks, undoStack
+// @provides NOTE_NAMES, PLOCKS, SCALES, applyTrackSnapshot, clearLockEdit, clearUndo, dbToGain, doUndo,
+//    getLockEdit, getLockPlay, isMelodic, lockKey, noteLabel, paintMelodic, patLength, pushUndo,
+//    refreshSeqMode, restoreState, scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState,
+//    stripLegacyLocks, undoStack
 // @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
 //    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
@@ -74,6 +75,19 @@ function snapshotState(){
     })),
   };
 }
+// 1 トラックを snapshotState の形から戻す（undo の復元と、セット切替（data/set）で共用。v0.3.144）
+function applyTrackSnapshot(i,x){
+  const t=tracks[i];
+  t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
+  t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;t.key=x.key??null;
+  t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
+  PADS[i].type=x.type;PADS[i].voice=x.voice;PADS[i].name=x.name||PADS[i].name;
+  t.patterns=x.patterns.map(p=>p.map(b=>b.slice()));
+  t.locks=x.locks?JSON.parse(JSON.stringify(x.locks)):{};
+  t.loopPlaying=false;
+  paintPadName(i);   // パッド名と SEQ 行名（ui/pads-view）
+}
+function clearUndo(){ undoStack.length=0; }   // セットを切り替えたら（別のセットの状態へ戻すのは事故）
 function restoreState(s){
   if(typeof bpmVal!=="undefined") bpmVal=s.bpm;
   if(typeof swingPct!=="undefined") swingPct=s.swing;
@@ -84,16 +98,7 @@ function restoreState(s){
   if(typeof compMakeup!=="undefined") compMakeup = 1 + Math.abs(compThreshold)/30*0.8;
   editPat=s.editPat; editBar=s.editBar;
   if(typeof nextChokeGroup!=="undefined" && s.nextChokeGroup!==undefined) nextChokeGroup=s.nextChokeGroup;
-  tracks.forEach((t,i)=>{
-    const x=s.tracks[i];
-    t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
-    t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;t.key=x.key??null;
-    t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
-    PADS[i].type=x.type;PADS[i].voice=x.voice;
-    t.patterns=x.patterns;
-    t.locks=x.locks?JSON.parse(JSON.stringify(x.locks)):{};
-    paintPadName(i);   // パッド名と SEQ 行名（ui/pads-view）
-  });
+  tracks.forEach((t,i)=>applyTrackSnapshot(i, s.tracks[i]));
   const $=id=>document.getElementById(id);
   if($("bpm")){ $("bpm").value=s.bpm; $("bpmRead").textContent=s.bpm.toFixed(1); }
   if($("swing")) $("swing").value=s.swing;
