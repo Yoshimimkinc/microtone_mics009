@@ -38,7 +38,13 @@ const CL_SPEC={
   key:   {lbl:"KEY",   ro:1, get:t=>t.key,      fmt:v=>v?String(v).toUpperCase():"—", w:4},
 };
 const CL_PAGES=[
-  {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
+  {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},
+  // SET 演奏モード（v0.3.143 §144）：キー列には出さない（モード切替で入る）。中身は ui/set-view の paintSet が書く
+  {id:"set",  lbl:"SET",    f:[],
+   x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
+     +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b></span>'
+     +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
+     +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>NEXT</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
    b:[{id:"clWave",t:'EDIT'}]},   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},

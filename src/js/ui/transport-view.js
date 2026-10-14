@@ -1,8 +1,8 @@
 // @module ui/transport-view
 // @provides drawLoop, playBtn, recBtn, updateRecBtnLabel
 // @uses AC, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue, flashPad, kickVu,
-//    moveCursors, paintSteps, playStep, playing, pushUndo, recording, sampNameEl, startTransport,
-//    stopTransport, updateBarIndicator, updatePatIndicator, vuHit
+//    moveCursors, paintSteps, playStep, playing, pushUndo, recording, sampNameEl, setCur, setRevert,
+//    startTransport, stopTransport, updateBarIndicator, updatePatIndicator, vuHit
 // @depends -
 // ---------- transport：表示とボタン（▶ / ●）。drawQueue を消化してパッド点灯・カーソル・パターン枠を描く ----------
 // 40-transport.js から分離（v0.3.132 Phase 2 第3段）。scheduler が積む drawQueue を rAF で消化するだけ＝音は出さない
@@ -33,6 +33,8 @@ playBtn.addEventListener("click",async()=>{
   } else {
     paintSteps();
     clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
+    // SET：枠を選んで鳴らしていたなら、演奏中の変化を捨てて枠の状態に戻す（§144。残すなら枠を長押しで上書き）
+    if(typeof setRevert==="function" && setRevert()) sampNameEl.textContent="■ SET "+String(setCur+1).padStart(2,"0")+" の状態に戻した（残すなら枠を長押しで上書き）";
   }
 });
 const recBtn=document.getElementById("rec");

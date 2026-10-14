@@ -1851,3 +1851,33 @@ SEQ 画面の行名（`.rn`）とステップ列の波形キャッシュは古�
 `applyProject` の opts、スケジューラの小節頭の分岐、起動時の `setRestore`、メニューの SET、検査 `liveSet`）を全部外し、v0.3.140 の形に戻した。
 この節は経緯として残す（作り方・決めたこと・宿題は上のとおり。再開するなら v0.3.141 のコミット ce73f28 / #174 から取れる）。
 
+## 144. SET モード：16 の枠に 16 パッドの状態を入れ、叩いて切り替える（v0.3.143）
+§143 の SET（モーダル＋一覧＋別画面の LIVE）は「UI が悪すぎる。モックから検討しないと。SP-404 のようにワンアクションで PAD / SEQ / SET を切り替えできないと」で没（v0.3.142）。
+モック（claude.ai のキャンバス、案 A「上段スイッチ」を採用）で合意した形で作り直した。
+
+### 決めたこと（producer）
+- **1 セット = 16 パッド**（いまの `.mics` 1 つ）。**セットは 16 まで**。**16 パッドを使って切り替える**（格子の 1 マス = 1 つの枠）。枠の中のシーケンスは A B C D。
+- 上段のスイッチ **PADS / SEQ / SET** でワンアクション。SET に入ると **情報窓が SET 演奏モード**、格子が 16 の枠、下段が ◀ / NEXT / LIVE になる。
+- 演奏の流れ：SET で切り替え → PADS で叩く → SEQ で押し直して変化をつける。
+- **PADS / SEQ でつけた変化は演奏中だけ。■ で止めると枠の保存状態に戻る**（枠が正、ライブは一時）。残すなら枠を長押しで上書き。
+- （宿題）A B C D に MUTE / SOLO の状態も覚えさせる＝1 セットからバリエーションを数タップで。別の版で。
+
+### 作り
+- SET は独立した view ではなく **PADS 画面の状態**（`body.setmode`）。`switchView("viewSet")` が `viewPads` を出して `setModeEnter(true)`。
+  寸法を動かさないため、#pads と同じ `.pads` クラスの `#setGrid`（16 の `.pad.setpad`）を入れ替えて出す。下段は `#setBar`（スマホ＝msbar の場所、split＝msbar の area、perf＝P-LOCK 列の area）。
+- 情報窓は `CL_PAGES` の `set` ページ（キー列には出さない）：SET 番号・NOW・TIME・NEXT を `.cl-par` で。キー列は `#clKeysSet`（A B C D → `setEditPat`）。
+- 枠の DOM：番号＋NOW/NEXT の印、名前、BPM、A B C D の点（中身のある順）。空きは破線「＋ いまの16パッド」。
+- データ：`data/set`（`setSlots[16]` `setCur` `queuedSet`、`setStore(k)` `queueSet(k)` `switchSetNow` `setRevert` `setNext/Prev` `.micset` v2 `{kind,version:2,cur,slots[16]}`、IndexedDB に `setPersist/Restore`）。
+  切替はスケジューラの小節頭（`audio/transport`）。`applyProject(proj,{dec,deferPaint,stopAt,keepSel})`：復号済みなら `await` を踏まない、■ の戻しは選択パッドを保つ。
+- ■：`ui/transport-view` の停止で `setRevert()`（枠を選んでいるときだけ）→ トースト「■ SET 03 の状態に戻した（残すなら枠を長押しで上書き）」。
+- 枠の操作：タップ＝空なら入れる／入っていれば選ぶ（鳴っていれば次の小節頭、止まっていれば即。NOW をもう一度は何もしない）。長押し＝NOW なら上書き、他の枠は 2 回で削除。
+- 読む / 保存はメニュー ⋮ → Live。LIVE は下段のトグル（Wake Lock・離脱確認・編集系ロック）。
+- 実測（check）：窓の高さは PADS と同じ（390: 203px、1280 perf: 191px）、枠の寸法はパッドと同じ（perf 121×113、スマホは高さ 1px 差）。
+
+### 検査
+`check.mjs` `setMode`（390 と 1280）：1 タップで SET／窓の高さ不変／枠の寸法＝パッド／空の枠を叩いて 3 つ入れる／停止中は即／再生中は予約→小節頭（playBar=0・stepIdx≤1・BPM）／
+■ でステップ・ミュートが戻り選択パッドは保つ／◀・最後の枠／`.micset` 往復・`#setFile`／リロードで枠が戻る／LIVE／PADS へ戻る／0 errors。
+
+### 宿題
+- A B C D に MUTE / SOLO を記憶（producer 案）。枠の名前変更（いまは SET n 固定）。切替の作法（ブレイク 1 小節）。フットスイッチで NEXT。
+

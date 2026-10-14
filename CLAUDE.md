@@ -4,7 +4,7 @@
 microtone MICS009 — a browser-based 16-pad sampler/sequencer inspired by SP-1200 and MPC.
 Ships as a single HTML file (`mics-609bc14b.html`), zero external dependencies. Pure Web Audio API.
 
-**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（52部品）。
+**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（55部品）。
 `node tools/build.mjs` が連結して `mics-609bc14b.html` を生成する。**生成物を直接編集しない**
 （関門 `build.mjs --check` が止める）。バージョンは `version.json` だけが正で、ビルドが差し込む。
 流れの全体は **`docs/dev-flow.md`**。
@@ -44,6 +44,10 @@ tapeHiss ───────────────────────�
 - **SEQ**: 16×16 step grid with pattern A/B/C/D selector and chain length.
 - **MIX screen removed**: per-pad volume = EDIT Level only (P-LOCK level removed v0.3.124, §135); mute/solo = PADS MUTE/SOLO modes. Rationale: same state was editable from 3 places (DRY violation → sync bugs). Audio routing (groupBus/GROUP_OF/FX nodes) unchanged — only UI moved. See `docs/screen-spec.md`.
 - **MENU (⋮) mixer UI removed (v0.2.27)**: the Group-volume (4) and FX (delay/reverb) pads were dropped from the menu too. Group/FX **values still load from `.mics` and apply** via `applyGroupVol`/`applyFx` — only the editing UI is gone. Master volume + COMP remain in the menu. `paintMixer()` kept as a no-op shim for existing callers.
+
+- **SET モード（v0.3.143, §144）**: 上段スイッチ PADS / SEQ / SET。SET は PADS 画面の状態（`body.setmode`）で、情報窓が SET 演奏モード、
+  格子が **16 の枠**（1 枠 = 16 パッドの状態 = `.mics` 1 つ）。叩いて切替（鳴っていれば次の小節頭）。**■ で止めると枠の保存状態に戻る**（枠が正、ライブは一時）。
+  データは `data/set`、表示は `ui/set-view`。`.micset` はメニュー → Live。
 
 ### Key Design Rules
 - **"aki rule"**: Hide complex settings. Anyone should be able to enjoy sampling music without understanding filters or choke groups. Simple surface, depth underneath.
@@ -107,7 +111,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 ## 開発の流れ（要点。詳細は `docs/dev-flow.md`）
 1. `src/` を直す → `node tools/build.mjs` → `node tools/gate.mjs`
    - `src/js/` は番号付きファイル（旧来）と **責務別ディレクトリ `app/` `ui/` `data/` `audio/`**（v0.3.130〜 Phase 2 / 3）が同居する。
-     新しい部品は責務別ディレクトリへ（`ui/pads-view` `ui/seq-view` `ui/performance-view` `ui/status` `data/pads` `data/patterns` `audio/transport` `ui/transport-view`）。
+     新しい部品は責務別ディレクトリへ（`ui/pads-view` `ui/seq-view` `ui/performance-view` `ui/status` `data/pads` `data/patterns` `data/set` `audio/transport` `ui/transport-view` `ui/set-view`）。
      旧 `30-ui-pads.js` はこの5つに分けた（第1段）。第2段（v0.3.131）で COPY のデータ更新を `data/` へ、P-LOCK の塗りを
      `ui/performance-view` へ移し、**データ更新は DOM を触らない・描画は `refreshPadDisplay` 等の描画関数だけ**という分け方にした。第3段（v0.3.132）でパッド名の描画を `paintPadName` に一本化し、`40-transport` を音（`audio/transport`）と
      表示（`ui/transport-view`）に分けた。記録は `docs/modularization-log.md` Phase 2
@@ -130,7 +134,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.142
+MICS009 beta v0.3.143
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
