@@ -64,3 +64,8 @@ setCount
 setNextSlot
 setPersist
 setRemove
+# v0.3.145 SET 画面の下段（◀ / NEXT / LIVE）と LIVE LOCK を撤去（producer「不要ではないか」。セットのパッド自体が切替）
+setLiveArm
+setNext
+setPrev
+setRevert

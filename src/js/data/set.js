@@ -1,12 +1,12 @@
 // @module data/set
-// @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _liveSnap, _setStart,
-//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, queueSet, resetSet, setElapsed,
-//    setLiveArm, setName, setNext, setPrev, setRename, setRevert, setsFromProject, snapshotSet, switchSetNow
+// @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
+//    copySetTo, decodeSetData, defaultSetSnapshot, queueSet, resetSet, setElapsed, setName, setRename,
+//    setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
-//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, liveOn, makeLofi,
-//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat,
-//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, snapshotState,
-//    stopAllVoices, stripLegacyLocks, swingPct
+//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
+//    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat, queuedSet,
+//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, snapshotState, stopAllVoices,
+//    stripLegacyLocks, swingPct
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -14,7 +14,6 @@
 // 切替 = いまのを snapshot に退避 → 次の snapshot を tracks へ（音は復号済みの参照なので同期）。再生中は小節頭（queuedSet）。
 // DOM は触らない（表示は ui/set-view）。
 let _setStart=0;   // いまのセットが始まった時刻（performance.now）。経過表示用
-let _liveSnap=null;   // LIVE 中の ▶ で取った、いまのセットの状態（■ で戻す＝演奏中の変化は一時）
 const SET_TRACK_DEFAULT={vol:-4,tune:0,scale:"off",start:0,end:1,loop:false,loopStart:0,filter:"off",cutoff:12000,reso:0.7,attack:0,fade:3,delaySend:0,reverbSend:0,outBus:"A",midiNote:null,key:null,choke:0,mute:false,solo:false};
 function _emptyPatterns(){ return Array.from({length:4},()=>Array.from({length:4},()=>new Array(STEPS).fill(0))); }
 // 既定のキット（1-8 空、9-16 プリセット）の 1 トラック snapshot
@@ -92,7 +91,6 @@ function switchSetNow(k, stopAt){
   stopAllVoices(stopAt||AC.currentTime); queuedPat=null;
   setCur=k; queuedSet=null; _setStart=performance.now();
   applySetSnapshot(setSlots[k], {deferPaint:true});
-  if(liveOn && playing) _liveSnap=_cloneSnap(setSlots[k]);   // LIVE 中は新しいセットの保存状態を控える（■ で戻す）
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
   if(typeof scheduleAutosave==="function") scheduleAutosave();
 }
@@ -103,8 +101,6 @@ function queueSet(k){
   if(k===setCur) return false;
   switchSetNow(k, AC.currentTime); return true;
 }
-function setNext(){ return setCur<15 ? queueSet(setCur+1) : false; }
-function setPrev(){ return setCur>0 ? queueSet(setCur-1) : false; }
 // いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
 function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 // セットを既定のキットに戻す（長押し 2 回）。NOW には使わない
@@ -112,11 +108,3 @@ function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; setSlots[k]=de
 function setRename(k,name){ const nm=(name||"").trim(); if(!nm||!(k>=0&&k<16)) return; if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k); setSlots[k].name=nm.slice(0,24); if(typeof scheduleAutosave==="function") scheduleAutosave(); }
 function setName(k){ return (setSlots[k]&&setSlots[k].name)||("SET "+(k+1)); }
 function setElapsed(){ return (performance.now()-_setStart)/1000; }
-// LIVE：▶ でいまのセットの状態を控え、■ で戻す（演奏中の変化は一時）。LIVE でなければ何もしない＝打ち込みは残る
-function setLiveArm(){ _liveSnap = liveOn ? snapshotSet() : null; }
-function setRevert(){
-  if(!_liveSnap) return false;
-  const s=_liveSnap; _liveSnap=null;
-  applySetSnapshot(s, {keepSel:true});
-  return true;
-}

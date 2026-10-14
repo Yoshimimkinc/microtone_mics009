@@ -14,6 +14,14 @@
   .setpad .dots i.has{background:var(--amber);}
   .setpad.on{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.on .n{color:var(--teal);}
+  /* 再生中のセット＝オレンジに「光る」（叩いたパッドの点灯と同じ色。目立つように面で塗り、外へ光らせる）v0.3.145 */
+  .setpad.on.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
+    box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
+  .setpad.on.playing .n,.setpad.on.playing .nm,.setpad.on.playing .ft,.setpad.on.playing .tag{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
+  .setpad.on.playing .dots i{background:rgba(0,0,0,.25);}
+  .setpad.on.playing .dots i.has{background:var(--hit-ink);}
+  body.perf #viewPads.split>.pads .setpad.on.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
+    box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
   .setpad.queued{box-shadow:0 0 0 2px var(--amber) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.queued .n{color:var(--amber);}
   .setpad.fresh .nm,.setpad.fresh .n{color:var(--dim);}   /* 既定のキットのまま（まだ何も入れていない）＝薄く */
@@ -25,23 +33,6 @@
   #clKeysSet{display:none;}
   body.setmode #clKeys{display:none;}
   body.setmode #clKeysSet{display:grid;}   /* .cl-keys と同じ 4 等分のグリッド（flex だと幅が中身なりに縮む） */
-  /* 下段 */
-  .setbar{display:none;}
+  /* 下段：SET モードでは MUTE 列（スマホ）/ P-LOCK 列（perf）を出さない＝格子がその分を使う（◀ / NEXT / LIVE は v0.3.145 で撤去：セットのパッド自体が切替）*/
   body.setmode #viewPads>.msbar{display:none!important;}
-  body.setmode .setbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-  .setbar .t{flex:0 0 auto;min-width:64px;}
-  .setbar .setnext{flex:1 1 auto;background:var(--teal);color:#06201d;border-color:var(--teal);font-weight:700;box-shadow:0 0 12px rgba(61,214,196,.3);}
-  .setbar .setnext.queued{background:var(--amber);color:#241400;border-color:var(--amber);box-shadow:0 0 12px rgba(255,180,80,.45);}
-  .setbar #setLive.on{background:var(--red);color:#fff;border-color:var(--red);}
-  #viewPads.split .setbar{grid-area:msbar;margin:0;}                 /* split（PC・非perf）：MUTE 列の場所 */
   body.perf.setmode #perfPlk{display:none;}
-  body.perf #viewPads.split .setbar{grid-area:plk;margin:0;}          /* perf：P-LOCK 列の場所（msbar の area は perf に無い＝ID 付きで上書き） */
-  body.perf .setbar .t{min-height:46px;}
-  /* LIVE LOCK：編集系・破壊系を触れなくする（寸法は動かさない＝薄くするだけ） */
-  body.live #holdEdit, body.live #holdCopy, body.live #modeSeq, body.live #resetBtn, body.live #loadProjBtn, body.live #loadBtn,
-  body.live #peLoadBtn, body.live #peSmplBtn, body.live #sampleBtn{pointer-events:none;opacity:.35;}
-  @media (max-width:600px){
-    body.setmode #viewPads>.setbar{order:3;flex:0 0 auto;margin:4px 0 0;position:sticky;bottom:0;z-index:5;background:var(--bg);padding-top:4px;gap:4px;}
-    #viewPads>.setbar .t{min-height:42px;font-size:11px;letter-spacing:.04em;padding:0 6px;}   /* msbar の 46px（42+4）と同じ高さ＝格子の寸法が動かない */
-    #viewPads>.setbar #setPrev,#viewPads>.setbar #setLive{flex:0 0 72px;min-width:0;}
-  }
