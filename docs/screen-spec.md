@@ -1881,3 +1881,22 @@ SEQ 画面の行名（`.rn`）とステップ列の波形キャッシュは古�
 ### 宿題
 - A B C D に MUTE / SOLO を記憶（producer 案）。枠の名前変更（いまは SET n 固定）。切替の作法（ブレイク 1 小節）。フットスイッチで NEXT。
 
+## 145. ファイル全体 = 16 セット × 16 パッド × 4 シーケンス（v0.3.144）
+§144 の「枠に別ファイルを入れる」作りは「そういう考えではなくて、ファイル全体が 16 セット、16 パッド、4 シーケンスで出来てて、SET の画面で 16 セットをパッドで押すとループ再生できるという、全体の構造の変更必要です」で作り直し。
+- **構造**：セット 1〜16。各セット = 16 パッド（音・設定）＋ A B C D のシーケンス＋ BPM / SWING。**最初から 16 ある**（空という状態は無い。既定のキット＝1-8 空・9-16 プリセット）。
+  comp / master / グループ / 送り FX はセットを跨いで 1 つ。
+- **SET モード**：パッドが「セットのポン出し」。叩くとそのセットのシーケンスがループ再生され（止まっていれば ▶ も押す）、**PADS / SEQ の対象もそのセット**になる（ポン出しと選択を兼ねる）。
+  鳴っていれば次の小節頭で切替（もう一度で予約取消）。NOW を叩く＝止まっていれば ▶。
+- **切替で前のセットの変更は残る**（退避）。undo はセットを跨がない（切替で空に）。
+- **LIVE**：▶ でいまのセットの状態を控え、■ で戻す（鳴らしている間の変化は一時）。LIVE でなければ打ち込みは残る＝制作のときは今までどおり。
+- **COPY**：COPY を押してセットを叩く＝いまのセットをそこへ写す。**長押し 2 回**＝既定のキットに戻す。名前は `setRename`（UI は宿題）。
+- **ファイル `.mics` v3**：`{version:3, cur, sets:[16 × {name,bpm,swing,tracks[16]}], comp, masterVol, groupVol, fx}`。
+  **触っていないプリセット（9-16 の音がプリセットそのもの）は音を同梱しない**＝16 セットでも膨れない（起動時の音から復元）。v2（`tracks` 直下）は丸ごと SET 1 に入る。
+  自動保存も v3。`.micset` と IndexedDB の `"set"` は廃止（§143/§144 の名残）。
+- **作り**：`data/set`（`setSlots[16]`＝snapshotSet の形、`switchSetNow` / `queueSet` / `copySetTo` / `resetSet` / `setLiveArm` / `setRevert` / `decodeSetData` / `setsFromProject` / `applySetSnapshot`）、
+  `20-plock-undo` の `applyTrackSnapshot`（undo とセット切替で共用）、`71-save-load` の `trackData` / `setData` / `buildProject` v3、`22-presets` の `PRESET_BUFS`、`73-share-export` の `applyProject` v3。
+  いまのセットは live の `tracks` / `PADS` / `bpmVal` / `swingPct` が正。切替時に `snapshotSet()` で退避してから次を `applySetSnapshot`（音は復号済みの参照＝同期）。
+
+検査：`check.mjs` `setMode`（390 / 1280）：起動時から 16 セット／1 タップで SET／寸法不変／叩く＝ポン出し（切替＋▶・既定のキット・前のセットの変更は退避・undo 空）／
+再生中は予約→小節頭（状態が戻る・打ち込みも退避）／LIVE でなければ ■ で残る／LIVE は ■ で戻る／COPY／NEXT・◀／v3 往復（プリセットは同梱しない）／v2 は SET 1／リロードで 16 セット／PADS へ戻る。
+

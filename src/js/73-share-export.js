@@ -1,12 +1,10 @@
 // @module share-export
 // @provides _expBlob, _expBusy, _expName, applyProject, shareOrDownload
-// @uses AC, IS_IOS, PADS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applyPadCategory, autosaveNow,
-//    b64ToUint8, bpmVal, bufToWav, buildAllTrackWaves, compDrive, compOn, compThreshold, decodeAudio,
-//    drawAllPadWaves, editBar, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol,
-//    makeLofi, makeSatCurve, masterGain, multiOut, outBGain, paintMixer, paintPadName, paintPadStates,
-//    paintPatBar, paintPerf, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat, sampNameEl,
-//    saturator, selectPad, selected, setCompBypass, setDelayTempo, stopAllVoices, stripLegacyLocks,
-//    swingPct, tickDur, tracks
+// @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
+//    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
+//    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
+//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setSlots, setsFromProject,
+//    stopAllVoices, tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -73,21 +71,11 @@ document.getElementById("loadProjBtn").addEventListener("click",()=>{
   document.getElementById("projFile").click();
 });
 async function applyProject(proj, opts){
-    // opts（v0.3.143 SET）：dec=復号済みの音（await せず同期で差し替わる＝小節頭の切替）／deferPaint=重い再描画を次フレームへ／
-    //   stopAt=古い音を止める時刻／keepSel=選択パッドを保つ（■ で枠の状態に戻すとき）
-    const dec=opts&&opts.dec, keepSel=!!(opts&&opts.keepSel);
-    const selWas=(typeof selected!=="undefined")?selected:0;
-    // 読込前に鳴っている音を止め、ループ/予約状態をリセット（旧バッファの垂れ流し・状態ズレ防止）
+    // v0.3.144 §145：ファイル全体 = 16 セット。v3 は sets[16] と cur、v2 / 既定プロジェクトは丸ごと SET 1（他は既定のキット）。
+    // opts：deferPaint=重い再描画を次フレームへ／stopAt=古い音を止める時刻／keepSel=選択パッドを保つ
     stopAllVoices((opts&&opts.stopAt)||AC.currentTime);
     queuedPat=null;
-    // restore globals
-    bpmVal=proj.bpm||100;
-    document.getElementById("bpm").value=bpmVal;
-    document.getElementById("bpmRead").textContent=bpmVal.toFixed(1);
-    if(typeof setDelayTempo==="function") setDelayTempo();
-    swingPct=proj.swing||50;
-    document.getElementById("swing").value=swingPct;
-    // comp
+    // 本体の状態（comp / master / グループ / 送り FX）＝セットを跨いで 1 つ
     if(proj.comp){
       compThreshold=proj.comp.threshold; compDrive=proj.comp.drive;
       compOn=proj.comp.on;
@@ -104,58 +92,18 @@ async function applyProject(proj, opts){
       masterGain.gain.value=Math.pow(10,proj.masterVol/20);
       document.getElementById("vMaster").textContent=proj.masterVol+" dB";
     }
-    // グループフェーダー・送りFX（旧ファイルに無ければ既定のまま）
     if(proj.groupVol){ for(let g=0;g<4;g++) groupVol[g]=proj.groupVol[g]??0; applyGroupVol(); }
     if(proj.fx){ fxDelayAmt=proj.fx.delayAmt??0; fxReverbAmt=proj.fx.reverbAmt??0; fxDelayOn=!!proj.fx.delayOn; fxReverbOn=!!proj.fx.reverbOn; applyFx(); }
-    // tracks
-    for(let i=0;i<Math.min(proj.tracks.length,16);i++){
-      const pt=proj.tracks[i], t=tracks[i];
-      t.name=pt.name||PADS[i].name;
-      PADS[i].name=t.name;   // 表示は t.name に揃える（SEQの行ラベル等が読込後に既定へ戻らない v0.3.120）
-      PADS[i].type=pt.type||"empty";
-      PADS[i].voice=pt.voice||null;
-      t.vol=pt.vol??-4; t.tune=pt.tune??0; t.scale=pt.scale??"off";
-      t.start=pt.start??t.start??0; t.end=pt.end??t.end??1;   // 未指定はプリセットの自動トリム値を保持
-      t.loop=pt.loop??t.loop??false; t.loopStart=pt.loopStart??t.loopStart??0;   // 未指定はプリセット既定を保持
-      t.filter=pt.filter??"off"; t.cutoff=pt.cutoff??12000; t.reso=pt.reso??0.7;
-      t.attack=pt.attack??0; t.fade=pt.fade??3; t.delaySend=pt.delaySend??0; t.reverbSend=pt.reverbSend??0; t.outBus=pt.outBus||"A"; t.midiNote=pt.midiNote??null; t.key=pt.key??null;
-      t.choke=pt.choke??0; t.mute=pt.mute??false; t.solo=pt.solo??false;
-      // パターン読込（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
-      if(pt.patterns) for(let p=0;p<4;p++){
-        for(let bar=0;bar<4;bar++) t.patterns[p][bar]=new Array(STEPS).fill(0);
-        const pat=pt.patterns[p];
-        if(Array.isArray(pat)){
-          if(typeof pat[0]==="number"){ t.patterns[p][0]=pat.slice(0,STEPS); }                 // 旧: 1小節
-          else for(let bar=0;bar<4&&bar<pat.length;bar++) if(Array.isArray(pat[bar])) t.patterns[p][bar]=pat[bar].slice(0,STEPS);
-        }
-        for(let bar=0;bar<4;bar++) while(t.patterns[p][bar].length<STEPS) t.patterns[p][bar].push(0);
-      }
-      t.locks = stripLegacyLocks(pt.locks ? JSON.parse(JSON.stringify(pt.locks)) : {});   // p-lock（廃止済みの level は捨てる §135）
-      // audio
-      if(pt.audio){
-        if(dec&&dec[i]){ t.rawBuffer=dec[i].raw; t.buffer=dec[i].lofi; }   // 事前復号（SET）
-        else {
-          const wav=b64ToUint8(pt.audio);
-          const ab=wav.buffer.slice(wav.byteOffset,wav.byteOffset+wav.byteLength);
-          const decoded=await decodeAudio(ab);
-          t.rawBuffer=decoded;
-          t.buffer=makeLofi(decoded);
-        }
-      }else if(pt.type==="empty"){
-        t.buffer=null; t.rawBuffer=null;   // 空パッドとして保存されたものは、前に入っていた音を残さない（幽霊サンプル防止）
-      }
-      paintPadName(i);
-    }
-    if(!keepSel){ editPat=0; editBar=0; }
-    for(let i=0;i<PADS.length;i++) applyPadCategory(i);
-    const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); };
-    if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();   // 小節頭の切替ではスケジューラを待たせない
+    // 16 セット（音を復号）→ いまのセットを live へ
+    const r=await setsFromProject(proj);
+    setSlots=r.slots; setCur=r.cur; queuedSet=null;
+    applySetSnapshot(setSlots[setCur], opts);
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
   try{
     const proj=JSON.parse(await f.text());
-    if(!proj.version||!proj.tracks) throw new Error("Invalid project file");
+    if(!proj.version||!(proj.tracks||Array.isArray(proj.sets))) throw new Error("Invalid project file");   // v2（tracks）／v3（sets）
     pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
     await applyProject(proj);
     sampNameEl.textContent="LOADED — "+f.name.slice(0,12).toUpperCase();

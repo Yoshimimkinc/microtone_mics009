@@ -1,7 +1,8 @@
 // @module save-load
-// @provides b64ToUint8, bufToWav, buildProject, calcCrop, uint8ToB64, wavB64Cached
-// @uses APP_VERSION, PADS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold, fxDelayAmt,
-//    fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, shareOrDownload, swingPct, tracks
+// @provides b64ToUint8, bufToWav, buildProject, calcCrop, setData, trackData, uint8ToB64, wavB64Cached
+// @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, setCur, setSlots, shareOrDownload, swingPct,
+//    tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -59,34 +60,47 @@ function wavB64Cached(t, crop){
   t._wavCache={buf:t.buffer, from:crop.fromSamp, to:crop.toSamp, b64};
   return b64;
 }
-function buildProject(){
+// 1 トラックを .mics の形に（t は live の tracks[i] でも、セットの snapshot の 1 要素でもよい）
+// 音：触っていないプリセット（buffer がプリセットそのもの）は同梱しない＝起動時に再生成（ファイルが 16 セット分で膨れない）
+function trackData(t,i,type,voice){
+  const preset=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
+  const isPreset = type==="synth" && preset && t.buffer===preset.buf;
+  const crop = (t.buffer && !isPreset) ? calcCrop(t) : null;
   return {
-    version:2,
-    bpm:bpmVal,
-    swing:swingPct,
+    name:t.name,
+    type:type,
+    voice:voice||null,
+    vol:t.vol, tune:t.tune, scale:t.scale,
+    start: crop?crop.start:t.start,
+    end: crop?crop.end:t.end,
+    loop:t.loop,
+    loopStart: crop?crop.loopStart:t.loopStart,
+    filter:t.filter, cutoff:t.cutoff, reso:t.reso,
+    choke:t.choke, mute:t.mute, solo:t.solo,
+    attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null, key:t.key??null,
+    patterns:t.patterns,
+    locks:t.locks||{},
+    audio: crop ? wavB64Cached(t, crop) : null,
+  };
+}
+// セット 1 つを .mics の形に（s は snapshotSet の形）
+function setData(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map((t,i)=>trackData(t,i,t.type,t.voice))}; }
+// ファイル全体＝16 セット × 16 パッド × 4 シーケンス（v3、§145）。いまのセットは live の tracks から、他は snapshot から
+function buildProject(){
+  const cur=(typeof setCur!=="undefined")?setCur:0;
+  const sets=[];
+  for(let k=0;k<16;k++){
+    if(k===cur) sets.push({name:(setSlots[k]&&setSlots[k].name)||("SET "+(k+1)), bpm:bpmVal, swing:swingPct, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))});
+    else sets.push(setSlots[k] ? setData(setSlots[k]) : null);
+  }
+  return {
+    version:3,
+    cur,
     comp:{on:compOn, threshold:compThreshold, drive:compDrive},
     masterVol:+document.getElementById("kMaster").value,
     groupVol:groupVol.slice(),                                  // グループフェーダー
     fx:{delayAmt:fxDelayAmt, reverbAmt:fxReverbAmt, delayOn:fxDelayOn, reverbOn:fxReverbOn},  // 送りFX
-    tracks:tracks.map((t,i)=>{
-      const crop=calcCrop(t);
-      return {
-        name:t.name,
-        type:PADS[i].type,
-        voice:PADS[i].voice||null,
-        vol:t.vol, tune:t.tune, scale:t.scale,
-        start: crop?crop.start:t.start,
-        end: crop?crop.end:t.end,
-        loop:t.loop,
-        loopStart: crop?crop.loopStart:t.loopStart,
-        filter:t.filter, cutoff:t.cutoff, reso:t.reso,
-        choke:t.choke, mute:t.mute, solo:t.solo,
-        attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null, key:t.key??null,
-        patterns:t.patterns,
-        locks:t.locks||{},
-        audio: crop ? wavB64Cached(t, crop) : null,
-      };
-    }),
+    sets,
   };
 }
 document.getElementById("resetBtn").addEventListener("click",async()=>{

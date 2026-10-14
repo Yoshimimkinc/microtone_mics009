@@ -34,6 +34,9 @@ tapeHiss ───────────────────────�
 - Scheduler: lookahead pattern (25ms interval, 25ms ahead)
 
 ### Data Model
+- **ファイル全体 = 16 セット × 16 パッド × 4 シーケンス（v0.3.144, §145）**。`setSlots[16]`（`data/set`）が全セットを snapshot の形で持ち、
+  いまのセット（`setCur`）だけ live の `tracks` / `PADS` / `bpmVal` / `swingPct` に展開される。切替＝退避（`snapshotSet`）→ 展開（`applySetSnapshot`）。
+  `.mics` v3 = `{version:3, cur, sets:[16 × {name,bpm,swing,tracks}], comp, masterVol, groupVol, fx}`（v2 は SET 1 に入る）。触っていないプリセットの音は同梱しない。
 - `tracks[16]`: each has `patterns[4][16]`, buffer, vol, tune, start, end, loop, filter, choke, etc.
 - `editPat` (0-3): which pattern is being edited
 - Pattern length is derived from bar content via `patLength(p)` (no separate chainLen state; A/B/C/D switching is `queuedPat` at pattern boundary)
@@ -45,9 +48,9 @@ tapeHiss ───────────────────────�
 - **MIX screen removed**: per-pad volume = EDIT Level only (P-LOCK level removed v0.3.124, §135); mute/solo = PADS MUTE/SOLO modes. Rationale: same state was editable from 3 places (DRY violation → sync bugs). Audio routing (groupBus/GROUP_OF/FX nodes) unchanged — only UI moved. See `docs/screen-spec.md`.
 - **MENU (⋮) mixer UI removed (v0.2.27)**: the Group-volume (4) and FX (delay/reverb) pads were dropped from the menu too. Group/FX **values still load from `.mics` and apply** via `applyGroupVol`/`applyFx` — only the editing UI is gone. Master volume + COMP remain in the menu. `paintMixer()` kept as a no-op shim for existing callers.
 
-- **SET モード（v0.3.143, §144）**: 上段スイッチ PADS / SEQ / SET。SET は PADS 画面の状態（`body.setmode`）で、情報窓が SET 演奏モード、
-  格子が **16 の枠**（1 枠 = 16 パッドの状態 = `.mics` 1 つ）。叩いて切替（鳴っていれば次の小節頭）。**■ で止めると枠の保存状態に戻る**（枠が正、ライブは一時）。
-  データは `data/set`、表示は `ui/set-view`。`.micset` はメニュー → Live。
+- **SET モード（v0.3.144, §145）**: 上段スイッチ PADS / SEQ / SET。SET は PADS 画面の状態（`body.setmode`）で、情報窓が SET 演奏モード、
+  パッドが **16 セットのポン出し**（叩く＝そのセットのシーケンスをループ再生＋ PADS / SEQ の対象もそのセットに。鳴っていれば次の小節頭）。
+  LIVE 中だけ「鳴らしている間の変化は ■ で戻る」。データは `data/set`、表示は `ui/set-view`。
 
 ### Key Design Rules
 - **"aki rule"**: Hide complex settings. Anyone should be able to enjoy sampling music without understanding filters or choke groups. Simple surface, depth underneath.
@@ -59,7 +62,7 @@ tapeHiss ───────────────────────�
 
 ### File Format (.mics)
 JSON with base64-encoded WAV audio. On save, buffers are cropped to start-1s..end+1s to reduce size.
-Stores: all pad settings, 4×16×16 step patterns, BPM, swing, chain, comp settings.
+v3（v0.3.144〜）: 16 sets, each with 16 pad settings, 4×4×16 step patterns, BPM, swing; global comp/master/group/fx. v2 (single set) still loads as SET 1.
 
 ## Key Functions
 | Function | Purpose |
@@ -134,7 +137,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.143
+MICS009 beta v0.3.144
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

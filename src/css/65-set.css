@@ -16,8 +16,7 @@
   .setpad.on .n{color:var(--teal);}
   .setpad.queued{box-shadow:0 0 0 2px var(--amber) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.queued .n{color:var(--amber);}
-  .setpad.empty{background:var(--panel);border:1px dashed var(--line);box-shadow:none;color:var(--dim);}
-  .setpad.empty .nm{font-size:11px;font-weight:400;color:var(--dim);white-space:normal;line-height:1.3;}
+  .setpad.fresh .nm,.setpad.fresh .n{color:var(--dim);}   /* 既定のキットのまま（まだ何も入れていない）＝薄く */
   .setpad.armed{box-shadow:0 0 0 2px var(--red) inset;}
   /* 情報窓の SET ページ */
   .cl-par.cl-setname b{max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
@@ -40,7 +39,7 @@
   body.perf .setbar .t{min-height:46px;}
   /* LIVE LOCK：編集系・破壊系を触れなくする（寸法は動かさない＝薄くするだけ） */
   body.live #holdEdit, body.live #holdCopy, body.live #modeSeq, body.live #resetBtn, body.live #loadProjBtn, body.live #loadBtn,
-  body.live #peLoadBtn, body.live #peSmplBtn, body.live #sampleBtn, body.live #setLoadBtn, body.live .setpad.empty{pointer-events:none;opacity:.35;}
+  body.live #peLoadBtn, body.live #peSmplBtn, body.live #sampleBtn{pointer-events:none;opacity:.35;}
   @media (max-width:600px){
     body.setmode #viewPads>.setbar{order:3;flex:0 0 auto;margin:4px 0 0;position:sticky;bottom:0;z-index:5;background:var(--bg);padding-top:4px;gap:4px;}
     #viewPads>.setbar .t{min-height:42px;font-size:11px;letter-spacing:.04em;padding:0 6px;}   /* msbar の 46px（42+4）と同じ高さ＝格子の寸法が動かない */

@@ -2,7 +2,7 @@
 // @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarned, autosaveDbName,
 //    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave
 // @uses APP_VERSION, DEFAULT_PROJECT, applyProject, bakePhrase, buildProject, drawAllPadWaves, loadPresets,
-//    sampNameEl, setRestore
+//    sampNameEl
 // @depends presets
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
@@ -57,13 +57,12 @@ async function loadAutosave(){
   try{ const rec=await idbOp("readonly", st=>st.get(AUTOSAVE.key));
     if(!rec||!rec.json) return null;
     const proj=JSON.parse(rec.json);
-    return (proj&&proj.tracks)?proj:null;
+    return (proj&&(proj.tracks||Array.isArray(proj.sets)))?proj:null;   // v2（tracks）／v3（sets）どちらも
   }catch(e){ console.warn("autosave load:",e); return null; }
 }
 async function clearAutosave(){ try{ await idbOp("readwrite", st=>st.delete(AUTOSAVE.key)); }catch(e){} }
 
 loadPresets().then(async ()=>{
-  if(typeof setRestore==="function") setRestore();   // SET（v0.3.143）：枠を復号して持つだけ（いまの 16 パッドは下の自動保存/既定が決める）
   // 既定プロジェクト＝同梱の default.mics（ユーザーのビート：フレーズ＋ドラム＋パターン）。
   // ドラム9-16はsynthプリセットなので音声は同梱せず起動時に再生成（軽量化）。フレーズ1-4のみ音声同梱。
   const saved=await loadAutosave();
@@ -79,7 +78,7 @@ loadPresets().then(async ()=>{
     const r=await fetch("default.mics?v="+APP_VERSION,{cache:"force-cache"});
     if(!r.ok) throw new Error("HTTP "+r.status);
     const proj=await r.json();
-    if(!proj.version||!proj.tracks) throw new Error("invalid default.mics");
+    if(!proj.version||!(proj.tracks||Array.isArray(proj.sets))) throw new Error("invalid default.mics");
     await applyProject(proj);
   }catch(e){
     console.warn("default.mics 読込失敗→合成デフォルトにフォールバック:", e);

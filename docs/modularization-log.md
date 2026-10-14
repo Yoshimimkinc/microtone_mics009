@@ -444,3 +444,8 @@ python3 -m http.server 8137      # リポジトリの根で
 `data/set`（16 の枠のデータと入口。DOM を触らない）と `ui/set-view`（格子・窓の SET ページ・下段・メニューの配線）、`css/65-set.css`。
 状態 `setSlots` `setCur` `queuedSet` `setMode` `liveOn` は `app/state` に `@writers` つき。`applyProject` は `opts`（dec / deferPaint / stopAt / keepSel）を受ける。部品 52 → 55。
 
+## 構造変更（v0.3.144 §145：ファイル全体 = 16 セット）
+`data/set` を書き直し（16 セットの snapshot と切替）。`20-plock-undo` の `restoreState` から 1 トラックの復元を `applyTrackSnapshot` に切り出し、セット切替と undo で共用。
+`71-save-load` の `buildProject` は v3（`trackData` / `setData`）。`73-share-export` の `applyProject` は `setsFromProject` → `applySetSnapshot`。`22-presets` に `PRESET_BUFS`。
+`app/state` の `bpmVal` `swingPct` `editPat` `editBar` `queuedPat` の `@writers` に `data/set`（セット切替の復元経路）。部品数は 55 のまま。
+
