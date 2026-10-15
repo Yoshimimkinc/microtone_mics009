@@ -693,11 +693,16 @@ async function setMode(){
     ok_(`${V} セットの幅はパッドと同じ・高さは下段ぶん広い（44px 以上）`, d0.pad && d1.setpad && Math.abs(d0.pad[0]-d1.setpad[0])<=1 && d1.setpad[1]>=d0.pad[1]-1 && d1.setpad[1]>=44, `${JSON.stringify(d0.pad)} vs ${JSON.stringify(d1.setpad)}`);
     // SET 1 に印（名前・BPM・ステップ）→ SET 2 を叩く＝ポン出し（切替＋▶）。SET 2 は既定のキット（1-8 空・9-16 プリセット・BPM 100）
     await p.evaluate(()=>{ tracks[0].name='S1'; paintPadName(0); applyBpm(88); setStep(8,0,1); });
-    await p.click('#setGrid .setpad[data-k="1"]'); await p.waitForTimeout(400);
+    // v0.3.146：pointerdown で鳴る。離す前に playing、小節頭（barStartTime）は押した時刻のすぐ先、最初のステップは timer を待たず予約済み
+    const sp=await p.evaluate(()=>{ const b=document.querySelector('#setGrid .setpad[data-k="1"]').getBoundingClientRect(); return [b.left+b.width/2, b.top+b.height/2]; });
+    await p.mouse.move(sp[0],sp[1]); await p.mouse.down();
+    const s2dn=await p.evaluate(()=>({playingAtDown:playing, lead:barStartTime-AC.currentTime, firstStep:stepIdx}));
+    await p.mouse.up(); await p.waitForTimeout(400);
     const s2=await p.evaluate(()=>({cur:setCur, playing, name:tracks[0].name, type0:PADS[0].type, buf0:!!tracks[0].buffer, kick:!!tracks[8].buffer && tracks[8].buffer===PRESET_BUFS[8].buf, bpm:bpmVal, steps:tracks.reduce((a,t)=>a+t.patterns.flat(2).filter(Boolean).length,0),
       saved:setSlots[0].tracks[0].name, savedBpm:setSlots[0].bpm, savedStep:setSlots[0].tracks[8].patterns[0][0][0], tag:document.querySelector('#setGrid .setpad[data-k="1"] .tag').textContent, undo:undoStack.length}));
     const lit=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="1"]'); const cs=getComputedStyle(d); return {cls:d.className, bg:cs.backgroundImage||cs.backgroundColor, glow:cs.boxShadow}; });
     ok_(`${V} 再生中のセットはオレンジに光る（playing・面塗り・外光 26px）`, /\bplaying\b/.test(lit.cls) && /linear-gradient/.test(lit.bg) && /26px/.test(lit.glow), JSON.stringify(lit));
+    ok_(`${V} ポン出しは pointerdown（指を離す前に鳴り始め、小節頭は先置きしない・最初のステップは timer を待たず予約）`, s2dn.playingAtDown && s2dn.lead<=0.02 && s2dn.lead>-0.5 && s2dn.firstStep>=1 && s2dn.firstStep<=2, JSON.stringify(s2dn));
     ok_(`${V} セットを叩く＝ポン出し（SET 2 へ切替・▶・既定のキット）／SET 1 の変更は退避される／undo は空`, s2.cur===1 && s2.playing===true && s2.name==='PAD 1' && s2.type0==='empty' && !s2.buf0 && s2.kick && s2.bpm===100 && s2.steps===0 && s2.saved==='S1' && s2.savedBpm===88 && s2.savedStep===1 && s2.tag==='NOW' && s2.undo===0, JSON.stringify(s2));
     // 鳴っているとき：叩く＝予約 → 小節頭で切替（SET 1 の状態が戻る）。切替直後は playBar=0・stepIdx≤1
     await p.evaluate(()=>{ setStep(9,4,1); });   // SET 2 に 1 ステップ（退避されるか）

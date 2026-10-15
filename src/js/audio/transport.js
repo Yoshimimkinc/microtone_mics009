@@ -105,8 +105,11 @@ function startTransport(){
   stepIdx=0; playStep=0; drawQueue.length=0;
   playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
   tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
-  barStartTime=AC.currentTime+0.05;
+  // ポン出し（v0.3.146 §145）：小節頭は「いま」。最初の scheduler を timer（25ms 後）を待たずに同期で回す。
+  // v0.3.145 までは +50ms の余裕＋timer 待ちで、▶ から音まで 50〜75ms あった。scheduleStep は過去を AC.currentTime に丸めるので余裕は 5ms で足りる
+  barStartTime=AC.currentTime+0.005;
   schedTimer=setInterval(scheduler, INTERVAL);
+  scheduler();
 }
 function stopTransport(){
   playing=false;

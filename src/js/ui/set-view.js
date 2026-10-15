@@ -58,19 +58,25 @@ function setModeEnter(on){
   const told=(ok)=>{ if(!ok) return;
     const k=queuedSet!==null?queuedSet:setCur;
     say(queuedSet!==null ? "予約 ▸ "+String(k+1).padStart(2,"0")+" "+setName(k)+"（次の小節頭で）" : "▸ "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); };
-  // セットを叩く＝ポン出し（鳴っていれば次の小節頭で切替、止まっていれば切替して ▶）。COPY 中＝いまのセットをそこへコピー。長押し 2 回＝既定のキットに戻す
+  // セットを叩く＝ポン出し（鳴っていれば次の小節頭で切替、止まっていれば切替して ▶）。COPY 中＝いまのセットをそこへコピー。
+  // v0.3.146：発音は pointerdown（指が触れた瞬間）。v0.3.145 までは pointerup＝指を離すまで（100ms 前後）待っていた。
+  // 長押し 2 回＝既定のキットに戻す（鳴らしながら、別のセットで。長押しはその押下の予約を取り消してから）
   let lp=null, lpK=-1, armK=-1, armT=0;
-  const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; lpK=+d.dataset.k; clearTimeout(lp);
-    lp=setTimeout(()=>{ lp=null; const k=lpK; if(k===setCur){ say("いまのセットは PADS / SEQ で編集。他のセットへは COPY で写せる"); return; }
-      if(armK===k && Date.now()-armT<2500){ resetSet(k); armK=-1; say("SET "+String(k+1).padStart(2,"0")+" を既定のキットに戻した"); paintSet(); return; }
-      armK=k; armT=Date.now(); setGridEl.children[k].classList.add("armed"); setTimeout(()=>{ if(setGridEl.children[k]) setGridEl.children[k].classList.remove("armed"); },2500);
-      say("もう一度長押しで既定のキットに戻す：SET "+String(k+1).padStart(2,"0")+" "+setName(k)); }, 600); };
-  const pressEnd=(e)=>{ const d=e.target.closest(".setpad"); if(!lp){ lp=null; return; } clearTimeout(lp); lp=null; if(!d) return;
-    const k=+d.dataset.k;
+  const fire=(k)=>{
     if(armMode==="chop"){ if(copySetTo(k)){ say("COPY ▸ SET "+String(k+1).padStart(2,"0")+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); return; }
     if(k===setCur){ if(!playing){ launch(); say("▶ "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); } return; }
-    const was=playing; told(queueSet(k)); if(!was) launch(); paintSet(); };
-  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",()=>{ clearTimeout(lp); lp=null; }); setGridEl.addEventListener("pointerleave",()=>{ clearTimeout(lp); lp=null; }); }
+    const was=playing, ok=queueSet(k); if(!was) launch();   // 音を先に（表示はその後）
+    told(ok); paintSet(); };
+  const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
+    const k=+d.dataset.k; lpK=k; clearTimeout(lp); fire(k);
+    lp=setTimeout(()=>{ lp=null; if(lpK!==k) return;
+      if(k===setCur){ say("いまのセットは PADS / SEQ で編集。他のセットへは COPY で写せる（戻すのは鳴らしながら別のセットを長押し 2 回）"); return; }
+      if(queuedSet===k){ queueSet(k); }   // この押下でした予約は取り消す（長押し＝予約ではない）
+      if(armK===k && Date.now()-armT<2500){ resetSet(k); armK=-1; say("SET "+String(k+1).padStart(2,"0")+" を既定のキットに戻した"); paintSet(); return; }
+      armK=k; armT=Date.now(); setGridEl.children[k].classList.add("armed"); setTimeout(()=>{ if(setGridEl.children[k]) setGridEl.children[k].classList.remove("armed"); },2500);
+      say("もう一度長押しで既定のキットに戻す：SET "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); }, 600); };
+  const pressEnd=()=>{ clearTimeout(lp); lp=null; };
+  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); setGridEl.addEventListener("pointerleave",pressEnd); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
   setInterval(()=>{ if(setMode){ const c=$("clSetTime"); if(c) c.textContent=fmtClock(setElapsed()); const d=setGridEl&&setGridEl.children[setCur]; if(d){ const t=d.querySelector(".tag"), v=playing?"NOW":"SEL"; if(t.textContent!==v) t.textContent=v; d.classList.toggle("playing",playing); } } }, 500);
 })();
