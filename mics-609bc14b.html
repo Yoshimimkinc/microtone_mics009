@@ -722,14 +722,21 @@
   .setpad .dots i.has{background:var(--amber);}
   .setpad.on{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.on .n{color:var(--teal);}
-  /* 再生中のセット＝オレンジに「光る」（叩いたパッドの点灯と同じ色。目立つように面で塗り、外へ光らせる）v0.3.145 */
-  .setpad.on.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
+  /* 再生中のセット＝オレンジに「光る」（叩いたパッドの点灯と同じ色。目立つように面で塗り、外へ光らせる）v0.3.145。
+     v0.3.147：同時に鳴っているセットは全部光る。いまのセット（PADS / SEQ の対象）は内側にティールの枠 */
+  .setpad.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
     box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
-  .setpad.on.playing .n,.setpad.on.playing .nm,.setpad.on.playing .ft,.setpad.on.playing .tag{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
-  .setpad.on.playing .dots i{background:rgba(0,0,0,.25);}
-  .setpad.on.playing .dots i.has{background:var(--hit-ink);}
-  body.perf #viewPads.split>.pads .setpad.on.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
+  .setpad.playing .n,.setpad.playing .nm,.setpad.playing .ft,.setpad.playing .tag{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
+  .setpad.playing .dots i{background:rgba(0,0,0,.25);}
+  .setpad.playing .dots i.has{background:var(--hit-ink);}
+  body.perf #viewPads.split>.pads .setpad.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
     box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
+  .setpad.playing.on,body.perf #viewPads.split>.pads .setpad.playing.on{box-shadow:0 0 0 3px var(--teal) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
+  .setpad.held .tag{font-weight:700;letter-spacing:.16em;}
+  /* 押している間：1 小節でホールドになるまでの残りを下端のバーで見せる（--hold-ms は ui/set-view が押した瞬間に書く） */
+  .setpad.pressing::after{content:"";position:absolute;left:0;bottom:0;height:4px;width:0;background:var(--hit-ink);opacity:.7;pointer-events:none;
+    animation:setHoldFill var(--hold-ms,2400ms) linear forwards;}
+  @keyframes setHoldFill{to{width:100%;}}
   .setpad.queued{box-shadow:0 0 0 2px var(--amber) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.queued .n{color:var(--amber);}
   .setpad.fresh .nm,.setpad.fresh .n{color:var(--dim);}   /* 既定のキットのまま（まだ何も入れていない）＝薄く */
@@ -1063,7 +1070,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.146</div>
+  <div class="s-ver" id="splashVer">v0.3.147</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -2394,14 +2401,16 @@ function makeLofi(buffer){
 }
 
 // 同じチョークグループの鳴っている音を即停止
-function chokeGroup(group, exceptPad, when){
+// trs：どのセットのトラック列か（既定＝いまのセットの tracks。同時に鳴っている他のセットは audio/set-players が snapshot の列を渡す v0.3.147）
+function chokeGroup(group, exceptPad, when, trs=tracks){
   if(!group) return;
-  for(let j=0;j<tracks.length;j++){
+  for(let j=0;j<trs.length;j++){
     if(j===exceptPad) continue;
-    if(tracks[j].choke===group) stopVoices(tracks[j], when);
+    if(trs[j].choke===group) stopVoices(trs[j], when);
   }
 }
 function stopVoices(t, when){
+  if(!t.activeVoices){ t.activeVoices=[]; return; }
   t.activeVoices.forEach(v=>{
     try{
       // cancelScheduledValuesはフェード予約中だと直前イベント値(=peak)へ瞬時に跳ねる仕様＝チョーク時の「プチッ」の原因。
@@ -2421,11 +2430,11 @@ function stopVoices(t, when){
 }
 
 // ソロが1つでもonなら、ソロ対象以外は鳴らさない
-function anySolo(){ return tracks.some(t=>t.solo); }
-function audible(i){
-  const t=tracks[i];
+function anySolo(trs=tracks){ return trs.some(t=>t.solo); }
+function audible(i, trs=tracks){
+  const t=trs[i];
   if(t.mute) return false;
-  if(anySolo() && !t.solo) return false;
+  if(anySolo(trs) && !t.solo) return false;
   return true;
 }
 
@@ -2467,15 +2476,17 @@ function warmPitch(i){
   _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.buffer&&t.tune) try{ getPitchedBuffer(t,t.tune); }catch(_){ } },150);
 }
 // 1ヒット発音
-function playVoice(i, when, accent, fromSeq, noteSemi, plock){
-  const t = tracks[i];
-  if(!t.buffer) return;
+// trs：鳴らすセットのトラック列（既定＝いまのセット。SET のミックスで他のセットを鳴らすときは snapshot の列 v0.3.147）
+function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
+  const t = trs[i];
+  if(!t || !t.buffer) return;
+  if(!t.activeVoices) t.activeVoices=[];
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
-  if(fromSeq && !audible(i)) return;
+  if(fromSeq && !audible(i, trs)) return;
   if(!fromSeq) liveCompDuck();   // ライブ叩きはコンプ先読み(約6ms)をリアルタイムに回避（1.5s後に自動復帰）
 
   stopVoices(t, when);
-  chokeGroup(t.choke, i, when);
+  chokeGroup(t.choke, i, when, trs);
 
   // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
   const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
@@ -2572,7 +2583,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   }
   // 波形（モーダル or 情報窓のSAMPLEページ）が見えていて対象パッドが鳴ったら、再生位置カーソルを走らせる。
   // 手叩きもシーケンサーも同じ（v0.3.103）。ループは常に1本＝再トリガで前のを止めるので負荷は増えない
-  if(i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
+  if(trs===tracks && i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
     const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;
     pePlayheadRun(when, startSec, endSec, lsN*dur, dur, t.loop);
   }
@@ -3182,13 +3193,13 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 }
 // @module data/set
 // @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, queueSet, resetSet, setElapsed, setName, setRename,
-//    setsFromProject, snapshotSet, switchSetNow
+//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
+//    setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
 //    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat, queuedSet,
-//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, snapshotState, stopAllVoices,
-//    stripLegacyLocks, swingPct
+//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, sideStop, snapshotState,
+//    stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -3268,12 +3279,27 @@ function applySetSnapshot(s, opts){
 // 切替の実体（スケジューラが小節頭に呼ぶ／止まっているときは queueSet から直接）。いまのを退避 → 次を live へ。音は stopAt で止める
 function switchSetNow(k, stopAt){
   if(!(k>=0&&k<16)||k===setCur) return;
+  if(typeof sideStop==="function") sideStop(k, stopAt);   // 他のセットとして鳴っていたら止めてから（いまのセットは transport が鳴らす）
   if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k);
   setSlots[setCur]=snapshotSet();                 // いまのセットを退避（live が正だったぶんを書き戻す）
   stopAllVoices(stopAt||AC.currentTime); queuedPat=null;
   setCur=k; queuedSet=null; _setStart=performance.now();
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
+  if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// SET のポン出し（v0.3.147）：k をいまのセット（PADS / SEQ の対象）にする。音は止めない＝いま鳴っている声とループの状態は
+// 退避先の snapshot へ引き継ぐ（いまのセットが鳴っていれば、呼ぶ前に audio/set-players の sideTakeCurrent で「他のセットの再生」に移してある）
+function focusSet(k){
+  if(!(k>=0&&k<16)||k===setCur) return;
+  if(typeof sideStop==="function") sideStop(k);
+  if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k);
+  const snap=snapshotSet();
+  tracks.forEach((t,i)=>{ const x=snap.tracks[i]; x.activeVoices=t.activeVoices||[]; x.loopPlaying=!!t.loopPlaying; t.activeVoices=[]; t.loopPlaying=false; });
+  setSlots[setCur]=snap;
+  queuedPat=null; setCur=k; queuedSet=null; _setStart=performance.now();
+  applySetSnapshot(setSlots[k], {deferPaint:true});
+  clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();
 }
 // セットを叩く：止まっていれば今すぐ差し替え、鳴っていれば次の小節頭で（同じセットをもう一度＝予約取消）。NOW を叩いても何もしない（false）
@@ -3284,9 +3310,9 @@ function queueSet(k){
   switchSetNow(k, AC.currentTime); return true;
 }
 // いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
-function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 // セットを既定のキットに戻す（長押し 2 回）。NOW には使わない
-function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; setSlots[k]=defaultSetSnapshot(k); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); setSlots[k]=defaultSetSnapshot(k); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 function setRename(k,name){ const nm=(name||"").trim(); if(!nm||!(k>=0&&k<16)) return; if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k); setSlots[k].name=nm.slice(0,24); if(typeof scheduleAutosave==="function") scheduleAutosave(); }
 function setName(k){ return (setSlots[k]&&setSlots[k].name)||("SET "+(k+1)); }
 function setElapsed(){ return (performance.now()-_setStart)/1000; }
@@ -3566,7 +3592,7 @@ const CL_PAGES=[
    x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
      +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b></span>'
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
-     +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>NEXT</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
+     +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>MIX</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
    b:[{id:"clWave",t:'EDIT'}]},   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
@@ -3741,11 +3767,11 @@ function paintClPage(){
 // 加算累積方式ではなく、ステップ番号×tick時間で計算（実機と同じ分周方式）。
 const PPQ = 24;
 const TICKS_PER_16TH = PPQ/4; // 6
-function tickDur(){ return (60/bpmVal)/PPQ; }      // 1tickの長さ（秒）
-function swingDelayTicks(){
+function tickDur(bpm=bpmVal){ return (60/bpm)/PPQ; }   // bpm：同時に鳴っている他のセットは自分の BPM で（audio/set-players）      // 1tickの長さ（秒）
+function swingDelayTicks(sw=swingPct){
   // 分数tickのまま返す（Math.roundすると54%→0=50%と同一、63%と67%→同2tickに縮退し6段階中2つが死ぬ。
   // 元ネタMPC60は96PPQで54/58/63/67/71がほぼ整数tickに乗る＝24PPQ丸めは本来の解像度を壊していた）
-  return (2*swingPct/100 - 1) * TICKS_PER_16TH;
+  return (2*sw/100 - 1) * TICKS_PER_16TH;
 }
 function effectiveSwing(){
   return Math.round((0.5 + swingDelayTicks()/TICKS_PER_16TH/2)*1000)/10; // %
@@ -3754,13 +3780,13 @@ function effectiveSwing(){
 // SP的微細ドリフト（タイミング揺れ）
 // 実機はDAC/トリガーの遅延で±0.5ms程度のジッターがあったとされる
 // グルーヴ量はシャッフル(swing)に連動：強くするほどレイドバック/スタッガー/ドリフトが増す
-function grooveFactor(){ return Math.min(1, Math.max(0,(swingPct-50)/21)); } // 0(50%)〜1(71%)
-function driftSec(){
-  const ms = 0.7 + 0.8*grooveFactor();        // ±0.7〜1.5ms
+function grooveFactor(sw=swingPct){ return Math.min(1, Math.max(0,(sw-50)/21)); } // 0(50%)〜1(71%)
+function driftSec(sw=swingPct){
+  const ms = 0.7 + 0.8*grooveFactor(sw);        // ±0.7〜1.5ms
   return (Math.random()*2-1) * ms/1000;
 }
-function laidbackSec(){ return 0.006 + 0.016*grooveFactor(); } // 2拍4拍: 6〜22ms
-function staggerSec(){  return 0.0015 + 0.003*grooveFactor(); } // 同時発音: 1.5〜4.5ms/音
+function laidbackSec(sw=swingPct){ return 0.006 + 0.016*grooveFactor(sw); } // 2拍4拍: 6〜22ms
+function staggerSec(sw=swingPct){  return 0.0015 + 0.003*grooveFactor(sw); } // 同時発音: 1.5〜4.5ms/音
 
 const LOOKAHEAD = 0.1;      // sec, how far ahead we schedule（25ms→100ms：メインスレッドが詰まっても発音が遅れないように）
 const INTERVAL = 25;        // ms timer
@@ -3836,11 +3862,12 @@ function startTransport(){
   schedTimer=setInterval(scheduler, INTERVAL);
   scheduler();
 }
-function stopTransport(){
+// keepVoices：SET のミックスで、いまのセットを「他のセットの再生」へ引き継ぐとき（audio/set-players の sideTakeCurrent）は音を止めない
+function stopTransport(keepVoices){
   playing=false;
   clearInterval(schedTimer); schedTimer=null;
   drawQueue.length=0; playStep=0;
-  stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
+  if(!keepVoices) stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
 }
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、
@@ -3866,15 +3893,101 @@ function scheduler(){
     if(++guard > STEPS) break;   // 1tickで最大1小節分まで（暴走防止）
   }
 }
+// @module audio/set-players
+// @provides _sideArm, _sidePatLen, _sideStep, _sideStepTime, isSetHeld, setHeldSet, setHold, setHoldClear,
+//    setIsPlaying, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
+//    sideTimer, sideTrs
+// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, driftSec,
+//    laidbackSec, lockKey, playBar, playPat, playVoice, playing, scaleSemi, setCur, setSlots, staggerSec,
+//    stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
+// @depends -
+// ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
+// 「SET ポン出しはトグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」。
+// いまのセット（PADS / SEQ の対象）は従来どおり audio/transport が鳴らす（playing / stepIdx / barStartTime …）。
+// それ以外に鳴っているセットはここが鳴らす：setSlots[k].tracks（snapshot の列）をそのまま playVoice に渡す。
+// 各セットは自分の時計（押した瞬間が小節頭・自分の BPM / SWING）で回る＝SP-404 のパッドと同じで、合わせるのは叩くタイミング。
+// 声（activeVoices）とループの状態は snapshot の各トラックが持つ。いまのセットを切り替えるときは data/set の focusSet が引き継ぐ。
+const sidePlayers=new Map();   // k → {k, t0（小節頭の時刻）, idx（次に予約するステップ）, pat, bar, bpm, swing}
+const setHeldSet=new Set();    // ホールド中のセット（1 小節押し続けた／▶ で鳴らした）。離しても止まらない。もう一度叩くと止まる
+let sideTimer=null;
+function sideTrs(k){ return k===setCur ? tracks : (setSlots[k] ? setSlots[k].tracks : null); }
+function sideCount(){ return sidePlayers.size; }
+function sidePlaying(k){ return sidePlayers.has(k); }
+function setIsPlaying(k){ return (k===setCur && playing) || sidePlayers.has(k); }
+function setHold(k,on){ if(on) setHeldSet.add(k); else setHeldSet.delete(k); }
+function isSetHeld(k){ return setHeldSet.has(k); }
+function setHoldClear(){ setHeldSet.clear(); }
+function _sideStepTime(p,n){
+  let t=p.t0 + (n*TICKS_PER_16TH + ((n%2===1) ? swingDelayTicks(p.swing) : 0)) * tickDur(p.bpm);
+  if(n%8===4) t+=laidbackSec(p.swing);
+  return t;
+}
+function _sidePatLen(trs,pat){ let last=0;
+  for(let b=0;b<4;b++){ if(trs.some(t=>{ const r=t.patterns&&t.patterns[pat]&&t.patterns[pat][b]; return r && r.some(v=>v>0); })) last=b; }
+  return last+1; }
+// 1 ステップ分の発音（audio/transport の scheduleStep と同じ規則。P-LOCK の記録と表示は無し＝いまのセットだけ）
+function _sideStep(p,trs,n,when){
+  const solo=anySolo(trs), stg=staggerSec(p.swing); let c=0;
+  for(let i=0;i<trs.length;i++){
+    const t=trs[i]; if(!t.activeVoices) t.activeVoices=[];
+    const aud=!t.mute && (!solo || t.solo);
+    if(t.loop && t.loopPlaying && !aud){ stopVoices(t,when); t.loopPlaying=false; }
+    const row=t.patterns && t.patterns[p.pat] && t.patterns[p.pat][p.bar]; const v=row ? row[n] : 0;
+    if(!(v>0 && aud)) continue;
+    const lk=t.locks && t.locks[lockKey(p.pat,p.bar,n)];
+    const nudge=(lk && typeof lk.nudge==="number") ? lk.nudge/1000 : 0;
+    const wn=Math.max(when + c*stg + nudge, AC.currentTime);
+    const mel=!!(t.scale && t.scale!=="off");
+    if(t.loop){
+      if(t.loopPlaying){ stopVoices(t,when); t.loopPlaying=false; }
+      else { playVoice(i, wn, false, true, mel?scaleSemi(t.scale,v-1):0, lk, trs); t.loopPlaying=true; c++; }
+    } else { playVoice(i, wn, !mel && v===2, true, mel?scaleSemi(t.scale,v-1):0, lk, trs); c++; }
+  }
+}
+function sideTick(){
+  if(!sidePlayers.size){ clearInterval(sideTimer); sideTimer=null; return; }
+  const now=AC.currentTime;
+  sidePlayers.forEach(p=>{
+    if(p.k===setCur) return;   // いまのセットは audio/transport が鳴らす（引き継ぎの瞬間だけここに居る）
+    const trs=sideTrs(p.k); if(!trs) return;
+    const behind=now-_sideStepTime(p,p.idx); if(behind>0.12) p.t0+=behind;   // メインスレッドが詰まったら取り戻す（transport と同じ）
+    let guard=0;
+    while(_sideStepTime(p,p.idx) < now+LOOKAHEAD){
+      _sideStep(p, trs, p.idx, _sideStepTime(p,p.idx)+driftSec(p.swing));
+      p.idx++;
+      if(p.idx>=STEPS){ p.idx=0; p.t0+=STEPS*TICKS_PER_16TH*tickDur(p.bpm); p.bar++; if(p.bar>=_sidePatLen(trs,p.pat)) p.bar=0; }
+      if(++guard>STEPS) break;
+    }
+  });
+}
+function _sideArm(){ if(!sideTimer) sideTimer=setInterval(sideTick, INTERVAL); }
+// いまのセットの再生を「他のセットの再生」へ引き継ぐ（音は切らない・位置もそのまま）。このあと data/set の focusSet で別のセットへ
+function sideTakeCurrent(){
+  if(!playing) return false;
+  sidePlayers.set(setCur, {k:setCur, t0:barStartTime, idx:stepIdx, pat:playPat, bar:playBar, bpm:bpmVal, swing:swingPct});
+  stopTransport(true);
+  _sideArm();
+  return true;
+}
+// 他のセットを止める（声も切る）
+function sideStop(k, when){
+  if(!sidePlayers.has(k)) return;
+  sidePlayers.delete(k);
+  const trs=sideTrs(k); if(trs) trs.forEach(t=>{ stopVoices(t, when||AC.currentTime); t.loopPlaying=false; });
+}
+function sideStopAll(when){ Array.from(sidePlayers.keys()).forEach(k=>sideStop(k, when)); }
 // @module ui/transport-view
-// @provides drawLoop, playBtn, recBtn, updateRecBtnLabel
+// @provides _drawOn, drawLoop, paintTransport, playBtn, recBtn, updateRecBtnLabel
 // @uses AC, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue, flashPad, kickVu,
-//    moveCursors, paintSet, paintSteps, playStep, playing, pushUndo, recording, sampNameEl, startTransport,
-//    stopTransport, updateBarIndicator, updatePatIndicator, vuHit
+//    moveCursors, paintSet, paintSteps, playStep, playing, pushUndo, recording, sampNameEl, setCur, setHold,
+//    setHoldClear, sideCount, sideStopAll, startTransport, stopTransport, updateBarIndicator,
+//    updatePatIndicator, vuHit
 // @depends -
 // ---------- transport：表示とボタン（▶ / ●）。drawQueue を消化してパッド点灯・カーソル・パターン枠を描く ----------
 // 40-transport.js から分離（v0.3.132 Phase 2 第3段）。scheduler が積む drawQueue を rAF で消化するだけ＝音は出さない
+let _drawOn=false;   // drawLoop の rAF 連鎖が回っているか（▶ / ■ を素早く繰り返しても二重に回さない）
 function drawLoop(){
+  _drawOn=true;
   const now = AC.currentTime;
   let cur=null;
   while(drawQueue.length && drawQueue[0].time < now){
@@ -3884,25 +3997,33 @@ function drawLoop(){
     if(ev.pat!==undefined){ displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
   }
   if(cur!==null){ playStep=cur; moveCursors(); }
-  if(playing) requestAnimationFrame(drawLoop);
+  if(playing) requestAnimationFrame(drawLoop); else _drawOn=false;
 }
 
 const playBtn=document.getElementById("play");
 // ▶ / ■：状態は startTransport / stopTransport（audio/transport）が書く。ここは表示だけ（v0.3.134）
 // 他所からの再生/停止（Space・MIDI Start/Stop・GTR・共有の試聴）は playBtn.click() でここを通る＝表示が必ず追従
-playBtn.addEventListener("click",async()=>{
-  if(AC.state!=="running") await AC.resume();
-  if(!playing) startTransport(); else stopTransport();
-  playBtn.classList.toggle("on",playing);
-  playBtn.textContent=playing?"■":"▶";   // アイコンのみ（文字なし）
+// 再生まわりの表示（▶ / ■・SET のオレンジ・カーソル）。▶ ボタンと SET のポン出し（ui/set-view）が状態を変えたあとに呼ぶ
+// v0.3.147：SET で他のセットが鳴っている間も ■ を出す（■ ＝ 全部止める）
+function paintTransport(){
+  const any = playing || (typeof sideCount==="function" && sideCount()>0);
+  playBtn.classList.toggle("on",any);
+  playBtn.textContent=any?"■":"▶";   // アイコンのみ（文字なし）
   if(typeof paintSet==="function") paintSet();   // SET 画面：再生中のセットをオレンジに（v0.3.145）
   if(playing){
-    requestAnimationFrame(drawLoop);
+    if(!_drawOn) requestAnimationFrame(drawLoop);
     if(typeof kickVu==="function") kickVu();   // VUループ起動（停止中はアイドルで止まっている）
   } else {
     paintSteps();
     clearPatIndicator(); clearBarIndicator();   // 停止したら再生中の外枠を消す
   }
+}
+playBtn.addEventListener("click",async()=>{
+  if(AC.state!=="running") await AC.resume();
+  const any = playing || (typeof sideCount==="function" && sideCount()>0);
+  if(!any){ startTransport(); if(typeof setHold==="function") setHold(setCur,true); }   // ▶ で鳴らしたセットはホールド扱い（離す指が無い）
+  else { if(playing) stopTransport(); if(typeof sideStopAll==="function"){ sideStopAll(); setHoldClear(); } }   // ■ ＝ 鳴っているセットを全部止める
+  paintTransport();
 });
 const recBtn=document.getElementById("rec");
 function updateRecBtnLabel(){
@@ -5678,7 +5799,7 @@ document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj
 // @provides _ckTimes, _ckUiT, _midiNoteTimes, assignTo, clRetargetLearn, handleClock, handleMIDI, inBlink,
 //    midiBlink, midiEnabled, midiNoteName, midiSync
 // @uses AC, _ledT, applyBpm, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, playBtn,
-//    playVoice, playing, pushUndo, sampNameEl, selected, tracks, trigger
+//    playVoice, playing, pushUndo, sampNameEl, selected, sideCount, tracks, trigger
 // @depends -
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
@@ -5687,7 +5808,7 @@ let midiEnabled=false;   // ハードに触る機能は必ず明示ON（§88の�
 let midiSync=false;      // MIDI SYNC＝外部クロック追従（S2400等に合わせる）。要明示ON
 let _ckTimes=[], _ckUiT=0;
 function handleClock(b0){
-  if(b0===0xFA||b0===0xFB){ _ckTimes=[]; if(!playing) playBtn.click(); return; }   // Start/Continue＝頭から再生
+  if(b0===0xFA||b0===0xFB){ _ckTimes=[]; if(!playing){ if(typeof sideCount==="function" && sideCount()>0) playBtn.click(); playBtn.click(); } return; }   // Start/Continue＝頭から再生（SET の他のセットだけ鳴っていたら全部止めてから v0.3.147）
   if(b0===0xFC){ if(playing) playBtn.click(); return; }                            // Stop
   if(b0!==0xF8) return;
   const now=performance.now();
@@ -5772,8 +5893,8 @@ function handleMIDI(data){
 // @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
 //    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
 //    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
-//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setSlots, setsFromProject,
-//    stopAllVoices, tickDur
+//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSlots,
+//    setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -5800,7 +5921,7 @@ document.getElementById("exportWavBtn").addEventListener("click",async()=>{
   if(_expBusy) return; _expBusy=true;
   try{
     if(AC.state!=="running") await AC.resume();
-    if(playing) playBtn.click();   // 一旦停止＝必ず頭から
+    if(playing || (typeof sideCount==="function" && sideCount()>0)) playBtn.click();   // 一旦停止＝必ず頭から（SET で他のセットが鳴っていても全部止める v0.3.147）
     await new Promise(r=>setTimeout(r,80));
     const bars=patLength(editPat);
     const dur=bars*STEPS*TICKS_PER_16TH*tickDur() + 0.6;   // ＋ディレイ/リバーブのテール
@@ -5843,6 +5964,7 @@ async function applyProject(proj, opts){
     // v0.3.144 §145：ファイル全体 = 16 セット。v3 は sets[16] と cur、v2 / 既定プロジェクトは丸ごと SET 1（他は既定のキット）。
     // opts：deferPaint=重い再描画を次フレームへ／stopAt=古い音を止める時刻／keepSel=選択パッドを保つ
     stopAllVoices((opts&&opts.stopAt)||AC.currentTime);
+    if(typeof sideStopAll==="function"){ sideStopAll((opts&&opts.stopAt)||AC.currentTime); setHoldClear(); }   // 他のセットの再生も（中身が差し替わる）
     queuedPat=null;
     // 本体の状態（comp / master / グループ / 送り FX）＝セットを跨いで 1 つ
     if(proj.comp){
@@ -5885,12 +6007,15 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 
 // @module ui/set-view
 // @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, setGridEl, setModeEnter
-// @uses arm, armMode, bpmVal, clPage, copySetTo, editPat, paintPerf, playing, queueSet, queuedSet,
-//    renderClPage, resetSet, sampNameEl, setCur, setEditPat, setElapsed, setMode, setName, setSlots, tracks
+// @uses AC, arm, armMode, bpmVal, clPage, copySetTo, editPat, focusSet, isSetHeld, paintPerf,
+//    paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat, setElapsed, setHold,
+//    setIsPlaying, setMode, setName, setSlots, sideStop, sideTakeCurrent, startTransport, stopAllVoices,
+//    stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
-// 状態を書くのは data/set の入口（queueSet / switchSetNow / copySetTo / resetSet …）と setMode（ここ）だけ。下段の ◀ / NEXT / LIVE は v0.3.145 で撤去（パッド自体が切替）
+// 状態を書くのは data/set の入口（focusSet / copySetTo …）・audio の入口（startTransport / stopTransport / sideTakeCurrent / sideStop / setHold）と setMode（ここ）だけ。
+// 下段の ◀ / NEXT / LIVE は v0.3.145 で撤去（パッド自体が切替）。v0.3.147 で押す＝鳴る・離す＝止まる・1 小節でホールド・同時鳴らし（ミックス）
 const setGridEl=document.getElementById("setGrid");
 let _clPagePrev="main";
 function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); }
@@ -5914,18 +6039,19 @@ function paintSet(){
   if(!setGridEl) return;
   const $=id=>document.getElementById(id);
   for(let k=0;k<16;k++){ const d=setGridEl.children[k]; if(!d) continue; const info=_setInfo(k);
-    d.classList.toggle("on",k===setCur); d.classList.toggle("playing",k===setCur&&playing); d.classList.toggle("queued",k===queuedSet); d.classList.toggle("fresh",info.fresh);
+    const on=setIsPlaying(k), held=on&&isSetHeld(k);
+    d.classList.toggle("on",k===setCur); d.classList.toggle("playing",on); d.classList.toggle("held",held); d.classList.toggle("queued",k===queuedSet); d.classList.toggle("fresh",info.fresh);
     d.querySelector(".nm").textContent = info.name;
-    d.querySelector(".tag").textContent = k===setCur ? (playing?"NOW":"SEL") : (k===queuedSet ? "NEXT" : "");
+    d.querySelector(".tag").textContent = on ? (held?"HOLD":"NOW") : (k===setCur ? "SEL" : (k===queuedSet ? "NEXT" : ""));
     d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
     d.querySelectorAll(".dots i").forEach((i,p)=>i.classList.toggle("has", info.has[p]));
   }
-  const nx=queuedSet!==null?setName(queuedSet):null;
   if($("clSetNo")) $("clSetNo").textContent = String(setCur+1).padStart(2,"0");
   if($("clSetName")) $("clSetName").textContent = setName(setCur);
   if($("clSetTime")) $("clSetTime").textContent = fmtClock(setElapsed());
-  if($("clSetNext")){ $("clSetNext").textContent = nx ? String(queuedSet+1).padStart(2,"0")+" "+nx : (setCur<15 ? String(setCur+2).padStart(2,"0")+" "+setName(setCur+1) : "—");
-    const w=$("clSetNext").closest(".cl-par"); if(w) w.classList.toggle("queued", !!nx); }
+  if($("clSetNext")){   // MIX：いま鳴っているセット（ホールド中は H）。v0.3.147 で NEXT から置き換え（予約は使わない＝押した瞬間に鳴る）
+    const mix=[]; for(let k=0;k<16;k++) if(setIsPlaying(k)) mix.push(String(k+1).padStart(2,"0")+(isSetHeld(k)?"H":""));
+    $("clSetNext").textContent = mix.length ? mix.join(" · ") : "—"; }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.classList.toggle("on", +b.dataset.pat===editPat));
 }
 // モードの出入り（switchView から）：情報窓のページを SET ページ⇄元のページに
@@ -5939,31 +6065,48 @@ function setModeEnter(on){
 (function(){
   const $=id=>document.getElementById(id);
   const say=t=>{ sampNameEl.textContent=t; if(typeof paintPerf==="function") paintPerf(); };
-  const launch=()=>{ const b=$("play"); if(b && !playing) b.click(); };   // ポン出し：止まっていれば鳴らす
-  const told=(ok)=>{ if(!ok) return;
-    const k=queuedSet!==null?queuedSet:setCur;
-    say(queuedSet!==null ? "予約 ▸ "+String(k+1).padStart(2,"0")+" "+setName(k)+"（次の小節頭で）" : "▸ "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); };
-  // セットを叩く＝ポン出し（鳴っていれば次の小節頭で切替、止まっていれば切替して ▶）。COPY 中＝いまのセットをそこへコピー。
-  // v0.3.146：発音は pointerdown（指が触れた瞬間）。v0.3.145 までは pointerup＝指を離すまで（100ms 前後）待っていた。
-  // 長押し 2 回＝既定のキットに戻す（鳴らしながら、別のセットで。長押しはその押下の予約を取り消してから）
-  let lp=null, lpK=-1, armK=-1, armT=0;
-  const fire=(k)=>{
-    if(armMode==="chop"){ if(copySetTo(k)){ say("COPY ▸ SET "+String(k+1).padStart(2,"0")+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); return; }
-    if(k===setCur){ if(!playing){ launch(); say("▶ "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); } return; }
-    const was=playing, ok=queueSet(k); if(!was) launch();   // 音を先に（表示はその後）
-    told(ok); paintSet(); };
+  // セットのポン出し（v0.3.147 §145）：「トグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」
+  // ・押す（pointerdown）＝そのセットをいまのセット（PADS / SEQ の対象）にして、頭から鳴らす。他に鳴っているセットはそのまま（ミックス）
+  // ・離す＝止まる。ただし 1 小節（そのセットの BPM で）押し続けたらホールド＝離しても鳴り続ける。ホールド中のセットを叩く＝止まる
+  // ・COPY 中は鳴らさずに、いまのセットをそこへ写す。■ は鳴っているセットを全部止める
+  // v0.3.146 までの「鳴っていれば次の小節頭で切替（予約）」と「長押し 2 回で既定のキットに戻す」はこの操作に置き換えた
+  const holds=new Map();   // pointerId → {k, timer, d}（押している最中の指。マルチタッチで複数）
+  const startSet=(k)=>{
+    if(AC.state!=="running") AC.resume();
+    if(k!==setCur){
+      if(playing) sideTakeCurrent();          // いま鳴っているセットは止めずに「他のセットの再生」へ
+      else stopAllVoices(AC.currentTime);    // 鳴っていなければ手叩きの余韻を切る（従来どおり）
+      focusSet(k);
+    }
+    startTransport(); setHold(k,false);      // 音が先（表示は後）
+    paintTransport();
+  };
+  const stopSet=(k)=>{
+    if(k===setCur && playing) stopTransport(); else sideStop(k);
+    setHold(k,false); paintTransport();
+  };
+  const no=k=>String(k+1).padStart(2,"0");
+  const endHold=(h)=>{ clearTimeout(h.timer); h.d.classList.remove("pressing"); };
   const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
-    const k=+d.dataset.k; lpK=k; clearTimeout(lp); fire(k);
-    lp=setTimeout(()=>{ lp=null; if(lpK!==k) return;
-      if(k===setCur){ say("いまのセットは PADS / SEQ で編集。他のセットへは COPY で写せる（戻すのは鳴らしながら別のセットを長押し 2 回）"); return; }
-      if(queuedSet===k){ queueSet(k); }   // この押下でした予約は取り消す（長押し＝予約ではない）
-      if(armK===k && Date.now()-armT<2500){ resetSet(k); armK=-1; say("SET "+String(k+1).padStart(2,"0")+" を既定のキットに戻した"); paintSet(); return; }
-      armK=k; armT=Date.now(); setGridEl.children[k].classList.add("armed"); setTimeout(()=>{ if(setGridEl.children[k]) setGridEl.children[k].classList.remove("armed"); },2500);
-      say("もう一度長押しで既定のキットに戻す：SET "+String(k+1).padStart(2,"0")+" "+setName(k)); paintSet(); }, 600); };
-  const pressEnd=()=>{ clearTimeout(lp); lp=null; };
-  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); setGridEl.addEventListener("pointerleave",pressEnd); }
+    const k=+d.dataset.k;
+    try{ d.setPointerCapture(e.pointerId); }catch(_){}
+    if(armMode==="chop"){ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); return; }
+    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら止める（トグル）。別の指で押している最中なら何もしない
+      if(isSetHeld(k)){ stopSet(k); say("■ "+no(k)+" "+setName(k)); paintSet(); }
+      return; }
+    startSet(k);
+    const ms=Math.round(240000/(bpmVal||100));   // 1 小節（いまのセット＝押したセットの BPM）
+    const h={k, d, timer:0};
+    h.timer=setTimeout(()=>{ if(holds.get(e.pointerId)!==h) return; holds.delete(e.pointerId); endHold(h);
+      if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（もう一度叩くと止まる）"); paintSet(); } }, ms);
+    holds.set(e.pointerId, h);
+    d.style.setProperty("--hold-ms", ms+"ms"); d.classList.add("pressing");
+    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 小節押し続けるとホールド）"); paintSet(); };
+  const pressEnd=(e)=>{ const h=holds.get(e.pointerId); if(!h) return; holds.delete(e.pointerId); endHold(h);
+    if(!isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
+  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
-  setInterval(()=>{ if(setMode){ const c=$("clSetTime"); if(c) c.textContent=fmtClock(setElapsed()); const d=setGridEl&&setGridEl.children[setCur]; if(d){ const t=d.querySelector(".tag"), v=playing?"NOW":"SEL"; if(t.textContent!==v) t.textContent=v; d.classList.toggle("playing",playing); } } }, 500);
+  setInterval(()=>{ if(setMode) paintSet(); }, 500);   // 経過時間と、鳴っているセットの印（16 個の塗り直しは軽い）
 })();
 // @module skin-version-splash
 // @provides APP_VERSION
@@ -5986,7 +6129,7 @@ function setModeEnter(on){
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.146";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.147";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
