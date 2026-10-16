@@ -16,11 +16,11 @@
 // 加算累積方式ではなく、ステップ番号×tick時間で計算（実機と同じ分周方式）。
 const PPQ = 24;
 const TICKS_PER_16TH = PPQ/4; // 6
-function tickDur(){ return (60/bpmVal)/PPQ; }      // 1tickの長さ（秒）
-function swingDelayTicks(){
+function tickDur(bpm=bpmVal){ return (60/bpm)/PPQ; }   // bpm：同時に鳴っている他のセットは自分の BPM で（audio/set-players）      // 1tickの長さ（秒）
+function swingDelayTicks(sw=swingPct){
   // 分数tickのまま返す（Math.roundすると54%→0=50%と同一、63%と67%→同2tickに縮退し6段階中2つが死ぬ。
   // 元ネタMPC60は96PPQで54/58/63/67/71がほぼ整数tickに乗る＝24PPQ丸めは本来の解像度を壊していた）
-  return (2*swingPct/100 - 1) * TICKS_PER_16TH;
+  return (2*sw/100 - 1) * TICKS_PER_16TH;
 }
 function effectiveSwing(){
   return Math.round((0.5 + swingDelayTicks()/TICKS_PER_16TH/2)*1000)/10; // %
@@ -29,13 +29,13 @@ function effectiveSwing(){
 // SP的微細ドリフト（タイミング揺れ）
 // 実機はDAC/トリガーの遅延で±0.5ms程度のジッターがあったとされる
 // グルーヴ量はシャッフル(swing)に連動：強くするほどレイドバック/スタッガー/ドリフトが増す
-function grooveFactor(){ return Math.min(1, Math.max(0,(swingPct-50)/21)); } // 0(50%)〜1(71%)
-function driftSec(){
-  const ms = 0.7 + 0.8*grooveFactor();        // ±0.7〜1.5ms
+function grooveFactor(sw=swingPct){ return Math.min(1, Math.max(0,(sw-50)/21)); } // 0(50%)〜1(71%)
+function driftSec(sw=swingPct){
+  const ms = 0.7 + 0.8*grooveFactor(sw);        // ±0.7〜1.5ms
   return (Math.random()*2-1) * ms/1000;
 }
-function laidbackSec(){ return 0.006 + 0.016*grooveFactor(); } // 2拍4拍: 6〜22ms
-function staggerSec(){  return 0.0015 + 0.003*grooveFactor(); } // 同時発音: 1.5〜4.5ms/音
+function laidbackSec(sw=swingPct){ return 0.006 + 0.016*grooveFactor(sw); } // 2拍4拍: 6〜22ms
+function staggerSec(sw=swingPct){  return 0.0015 + 0.003*grooveFactor(sw); } // 同時発音: 1.5〜4.5ms/音
 
 const LOOKAHEAD = 0.1;      // sec, how far ahead we schedule（25ms→100ms：メインスレッドが詰まっても発音が遅れないように）
 const INTERVAL = 25;        // ms timer
@@ -111,11 +111,12 @@ function startTransport(){
   schedTimer=setInterval(scheduler, INTERVAL);
   scheduler();
 }
-function stopTransport(){
+// keepVoices：SET のミックスで、いまのセットを「他のセットの再生」へ引き継ぐとき（audio/set-players の sideTakeCurrent）は音を止めない
+function stopTransport(keepVoices){
   playing=false;
   clearInterval(schedTimer); schedTimer=null;
   drawQueue.length=0; playStep=0;
-  stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
+  if(!keepVoices) stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
 }
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、

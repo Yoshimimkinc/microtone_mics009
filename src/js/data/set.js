@@ -1,12 +1,12 @@
 // @module data/set
 // @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, queueSet, resetSet, setElapsed, setName, setRename,
-//    setsFromProject, snapshotSet, switchSetNow
+//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
+//    setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
 //    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat, queuedSet,
-//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, snapshotState, stopAllVoices,
-//    stripLegacyLocks, swingPct
+//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, sideStop, snapshotState,
+//    stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -86,12 +86,27 @@ function applySetSnapshot(s, opts){
 // 切替の実体（スケジューラが小節頭に呼ぶ／止まっているときは queueSet から直接）。いまのを退避 → 次を live へ。音は stopAt で止める
 function switchSetNow(k, stopAt){
   if(!(k>=0&&k<16)||k===setCur) return;
+  if(typeof sideStop==="function") sideStop(k, stopAt);   // 他のセットとして鳴っていたら止めてから（いまのセットは transport が鳴らす）
   if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k);
   setSlots[setCur]=snapshotSet();                 // いまのセットを退避（live が正だったぶんを書き戻す）
   stopAllVoices(stopAt||AC.currentTime); queuedPat=null;
   setCur=k; queuedSet=null; _setStart=performance.now();
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
+  if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// SET のポン出し（v0.3.147）：k をいまのセット（PADS / SEQ の対象）にする。音は止めない＝いま鳴っている声とループの状態は
+// 退避先の snapshot へ引き継ぐ（いまのセットが鳴っていれば、呼ぶ前に audio/set-players の sideTakeCurrent で「他のセットの再生」に移してある）
+function focusSet(k){
+  if(!(k>=0&&k<16)||k===setCur) return;
+  if(typeof sideStop==="function") sideStop(k);
+  if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k);
+  const snap=snapshotSet();
+  tracks.forEach((t,i)=>{ const x=snap.tracks[i]; x.activeVoices=t.activeVoices||[]; x.loopPlaying=!!t.loopPlaying; t.activeVoices=[]; t.loopPlaying=false; });
+  setSlots[setCur]=snap;
+  queuedPat=null; setCur=k; queuedSet=null; _setStart=performance.now();
+  applySetSnapshot(setSlots[k], {deferPaint:true});
+  clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();
 }
 // セットを叩く：止まっていれば今すぐ差し替え、鳴っていれば次の小節頭で（同じセットをもう一度＝予約取消）。NOW を叩いても何もしない（false）
@@ -102,9 +117,9 @@ function queueSet(k){
   switchSetNow(k, AC.currentTime); return true;
 }
 // いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
-function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 // セットを既定のキットに戻す（長押し 2 回）。NOW には使わない
-function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; setSlots[k]=defaultSetSnapshot(k); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); setSlots[k]=defaultSetSnapshot(k); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 function setRename(k,name){ const nm=(name||"").trim(); if(!nm||!(k>=0&&k<16)) return; if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k); setSlots[k].name=nm.slice(0,24); if(typeof scheduleAutosave==="function") scheduleAutosave(); }
 function setName(k){ return (setSlots[k]&&setSlots[k].name)||("SET "+(k+1)); }
 function setElapsed(){ return (performance.now()-_setStart)/1000; }

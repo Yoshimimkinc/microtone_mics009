@@ -3,8 +3,8 @@
 // @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
 //    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
 //    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
-//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setSlots, setsFromProject,
-//    stopAllVoices, tickDur
+//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSlots,
+//    setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -31,7 +31,7 @@ document.getElementById("exportWavBtn").addEventListener("click",async()=>{
   if(_expBusy) return; _expBusy=true;
   try{
     if(AC.state!=="running") await AC.resume();
-    if(playing) playBtn.click();   // 一旦停止＝必ず頭から
+    if(playing || (typeof sideCount==="function" && sideCount()>0)) playBtn.click();   // 一旦停止＝必ず頭から（SET で他のセットが鳴っていても全部止める v0.3.147）
     await new Promise(r=>setTimeout(r,80));
     const bars=patLength(editPat);
     const dur=bars*STEPS*TICKS_PER_16TH*tickDur() + 0.6;   // ＋ディレイ/リバーブのテール
@@ -74,6 +74,7 @@ async function applyProject(proj, opts){
     // v0.3.144 §145：ファイル全体 = 16 セット。v3 は sets[16] と cur、v2 / 既定プロジェクトは丸ごと SET 1（他は既定のキット）。
     // opts：deferPaint=重い再描画を次フレームへ／stopAt=古い音を止める時刻／keepSel=選択パッドを保つ
     stopAllVoices((opts&&opts.stopAt)||AC.currentTime);
+    if(typeof sideStopAll==="function"){ sideStopAll((opts&&opts.stopAt)||AC.currentTime); setHoldClear(); }   // 他のセットの再生も（中身が差し替わる）
     queuedPat=null;
     // 本体の状態（comp / master / グループ / 送り FX）＝セットを跨いで 1 つ
     if(proj.comp){

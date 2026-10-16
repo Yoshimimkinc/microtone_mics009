@@ -41,14 +41,16 @@ function makeLofi(buffer){
 }
 
 // 同じチョークグループの鳴っている音を即停止
-function chokeGroup(group, exceptPad, when){
+// trs：どのセットのトラック列か（既定＝いまのセットの tracks。同時に鳴っている他のセットは audio/set-players が snapshot の列を渡す v0.3.147）
+function chokeGroup(group, exceptPad, when, trs=tracks){
   if(!group) return;
-  for(let j=0;j<tracks.length;j++){
+  for(let j=0;j<trs.length;j++){
     if(j===exceptPad) continue;
-    if(tracks[j].choke===group) stopVoices(tracks[j], when);
+    if(trs[j].choke===group) stopVoices(trs[j], when);
   }
 }
 function stopVoices(t, when){
+  if(!t.activeVoices){ t.activeVoices=[]; return; }
   t.activeVoices.forEach(v=>{
     try{
       // cancelScheduledValuesはフェード予約中だと直前イベント値(=peak)へ瞬時に跳ねる仕様＝チョーク時の「プチッ」の原因。
@@ -68,11 +70,11 @@ function stopVoices(t, when){
 }
 
 // ソロが1つでもonなら、ソロ対象以外は鳴らさない
-function anySolo(){ return tracks.some(t=>t.solo); }
-function audible(i){
-  const t=tracks[i];
+function anySolo(trs=tracks){ return trs.some(t=>t.solo); }
+function audible(i, trs=tracks){
+  const t=trs[i];
   if(t.mute) return false;
-  if(anySolo() && !t.solo) return false;
+  if(anySolo(trs) && !t.solo) return false;
   return true;
 }
 
@@ -114,15 +116,17 @@ function warmPitch(i){
   _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.buffer&&t.tune) try{ getPitchedBuffer(t,t.tune); }catch(_){ } },150);
 }
 // 1ヒット発音
-function playVoice(i, when, accent, fromSeq, noteSemi, plock){
-  const t = tracks[i];
-  if(!t.buffer) return;
+// trs：鳴らすセットのトラック列（既定＝いまのセット。SET のミックスで他のセットを鳴らすときは snapshot の列 v0.3.147）
+function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
+  const t = trs[i];
+  if(!t || !t.buffer) return;
+  if(!t.activeVoices) t.activeVoices=[];
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
-  if(fromSeq && !audible(i)) return;
+  if(fromSeq && !audible(i, trs)) return;
   if(!fromSeq) liveCompDuck();   // ライブ叩きはコンプ先読み(約6ms)をリアルタイムに回避（1.5s後に自動復帰）
 
   stopVoices(t, when);
-  chokeGroup(t.choke, i, when);
+  chokeGroup(t.choke, i, when, trs);
 
   // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
   const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
@@ -219,7 +223,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock){
   }
   // 波形（モーダル or 情報窓のSAMPLEページ）が見えていて対象パッドが鳴ったら、再生位置カーソルを走らせる。
   // 手叩きもシーケンサーも同じ（v0.3.103）。ループは常に1本＝再トリガで前のを止めるので負荷は増えない
-  if(i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
+  if(trs===tracks && i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
     const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;
     pePlayheadRun(when, startSec, endSec, lsN*dur, dur, t.loop);
   }
