@@ -2,7 +2,7 @@
 // @provides _ckTimes, _ckUiT, _midiNoteTimes, assignTo, clRetargetLearn, handleClock, handleMIDI, inBlink,
 //    midiBlink, midiEnabled, midiNoteName, midiSync
 // @uses AC, _ledT, applyBpm, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, playBtn,
-//    playVoice, playing, pushUndo, sampNameEl, selected, tracks, trigger
+//    playVoice, playing, pushUndo, sampNameEl, selected, sideCount, tracks, trigger
 // @depends -
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
@@ -11,7 +11,7 @@ let midiEnabled=false;   // ハードに触る機能は必ず明示ON（§88の�
 let midiSync=false;      // MIDI SYNC＝外部クロック追従（S2400等に合わせる）。要明示ON
 let _ckTimes=[], _ckUiT=0;
 function handleClock(b0){
-  if(b0===0xFA||b0===0xFB){ _ckTimes=[]; if(!playing) playBtn.click(); return; }   // Start/Continue＝頭から再生
+  if(b0===0xFA||b0===0xFB){ _ckTimes=[]; if(!playing){ if(typeof sideCount==="function" && sideCount()>0) playBtn.click(); playBtn.click(); } return; }   // Start/Continue＝頭から再生（SET の他のセットだけ鳴っていたら全部止めてから v0.3.147）
   if(b0===0xFC){ if(playing) playBtn.click(); return; }                            // Stop
   if(b0!==0xF8) return;
   const now=performance.now();

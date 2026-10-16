@@ -43,6 +43,7 @@
   "js/32-ui-wave.js",
   "js/33-ui-window.js",
   "js/audio/transport.js",
+  "js/audio/set-players.js",
   "js/ui/transport-view.js",
   "js/41-step-strip.js",
   "js/50-menu.js",
