@@ -2,9 +2,9 @@
 // @provides _sideArm, _sidePatLen, _sideStep, _sideStepTime, isSetHeld, setHeldSet, setHold, setHoldClear,
 //    setIsPlaying, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
 //    sideTimer, sideTrs
-// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, driftSec,
-//    laidbackSec, lockKey, playBar, playPat, playVoice, playing, scaleSemi, setCur, setSlots, staggerSec,
-//    stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
+// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, barStartTime, bpmVal, driftSec, laidbackSec,
+//    lockKey, playBar, playPat, playVoice, playing, scaleSemi, setCur, setSlots, staggerSec, stepIdx,
+//    stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
 // @depends -
 // ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
 // 「SET ポン出しはトグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」。
@@ -32,10 +32,11 @@ function _sidePatLen(trs,pat){ let last=0;
   return last+1; }
 // 1 ステップ分の発音（audio/transport の scheduleStep と同じ規則。P-LOCK の記録と表示は無し＝いまのセットだけ）
 function _sideStep(p,trs,n,when){
-  const solo=anySolo(trs), stg=staggerSec(p.swing); let c=0;
+  const mu=t=>t.mutes ? !!t.mutes[p.pat] : !!t.mute, so=t=>t.solos ? !!t.solos[p.pat] : !!t.solo;   // ミュート / ソロは A B C D ごと（v0.3.149）
+  const solo=trs.some(so), stg=staggerSec(p.swing); let c=0;
   for(let i=0;i<trs.length;i++){
     const t=trs[i]; if(!t.activeVoices) t.activeVoices=[];
-    const aud=!t.mute && (!solo || t.solo);
+    const aud=!mu(t) && (!solo || so(t));
     if(t.loop && t.loopPlaying && !aud){ stopVoices(t,when); t.loopPlaying=false; }
     const row=t.patterns && t.patterns[p.pat] && t.patterns[p.pat][p.bar]; const v=row ? row[n] : 0;
     if(!(v>0 && aud)) continue;

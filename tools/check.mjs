@@ -773,10 +773,47 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function patMute(){
+  // v0.3.149：ミュート / ソロは A B C D ごと（セットではない）
+  const V='PATMUTE 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  const r1=await p.evaluate(()=>{ setEditPat(0); arm('mute',true); assignMS(8); arm('mute',false); const a8=tracks[8].mute;
+    setEditPat(1); const b8=tracks[8].mute; arm('mute',true); assignMS(9); arm('mute',false); const b9=tracks[9].mute;
+    setEditPat(0); return {a8, b8, b9, back8:tracks[8].mute, back9:tracks[9].mute, padMuted:document.querySelector('#pads .pad[data-i="8"]').classList.contains('muted'), pad9:document.querySelector('#pads .pad[data-i="9"]').classList.contains('muted')}; });
+  ok_(`${V} A でミュートした 9 番は B では鳴る／B のミュート（10 番）は A に戻ると外れる／パッドの印も追従`, r1.a8 && !r1.b8 && r1.b9 && r1.back8 && !r1.back9 && r1.padMuted && !r1.pad9, JSON.stringify(r1));
+  const r2=await p.evaluate(()=>{ setEditPat(2); const c0=tracks[8].mute; copyPattern(0,2); const c1=tracks[8].mute, c9=tracks[9].mute; setEditPat(0); return {c0,c1,c9}; });
+  ok_(`${V} パターンの COPY（A→C）でミュートも写る`, !r2.c0 && r2.c1 && !r2.c9, JSON.stringify(r2));
+  // 再生中：小節頭で A→B に切り替わると B のミュートで鳴る
+  await p.evaluate(()=>{ applyBpm(240); for(const q of [0,1]){ tracks[8].patterns[q][0][0]=1; tracks[9].patterns[q][0][0]=1; } setEditPat(0); document.getElementById('play').click(); });
+  await p.waitForTimeout(200);
+  const pa=await p.evaluate(()=>({pp:playPat, m8:tracks[8].mute, m9:tracks[9].mute}));
+  await p.evaluate(()=>setEditPat(1));
+  const mid=await p.evaluate(()=>({pp:playPat, m8:tracks[8].mute}));
+  await p.waitForFunction(()=>playPat===1, null, {timeout:5000}); await p.waitForTimeout(400);
+  const pb=await p.evaluate(()=>({pp:playPat, m8:tracks[8].mute, m9:tracks[9].mute, pad9:document.querySelector('#pads .pad[data-i="9"]').classList.contains('muted'), pad8:document.querySelector('#pads .pad[data-i="8"]').classList.contains('muted')}));
+  ok_(`${V} 再生中は鳴っているパターンのミュート（B を押しても小節頭までは A のまま）→ 小節頭で B のミュートに・印も`, pa.pp===0 && pa.m8 && !pa.m9 && mid.pp===0 && mid.m8 && pb.pp===1 && !pb.m8 && pb.m9 && pb.pad9 && !pb.pad8, JSON.stringify({pa,mid,pb}));
+  await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
+  // 保存 → 読込で A B C D のミュートが戻る
+  const rt=await p.evaluate(async()=>{ setEditPat(0); const f=JSON.parse(JSON.stringify(buildProject())); const t8=f.sets[f.cur].tracks[8]; await applyProject(f);
+    const a8=tracks[8].mute; setEditPat(1); const b9=tracks[9].mute, b8=tracks[8].mute; setEditPat(0); return {mutes:t8.mutes, a8, b9, b8, s2:setSlots[1].tracks[8].mutes.join()}; });
+  ok_(`${V} .mics に A B C D ごとのミュートが入り、読み込むと戻る／他のセットは別（既定はミュート無し）`, JSON.stringify(rt.mutes)==='[true,false,true,false]' && rt.a8 && rt.b9 && !rt.b8 && rt.s2==='false,false,false,false', JSON.stringify(rt));
+  // それより前のファイル（mutes が無い）は全パターン同じミュート
+  const old=await p.evaluate(async()=>{ const f=JSON.parse(JSON.stringify(buildProject())); f.sets[f.cur].tracks.forEach(x=>{ delete x.mutes; delete x.solos; }); f.sets[f.cur].tracks[10].mute=true;
+    await applyProject(f); const r=[]; for(let q=0;q<4;q++){ setEditPat(q); r.push(tracks[10].mute); } setEditPat(0); return r; });
+  ok_(`${V} ミュートを A B C D で持たない古いファイルは、全パターンに同じミュート`, old.join()==='true,true,true,true', JSON.stringify(old));
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 await passGate();
 await copyPaint();
 await devShell();
 await setMode();
+await patMute();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

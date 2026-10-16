@@ -6,9 +6,9 @@
 // @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
 //    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
-//    masterGain, melodicMode, nextChokeGroup, paintMixer, paintPadName, paintPadStates, paintPatBar,
-//    paintSteps, playStep, playing, rowEls, saturator, scheduleAutosave, selectPad, selected, setCompBypass,
-//    swingPct, tracks
+//    masterGain, melodicMode, muteLoad, muteSlot, muteSync, nextChokeGroup, paintMixer, paintPadName,
+//    paintPadStates, paintPatBar, paintSteps, playPat, playStep, playing, rowEls, saturator,
+//    scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
 // @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
@@ -50,6 +50,7 @@ function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) l
 // ===== UNDO（パターン編集＋各種操作を1手ずつ戻す） =====
 const undoStack=[];
 function snapshotState(){
+  if(typeof muteSync==="function") muteSync();   // live のミュートを今のパターンへ書き戻してから（A B C D ごと v0.3.149）
   const km=document.getElementById("kMaster");
   return {
     bpm:(typeof bpmVal!=="undefined"?bpmVal:100),
@@ -68,7 +69,7 @@ function snapshotState(){
     tracks: tracks.map((t,i)=>({
       vol:t.vol,tune:t.tune,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,
       filter:t.filter,cutoff:t.cutoff,reso:t.reso,choke:t.choke,scale:t.scale,attack:t.attack,fade:t.fade,delaySend:t.delaySend,reverbSend:t.reverbSend,outBus:t.outBus||"A",midiNote:t.midiNote??null,key:t.key??null,
-      mute:t.mute,solo:t.solo,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
+      mute:t.mute,solo:t.solo,mutes:(t.mutes||[t.mute,t.mute,t.mute,t.mute]).slice(),solos:(t.solos||[t.solo,t.solo,t.solo,t.solo]).slice(),name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
       locks:JSON.parse(JSON.stringify(t.locks||{})),
@@ -80,7 +81,9 @@ function applyTrackSnapshot(i,x){
   const t=tracks[i];
   t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
   t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;t.key=x.key??null;
-  t.mute=x.mute;t.solo=x.solo;t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
+  t.mutes=Array.isArray(x.mutes)?x.mutes.map(Boolean):[!!x.mute,!!x.mute,!!x.mute,!!x.mute];   // ミュートは A B C D ごと（v0.3.149）。古い snapshot は全パターン同じ
+  t.solos=Array.isArray(x.solos)?x.solos.map(Boolean):[!!x.solo,!!x.solo,!!x.solo,!!x.solo];
+  t.mute=t.mutes[muteSlot];t.solo=t.solos[muteSlot];t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
   PADS[i].type=x.type;PADS[i].voice=x.voice;PADS[i].name=x.name||PADS[i].name;
   t.patterns=x.patterns.map(p=>p.map(b=>b.slice()));
   t.locks=x.locks?JSON.parse(JSON.stringify(x.locks)):{};
@@ -99,6 +102,7 @@ function restoreState(s){
   editPat=s.editPat; editBar=s.editBar;
   if(typeof nextChokeGroup!=="undefined" && s.nextChokeGroup!==undefined) nextChokeGroup=s.nextChokeGroup;
   tracks.forEach((t,i)=>applyTrackSnapshot(i, s.tracks[i]));
+  if(typeof muteLoad==="function") muteLoad(playing?playPat:editPat, true);   // 戻した editPat のミュートを live へ
   const $=id=>document.getElementById(id);
   if($("bpm")){ $("bpm").value=s.bpm; $("bpmRead").textContent=s.bpm.toFixed(1); }
   if($("swing")) $("swing").value=s.swing;

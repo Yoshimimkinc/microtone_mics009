@@ -1,8 +1,8 @@
 // @module save-load
 // @provides b64ToUint8, bufToWav, buildProject, calcCrop, setData, trackData, uint8ToB64, wavB64Cached
 // @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, setCur, setSlots, shareOrDownload, swingPct,
-//    tracks
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, muteSync, setCur, setSlots, shareOrDownload,
+//    swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -77,6 +77,7 @@ function trackData(t,i,type,voice){
     loopStart: crop?crop.loopStart:t.loopStart,
     filter:t.filter, cutoff:t.cutoff, reso:t.reso,
     choke:t.choke, mute:t.mute, solo:t.solo,
+    mutes:(t.mutes||[t.mute,t.mute,t.mute,t.mute]).map(Boolean), solos:(t.solos||[t.solo,t.solo,t.solo,t.solo]).map(Boolean),   // A B C D ごと（v0.3.149）
     attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null, key:t.key??null,
     patterns:t.patterns,
     locks:t.locks||{},
@@ -87,6 +88,7 @@ function trackData(t,i,type,voice){
 function setData(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map((t,i)=>trackData(t,i,t.type,t.voice))}; }
 // ファイル全体＝16 セット × 16 パッド × 4 シーケンス（v3、§145）。いまのセットは live の tracks から、他は snapshot から
 function buildProject(){
+  if(typeof muteSync==="function") muteSync();   // live のミュートを今のパターンへ書き戻してから
   const cur=(typeof setCur!=="undefined")?setCur:0;
   const sets=[];
   for(let k=0;k<16;k++){

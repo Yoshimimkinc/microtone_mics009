@@ -1,9 +1,9 @@
 // @module ui/transport-view
 // @provides _drawOn, drawLoop, paintTransport, playBtn, recBtn, updateRecBtnLabel
 // @uses AC, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue, flashPad, kickVu,
-//    moveCursors, paintSet, paintSteps, playStep, playing, pushUndo, recording, sampNameEl, setCur, setHold,
-//    setHoldClear, sideCount, sideStopAll, startTransport, stopTransport, updateBarIndicator,
-//    updatePatIndicator, vuHit
+//    moveCursors, paintPadStates, paintSet, paintSteps, playStep, playing, pushUndo, recording, sampNameEl,
+//    setCur, setHold, setHoldClear, sideCount, sideStopAll, startTransport, stopTransport,
+//    updateBarIndicator, updatePatIndicator, vuHit
 // @depends -
 // ---------- transport：表示とボタン（▶ / ●）。drawQueue を消化してパッド点灯・カーソル・パターン枠を描く ----------
 // 40-transport.js から分離（v0.3.132 Phase 2 第3段）。scheduler が積む drawQueue を rAF で消化するだけ＝音は出さない
@@ -16,7 +16,8 @@ function drawLoop(){
     const ev=drawQueue.shift();
     cur=ev.step;
     if(ev.hits) ev.hits.forEach(h=>{flashPad(h.pad,h.acc);if(typeof vuHit==="function")vuHit(h.pad,h.acc);});
-    if(ev.pat!==undefined){ displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
+    if(ev.pat!==undefined){ if(ev.pat!==displayPat && typeof paintPadStates==="function") paintPadStates();   // パターンが変わった＝ミュートの印も（v0.3.149）
+      displayPat=ev.pat; displayBar=ev.bar; updatePatIndicator(ev.pat); updateBarIndicator(ev.bar); }
   }
   if(cur!==null){ playStep=cur; moveCursors(); }
   if(playing) requestAnimationFrame(drawLoop); else _drawOn=false;
@@ -32,6 +33,7 @@ function paintTransport(){
   playBtn.classList.toggle("on",any);
   playBtn.textContent=any?"■":"▶";   // アイコンのみ（文字なし）
   if(typeof paintSet==="function") paintSet();   // SET 画面：再生中のセットをオレンジに（v0.3.145）
+  if(typeof paintPadStates==="function") paintPadStates();   // 止めると編集中のパターンのミュートに戻る（v0.3.149）
   if(playing){
     if(!_drawOn) requestAnimationFrame(drawLoop);
     if(typeof kickVu==="function") kickVu();   // VUループ起動（停止中はアイドルで止まっている）

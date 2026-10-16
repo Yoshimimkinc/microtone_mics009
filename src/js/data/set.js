@@ -3,10 +3,10 @@
 //    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
 //    setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
-//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
-//    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat, queuedSet,
-//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, sideStop, snapshotState,
-//    stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, muteLoad,
+//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat,
+//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, sideStop,
+//    snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -26,12 +26,13 @@ function _defaultTrackSnap(i){
     buffer: synth ? pr.buf : null, rawBuffer: synth ? pr.raw : null,
     start: synth ? pr.start : 0, end: synth ? pr.end : 1, loop: synth ? pr.loop : false, loopStart: synth ? pr.loopStart : 0,
     choke: (synth && (i===10||i===11)) ? 1 : 0, scale: (synth && i===15) ? "chro" : "off",
+    mutes:[false,false,false,false], solos:[false,false,false,false],   // ミュート / ソロは A B C D ごと（v0.3.149）
     patterns:_emptyPatterns(), locks:{} });
 }
 function defaultSetSnapshot(k){ return {name:"SET "+(k+1), bpm:100, swing:67, tracks:PADS.map((_,i)=>_defaultTrackSnap(i))}; }
 // いまのセット（live）を snapshot に
 function snapshotSet(){ return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:snapshotState().tracks}; }
-function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:JSON.parse(JSON.stringify(x.locks||{}))}))}; }
+function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {mutes:(x.mutes||[]).slice(), solos:(x.solos||[]).slice(), activeVoices:[], loopPlaying:false, patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:JSON.parse(JSON.stringify(x.locks||{}))}))}; }
 // .mics のセット（v3 の sets[k]、または v2 のファイル丸ごと）を snapshot に（音を復号。audio の無い synth はプリセット）
 async function decodeSetData(sd,k){
   const snap=defaultSetSnapshot(k);
@@ -43,6 +44,9 @@ async function decodeSetData(sd,k){
     x.filter=pt.filter??"off"; x.cutoff=pt.cutoff??12000; x.reso=pt.reso??0.7;
     x.attack=pt.attack??0; x.fade=pt.fade??3; x.delaySend=pt.delaySend??0; x.reverbSend=pt.reverbSend??0; x.outBus=pt.outBus||"A"; x.midiNote=pt.midiNote??null; x.key=pt.key??null;
     x.choke=pt.choke??0; x.mute=pt.mute??false; x.solo=pt.solo??false;
+    // ミュート / ソロは A B C D ごと（v0.3.149）。それより前のファイルは全パターンに同じ値
+    x.mutes=Array.isArray(pt.mutes)?[0,1,2,3].map(p=>!!pt.mutes[p]):[x.mute,x.mute,x.mute,x.mute];
+    x.solos=Array.isArray(pt.solos)?[0,1,2,3].map(p=>!!pt.solos[p]):[x.solo,x.solo,x.solo,x.solo];
     // パターン（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
     x.patterns=_emptyPatterns();
     if(pt.patterns) for(let p=0;p<4;p++){ const pat=pt.patterns[p]; if(!Array.isArray(pat)) continue;
@@ -78,7 +82,7 @@ function applySetSnapshot(s, opts){
   if($("bpm")){ $("bpm").value=bpmVal; $("bpmRead").textContent=bpmVal.toFixed(1); }
   if($("swing")) $("swing").value=swingPct;
   if(typeof setDelayTempo==="function") setDelayTempo();
-  if(!keepSel){ editPat=0; editBar=0; }
+  if(!keepSel){ editPat=0; editBar=0; muteLoad(0, true); }   // セットの頭は A＝ミュートも A のもの
   for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
   if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();
