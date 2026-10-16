@@ -704,7 +704,7 @@ async function setMode(){
       saved:setSlots[0].tracks[0].name, savedBpm:setSlots[0].bpm, savedStep:setSlots[0].tracks[8].patterns[0][0][0], tag:document.querySelector('#setGrid .setpad[data-k="1"] .tag').textContent, undo:undoStack.length}));
     const lit=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="1"]'); const cs=getComputedStyle(d); return {cls:d.className, bg:cs.backgroundImage||cs.backgroundColor, glow:cs.boxShadow}; });
     ok_(`${V} ポン出しは pointerdown（指を離す前に鳴り始め、小節頭は先置きしない・最初のステップは timer を待たず予約）`, s2dn.playingAtDown && s2dn.lead<=0.02 && s2dn.lead>-0.5 && s2dn.firstStep>=1 && s2dn.firstStep<=2, JSON.stringify(s2dn));
-    ok_(`${V} 再生中のセットはオレンジに光る（playing・面塗り・外光 26px）`, /\bplaying\b/.test(lit.cls) && /linear-gradient/.test(lit.bg) && /26px/.test(lit.glow), JSON.stringify(lit));
+    ok_(`${V} 押している間（ホールド前）は薄い色（playing・held でない・外光 12px で 26px は無し）`, /\bplaying\b/.test(lit.cls) && !/\bheld\b/.test(lit.cls) && /linear-gradient/.test(lit.bg) && /12px/.test(lit.glow) && !/26px/.test(lit.glow), JSON.stringify(lit));
     ok_(`${V} 押す＝ポン出し（SET 2 へ切替・鳴る・既定のキット）／SET 1 の変更は退避される／undo は空`, s2.cur===1 && s2.playing===true && s2.name==='PAD 1' && s2.type0==='empty' && !s2.buf0 && s2.kick && s2.bpm===100 && s2.steps===0 && s2.saved==='S1' && s2.savedBpm===88 && s2.savedStep===1 && s2.tag==='NOW' && s2.undo===0, JSON.stringify(s2));
     await p.evaluate(()=>{ setStep(9,4,1); });   // SET 2 に 1 ステップ（退避されるか）
     await p.mouse.up(); await p.waitForTimeout(150);
@@ -714,6 +714,8 @@ async function setMode(){
     await p.evaluate(()=>{ setSlots[2].bpm=240; });
     await down(2); await p.waitForTimeout(1300);
     const h1=await ui();
+    const litH=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="2"]'); const cs=getComputedStyle(d); return {cls:d.className, bg:cs.backgroundImage, glow:cs.boxShadow}; });
+    ok_(`${V} ホールドになると今の色で光る（held・面塗り・外光 26px）`, /\bheld\b/.test(litH.cls) && /linear-gradient/.test(litH.bg) && /26px/.test(litH.glow), JSON.stringify(litH));
     await p.evaluate(()=>{ for(let s=0;s<16;s++) setStep(8,s,1); });   // SET 3 の 9 番を 16 分で（ミックスで鳴っているか見る）
     await p.mouse.up(); await p.waitForTimeout(200);
     const h2=await ui();

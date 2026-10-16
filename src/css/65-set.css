@@ -15,23 +15,32 @@
   .setpad.on{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.on .n{color:var(--teal);}
   /* 再生中のセット＝オレンジに「光る」（叩いたパッドの点灯と同じ色。目立つように面で塗り、外へ光らせる）v0.3.145。
-     v0.3.147：同時に鳴っているセットは全部光る。いまのセット（PADS / SEQ の対象）は内側にティールの枠 */
-  .setpad.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
+     v0.3.147：同時に鳴っているセットは全部光る。いまのセット（PADS / SEQ の対象）は内側にティールの枠。
+     v0.3.148：「ホールドになる前は薄めの色、ホールドは今の赤」→ 押している間（離すと止まる）＝同じ色を薄く、ホールド＝これまでの面塗り＋外光 */
+  .setpad.playing{background:linear-gradient(180deg,rgba(var(--hit-glow-a),.42),rgba(var(--hit-glow-a),.22)),linear-gradient(180deg,var(--pad-face),var(--pad));
+    border-color:rgba(var(--hit-glow-a),.6);box-shadow:0 0 0 2px rgba(var(--hit-glow-a),.6) inset,0 0 12px 1px rgba(var(--hit-glow-a),.35);}
+  body.perf #viewPads.split>.pads .setpad.playing{background:linear-gradient(180deg,rgba(var(--hit-glow-a),.42),rgba(var(--hit-glow-a),.22)),linear-gradient(180deg,var(--pad-face),var(--pad));
+    border-color:rgba(var(--hit-glow-a),.6);box-shadow:0 0 0 2px rgba(var(--hit-glow-a),.6) inset,0 0 12px 1px rgba(var(--hit-glow-a),.35);}
+  .setpad.playing.on,body.perf #viewPads.split>.pads .setpad.playing.on{box-shadow:0 0 0 3px var(--teal) inset,0 0 12px 1px rgba(var(--hit-glow-a),.35);}
+  .setpad.playing .dots i.has{background:rgb(var(--hit-glow-a));}
+  /* ホールド：これまでの「光る」 */
+  .setpad.held{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
     box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
-  .setpad.playing .n,.setpad.playing .nm,.setpad.playing .ft,.setpad.playing .tag{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
-  .setpad.playing .dots i{background:rgba(0,0,0,.25);}
-  .setpad.playing .dots i.has{background:var(--hit-ink);}
-  body.perf #viewPads.split>.pads .setpad.playing{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
+  .setpad.held .n,.setpad.held .nm,.setpad.held .ft,.setpad.held .tag{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
+  .setpad.held .dots i{background:rgba(0,0,0,.25);}
+  .setpad.held .dots i.has{background:var(--hit-ink);}
+  body.perf #viewPads.split>.pads .setpad.held{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
     box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
-  .setpad.playing.on,body.perf #viewPads.split>.pads .setpad.playing.on{box-shadow:0 0 0 3px var(--teal) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
+  .setpad.held.on,body.perf #viewPads.split>.pads .setpad.held.on{box-shadow:0 0 0 3px var(--teal) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
   .setpad.held .tag{font-weight:700;letter-spacing:.16em;}
   /* 押している間：1 小節でホールドになるまでの残りを下端のバーで見せる（--hold-ms は ui/set-view が押した瞬間に書く） */
-  .setpad.pressing::after{content:"";position:absolute;left:0;bottom:0;height:4px;width:0;background:var(--hit-ink);opacity:.7;pointer-events:none;
+  .setpad.pressing::after{content:"";position:absolute;left:0;bottom:0;height:4px;width:0;background:rgb(var(--hit-glow-a));opacity:.9;pointer-events:none;
     animation:setHoldFill var(--hold-ms,2400ms) linear forwards;}
   @keyframes setHoldFill{to{width:100%;}}
   .setpad.queued{box-shadow:0 0 0 2px var(--amber) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.queued .n{color:var(--amber);}
   .setpad.fresh .nm,.setpad.fresh .n{color:var(--dim);}   /* 既定のキットのまま（まだ何も入れていない）＝薄く */
+  .setpad.held.fresh .nm,.setpad.held.fresh .n{color:var(--hit-ink);}   /* ホールドの面塗りの上では薄くしない（赤の上で読めなくなる v0.3.148） */
   .setpad.armed{box-shadow:0 0 0 2px var(--red) inset;}
   /* 情報窓の SET ページ */
   .cl-par.cl-setname b{max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
