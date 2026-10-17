@@ -8,7 +8,7 @@
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
 // 状態を書くのは data/set の入口（focusSet / copySetTo …）・audio の入口（startTransport / stopTransport / sideTakeCurrent / sideStop / setHold）と setMode（ここ）だけ。
-// 下段の ◀ / NEXT / LIVE は v0.3.145 で撤去（パッド自体が切替）。v0.3.147 で押す＝鳴る・離す＝止まる・1 小節でホールド・同時鳴らし（ミックス）
+// 下段の ◀ / NEXT / LIVE は v0.3.145 で撤去（パッド自体が切替）。v0.3.147 で押す＝鳴る・離す＝止まる・1 拍でホールド（v0.3.153。当初は 1 小節）・同時鳴らし（ミックス）
 const setGridEl=document.getElementById("setGrid");
 let _clPagePrev="main";
 function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); }
@@ -68,7 +68,7 @@ function setModeEnter(on){
   const say=t=>{ sampNameEl.textContent=t; if(typeof paintPerf==="function") paintPerf(); };
   // セットのポン出し（v0.3.147 §145）：「トグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」
   // ・押す（pointerdown）＝そのセットをいまのセット（PADS / SEQ の対象）にして、頭から鳴らす。他に鳴っているセットはそのまま（ミックス）
-  // ・離す＝止まる。ただし 1 小節（そのセットの BPM で）押し続けたらホールド＝離しても鳴り続ける。ホールド中のセットを叩く＝止まる
+  // ・離す＝止まる。ただし 1 拍（4 ステップ。そのセットの BPM で。v0.3.153、当初は 1 小節）押し続けたらホールド＝離しても鳴り続ける。ホールド中のセットを叩く＝止まる
   // ・COPY 中は鳴らさずに、いまのセットをそこへ写す。■ は鳴っているセットを全部止める
   // v0.3.146 までの「鳴っていれば次の小節頭で切替（予約）」と「長押し 2 回で既定のキットに戻す」はこの操作に置き換えた
   const holds=new Map();   // pointerId → {k, timer, d}（押している最中の指。マルチタッチで複数）
@@ -102,12 +102,12 @@ function setModeEnter(on){
       say((h.mode==="held" ? "離すと止まる："+no(k)+" "+setName(k)+"（上下スワイプで音量）" : "上下スワイプで音量："+no(k)+" "+setName(k)));
       return; }
     startSet(k);
-    const ms=Math.round(240000/(bpmVal||100));   // 1 小節（いまのセット＝押したセットの BPM）
+    const ms=Math.round(60000/(bpmVal||100));   // 1 拍＝4 ステップ（押したセットの BPM）。v0.3.153 で 1 小節から短くした
     h.timer=setTimeout(()=>{ if(holds.get(e.pointerId)!==h) return; h.d.classList.remove("pressing");
       if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（押して離すと止まる）"); paintSet(); } }, ms);
     holds.set(e.pointerId, h);
     d.style.setProperty("--hold-ms", ms+"ms"); d.classList.add("pressing");
-    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 小節押し続けるとホールド・上下で音量）"); paintSet(); };
+    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 拍押し続けるとホールド・上下で音量）"); paintSet(); };
   const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
     const dy=e.clientY-h.y0;
     if(!h.moved){ if(Math.abs(dy)<SWIPE_PX) return; h.moved=true; h.d.classList.add("adj"); }
