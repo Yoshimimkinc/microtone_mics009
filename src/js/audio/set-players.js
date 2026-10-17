@@ -14,7 +14,7 @@
 // 各セットは自分の時計（押した瞬間が小節頭・自分の BPM / SWING）で回る＝SP-404 のパッドと同じで、合わせるのは叩くタイミング。
 // 声（activeVoices）とループの状態は snapshot の各トラックが持つ。いまのセットを切り替えるときは data/set の focusSet が引き継ぐ。
 const sidePlayers=new Map();   // k → {k, t0（小節頭の時刻）, idx（次に予約するステップ）, pat, bar, bpm, swing}
-const setHeldSet=new Set();    // ホールド中のセット（1 小節押し続けた／▶ で鳴らした）。離しても止まらない。もう一度叩くと止まる
+const setHeldSet=new Set();    // ホールド中のセット（1 拍押し続けた／▶ で鳴らした。v0.3.153 で 1 小節→1 拍）。離しても止まらない。もう一度叩くと止まる
 let sideTimer=null;
 function sideTrs(k){ return k===setCur ? tracks : (setSlots[k] ? setSlots[k].tracks : null); }
 function sideCount(){ return sidePlayers.size; }
