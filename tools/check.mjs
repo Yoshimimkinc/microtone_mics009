@@ -725,8 +725,11 @@ async function setMode(){
     const m1=await ui();
     // v0.3.151：押しながら下へスワイプ＝そのセットの音量を下げる（8px の遊び＋5px で 1 dB → 58px で -10 dB）。鳴りは続く
     { const c0=await sp(0); await p.mouse.move(c0[0], c0[1]+58, {steps:6}); await p.waitForTimeout(80); }
-    const vol=await p.evaluate(()=>({db:setLevels[0], lin:setLevelLin(0), node:!!setLevelNode(0), lv:document.querySelector('#setGrid .setpad[data-k="0"] .lv').textContent, playing, other:setLevels[2]}));
-    ok_(`${V} 押しながら下へスワイプ＝そのセットの音量だけ下がる（約 -10 dB・パッドに表示・鳴りは続く）`, Math.abs(vol.db+10)<=0.5 && Math.abs(vol.lin-Math.pow(10,vol.db/20))<0.001 && vol.lin<0.34 && vol.node && vol.lv===vol.db.toFixed(1)+'dB' && vol.playing && vol.other===0, JSON.stringify(vol));
+    const vol=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="0"]'), f=d.querySelector('.lvfill');
+      return {db:setLevels[0], lin:setLevelLin(0), node:!!setLevelNode(0), lv:d.querySelector('.lv').textContent, lvShown:getComputedStyle(d.querySelector('.lv')).display!=='none', playing, other:setLevels[2],
+        fill:getComputedStyle(f).display!=='none' ? f.getBoundingClientRect().height/d.getBoundingClientRect().height : -1, otherFill:getComputedStyle(document.querySelector('#setGrid .setpad[data-k="5"] .lvfill')).display}; });
+    ok_(`${V} 押しながら下へスワイプ＝そのセットの音量だけ下がる（約 -10 dB・パッドに表示・鳴りは続く）`, Math.abs(vol.db+10)<=0.5 && Math.abs(vol.lin-Math.pow(10,vol.db/20))<0.001 && vol.lin<0.34 && vol.node && vol.lv===vol.db.toFixed(1)+'dB' && vol.lvShown && vol.playing && vol.other===0, JSON.stringify(vol));
+    ok_(`${V} 音量は下からの塗り潰しで見える（高さ＝(dB+40)/46・0 dB のセットには出ない）`, Math.abs(vol.fill-(vol.db+40)/46)<0.04 && vol.otherFill==='none', JSON.stringify(vol));
     const m1d=await p.evaluate(()=>({name:tracks[0].name, bpm:bpmVal, step:tracks[8].patterns[0][0][0], side3:sidePlayers.get(2)&&sidePlayers.get(2).bpm, v3:setSlots[2].tracks[8].activeVoices.length, s3step:setSlots[2].tracks[8].patterns[0][0][5], s2step:setSlots[1].tracks[9].patterns[0][0][4]}));
     ok_(`${V} 同時鳴らし：SET 1 を押すと SET 1 がいまのセット、SET 3 は自分の BPM で鳴り続ける（両方オレンジ・MIX に 2 つ）`, m1.cur===0 && m1.playing && m1.sides.join()==='2' && m1.lit.join()==='0,2' && /01/.test(m1.mix) && /03H/.test(m1.mix) && m1d.name==='S1' && m1d.bpm===88 && m1d.step===1 && m1d.side3===240 && m1d.v3>0 && m1d.s3step===1 && m1d.s2step===1, JSON.stringify({m1,m1d}));
     await p.mouse.up(); await p.waitForTimeout(150);
