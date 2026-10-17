@@ -718,6 +718,8 @@
   .setpad.queued .tag{color:var(--amber);}
   .setpad .ft{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;position:relative;z-index:1;}
   .setpad .dots{display:flex;gap:3px;}
+  .setpad .lv{font-size:10px;font-variant-numeric:tabular-nums;color:var(--teal);}   /* ミックス音量（0 dB 以外のときだけ。v0.3.151） */
+  .setpad .lv.down{color:var(--amber);}
   .setpad .dots i{width:6px;height:6px;border-radius:50%;background:var(--line);}
   .setpad .dots i.has{background:var(--amber);}
   .setpad.on{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
@@ -734,7 +736,7 @@
   /* ホールド：これまでの「光る」 */
   .setpad.held{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
     box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
-  .setpad.held .n,.setpad.held .nm,.setpad.held .ft,.setpad.held .tag{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
+  .setpad.held .n,.setpad.held .nm,.setpad.held .ft,.setpad.held .tag,.setpad.held .lv{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
   .setpad.held .dots i{background:rgba(0,0,0,.25);}
   .setpad.held .dots i.has{background:var(--hit-ink);}
   body.perf #viewPads.split>.pads .setpad.held{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
@@ -1079,7 +1081,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.150</div>
+  <div class="s-ver" id="splashVer">v0.3.151</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1476,7 +1478,7 @@ const MELO_KEYS = ["a","s","d","f","g","h","j","k","l",";"];
 // @provides activeLock, armMode, assignTarget, bpmVal, copyArm, displayBar, displayPat, editBar, editDrag,
 //    editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm,
 //    perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected,
-//    setCur, setMode, setSlots, stepIdx, swingPct
+//    setCur, setLevels, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -1520,6 +1522,7 @@ let peV0=0, peV1=1;     // 波形の表示窓（0..1正規化）。ホイール/
 let setSlots = new Array(16).fill(null);   // 16 のセット（常に 16 ある。中身は snapshotSet の形：name/bpm/swing/tracks[16]。いまのセットは tracks が正。要素の書き換えは data/set）  @writers share-export
 let setCur = 0;         // いまのセット（0..15。PADS / SEQ が見せるのはこのセット）  @writers data/set, share-export
 let queuedSet = null;   // 予約中のセット（次の小節頭で切替。null=なし）  @writers data/set, share-export
+let setLevels = new Array(16).fill(0);     // 各セットのミックス音量（dB。0＝そのまま）。SET でパッドを押しながら上下スワイプ（v0.3.151）。中身を書くのは audio/set-players の setSetLevel だけ（配列そのものは差し替えない）  @writers -
 let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格子が枠）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
@@ -2380,7 +2383,8 @@ function dbToGain(db){ return Math.pow(10, db/20); }
 //    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
-//    playStep, playing, recording, reverbPre, sampNameEl, setStepAt, spDynOpen, tapeEcho, tracks, vuHit
+//    playStep, playing, recording, reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode,
+//    setStepAt, spDynOpen, tapeEcho, tracks, vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -2535,17 +2539,22 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
   const baseVol = t.vol;
   const peak = dbToGain(baseVol + (accent?3:0));
   const toB = multiOut && t.outBus==="B";
-  head.connect(env);
-  if(toB) env.connect(outBGain);   // OUT B＝ドライ直行（グループFX/マスターを通らない）
-  else env.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→[SSM2044]→masterGain
+  // セットのミックス音量（v0.3.151）：env の後ろに声ごとのゲイン vg。gain はそのセットの ConstantSource が動かす＝鳴っている音にも、送りにも効く
+  const vg = AC.createGain();
+  const sk = (typeof setIndexOfTrs==="function") ? setIndexOfTrs(trs) : -1;
+  const lvSrc = (sk>=0 && typeof setLevelNode==="function") ? setLevelNode(sk) : null;
+  if(lvSrc){ vg.gain.value=0; lvSrc.connect(vg.gain); } else vg.gain.value = (sk>=0 && typeof setLevelLin==="function") ? setLevelLin(sk) : 1;
+  head.connect(env); env.connect(vg);
+  if(toB) vg.connect(outBGain);   // OUT B＝ドライ直行（グループFX/マスターを通らない）
+  else vg.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→[SSM2044]→masterGain
   spDynOpen(GROUP_OF[i], when, accent);   // SSM2044ダイナミックフィルター：発音毎に開閉。アクセントはより開く＝強打の説得力
 
   // DELAY/REVERBセンド：p-lock(そのステップ)が優先、無ければ per-pad ベース送り(t.delaySend/reverbSend)
   let dSend=null, rSend=null;
   const dAmt = (plock && plock.delay!=null) ? plock.delay : (t.delaySend||0);
   const rAmt = (plock && plock.reverb!=null) ? plock.reverb : (t.reverbSend||0);
-  if(!toB && dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; env.connect(dSend); dSend.connect(tapeEcho); }
-  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; env.connect(rSend); rSend.connect(reverbPre); }
+  if(!toB && dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; vg.connect(dSend); dSend.connect(tapeEcho); }
+  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; vg.connect(rSend); rSend.connect(reverbPre); }
 
   // 頭=アタック(フェードイン)、終端=フェード(フェードアウト)。未設定はプツ音回避の既定値。
   const ATT  = Math.max(0.001, (t.attack||0)/1000);
@@ -2589,7 +2598,8 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
     if(voice.wd){ clearTimeout(voice.wd); voice.wd=null; }
     const k=t.activeVoices.indexOf(voice);
     if(k>=0) t.activeVoices.splice(k,1);
-    try{src.disconnect();env.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
+    try{src.disconnect();env.disconnect();vg.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
+    if(lvSrc){ try{ lvSrc.disconnect(vg.gain); }catch(e){} }
   };
   // 窓波形プレイヘッドは撤去済み（カーソル記録なし）
   t.activeVoices.push(voice);
@@ -3246,8 +3256,8 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
 //    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat, queuedSet,
-//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, sideStop, snapshotState,
-//    stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel, setSlots,
+//    sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -3366,9 +3376,9 @@ function queueSet(k){
   switchSetNow(k, AC.currentTime); return true;
 }
 // いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
-function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof setSetLevel==="function") setSetLevel(k, setLevels[setCur]); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 // セットを既定のキットに戻す（長押し 2 回）。NOW には使わない
-function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); setSlots[k]=defaultSetSnapshot(k); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
+function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); setSlots[k]=defaultSetSnapshot(k); if(typeof setSetLevel==="function") setSetLevel(k, 0); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 function setRename(k,name){ const nm=(name||"").trim(); if(!nm||!(k>=0&&k<16)) return; if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k); setSlots[k].name=nm.slice(0,24); if(typeof scheduleAutosave==="function") scheduleAutosave(); }
 function setName(k){ return (setSlots[k]&&setSlots[k].name)||("SET "+(k+1)); }
 function setElapsed(){ return (performance.now()-_setStart)/1000; }
@@ -3952,12 +3962,13 @@ function scheduler(){
   }
 }
 // @module audio/set-players
-// @provides _sideArm, _sidePatLen, _sideStep, _sideStepTime, isSetHeld, setHeldSet, setHold, setHoldClear,
-//    setIsPlaying, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
+// @provides SET_LV_MAX, SET_LV_MIN, _lvlSrc, _sideArm, _sidePatLen, _sideStep, _sideStepTime, fmtSetLevel,
+//    isSetHeld, setHeldSet, setHold, setHoldClear, setIndexOfTrs, setIsPlaying, setLevelLin, setLevelNode,
+//    setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
 //    sideTimer, sideTrs
-// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, driftSec,
-//    laidbackSec, lockKey, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setSlots,
-//    staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
+// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec,
+//    laidbackSec, lockKey, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels,
+//    setSlots, staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
 // @depends -
 // ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
 // 「SET ポン出しはトグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」。
@@ -4035,6 +4046,27 @@ function sideStop(k, when){
   const trs=sideTrs(k); if(trs) trs.forEach(t=>{ stopVoices(t, when||AC.currentTime); t.loopPlaying=false; });
 }
 function sideStopAll(when){ Array.from(sidePlayers.keys()).forEach(k=>sideStop(k, when)); }
+// ---------- セットのミックス音量（v0.3.151）：「押しながら上下スワイプで音量の上げ下げ」 ----------
+// セットごとに ConstantSource を 1 つ持ち、そのセットの声の音量ゲイン（playVoice の vg）の gain に繋ぐ＝鳴っている音にも送り（DELAY / REVERB）にも即効く。
+// ConstantSource が無いブラウザは発音時の値だけ（鳴っている音には次の発音から）。-40 dB で無音
+const SET_LV_MIN=-40, SET_LV_MAX=6;
+const _lvlSrc=new Array(16).fill(null);
+function setLevelLin(k){ const db=setLevels[k]||0; return db<=SET_LV_MIN ? 0 : dbToGain(db); }
+function setLevelNode(k){
+  if(!(k>=0&&k<16) || typeof AC.createConstantSource!=="function") return null;
+  if(!_lvlSrc[k]){ const c=AC.createConstantSource(); c.offset.value=setLevelLin(k); c.start(); _lvlSrc[k]=c; }
+  return _lvlSrc[k];
+}
+function setSetLevel(k, db){
+  if(!(k>=0&&k<16)) return;
+  db=Math.max(SET_LV_MIN, Math.min(SET_LV_MAX, Math.round((+db||0)*2)/2));   // 0.5 dB 刻み
+  setLevels[k]=db;
+  const c=_lvlSrc[k]; if(c) c.offset.setTargetAtTime(setLevelLin(k), AC.currentTime, 0.012);   // ジッパーノイズを出さない程度に滑らかに
+}
+function fmtSetLevel(db){ return db<=SET_LV_MIN ? "-∞" : ((db>0?"+":"")+db.toFixed(1)); }
+// トラック列 → どのセットのものか（いまのセット＝tracks、他は setSlots[k].tracks）
+function setIndexOfTrs(trs){ if(trs===tracks) return setCur; for(let k=0;k<16;k++) if(setSlots[k] && setSlots[k].tracks===trs) return k; return setCur; }
+
 // @module ui/transport-view
 // @provides _drawOn, drawLoop, paintTransport, playBtn, recBtn, updateRecBtnLabel
 // @uses AC, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue, flashPad, kickVu,
@@ -5737,8 +5769,8 @@ async function finalizeRec(){
 // @module save-load
 // @provides b64ToUint8, bufToWav, buildProject, calcCrop, setData, trackData, uint8ToB64, wavB64Cached
 // @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, setCur, setSlots, shareOrDownload,
-//    swingPct, tracks
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, setCur, setLevels, setSlots,
+//    shareOrDownload, swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -5829,8 +5861,9 @@ function buildProject(){
   const cur=(typeof setCur!=="undefined")?setCur:0;
   const sets=[];
   for(let k=0;k<16;k++){
-    if(k===cur) sets.push({name:(setSlots[k]&&setSlots[k].name)||("SET "+(k+1)), bpm:bpmVal, swing:swingPct, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))});
-    else sets.push(setSlots[k] ? setData(setSlots[k]) : null);
+    const lv=(typeof setLevels!=="undefined" && setLevels[k]) || 0;   // ミックス音量（dB、v0.3.151）
+    if(k===cur) sets.push({name:(setSlots[k]&&setSlots[k].name)||("SET "+(k+1)), bpm:bpmVal, swing:swingPct, level:lv, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))});
+    else sets.push(setSlots[k] ? Object.assign(setData(setSlots[k]), {level:lv}) : null);
   }
   return {
     version:3,
@@ -5959,8 +5992,8 @@ function handleMIDI(data){
 // @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
 //    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
 //    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
-//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSlots,
-//    setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
+//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSetLevel,
+//    setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -6054,6 +6087,7 @@ async function applyProject(proj, opts){
     // 16 セット（音を復号）→ いまのセットを live へ
     const r=await setsFromProject(proj);
     setSlots=r.slots; setCur=r.cur; queuedSet=null;
+    if(typeof setSetLevel==="function"){ const ss=Array.isArray(proj.sets)?proj.sets:[]; for(let k=0;k<16;k++) setSetLevel(k, (ss[k]&&+ss[k].level)||0); }   // ミックス音量（v0.3.151。v2 は 0）
     applySetSnapshot(setSlots[setCur], opts);
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{
@@ -6073,10 +6107,10 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 
 // @module ui/set-view
 // @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, setGridEl, setModeEnter
-// @uses AC, arm, armMode, bpmVal, clPage, copySetTo, editPat, focusSet, isSetHeld, paintPerf,
+// @uses AC, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet, isSetHeld, paintPerf,
 //    paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat, setElapsed, setHold,
-//    setIsPlaying, setMode, setName, setSlots, sideStop, sideTakeCurrent, startTransport, stopAllVoices,
-//    stopTransport, tracks
+//    setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop, sideTakeCurrent,
+//    startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -6089,7 +6123,7 @@ function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/6
   if(!setGridEl) return;
   for(let k=0;k<16;k++){
     const d=document.createElement("button"); d.className="pad setpad"; d.dataset.k=k; d.setAttribute("aria-label","SET "+(k+1));
-    d.innerHTML='<div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
+    d.innerHTML='<div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
     setGridEl.appendChild(d);
   }
 })();
@@ -6110,6 +6144,7 @@ function paintSet(){
     d.querySelector(".nm").textContent = info.name;
     d.querySelector(".tag").textContent = on ? (held?"HOLD":"NOW") : (k===setCur ? "SEL" : (k===queuedSet ? "NEXT" : ""));
     d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
+    const lv=setLevels[k]||0, lvEl=d.querySelector(".lv"); lvEl.textContent = lv ? fmtSetLevel(lv)+"dB" : ""; lvEl.classList.toggle("down", lv<0);   // ミックス音量（0 のときは出さない）
     d.querySelectorAll(".dots i").forEach((i,p)=>i.classList.toggle("has", info.has[p]));
   }
   if($("clSetNo")) $("clSetNo").textContent = String(setCur+1).padStart(2,"0");
@@ -6153,24 +6188,38 @@ function setModeEnter(on){
   };
   const no=k=>String(k+1).padStart(2,"0");
   const endHold=(h)=>{ clearTimeout(h.timer); h.d.classList.remove("pressing"); };
+  // v0.3.151：「鳴っている Pad を止めるときは、押して離して止まる」「押して始めるとき、押しながら上下スワイプで音量」
+  // 押している指ごとに h = {k, d, mode, y0, db0, moved}。mode：start＝押して鳴らした／held＝ホールド中を押した（離すと止まる）／vol＝別の指で鳴っている最中（音量だけ）
+  const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
   const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
     const k=+d.dataset.k;
     try{ d.setPointerCapture(e.pointerId); }catch(_){}
     if(armMode==="chop"){ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); return; }
-    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら止める（トグル）。別の指で押している最中なら何もしない
-      if(isSetHeld(k)){ stopSet(k); say("■ "+no(k)+" "+setName(k)); paintSet(); }
+    const h={k, d, timer:0, mode:"start", y0:e.clientY, db0:setLevels[k]||0, moved:false};
+    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら「離すと止まる」（スワイプしたら止めない＝音量だけ）。別の指で押している最中なら音量だけ
+      h.mode = isSetHeld(k) ? "held" : "vol";
+      holds.set(e.pointerId, h);
+      say((h.mode==="held" ? "離すと止まる："+no(k)+" "+setName(k)+"（上下スワイプで音量）" : "上下スワイプで音量："+no(k)+" "+setName(k)));
       return; }
     startSet(k);
     const ms=Math.round(240000/(bpmVal||100));   // 1 小節（いまのセット＝押したセットの BPM）
-    const h={k, d, timer:0};
-    h.timer=setTimeout(()=>{ if(holds.get(e.pointerId)!==h) return; holds.delete(e.pointerId); endHold(h);
-      if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（もう一度叩くと止まる）"); paintSet(); } }, ms);
+    h.timer=setTimeout(()=>{ if(holds.get(e.pointerId)!==h) return; h.d.classList.remove("pressing");
+      if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（押して離すと止まる）"); paintSet(); } }, ms);
     holds.set(e.pointerId, h);
     d.style.setProperty("--hold-ms", ms+"ms"); d.classList.add("pressing");
-    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 小節押し続けるとホールド）"); paintSet(); };
+    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 小節押し続けるとホールド・上下で音量）"); paintSet(); };
+  const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
+    const dy=e.clientY-h.y0;
+    if(!h.moved){ if(Math.abs(dy)<SWIPE_PX) return; h.moved=true; }
+    const eff = dy>0 ? dy-SWIPE_PX : dy+SWIPE_PX;   // 遊びの分を引く＝動き出しで跳ばない
+    setSetLevel(h.k, h.db0 - eff/PX_PER_DB);
+    const lv=setLevels[h.k], el=h.d.querySelector(".lv"); el.textContent = lv ? fmtSetLevel(lv)+"dB" : ""; el.classList.toggle("down", lv<0);   // 動かしている 1 枚だけ塗る（毎回 16 枚は重い）
+    say("VOL "+no(h.k)+" "+setName(h.k)+"  "+fmtSetLevel(lv)+" dB"); };
   const pressEnd=(e)=>{ const h=holds.get(e.pointerId); if(!h) return; holds.delete(e.pointerId); endHold(h);
-    if(!isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
-  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
+    if(e.type==="pointercancel" && h.mode!=="start") return;   // 取り消された指では止めない
+    if(h.mode==="held"){ if(!h.moved && setIsPlaying(h.k)){ stopSet(h.k); say("■ "+no(h.k)+" "+setName(h.k)); paintSet(); } return; }
+    if(h.mode==="start" && !isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
+  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointermove",pressMove); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
   setInterval(()=>{ if(setMode) paintSet(); }, 500);   // 経過時間と、鳴っているセットの印（16 個の塗り直しは軽い）
 })();
@@ -6195,7 +6244,7 @@ function setModeEnter(on){
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.150";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.151";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
