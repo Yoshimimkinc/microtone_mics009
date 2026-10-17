@@ -4,8 +4,8 @@
 //    updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
 // @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, compDrive, compMakeup, compNode, compOn,
 //    compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
-//    makeSatCurve, makeupGain, masterGain, muteLoad, paintPadStates, paintSteps, patHasContent, patLength,
-//    playing, pushUndo, queuedPat, saturator, selectPad, setCompBypass, tapeDelay, tracks
+//    makeSatCurve, makeupGain, masterGain, paintPadStates, paintPerf, paintSteps, patHasContent, patLength,
+//    patLoad, playing, pushUndo, queuedPat, saturator, selectPad, setCompBypass, tapeDelay, tracks
 // @depends -
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
@@ -22,7 +22,7 @@ function refreshStepWaves(){ if(typeof applyWaveSEQ==="function") applyWaveSEQ()
 function setEditPat(p){
   editPat=p;
   if(playing) queuedPat = (p===displayPat) ? null : p;  // 今のを再タップ＝予約キャンセル
-  else { muteLoad(p); paintPadStates(); }   // 止まっていればミュートも p のものに（鳴っていれば切り替わる小節頭で。v0.3.149）
+  else { patLoad(p); paintPadStates(); if(typeof paintPerf==="function") paintPerf(); }   // 止まっていればミュート / エフェクトも p のものに（鳴っていれば切り替わる小節頭で。v0.3.149 / v0.3.150）
   paintSteps(); paintPatBar(); refreshStepWaves();
 }
 function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves(); }

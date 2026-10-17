@@ -3,7 +3,7 @@
 //    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, getLockPlay,
-//    getPlayPattern, isMelodic, mainOut, muteLoad, muteSlot, patLength, perfDrag, perfRecArm, perfSnap,
+//    getPlayPattern, isMelodic, mainOut, patLength, patLoad, patSlot, perfDrag, perfRecArm, perfSnap,
 //    playBar, playPat, playStep, playVoice, playing, pushUndo, queuedPat, queuedSet, scaleSemi, setLockPlay,
 //    stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
 // @depends -
@@ -104,7 +104,7 @@ function startTransport(){
   playing=true;
   stepIdx=0; playStep=0; drawQueue.length=0;
   playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
-  if(muteSlot!==playPat) muteLoad(playPat);   // ミュートは A B C D ごと（v0.3.149）
+  if(patSlot!==playPat) patLoad(playPat);   // ミュートは A B C D ごと（v0.3.149）
   tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
   // ポン出し（v0.3.146 §145）：小節頭は「いま」。最初の scheduler を timer（25ms 後）を待たずに同期で回す。
   // v0.3.145 までは +50ms の余裕＋timer 待ちで、▶ から音まで 50〜75ms あった。scheduleStep は過去を AC.currentTime に丸めるので余裕は 5ms で足りる
@@ -117,7 +117,7 @@ function stopTransport(keepVoices){
   playing=false;
   clearInterval(schedTimer); schedTimer=null;
   drawQueue.length=0; playStep=0;
-  if(muteSlot!==editPat) muteLoad(editPat);   // 止めたら編集中のパターンのミュートへ（塗りは ui/transport-view）
+  if(patSlot!==editPat) patLoad(editPat);   // 止めたら編集中のパターンのミュートへ（塗りは ui/transport-view）
   if(!keepVoices) stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
 }
 function scheduler(){
@@ -136,7 +136,7 @@ function scheduler(){
       stepIdx = 0;
       barStartTime += STEPS * TICKS_PER_16TH * tickDur();
       // 小節アタマ：予約があれば次パターンへ切替、無ければ同パターン内の次小節（書いた分でループ）
-      if(queuedPat !== null){ playPat = queuedPat; playBar = 0; queuedPat = null; if(muteSlot!==playPat) muteLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
+      if(queuedPat !== null){ playPat = queuedPat; playBar = 0; queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
       else { playBar++; if(playBar >= patLength(playPat)) playBar = 0; }
       // SET：予約された枠へは小節頭で差し替える（音は barStartTime で止める。dec 済みなので同期＝予約は遅れない）
       if(queuedSet !== null){ switchSetNow(queuedSet, barStartTime); playPat = 0; playBar = 0; }

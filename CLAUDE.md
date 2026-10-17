@@ -38,7 +38,7 @@ tapeHiss ───────────────────────�
   いまのセット（`setCur`）だけ live の `tracks` / `PADS` / `bpmVal` / `swingPct` に展開される。切替＝退避（`snapshotSet`）→ 展開（`applySetSnapshot`）。
   `.mics` v3 = `{version:3, cur, sets:[16 × {name,bpm,swing,tracks}], comp, masterVol, groupVol, fx}`（v2 は SET 1 に入る）。触っていないプリセットの音は同梱しない。
 - `tracks[16]`: each has `patterns[4][16]`, buffer, vol, tune, start, end, loop, filter, choke, etc.
-- **ミュート / ソロは A B C D ごと（v0.3.149, §146）**：各トラックの `mutes[4]` / `solos[4]`。live の `t.mute` / `t.solo` は `muteSlot` のパターンの値で、パターンを移るとき `muteLoad`（`data/patterns`）が書き戻し→読み出しする。
+- **ミュート / ソロ / エフェクトは A B C D ごと（v0.3.149–150, §146）**：各トラックの `mutes[4]` / `solos[4]` / `patFx[4]`（DELAY・REVERB の送り、FILTER 種類・カットオフ・レゾ＝`PAT_FX`）。live の値は `patSlot` のパターンのもので、パターンを移るとき `patLoad`（`data/patterns`）が書き戻し→読み出しする。
 - `editPat` (0-3): which pattern is being edited
 - Pattern length is derived from bar content via `patLength(p)` (no separate chainLen state; A/B/C/D switching is `queuedPat` at pattern boundary)
 - Accessor functions: `getPattern(i)` for edit, `getPlayPattern(i)` for playback
@@ -139,7 +139,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.149
+MICS009 beta v0.3.150
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

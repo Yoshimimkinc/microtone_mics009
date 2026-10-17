@@ -3,10 +3,10 @@
 //    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
 //    setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
-//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, muteLoad,
-//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, playing, queuedPat,
-//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, sideStop,
-//    snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
+//    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat, queuedSet,
+//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setSlots, sideStop, snapshotState,
+//    stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -27,12 +27,13 @@ function _defaultTrackSnap(i){
     start: synth ? pr.start : 0, end: synth ? pr.end : 1, loop: synth ? pr.loop : false, loopStart: synth ? pr.loopStart : 0,
     choke: (synth && (i===10||i===11)) ? 1 : 0, scale: (synth && i===15) ? "chro" : "off",
     mutes:[false,false,false,false], solos:[false,false,false,false],   // ミュート / ソロは A B C D ごと（v0.3.149）
+    patFx:[0,1,2,3].map(()=>({delaySend:0, reverbSend:0, filter:"off", cutoff:12000, reso:0.7})),   // エフェクトも A B C D ごと（v0.3.150）
     patterns:_emptyPatterns(), locks:{} });
 }
 function defaultSetSnapshot(k){ return {name:"SET "+(k+1), bpm:100, swing:67, tracks:PADS.map((_,i)=>_defaultTrackSnap(i))}; }
 // いまのセット（live）を snapshot に
 function snapshotSet(){ return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:snapshotState().tracks}; }
-function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {mutes:(x.mutes||[]).slice(), solos:(x.solos||[]).slice(), activeVoices:[], loopPlaying:false, patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:JSON.parse(JSON.stringify(x.locks||{}))}))}; }
+function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {mutes:(x.mutes||[]).slice(), solos:(x.solos||[]).slice(), patFx:Array.isArray(x.patFx)?x.patFx.map(o=>Object.assign({},o)):null, activeVoices:[], loopPlaying:false, patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:JSON.parse(JSON.stringify(x.locks||{}))}))}; }
 // .mics のセット（v3 の sets[k]、または v2 のファイル丸ごと）を snapshot に（音を復号。audio の無い synth はプリセット）
 async function decodeSetData(sd,k){
   const snap=defaultSetSnapshot(k);
@@ -47,6 +48,9 @@ async function decodeSetData(sd,k){
     // ミュート / ソロは A B C D ごと（v0.3.149）。それより前のファイルは全パターンに同じ値
     x.mutes=Array.isArray(pt.mutes)?[0,1,2,3].map(p=>!!pt.mutes[p]):[x.mute,x.mute,x.mute,x.mute];
     x.solos=Array.isArray(pt.solos)?[0,1,2,3].map(p=>!!pt.solos[p]):[x.solo,x.solo,x.solo,x.solo];
+    // エフェクト（DELAY / REVERB の送り・FILTER）も A B C D ごと（v0.3.150）。それより前のファイルは全パターンに同じ値
+    const fx0={delaySend:x.delaySend, reverbSend:x.reverbSend, filter:x.filter, cutoff:x.cutoff, reso:x.reso};
+    x.patFx=[0,1,2,3].map(p=>{ const f=Array.isArray(pt.patFx)&&pt.patFx[p]; return f ? {delaySend:f.delaySend??fx0.delaySend, reverbSend:f.reverbSend??fx0.reverbSend, filter:f.filter??fx0.filter, cutoff:f.cutoff??fx0.cutoff, reso:f.reso??fx0.reso} : Object.assign({},fx0); });
     // パターン（新形式: patterns[p][小節][step] / 旧形式: patterns[p]=16数値 を1小節として吸収）
     x.patterns=_emptyPatterns();
     if(pt.patterns) for(let p=0;p<4;p++){ const pat=pt.patterns[p]; if(!Array.isArray(pat)) continue;
@@ -82,7 +86,7 @@ function applySetSnapshot(s, opts){
   if($("bpm")){ $("bpm").value=bpmVal; $("bpmRead").textContent=bpmVal.toFixed(1); }
   if($("swing")) $("swing").value=swingPct;
   if(typeof setDelayTempo==="function") setDelayTempo();
-  if(!keepSel){ editPat=0; editBar=0; muteLoad(0, true); }   // セットの頭は A＝ミュートも A のもの
+  if(!keepSel){ editPat=0; editBar=0; patLoad(0, true); }   // セットの頭は A＝ミュートも A のもの
   for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
   if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();
