@@ -10,6 +10,8 @@
   .setpad.queued .tag{color:var(--amber);}
   .setpad .ft{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;position:relative;z-index:1;}
   .setpad .dots{display:flex;gap:3px;}
+  .setpad .lv{font-size:10px;font-variant-numeric:tabular-nums;color:var(--teal);}   /* ミックス音量（0 dB 以外のときだけ。v0.3.151） */
+  .setpad .lv.down{color:var(--amber);}
   .setpad .dots i{width:6px;height:6px;border-radius:50%;background:var(--line);}
   .setpad .dots i.has{background:var(--amber);}
   .setpad.on{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
@@ -26,7 +28,7 @@
   /* ホールド：これまでの「光る」 */
   .setpad.held{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);
     box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
-  .setpad.held .n,.setpad.held .nm,.setpad.held .ft,.setpad.held .tag{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
+  .setpad.held .n,.setpad.held .nm,.setpad.held .ft,.setpad.held .tag,.setpad.held .lv{color:var(--hit-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);}
   .setpad.held .dots i{background:rgba(0,0,0,.25);}
   .setpad.held .dots i.has{background:var(--hit-ink);}
   body.perf #viewPads.split>.pads .setpad.held{background:linear-gradient(180deg,var(--amber),var(--hit-c2));border-color:var(--amber);

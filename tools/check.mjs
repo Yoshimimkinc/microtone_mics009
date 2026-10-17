@@ -723,15 +723,26 @@ async function setMode(){
     // ミックス：ホールド中に SET 1 を押す → SET 1 がいまのセットになって鳴り、SET 3 は止まらずに鳴り続ける
     await down(0); await p.waitForTimeout(400);
     const m1=await ui();
+    // v0.3.151：押しながら下へスワイプ＝そのセットの音量を下げる（8px の遊び＋5px で 1 dB → 58px で -10 dB）。鳴りは続く
+    { const c0=await sp(0); await p.mouse.move(c0[0], c0[1]+58, {steps:6}); await p.waitForTimeout(80); }
+    const vol=await p.evaluate(()=>({db:setLevels[0], lin:setLevelLin(0), node:!!setLevelNode(0), lv:document.querySelector('#setGrid .setpad[data-k="0"] .lv').textContent, playing, other:setLevels[2]}));
+    ok_(`${V} 押しながら下へスワイプ＝そのセットの音量だけ下がる（約 -10 dB・パッドに表示・鳴りは続く）`, Math.abs(vol.db+10)<=0.5 && Math.abs(vol.lin-Math.pow(10,vol.db/20))<0.001 && vol.lin<0.34 && vol.node && vol.lv===vol.db.toFixed(1)+'dB' && vol.playing && vol.other===0, JSON.stringify(vol));
     const m1d=await p.evaluate(()=>({name:tracks[0].name, bpm:bpmVal, step:tracks[8].patterns[0][0][0], side3:sidePlayers.get(2)&&sidePlayers.get(2).bpm, v3:setSlots[2].tracks[8].activeVoices.length, s3step:setSlots[2].tracks[8].patterns[0][0][5], s2step:setSlots[1].tracks[9].patterns[0][0][4]}));
     ok_(`${V} 同時鳴らし：SET 1 を押すと SET 1 がいまのセット、SET 3 は自分の BPM で鳴り続ける（両方オレンジ・MIX に 2 つ）`, m1.cur===0 && m1.playing && m1.sides.join()==='2' && m1.lit.join()==='0,2' && /01/.test(m1.mix) && /03H/.test(m1.mix) && m1d.name==='S1' && m1d.bpm===88 && m1d.step===1 && m1d.side3===240 && m1d.v3>0 && m1d.s3step===1 && m1d.s2step===1, JSON.stringify({m1,m1d}));
     await p.mouse.up(); await p.waitForTimeout(150);
     const m2=await ui();
     ok_(`${V} SET 1 を離す＝SET 1 だけ止まる（SET 3 は鳴り続ける・■ のまま）`, m2.cur===0 && !m2.playing && m2.sides.join()==='2' && m2.lit.join()==='2' && m2.btn==='■', JSON.stringify(m2));
-    // トグル：ホールド中の SET 3 を叩く → 止まる
-    const c3=await sp(2); await p.mouse.click(c3[0],c3[1]); await p.waitForTimeout(150);
+    // ホールド中の SET 3 を押して上へスワイプ＝音量だけ上がる（離しても止まらない）
+    const c3=await sp(2); await p.mouse.move(c3[0],c3[1]); await p.mouse.down(); await p.mouse.move(c3[0], c3[1]-30, {steps:5}); await p.mouse.up(); await p.waitForTimeout(150);
+    const hv=await p.evaluate(()=>({db:setLevels[2], playing:sidePlaying(2), held:isSetHeld(2)}));
+    ok_(`${V} ホールド中を押して上へスワイプ＝音量だけ上がる（+4.5 dB・離しても止まらない）`, hv.db===4.5 && hv.playing && hv.held, JSON.stringify(hv));
+    // ホールド中の SET 3 は「押して離す」で止まる（押した瞬間には止まらない）
+    await p.mouse.move(c3[0],c3[1]); await p.mouse.down(); await p.waitForTimeout(120);
+    const t0=await p.evaluate(()=>sidePlaying(2));
+    await p.mouse.up(); await p.waitForTimeout(150);
     const t1=await ui();
-    ok_(`${V} ホールド中のセットを叩く＝止まる（トグル）／いまのセットは SET 1 のまま`, t1.cur===0 && !t1.playing && t1.sides.length===0 && t1.lit.length===0 && t1.held.length===0 && t1.btn==='▶' && t1.mix==='—', JSON.stringify(t1));
+    ok_(`${V} ホールド中のセットは押した瞬間には止まらない`, t0===true, String(t0));
+    ok_(`${V} ホールド中のセットを押して離す＝止まる（トグル）／いまのセットは SET 1 のまま`, t1.cur===0 && !t1.playing && t1.sides.length===0 && t1.lit.length===0 && t1.held.length===0 && t1.btn==='▶' && t1.mix==='—', JSON.stringify(t1));
     // ▶ で鳴らしたセットはホールド扱い。打ち込みは止めても残る。■ は鳴っているセットを全部止める
     await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
     await p.evaluate(()=>{ setStep(3,7,1); });
@@ -753,8 +764,8 @@ async function setMode(){
     // v3 の保存 → 読込（16 セットが戻る。触っていないプリセットは音を同梱しない）
     const rt=await p.evaluate(async()=>{ const f=buildProject(); const txt=JSON.stringify(f); const size=txt.length;
       const presetAudio=f.sets[1].tracks[8].audio; await applyProject(JSON.parse(txt));
-      return {v:f.version, cur:f.cur, n:f.sets.length, presetAudio, size, back:tracks[0].name, s2:setSlots[1].tracks[9].patterns[0][0][4], s5:setSlots[4].tracks[0].name, bpm:bpmVal}; });
-    ok_(`${V} .mics v3 往復（16 セット・cur・各セットの中身・プリセットは同梱しない）`, rt.v===3 && rt.cur===0 && rt.n===16 && rt.presetAudio===null && rt.back==='S1' && rt.s2===1 && rt.s5==='S1' && rt.bpm===88, JSON.stringify(rt));
+      return {v:f.version, cur:f.cur, n:f.sets.length, presetAudio, size, back:tracks[0].name, s2:setSlots[1].tracks[9].patterns[0][0][4], s5:setSlots[4].tracks[0].name, bpm:bpmVal, lv0:f.sets[0].level, lv2:f.sets[2].level, back0:setLevels[0], back2:setLevels[2]}; });
+    ok_(`${V} .mics v3 往復（16 セット・cur・各セットの中身・ミックス音量・プリセットは同梱しない）`, rt.v===3 && rt.cur===0 && rt.n===16 && rt.presetAudio===null && rt.back==='S1' && rt.s2===1 && rt.s5==='S1' && rt.bpm===88 && Math.abs(rt.lv0+10)<=0.5 && rt.lv2===4.5 && rt.back0===rt.lv0 && rt.back2===4.5, JSON.stringify(rt));
     // v2（旧ファイル）＝丸ごと SET 1、他は既定のキット
     const v2=await p.evaluate(async()=>{ const f=buildProject(); const old={version:2, bpm:95, swing:63, comp:f.comp, masterVol:f.masterVol, tracks:f.sets[0].tracks}; old.tracks[0].name='OLD1';
       await applyProject(old); return {cur:setCur, name:tracks[0].name, bpm:bpmVal, s2fresh:setSlots[1].tracks[0].buffer===null && setSlots[1].tracks[9].patterns[0][0][4]===0}; });

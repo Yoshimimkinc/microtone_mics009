@@ -1,8 +1,8 @@
 // @module save-load
 // @provides b64ToUint8, bufToWav, buildProject, calcCrop, setData, trackData, uint8ToB64, wavB64Cached
 // @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, setCur, setSlots, shareOrDownload,
-//    swingPct, tracks
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, setCur, setLevels, setSlots,
+//    shareOrDownload, swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -93,8 +93,9 @@ function buildProject(){
   const cur=(typeof setCur!=="undefined")?setCur:0;
   const sets=[];
   for(let k=0;k<16;k++){
-    if(k===cur) sets.push({name:(setSlots[k]&&setSlots[k].name)||("SET "+(k+1)), bpm:bpmVal, swing:swingPct, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))});
-    else sets.push(setSlots[k] ? setData(setSlots[k]) : null);
+    const lv=(typeof setLevels!=="undefined" && setLevels[k]) || 0;   // ミックス音量（dB、v0.3.151）
+    if(k===cur) sets.push({name:(setSlots[k]&&setSlots[k].name)||("SET "+(k+1)), bpm:bpmVal, swing:swingPct, level:lv, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))});
+    else sets.push(setSlots[k] ? Object.assign(setData(setSlots[k]), {level:lv}) : null);
   }
   return {
     version:3,

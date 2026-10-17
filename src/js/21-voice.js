@@ -3,7 +3,8 @@
 //    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
-//    playStep, playing, recording, reverbPre, sampNameEl, setStepAt, spDynOpen, tapeEcho, tracks, vuHit
+//    playStep, playing, recording, reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode,
+//    setStepAt, spDynOpen, tapeEcho, tracks, vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -158,17 +159,22 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
   const baseVol = t.vol;
   const peak = dbToGain(baseVol + (accent?3:0));
   const toB = multiOut && t.outBus==="B";
-  head.connect(env);
-  if(toB) env.connect(outBGain);   // OUT B＝ドライ直行（グループFX/マスターを通らない）
-  else env.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→[SSM2044]→masterGain
+  // セットのミックス音量（v0.3.151）：env の後ろに声ごとのゲイン vg。gain はそのセットの ConstantSource が動かす＝鳴っている音にも、送りにも効く
+  const vg = AC.createGain();
+  const sk = (typeof setIndexOfTrs==="function") ? setIndexOfTrs(trs) : -1;
+  const lvSrc = (sk>=0 && typeof setLevelNode==="function") ? setLevelNode(sk) : null;
+  if(lvSrc){ vg.gain.value=0; lvSrc.connect(vg.gain); } else vg.gain.value = (sk>=0 && typeof setLevelLin==="function") ? setLevelLin(sk) : 1;
+  head.connect(env); env.connect(vg);
+  if(toB) vg.connect(outBGain);   // OUT B＝ドライ直行（グループFX/マスターを通らない）
+  else vg.connect(groupBus[GROUP_OF[i]]);   // グループバス経由→[SSM2044]→masterGain
   spDynOpen(GROUP_OF[i], when, accent);   // SSM2044ダイナミックフィルター：発音毎に開閉。アクセントはより開く＝強打の説得力
 
   // DELAY/REVERBセンド：p-lock(そのステップ)が優先、無ければ per-pad ベース送り(t.delaySend/reverbSend)
   let dSend=null, rSend=null;
   const dAmt = (plock && plock.delay!=null) ? plock.delay : (t.delaySend||0);
   const rAmt = (plock && plock.reverb!=null) ? plock.reverb : (t.reverbSend||0);
-  if(!toB && dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; env.connect(dSend); dSend.connect(tapeEcho); }
-  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; env.connect(rSend); rSend.connect(reverbPre); }
+  if(!toB && dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; vg.connect(dSend); dSend.connect(tapeEcho); }
+  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; vg.connect(rSend); rSend.connect(reverbPre); }
 
   // 頭=アタック(フェードイン)、終端=フェード(フェードアウト)。未設定はプツ音回避の既定値。
   const ATT  = Math.max(0.001, (t.attack||0)/1000);
@@ -212,7 +218,8 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
     if(voice.wd){ clearTimeout(voice.wd); voice.wd=null; }
     const k=t.activeVoices.indexOf(voice);
     if(k>=0) t.activeVoices.splice(k,1);
-    try{src.disconnect();env.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
+    try{src.disconnect();env.disconnect();vg.disconnect();if(filt)filt.disconnect();if(dSend)dSend.disconnect();if(rSend)rSend.disconnect();}catch(e){}
+    if(lvSrc){ try{ lvSrc.disconnect(vg.gain); }catch(e){} }
   };
   // 窓波形プレイヘッドは撤去済み（カーソル記録なし）
   t.activeVoices.push(voice);

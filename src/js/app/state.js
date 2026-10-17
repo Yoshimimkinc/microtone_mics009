@@ -2,7 +2,7 @@
 // @provides activeLock, armMode, assignTarget, bpmVal, copyArm, displayBar, displayPat, editBar, editDrag,
 //    editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm,
 //    perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected,
-//    setCur, setMode, setSlots, stepIdx, swingPct
+//    setCur, setLevels, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -46,6 +46,7 @@ let peV0=0, peV1=1;     // 波形の表示窓（0..1正規化）。ホイール/
 let setSlots = new Array(16).fill(null);   // 16 のセット（常に 16 ある。中身は snapshotSet の形：name/bpm/swing/tracks[16]。いまのセットは tracks が正。要素の書き換えは data/set）  @writers share-export
 let setCur = 0;         // いまのセット（0..15。PADS / SEQ が見せるのはこのセット）  @writers data/set, share-export
 let queuedSet = null;   // 予約中のセット（次の小節頭で切替。null=なし）  @writers data/set, share-export
+let setLevels = new Array(16).fill(0);     // 各セットのミックス音量（dB。0＝そのまま）。SET でパッドを押しながら上下スワイプ（v0.3.151）。中身を書くのは audio/set-players の setSetLevel だけ（配列そのものは差し替えない）  @writers -
 let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格子が枠）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
