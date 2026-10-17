@@ -720,6 +720,17 @@
   .setpad .dots{display:flex;gap:3px;}
   .setpad .lv{font-size:10px;font-variant-numeric:tabular-nums;color:var(--teal);}   /* ミックス音量（0 dB 以外のときだけ。v0.3.151） */
   .setpad .lv.down{color:var(--amber);}
+  /* ミックス音量の塗り潰し（v0.3.152）：下から、高さ＝音量（下端 -40 dB 〜 上端 +6 dB）。ティール＝オレンジの点灯の上でも見える。0 dB 以外とスワイプ中だけ */
+  .setpad .lvfill{display:none;position:absolute;left:0;right:0;bottom:0;height:0;z-index:0;pointer-events:none;
+    background:linear-gradient(0deg,color-mix(in srgb,var(--teal) 42%,transparent),color-mix(in srgb,var(--teal) 16%,transparent));
+    border-top:2px solid var(--teal);transition:height .05s linear;}
+  .setpad.lvon .lvfill,.setpad.adj .lvfill{display:block;}
+  .setpad.adj .lvfill{background:linear-gradient(0deg,color-mix(in srgb,var(--teal) 60%,transparent),color-mix(in srgb,var(--teal) 24%,transparent));}
+  .setpad .n{position:relative;z-index:1;}
+  /* 数字はスワイプ中だけ（BPM の場所に出す。いつもは塗り潰しで見せる＝狭い下段で BPM とぶつからない） */
+  .setpad .lv{display:none;}
+  .setpad.adj .lv{display:inline;font-weight:700;}
+  .setpad.adj .bpm{display:none;}
   .setpad .dots i{width:6px;height:6px;border-radius:50%;background:var(--line);}
   .setpad .dots i.has{background:var(--amber);}
   .setpad.on{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
@@ -1081,7 +1092,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.151</div>
+  <div class="s-ver" id="splashVer">v0.3.152</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -6106,11 +6117,11 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("projFile"); if(pf) pf.removeAttribute("accept"); }
 
 // @module ui/set-view
-// @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, setGridEl, setModeEnter
-// @uses AC, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet, isSetHeld, paintPerf,
-//    paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat, setElapsed, setHold,
-//    setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop, sideTakeCurrent,
-//    startTransport, stopAllVoices, stopTransport, tracks
+// @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, setGridEl, setModeEnter
+// @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet,
+//    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat,
+//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop,
+//    sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -6123,10 +6134,17 @@ function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/6
   if(!setGridEl) return;
   for(let k=0;k<16;k++){
     const d=document.createElement("button"); d.className="pad setpad"; d.dataset.k=k; d.setAttribute("aria-label","SET "+(k+1));
-    d.innerHTML='<div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
+    d.innerHTML='<div class="lvfill"></div><div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
     setGridEl.appendChild(d);
   }
 })();
+// ミックス音量を下からの塗り潰しで見せる（v0.3.152）：下端＝-40 dB（無音）、上端＝+6 dB。0 dB 以外のときと、スワイプ中に出す
+function paintSetLevel(d,k){
+  const lv=setLevels[k]||0, pct=Math.max(0,Math.min(100,(lv-SET_LV_MIN)/(SET_LV_MAX-SET_LV_MIN)*100));
+  const f=d.querySelector(".lvfill"); if(f) f.style.height=pct.toFixed(1)+"%";
+  d.classList.toggle("lvon", lv!==0);
+  const el=d.querySelector(".lv"); if(el){ el.textContent = fmtSetLevel(lv)+"dB"; el.classList.toggle("down", lv<0); }   // 数字はスワイプ中だけ見える（CSS）
+}
 function _snapPatHas(tr,p){ return tr.some(t=>t.patterns&&t.patterns[p]&&t.patterns[p].some(b=>b.some(v=>v>0))); }
 function _setInfo(k){   // 表示用：いまのセットは live から、他は snapshot から
   if(k===setCur) return {name:setName(k), bpm:bpmVal, has:[0,1,2,3].map(p=>_snapPatHas(tracks,p)), fresh:false};
@@ -6144,7 +6162,7 @@ function paintSet(){
     d.querySelector(".nm").textContent = info.name;
     d.querySelector(".tag").textContent = on ? (held?"HOLD":"NOW") : (k===setCur ? "SEL" : (k===queuedSet ? "NEXT" : ""));
     d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
-    const lv=setLevels[k]||0, lvEl=d.querySelector(".lv"); lvEl.textContent = lv ? fmtSetLevel(lv)+"dB" : ""; lvEl.classList.toggle("down", lv<0);   // ミックス音量（0 のときは出さない）
+    paintSetLevel(d,k);   // ミックス音量（塗り潰しと数字。0 dB のときは出さない）
     d.querySelectorAll(".dots i").forEach((i,p)=>i.classList.toggle("has", info.has[p]));
   }
   if($("clSetNo")) $("clSetNo").textContent = String(setCur+1).padStart(2,"0");
@@ -6187,7 +6205,7 @@ function setModeEnter(on){
     setHold(k,false); paintTransport();
   };
   const no=k=>String(k+1).padStart(2,"0");
-  const endHold=(h)=>{ clearTimeout(h.timer); h.d.classList.remove("pressing"); };
+  const endHold=(h)=>{ clearTimeout(h.timer); h.d.classList.remove("pressing","adj"); };
   // v0.3.151：「鳴っている Pad を止めるときは、押して離して止まる」「押して始めるとき、押しながら上下スワイプで音量」
   // 押している指ごとに h = {k, d, mode, y0, db0, moved}。mode：start＝押して鳴らした／held＝ホールド中を押した（離すと止まる）／vol＝別の指で鳴っている最中（音量だけ）
   const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
@@ -6210,11 +6228,11 @@ function setModeEnter(on){
     say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 小節押し続けるとホールド・上下で音量）"); paintSet(); };
   const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
     const dy=e.clientY-h.y0;
-    if(!h.moved){ if(Math.abs(dy)<SWIPE_PX) return; h.moved=true; }
+    if(!h.moved){ if(Math.abs(dy)<SWIPE_PX) return; h.moved=true; h.d.classList.add("adj"); }
     const eff = dy>0 ? dy-SWIPE_PX : dy+SWIPE_PX;   // 遊びの分を引く＝動き出しで跳ばない
     setSetLevel(h.k, h.db0 - eff/PX_PER_DB);
-    const lv=setLevels[h.k], el=h.d.querySelector(".lv"); el.textContent = lv ? fmtSetLevel(lv)+"dB" : ""; el.classList.toggle("down", lv<0);   // 動かしている 1 枚だけ塗る（毎回 16 枚は重い）
-    say("VOL "+no(h.k)+" "+setName(h.k)+"  "+fmtSetLevel(lv)+" dB"); };
+    paintSetLevel(h.d, h.k);   // 動かしている 1 枚だけ塗る（毎回 16 枚は重い）
+    say("VOL "+no(h.k)+" "+setName(h.k)+"  "+fmtSetLevel(setLevels[h.k])+" dB"); };
   const pressEnd=(e)=>{ const h=holds.get(e.pointerId); if(!h) return; holds.delete(e.pointerId); endHold(h);
     if(e.type==="pointercancel" && h.mode!=="start") return;   // 取り消された指では止めない
     if(h.mode==="held"){ if(!h.moved && setIsPlaying(h.k)){ stopSet(h.k); say("■ "+no(h.k)+" "+setName(h.k)); paintSet(); } return; }
@@ -6244,7 +6262,7 @@ function setModeEnter(on){
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.151";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.152";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
