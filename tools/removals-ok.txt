@@ -71,3 +71,7 @@ setPrev
 setRevert
 # v0.3.147 SET のポン出しを「押す＝鳴る／離す＝止まる／1 小節でホールド」に。押した指は pointer capture で必ず pointerup が届くので、格子の pointerleave での取消は不要
 setGridEl [pointerleave]
+# v0.3.150 エフェクトも A B C D ごとに覚えるので、ミュート専用の名前を「パターンの状態」に改名（patSlot / patLoad / patSync / _patArr）。中身は同じ仕組みを広げたもの
+_muteArr
+muteLoad
+muteSync

@@ -773,6 +773,42 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function patFx(){
+  // v0.3.150：エフェクト（DELAY / REVERB の送り・FILTER 種類 / カットオフ / レゾ）も A B C D ごと
+  const V='PATFX 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  const r1=await p.evaluate(()=>{ selectPad(8); setEditPat(0); const t=tracks[8]; t.delaySend=0.5; t.reverbSend=0.3; paintPerf();
+    setEditPat(1); const b={d:t.delaySend, r:t.reverbSend, f:t.filter}; t.filter='lp'; t.cutoff=2000; t.reso=4;
+    setEditPat(0); const win=document.querySelector('.cl-par[data-p="delay"] b'); return {b, a:{d:t.delaySend, r:t.reverbSend, f:t.filter, c:t.cutoff}, win:win?win.textContent:null}; });
+  ok_(`${V} A の DELAY / REVERB は B に出ない／B の FILTER は A に戻ると外れる／窓の値も A のもの`, r1.b.d===0 && r1.b.r===0 && r1.b.f==='off' && r1.a.d===0.5 && r1.a.r===0.3 && r1.a.f==='off' && r1.a.c===12000 && r1.win==='50', JSON.stringify(r1));
+  const r2=await p.evaluate(()=>{ copyPattern(1,3); setEditPat(3); const t=tracks[8]; const c={f:t.filter, c:t.cutoff, q:t.reso}; setEditPat(0);
+    copyPadSound(8,7); const t7=tracks[7]; const a7={d:t7.delaySend}; setEditPat(1); const b7={f:t7.filter, c:t7.cutoff}; setEditPat(0); return {c, a7, b7}; });
+  ok_(`${V} パターンの COPY（B→D）でエフェクトも写る／パッドの COPY は A B C D 4 つとも写す`, r2.c.f==='lp' && r2.c.c===2000 && r2.c.q===4 && r2.a7.d===0.5 && r2.b7.f==='lp' && r2.b7.c===2000, JSON.stringify(r2));
+  await p.evaluate(()=>{ applyBpm(240); for(const q of [0,1]) tracks[8].patterns[q][0][0]=1; setEditPat(0); document.getElementById('play').click(); });
+  await p.waitForTimeout(200);
+  const pa=await p.evaluate(()=>({pp:playPat, d:tracks[8].delaySend, f:tracks[8].filter}));
+  await p.evaluate(()=>setEditPat(1));
+  await p.waitForFunction(()=>playPat===1, null, {timeout:5000}); await p.waitForTimeout(100);
+  const pb=await p.evaluate(()=>({pp:playPat, d:tracks[8].delaySend, f:tracks[8].filter, c:tracks[8].cutoff}));
+  ok_(`${V} 再生中は小節頭で B のエフェクトに切り替わる`, pa.pp===0 && pa.d===0.5 && pa.f==='off' && pb.pp===1 && pb.d===0 && pb.f==='lp' && pb.c===2000, JSON.stringify({pa,pb}));
+  await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
+  const rt=await p.evaluate(async()=>{ setEditPat(0); const f=JSON.parse(JSON.stringify(buildProject())); const fx=f.sets[f.cur].tracks[8].patFx; await applyProject(f);
+    const a={d:tracks[8].delaySend, f:tracks[8].filter}; setEditPat(1); const b={d:tracks[8].delaySend, f:tracks[8].filter, c:tracks[8].cutoff}; setEditPat(0);
+    return {fx0:fx&&fx[0].delaySend, fx1:fx&&fx[1].filter, a, b}; });
+  ok_(`${V} .mics に A B C D ごとのエフェクトが入り、読み込むと戻る`, rt.fx0===0.5 && rt.fx1==='lp' && rt.a.d===0.5 && rt.a.f==='off' && rt.b.d===0 && rt.b.f==='lp' && rt.b.c===2000, JSON.stringify(rt));
+  const old=await p.evaluate(async()=>{ const f=JSON.parse(JSON.stringify(buildProject())); f.sets[f.cur].tracks.forEach(x=>{ delete x.patFx; }); f.sets[f.cur].tracks[10].reverbSend=0.4;
+    await applyProject(f); const r=[]; for(let q=0;q<4;q++){ setEditPat(q); r.push(tracks[10].reverbSend); } setEditPat(0); return r; });
+  ok_(`${V} エフェクトを A B C D で持たない古いファイルは、全パターンに同じ値`, old.join()==='0.4,0.4,0.4,0.4', JSON.stringify(old));
+  const un=await p.evaluate(()=>{ setEditPat(0); pushUndo(); tracks[10].reverbSend=0.9; setEditPat(1); setEditPat(0); const before=tracks[10].reverbSend; doUndo(); return {before, after:tracks[10].reverbSend}; });
+  ok_(`${V} undo でエフェクトも戻る`, un.before===0.9 && un.after===0.4, JSON.stringify(un));
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function patMute(){
   // v0.3.149：ミュート / ソロは A B C D ごと（セットではない）
   const V='PATMUTE 390x844';
@@ -814,6 +850,7 @@ await copyPaint();
 await devShell();
 await setMode();
 await patMute();
+await patFx();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
