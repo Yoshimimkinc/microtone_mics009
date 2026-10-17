@@ -12,6 +12,17 @@
   .setpad .dots{display:flex;gap:3px;}
   .setpad .lv{font-size:10px;font-variant-numeric:tabular-nums;color:var(--teal);}   /* ミックス音量（0 dB 以外のときだけ。v0.3.151） */
   .setpad .lv.down{color:var(--amber);}
+  /* ミックス音量の塗り潰し（v0.3.152）：下から、高さ＝音量（下端 -40 dB 〜 上端 +6 dB）。ティール＝オレンジの点灯の上でも見える。0 dB 以外とスワイプ中だけ */
+  .setpad .lvfill{display:none;position:absolute;left:0;right:0;bottom:0;height:0;z-index:0;pointer-events:none;
+    background:linear-gradient(0deg,color-mix(in srgb,var(--teal) 42%,transparent),color-mix(in srgb,var(--teal) 16%,transparent));
+    border-top:2px solid var(--teal);transition:height .05s linear;}
+  .setpad.lvon .lvfill,.setpad.adj .lvfill{display:block;}
+  .setpad.adj .lvfill{background:linear-gradient(0deg,color-mix(in srgb,var(--teal) 60%,transparent),color-mix(in srgb,var(--teal) 24%,transparent));}
+  .setpad .n{position:relative;z-index:1;}
+  /* 数字はスワイプ中だけ（BPM の場所に出す。いつもは塗り潰しで見せる＝狭い下段で BPM とぶつからない） */
+  .setpad .lv{display:none;}
+  .setpad.adj .lv{display:inline;font-weight:700;}
+  .setpad.adj .bpm{display:none;}
   .setpad .dots i{width:6px;height:6px;border-radius:50%;background:var(--line);}
   .setpad .dots i.has{background:var(--amber);}
   .setpad.on{box-shadow:0 0 0 2px var(--teal) inset,0 4px 8px rgba(0,0,0,.4);}
