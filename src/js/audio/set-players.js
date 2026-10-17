@@ -1,10 +1,11 @@
 // @module audio/set-players
-// @provides _sideArm, _sidePatLen, _sideStep, _sideStepTime, isSetHeld, setHeldSet, setHold, setHoldClear,
-//    setIsPlaying, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
+// @provides SET_LV_MAX, SET_LV_MIN, _lvlSrc, _sideArm, _sidePatLen, _sideStep, _sideStepTime, fmtSetLevel,
+//    isSetHeld, setHeldSet, setHold, setHoldClear, setIndexOfTrs, setIsPlaying, setLevelLin, setLevelNode,
+//    setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
 //    sideTimer, sideTrs
-// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, driftSec,
-//    laidbackSec, lockKey, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setSlots,
-//    staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
+// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec,
+//    laidbackSec, lockKey, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels,
+//    setSlots, staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
 // @depends -
 // ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
 // 「SET ポン出しはトグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」。
@@ -82,3 +83,24 @@ function sideStop(k, when){
   const trs=sideTrs(k); if(trs) trs.forEach(t=>{ stopVoices(t, when||AC.currentTime); t.loopPlaying=false; });
 }
 function sideStopAll(when){ Array.from(sidePlayers.keys()).forEach(k=>sideStop(k, when)); }
+// ---------- セットのミックス音量（v0.3.151）：「押しながら上下スワイプで音量の上げ下げ」 ----------
+// セットごとに ConstantSource を 1 つ持ち、そのセットの声の音量ゲイン（playVoice の vg）の gain に繋ぐ＝鳴っている音にも送り（DELAY / REVERB）にも即効く。
+// ConstantSource が無いブラウザは発音時の値だけ（鳴っている音には次の発音から）。-40 dB で無音
+const SET_LV_MIN=-40, SET_LV_MAX=6;
+const _lvlSrc=new Array(16).fill(null);
+function setLevelLin(k){ const db=setLevels[k]||0; return db<=SET_LV_MIN ? 0 : dbToGain(db); }
+function setLevelNode(k){
+  if(!(k>=0&&k<16) || typeof AC.createConstantSource!=="function") return null;
+  if(!_lvlSrc[k]){ const c=AC.createConstantSource(); c.offset.value=setLevelLin(k); c.start(); _lvlSrc[k]=c; }
+  return _lvlSrc[k];
+}
+function setSetLevel(k, db){
+  if(!(k>=0&&k<16)) return;
+  db=Math.max(SET_LV_MIN, Math.min(SET_LV_MAX, Math.round((+db||0)*2)/2));   // 0.5 dB 刻み
+  setLevels[k]=db;
+  const c=_lvlSrc[k]; if(c) c.offset.setTargetAtTime(setLevelLin(k), AC.currentTime, 0.012);   // ジッパーノイズを出さない程度に滑らかに
+}
+function fmtSetLevel(db){ return db<=SET_LV_MIN ? "-∞" : ((db>0?"+":"")+db.toFixed(1)); }
+// トラック列 → どのセットのものか（いまのセット＝tracks、他は setSlots[k].tracks）
+function setIndexOfTrs(trs){ if(trs===tracks) return setCur; for(let k=0;k<16;k++) if(setSlots[k] && setSlots[k].tracks===trs) return k; return setCur; }
+

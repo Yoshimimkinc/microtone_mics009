@@ -3,8 +3,8 @@
 // @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
 //    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
 //    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
-//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSlots,
-//    setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
+//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSetLevel,
+//    setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -98,6 +98,7 @@ async function applyProject(proj, opts){
     // 16 セット（音を復号）→ いまのセットを live へ
     const r=await setsFromProject(proj);
     setSlots=r.slots; setCur=r.cur; queuedSet=null;
+    if(typeof setSetLevel==="function"){ const ss=Array.isArray(proj.sets)?proj.sets:[]; for(let k=0;k<16;k++) setSetLevel(k, (ss[k]&&+ss[k].level)||0); }   // ミックス音量（v0.3.151。v2 は 0）
     applySetSnapshot(setSlots[setCur], opts);
 }
 document.getElementById("projFile").addEventListener("change",async(e)=>{

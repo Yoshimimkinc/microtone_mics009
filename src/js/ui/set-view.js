@@ -1,9 +1,9 @@
 // @module ui/set-view
 // @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, setGridEl, setModeEnter
-// @uses AC, arm, armMode, bpmVal, clPage, copySetTo, editPat, focusSet, isSetHeld, paintPerf,
+// @uses AC, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet, isSetHeld, paintPerf,
 //    paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat, setElapsed, setHold,
-//    setIsPlaying, setMode, setName, setSlots, sideStop, sideTakeCurrent, startTransport, stopAllVoices,
-//    stopTransport, tracks
+//    setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop, sideTakeCurrent,
+//    startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -16,7 +16,7 @@ function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/6
   if(!setGridEl) return;
   for(let k=0;k<16;k++){
     const d=document.createElement("button"); d.className="pad setpad"; d.dataset.k=k; d.setAttribute("aria-label","SET "+(k+1));
-    d.innerHTML='<div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
+    d.innerHTML='<div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
     setGridEl.appendChild(d);
   }
 })();
@@ -37,6 +37,7 @@ function paintSet(){
     d.querySelector(".nm").textContent = info.name;
     d.querySelector(".tag").textContent = on ? (held?"HOLD":"NOW") : (k===setCur ? "SEL" : (k===queuedSet ? "NEXT" : ""));
     d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
+    const lv=setLevels[k]||0, lvEl=d.querySelector(".lv"); lvEl.textContent = lv ? fmtSetLevel(lv)+"dB" : ""; lvEl.classList.toggle("down", lv<0);   // ミックス音量（0 のときは出さない）
     d.querySelectorAll(".dots i").forEach((i,p)=>i.classList.toggle("has", info.has[p]));
   }
   if($("clSetNo")) $("clSetNo").textContent = String(setCur+1).padStart(2,"0");
@@ -80,24 +81,38 @@ function setModeEnter(on){
   };
   const no=k=>String(k+1).padStart(2,"0");
   const endHold=(h)=>{ clearTimeout(h.timer); h.d.classList.remove("pressing"); };
+  // v0.3.151：「鳴っている Pad を止めるときは、押して離して止まる」「押して始めるとき、押しながら上下スワイプで音量」
+  // 押している指ごとに h = {k, d, mode, y0, db0, moved}。mode：start＝押して鳴らした／held＝ホールド中を押した（離すと止まる）／vol＝別の指で鳴っている最中（音量だけ）
+  const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
   const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
     const k=+d.dataset.k;
     try{ d.setPointerCapture(e.pointerId); }catch(_){}
     if(armMode==="chop"){ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); return; }
-    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら止める（トグル）。別の指で押している最中なら何もしない
-      if(isSetHeld(k)){ stopSet(k); say("■ "+no(k)+" "+setName(k)); paintSet(); }
+    const h={k, d, timer:0, mode:"start", y0:e.clientY, db0:setLevels[k]||0, moved:false};
+    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら「離すと止まる」（スワイプしたら止めない＝音量だけ）。別の指で押している最中なら音量だけ
+      h.mode = isSetHeld(k) ? "held" : "vol";
+      holds.set(e.pointerId, h);
+      say((h.mode==="held" ? "離すと止まる："+no(k)+" "+setName(k)+"（上下スワイプで音量）" : "上下スワイプで音量："+no(k)+" "+setName(k)));
       return; }
     startSet(k);
     const ms=Math.round(240000/(bpmVal||100));   // 1 小節（いまのセット＝押したセットの BPM）
-    const h={k, d, timer:0};
-    h.timer=setTimeout(()=>{ if(holds.get(e.pointerId)!==h) return; holds.delete(e.pointerId); endHold(h);
-      if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（もう一度叩くと止まる）"); paintSet(); } }, ms);
+    h.timer=setTimeout(()=>{ if(holds.get(e.pointerId)!==h) return; h.d.classList.remove("pressing");
+      if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（押して離すと止まる）"); paintSet(); } }, ms);
     holds.set(e.pointerId, h);
     d.style.setProperty("--hold-ms", ms+"ms"); d.classList.add("pressing");
-    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 小節押し続けるとホールド）"); paintSet(); };
+    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 小節押し続けるとホールド・上下で音量）"); paintSet(); };
+  const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
+    const dy=e.clientY-h.y0;
+    if(!h.moved){ if(Math.abs(dy)<SWIPE_PX) return; h.moved=true; }
+    const eff = dy>0 ? dy-SWIPE_PX : dy+SWIPE_PX;   // 遊びの分を引く＝動き出しで跳ばない
+    setSetLevel(h.k, h.db0 - eff/PX_PER_DB);
+    const lv=setLevels[h.k], el=h.d.querySelector(".lv"); el.textContent = lv ? fmtSetLevel(lv)+"dB" : ""; el.classList.toggle("down", lv<0);   // 動かしている 1 枚だけ塗る（毎回 16 枚は重い）
+    say("VOL "+no(h.k)+" "+setName(h.k)+"  "+fmtSetLevel(lv)+" dB"); };
   const pressEnd=(e)=>{ const h=holds.get(e.pointerId); if(!h) return; holds.delete(e.pointerId); endHold(h);
-    if(!isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
-  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
+    if(e.type==="pointercancel" && h.mode!=="start") return;   // 取り消された指では止めない
+    if(h.mode==="held"){ if(!h.moved && setIsPlaying(h.k)){ stopSet(h.k); say("■ "+no(h.k)+" "+setName(h.k)); paintSet(); } return; }
+    if(h.mode==="start" && !isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
+  if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointermove",pressMove); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
   setInterval(()=>{ if(setMode) paintSet(); }, 500);   // 経過時間と、鳴っているセットの印（16 個の塗り直しは軽い）
 })();
