@@ -806,6 +806,28 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function splashAnim(){
+  // v0.3.158：起動画面のアニメーション（16 セット → 拡大 → 16 パッド → A B C D）。メニューで OFF（次の起動から）
+  const V='SPLASH 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await p.waitForTimeout(300);
+  const a=await p.evaluate(()=>({host:!!document.getElementById('splashAnim'), cells:document.querySelectorAll('#splashAnim .sa-cell').length, pads:document.querySelectorAll('#splashAnim .sa-pad').length, keys:document.querySelectorAll('#splashAnim .sa-keys i').length, toggle:document.getElementById('splashAnimToggle').classList.contains('on')}));
+  ok_(`${V} 起動画面に 16 セット・16 パッド・A B C D のアニメーション（既定 ON）`, a.host && a.cells===16 && a.pads===16 && a.keys===4 && a.toggle, JSON.stringify(a));
+  await p.waitForFunction(()=>document.querySelector('#splashAnim .sa-pads.show') && document.querySelector('#splashAnim .sa-keys i.on'), null, {timeout:6000});
+  const b=await p.evaluate(()=>({cap:document.querySelector('#splashAnim .sa-cap').textContent, key:[...document.querySelectorAll('#splashAnim .sa-keys i')].findIndex(i=>i.classList.contains('on')), zoom:document.querySelector('#splashAnim .sa-sets').classList.contains('zoom'), picked:document.querySelectorAll('#splashAnim .sa-cell.pick').length}));
+  ok_(`${V} 1 つのセットが拡大して 16 パッドに → シーケンス A から鳴る`, /^SEQ [ABCD]$/.test(b.cap) && b.key>=0 && b.zoom && b.picked===1, JSON.stringify(b));
+  // メニューで OFF → 次の起動から出ない
+  await p.evaluate(()=>document.getElementById('splashAnimToggle').click());
+  const off=await p.evaluate(()=>({on:document.getElementById('splashAnimToggle').classList.contains('on'), ls:localStorage.getItem('mics-splash-anim')}));
+  await p.reload({waitUntil:'load'}); await p.waitForTimeout(300);
+  const c=await p.evaluate(()=>({host:!!document.getElementById('splashAnim'), toggle:document.getElementById('splashAnimToggle').classList.contains('on')}));
+  ok_(`${V} メニューの「起動アニメーション」で OFF → 次の起動から出ない（スイッチも OFF のまま）`, !off.on && off.ls==='0' && !c.host && !c.toggle, JSON.stringify({off,c}));
+  await p.evaluate(()=>localStorage.removeItem('mics-splash-anim'));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function patFx(){
   // v0.3.150：エフェクト（DELAY / REVERB の送り・FILTER 種類 / カットオフ / レゾ）も A B C D ごと
   const V='PATFX 390x844';
@@ -884,6 +906,7 @@ await devShell();
 await setMode();
 await patMute();
 await patFx();
+await splashAnim();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
