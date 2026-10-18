@@ -53,6 +53,9 @@
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable;}
   /* アプリ全体でダブルタップ拡大を無効化（ピンチ・スクロールは維持） */
   body{touch-action:manipulation;}
+  /* iPhone：画面のどこをダブルタップしても拡大しない（v0.3.157 §150）。manipulation は「ダブルタップ拡大だけ無し」（スクロール・ピンチは残る）。
+     body / button だけでは文字だけの場所（情報窓・余白）で拡大していた。パッド等の touch-action:none はクラス指定が勝つので残る */
+  html,*{touch-action:manipulation;}
   button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t,.pad{touch-action:manipulation;}
   body{-webkit-touch-callout:none;}
   /* 楽器の画面：文字をなぞって選べない（長押し・ドラッグでラベルが青くならない）。入力欄だけは選べる（v0.3.131 §140） */

@@ -89,6 +89,9 @@
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable;}
   /* アプリ全体でダブルタップ拡大を無効化（ピンチ・スクロールは維持） */
   body{touch-action:manipulation;}
+  /* iPhone：画面のどこをダブルタップしても拡大しない（v0.3.157 §150）。manipulation は「ダブルタップ拡大だけ無し」（スクロール・ピンチは残る）。
+     body / button だけでは文字だけの場所（情報窓・余白）で拡大していた。パッド等の touch-action:none はクラス指定が勝つので残る */
+  html,*{touch-action:manipulation;}
   button,select,label,.seg button,.modebtn,.msbtn,.step,.loadbtn,.toggle,.t,.pad{touch-action:manipulation;}
   body{-webkit-touch-callout:none;}
   /* 楽器の画面：文字をなぞって選べない（長押し・ドラッグでラベルが青くならない）。入力欄だけは選べる（v0.3.131 §140） */
@@ -1102,7 +1105,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.156</div>
+  <div class="s-ver" id="splashVer">v0.3.157</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -6292,7 +6295,7 @@ function setModeEnter(on){
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.156";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.157";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
