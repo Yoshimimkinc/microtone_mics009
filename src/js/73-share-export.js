@@ -115,4 +115,7 @@ document.getElementById("projFile").addEventListener("change",async(e)=>{
 // iOS：accept=".mics,.json" は「種別の制限」として効き、iOS は .mics という拡張子を知らないため Files の中で
 // .mics が灰色（選べない）になる。iOS では制限を外して何でも選べるようにし、中身は上の JSON 検証で弾く（§128 v0.3.115）
 if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("projFile"); if(pf) pf.removeAttribute("accept"); }
+// 音の取り込み（#samp）も同じ（v0.3.155 §148）：「クラウドにあるファイルが選べない」。accept="audio/*,video/*" は iOS の Files で
+// 種別の制限になり、Dropbox などクラウドにしか無いファイルは種別がまだ「データ」としか分からず灰色になる。iOS では外し、中身はデコードで確かめる（NO AUDIO）
+if(typeof IS_IOS!=="undefined" && IS_IOS){ const sp=document.getElementById("samp"); if(sp) sp.removeAttribute("accept"); }
 
