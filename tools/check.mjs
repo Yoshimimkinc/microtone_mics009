@@ -688,6 +688,11 @@ async function setMode(){
       padsHidden:getComputedStyle(document.getElementById('pads')).display==='none', keysSet:getComputedStyle(document.getElementById('clKeysSet')).display, keys:getComputedStyle(document.getElementById('clKeys')).display, bar:getComputedStyle(document.querySelector('#viewPads>.msbar')).display,
       sel:document.querySelector('#setGrid .setpad.on .n span').textContent, tag:document.querySelector('#setGrid .setpad.on .tag').textContent}));
     ok_(`${V} スイッチ 1 タップで SET（窓=SET ページ・16 セット・SET 1 が SEL・15 は既定のまま）`, st.mode && st.body && st.page==='set' && st.cells===16 && st.fresh===15 && st.padsHidden && st.keysSet==='grid' && st.keys==='none' && st.bar==='none' && st.sel==='01' && st.tag==='SEL', JSON.stringify(st));
+    const map=()=>p.evaluate(()=>{ const r={}; for(const sel of ['#viewDots .setmap','#modeSet .setmap']){ const m=document.querySelector(sel); const c=[...m.children];
+      r[sel]={n:c.length, cur:c.findIndex(i=>i.classList.contains('cur')), play:c.map((i,k)=>i.classList.contains('play')?k:-1).filter(k=>k>=0).join(), held:c.map((i,k)=>i.classList.contains('held')?k:-1).filter(k=>k>=0).join()}; }
+      return {maps:r, no:[...document.querySelectorAll('.setno')].map(b=>b.textContent).join()}; });
+    const mp0=await map();
+    ok_(`${V} SET の切替ボタンに 16 セットの地図と番号（スマホのタブ・PC のボタンの両方。いまは 01）`, Object.values(mp0.maps).every(m=>m.n===16 && m.cur===0 && m.play==='') && mp0.no==='01,01', JSON.stringify(mp0));
     const d1=await dims();
     ok_(`${V} 窓の高さは PADS と同じ（不変性）`, d0.scr && d1.scr && d0.scr[1]===d1.scr[1] && d0.scr[0]===d1.scr[0], `${JSON.stringify(d0.scr)} → ${JSON.stringify(d1.scr)}`);
     ok_(`${V} セットの幅はパッドと同じ・高さは下段ぶん広い（44px 以上）`, d0.pad && d1.setpad && Math.abs(d0.pad[0]-d1.setpad[0])<=1 && d1.setpad[1]>=d0.pad[1]-1 && d1.setpad[1]>=44, `${JSON.stringify(d0.pad)} vs ${JSON.stringify(d1.setpad)}`);
@@ -705,6 +710,7 @@ async function setMode(){
     const lit=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="1"]'); const cs=getComputedStyle(d); return {cls:d.className, bg:cs.backgroundImage||cs.backgroundColor, glow:cs.boxShadow}; });
     ok_(`${V} ポン出しは pointerdown（指を離す前に鳴り始め、小節頭は先置きしない・最初のステップは timer を待たず予約）`, s2dn.playingAtDown && s2dn.lead<=0.02 && s2dn.lead>-0.5 && s2dn.firstStep>=1 && s2dn.firstStep<=2, JSON.stringify(s2dn));
     ok_(`${V} 押している間（ホールド前）は薄い色（playing・held でない・外光 12px で 26px は無し）`, /\bplaying\b/.test(lit.cls) && !/\bheld\b/.test(lit.cls) && /linear-gradient/.test(lit.bg) && /12px/.test(lit.glow) && !/26px/.test(lit.glow), JSON.stringify(lit));
+    ok_(`${V} 地図と番号はいまのセットに追従（02）`, await p.evaluate(()=>[...document.querySelectorAll('.setno')].every(b=>b.textContent==='02') && document.querySelector('#viewDots .setmap').children[1].classList.contains('cur')), 'map not following');
     ok_(`${V} 押す＝ポン出し（SET 2 へ切替・鳴る・既定のキット）／SET 1 の変更は退避される／undo は空`, s2.cur===1 && s2.playing===true && s2.name==='PAD 1' && s2.type0==='empty' && !s2.buf0 && s2.kick && s2.bpm===60 && s2.steps===0 && s2.saved==='S1' && s2.savedBpm===60 && s2.savedStep===1 && s2.tag==='NOW' && s2.undo===0, JSON.stringify(s2));
     await p.evaluate(()=>{ setStep(9,4,1); });   // SET 2 に 1 ステップ（退避されるか）
     await p.mouse.up(); await p.waitForTimeout(150);
@@ -732,6 +738,8 @@ async function setMode(){
     ok_(`${V} 音量は下からの塗り潰しで見える（高さ＝(dB+40)/46・0 dB のセットには出ない）`, Math.abs(vol.fill-(vol.db+40)/46)<0.04 && vol.otherFill==='none', JSON.stringify(vol));
     const m1d=await p.evaluate(()=>({name:tracks[0].name, bpm:bpmVal, step:tracks[8].patterns[0][0][0], side3:sidePlayers.get(2)&&sidePlayers.get(2).bpm, v3:setSlots[2].tracks[8].activeVoices.length, s3step:setSlots[2].tracks[8].patterns[0][0][5], s2step:setSlots[1].tracks[9].patterns[0][0][4]}));
     ok_(`${V} 同時鳴らし：SET 1 を押すと SET 1 がいまのセット、SET 3 は自分の BPM で鳴り続ける（両方オレンジ・MIX に 2 つ）`, m1.cur===0 && m1.playing && m1.sides.join()==='2' && m1.lit.join()==='0,2' && /01/.test(m1.mix) && /03H/.test(m1.mix) && m1d.name==='S1' && m1d.bpm===60 && m1d.step===1 && m1d.side3===240 && m1d.v3>0 && m1d.s3step===1 && m1d.s2step===1, JSON.stringify({m1,m1d}));
+    const mp1=await map();
+    ok_(`${V} 地図：いまのセット（01）・鳴っているセット（01 と 03）・ホールド（03）が分かる`, Object.values(mp1.maps).every(m=>m.cur===0 && m.play==='0,2' && m.held==='2') && mp1.no==='01,01', JSON.stringify(mp1));
     await p.mouse.up(); await p.waitForTimeout(150);
     const m2=await ui();
     ok_(`${V} SET 1 を離す＝SET 1 だけ止まる（SET 3 は鳴り続ける・■ のまま）`, m2.cur===0 && !m2.playing && m2.sides.join()==='2' && m2.lit.join()==='2' && m2.btn==='■', JSON.stringify(m2));
