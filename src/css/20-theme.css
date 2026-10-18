@@ -57,6 +57,8 @@
   body{-webkit-touch-callout:none;}
   /* 楽器の画面：文字をなぞって選べない（長押し・ドラッグでラベルが青くならない）。入力欄だけは選べる（v0.3.131 §140） */
   body{-webkit-user-select:none;user-select:none;}
+  /* iOS：長押しで拡大鏡（ルーペ）・長押しメニューが出ないように（v0.3.156 §149）。user-select は子に継がれないので全要素に。入力欄だけ選べる */
+  *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
   input,textarea{-webkit-user-select:text;user-select:text;}
   body{
     background:#000;  /* アプリ外側（周りの余白）は常に黒 */
