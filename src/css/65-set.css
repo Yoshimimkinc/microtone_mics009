@@ -59,6 +59,14 @@
   .cl-par.cl-setname b{max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
   .cl-par.cl-setnext b{max-width:16ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
   .cl-par.cl-setnext.queued b{color:var(--amber);}
+  /* いま 16 セットのどこにいるか（v0.3.154）：SET の切替ボタンに 4×4 の地図と番号 */
+  .setmap{display:inline-grid;grid-template-columns:repeat(4,6px);grid-auto-rows:6px;gap:1px;margin-left:2px;vertical-align:middle;}
+  .setmap i{display:block;border-radius:1px;background:var(--line);}
+  .setmap i.play{background:color-mix(in srgb,var(--amber) 55%,transparent);}
+  .setmap i.held{background:var(--amber);}
+  .setmap i.cur{background:var(--teal);box-shadow:0 0 4px color-mix(in srgb,var(--teal) 70%,transparent);}
+  .setmap i.cur.play{background:var(--amber);box-shadow:0 0 0 1px var(--teal);}
+  .setno{font-variant-numeric:tabular-nums;letter-spacing:.04em;color:var(--teal);}
   #clKeysSet{display:none;}
   body.setmode #clKeys{display:none;}
   body.setmode #clKeysSet{display:grid;}   /* .cl-keys と同じ 4 等分のグリッド（flex だと幅が中身なりに縮む） */

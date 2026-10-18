@@ -34,7 +34,7 @@ tapeHiss ───────────────────────�
 - Scheduler: lookahead pattern (25ms interval, 25ms ahead)
 
 ### Data Model
-- **ファイル全体 = 16 セット × 16 パッド × 4 シーケンス（v0.3.144, §145）**。`setSlots[16]`（`data/set`）が全セットを snapshot の形で持ち、
+- **1 ステージ（＝1 ファイル・セーブの単位）= 16 セット × 4 シーケンス × 16 パッド（v0.3.144, §145 / 呼び名 §147）**。`setSlots[16]`（`data/set`）が全セットを snapshot の形で持ち、
   いまのセット（`setCur`）だけ live の `tracks` / `PADS` / `bpmVal` / `swingPct` に展開される。切替＝退避（`snapshotSet`）→ 展開（`applySetSnapshot`）。
   `.mics` v3 = `{version:3, cur, sets:[16 × {name,bpm,swing,tracks}], comp, masterVol, groupVol, fx}`（v2 は SET 1 に入る）。触っていないプリセットの音は同梱しない。
 - `tracks[16]`: each has `patterns[4][16]`, buffer, vol, tune, start, end, loop, filter, choke, etc.
@@ -51,7 +51,7 @@ tapeHiss ───────────────────────�
 
 - **SET モード（v0.3.144, §145）**: 上段スイッチ PADS / SEQ / SET。SET は PADS 画面の状態（`body.setmode`）で、情報窓が SET 演奏モード、
   パッドが **16 セットのポン出し**（v0.3.147：押す＝そのセットを頭から鳴らす＋ PADS / SEQ の対象もそのセットに／離す＝止まる／
-  1 拍（4 ステップ）押し続ける＝ホールド（押して離すと止まる）／**同時鳴らし可**＝ミックス／押しながら上下スワイプ＝そのセットの音量 `setLevels`。■ は全部止める）。データは `data/set`、表示は `ui/set-view`。
+  1 拍（4 ステップ）押し続ける＝ホールド（押して離すと止まる）／**同時鳴らし可**＝ミックス／押しながら上下スワイプ＝そのセットの音量 `setLevels`。■ は全部止める）。SET の切替ボタンに 16 セットの地図と番号（§147）。データは `data/set`、表示は `ui/set-view`。
   いまのセットは `audio/transport`、他に鳴っているセットは `audio/set-players`（snapshot のトラック列を `playVoice(..., trs)` で鳴らす。時計はセットごと）。
 
 ### Key Design Rules
@@ -139,7 +139,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.153
+MICS009 beta v0.3.154
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

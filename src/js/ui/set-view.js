@@ -1,5 +1,6 @@
 // @module ui/set-view
-// @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, setGridEl, setModeEnter
+// @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, paintSetMap, setGridEl,
+//    setModeEnter
 // @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet,
 //    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat,
 //    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop,
@@ -27,6 +28,15 @@ function paintSetLevel(d,k){
   d.classList.toggle("lvon", lv!==0);
   const el=d.querySelector(".lv"); if(el){ el.textContent = fmtSetLevel(lv)+"dB"; el.classList.toggle("down", lv<0); }   // 数字はスワイプ中だけ見える（CSS）
 }
+// いま 16 セットのどこにいるか（v0.3.154）：SET の切替ボタン（スマホの上段タブ・PC のモードボタン）に 4×4 の小さな地図と番号。
+// PADS / SEQ にいても見える。ティール＝いまのセット（PADS / SEQ の対象）、オレンジ＝鳴っている（ホールドは濃く）
+(function buildSetMaps(){ document.querySelectorAll(".setmap").forEach(m=>{ for(let k=0;k<16;k++) m.appendChild(document.createElement("i")); }); })();
+function paintSetMap(){
+  const no=String(setCur+1).padStart(2,"0");
+  document.querySelectorAll(".setmap").forEach(m=>{ for(let k=0;k<16;k++){ const c=m.children[k]; if(!c) continue; const on=setIsPlaying(k);
+    c.classList.toggle("cur",k===setCur); c.classList.toggle("play",on); c.classList.toggle("held",on&&isSetHeld(k)); } });
+  document.querySelectorAll(".setno").forEach(b=>{ if(b.textContent!==no) b.textContent=no; });
+}
 function _snapPatHas(tr,p){ return tr.some(t=>t.patterns&&t.patterns[p]&&t.patterns[p].some(b=>b.some(v=>v>0))); }
 function _setInfo(k){   // 表示用：いまのセットは live から、他は snapshot から
   if(k===setCur) return {name:setName(k), bpm:bpmVal, has:[0,1,2,3].map(p=>_snapPatHas(tracks,p)), fresh:false};
@@ -36,7 +46,7 @@ function _setInfo(k){   // 表示用：いまのセットは live から、他�
   return {name:s.name, bpm:s.bpm, has, fresh};
 }
 function paintSet(){
-  if(!setGridEl) return;
+  if(!setGridEl){ paintSetMap(); return; }
   const $=id=>document.getElementById(id);
   for(let k=0;k<16;k++){ const d=setGridEl.children[k]; if(!d) continue; const info=_setInfo(k);
     const on=setIsPlaying(k), held=on&&isSetHeld(k);
@@ -54,6 +64,7 @@ function paintSet(){
     const mix=[]; for(let k=0;k<16;k++) if(setIsPlaying(k)) mix.push(String(k+1).padStart(2,"0")+(isSetHeld(k)?"H":""));
     $("clSetNext").textContent = mix.length ? mix.join(" · ") : "—"; }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.classList.toggle("on", +b.dataset.pat===editPat));
+  paintSetMap();
 }
 // モードの出入り（switchView から）：情報窓のページを SET ページ⇄元のページに
 function setModeEnter(on){
