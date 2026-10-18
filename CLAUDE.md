@@ -4,7 +4,7 @@
 microtone MICS009 — a browser-based 16-pad sampler/sequencer inspired by SP-1200 and MPC.
 Ships as a single HTML file (`mics-609bc14b.html`), zero external dependencies. Pure Web Audio API.
 
-**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（55部品）。
+**開発はモジュール、公開は1ファイル（v0.3.116〜）**：触るのは `src/`（57部品）。
 `node tools/build.mjs` が連結して `mics-609bc14b.html` を生成する。**生成物を直接編集しない**
 （関門 `build.mjs --check` が止める）。バージョンは `version.json` だけが正で、ビルドが差し込む。
 流れの全体は **`docs/dev-flow.md`**。
@@ -139,7 +139,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.157
+MICS009 beta v0.3.158
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

@@ -31,6 +31,32 @@
     text-transform:uppercase;animation:spblink 1.4s ease-in-out infinite;}
   @keyframes spblink{0%,100%{opacity:.35}50%{opacity:1}}
   #splash.hide{opacity:0;pointer-events:none;transition:opacity .35s ease;}
+  /* 起動アニメーション（v0.3.158 §151）：16 セット → 拡大 → 16 パッド → A B C D で光る */
+  #splash .s-anim{display:flex;flex-direction:column;align-items:center;gap:6px;margin:14px 0 2px;}
+  .sa-stage{position:relative;width:min(168px,44vw);aspect-ratio:1;overflow:hidden;border-radius:8px;}
+  .sa-sets,.sa-pads{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:5px;}
+  .sa-sets{transition:transform .9s cubic-bezier(.6,0,.2,1),opacity .35s;}
+  .sa-sets.zoom{transform:scale(4.3);}
+  .sa-sets.gone{opacity:0;}
+  .sa-cell{display:block;border-radius:4px;background:var(--line);opacity:0;transform:scale(.4);transition:opacity .25s,transform .25s,background .2s,box-shadow .2s;}
+  .sa-cell.in{opacity:1;transform:scale(1);}
+  .sa-cell.pick{background:var(--teal);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 70%,transparent);}
+  .sa-pads{opacity:0;transition:opacity .3s;pointer-events:none;}
+  .sa-pads.show{opacity:1;}
+  .sa-pad{display:block;border-radius:5px;background:linear-gradient(180deg,var(--pad-face),var(--pad));border:1px solid var(--edge);
+    opacity:0;transform:scale(.6);transition:opacity .2s,transform .2s,background .1s,box-shadow .1s;}
+  .sa-pad.in{opacity:1;transform:scale(1);}
+  .sa-pad.drum{border-bottom:2px solid color-mix(in srgb,var(--amber) 70%,transparent);}
+  .sa-pad.hit{background:linear-gradient(180deg,var(--amber),var(--hit-c2));box-shadow:0 0 12px rgba(var(--hit-glow-a),.75);transition:none;}
+  .sa-keys{display:flex;gap:6px;}
+  .sa-keys i{font-style:normal;font-size:10px;letter-spacing:.1em;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:1px 7px;transition:.15s;}
+  .sa-keys i.on{color:#06201d;background:var(--teal);border-color:var(--teal);}
+  .sa-steps{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;width:min(168px,44vw);}
+  .sa-steps i{display:block;height:4px;border-radius:1px;background:var(--line);}
+  .sa-steps i:nth-child(4n+1){background:color-mix(in srgb,var(--line) 55%,var(--ink));}
+  .sa-steps i.on{background:var(--amber);}
+  .sa-cap{font-size:10px;letter-spacing:.22em;color:var(--dim);min-height:13px;text-transform:uppercase;}
+  .sa-cap b{color:var(--teal);font-weight:700;}
   /* 合言葉：通るまで TAP TO START は出さない */
   .s-pass{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:18px 0 6px;width:min(320px,80vw);}
   .s-pass input{flex:1 1 160px;min-height:44px;padding:8px 12px;font:inherit;font-size:16px;letter-spacing:.08em;

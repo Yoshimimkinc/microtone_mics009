@@ -57,6 +57,7 @@
   "js/72-midi.js",
   "js/73-share-export.js",
   "js/ui/set-view.js",
+  "js/ui/splash-anim.js",
   "js/80-skin-version-splash.js",
   "shell/90-tail.html"
  ]
