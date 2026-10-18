@@ -498,6 +498,8 @@ async function iosLoad(){
     await p.waitForFunction(()=>typeof tracks!=='undefined' && tracks[0] && tracks[0].buffer, null, {timeout:20000});
     const acc=await p.$eval('#projFile',e=>e.getAttribute('accept'));
     ok_(`iOS読込 ${ua?'iPhone UA では accept 制限なし':'他では accept 制限あり'}`, expectAccept ? (acc||'').includes('.mics') : acc===null, JSON.stringify(acc));
+    const accS=await p.$eval('#samp',e=>e.getAttribute('accept'));   // v0.3.155：音の取り込みも（クラウドにしか無いファイルが灰色になる対策）
+    ok_(`iOS読込 音の取り込みも ${ua?'iPhone UA では accept 制限なし':'他では audio/* の制限あり'}`, expectAccept ? (accS||'').includes('audio/*') : accS===null, JSON.stringify(accS));
     // 中身の検証は残る：壊れたファイルは弾き、正しい .mics は読める
     const r=await p.evaluate(async()=>{ const inp=document.getElementById('projFile'); const fire=f=>{ const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); };
       fire(new File(['not json'],'broken.mics')); await new Promise(r=>setTimeout(r,300)); const bad=sampNameEl.textContent;
