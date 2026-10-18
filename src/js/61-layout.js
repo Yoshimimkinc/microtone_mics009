@@ -47,6 +47,12 @@ document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("clic
   },{passive:true});
 })();
 
+// iOS：長押しで拡大鏡（ルーペ）や長押しメニューが立ち上がらないように（v0.3.156 §149）。
+// パッドの格子（#pads / #setGrid）は pointer イベントだけで動く（長押し＝SET のホールド・EDIT のコピー）ので、touch の既定動作を止めてよい。
+// click で動くボタン類（ステップ・SEQ・窓）は止めると叩けなくなるので CSS（-webkit-user-select / -webkit-touch-callout）だけ
+["pads","setGrid"].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener("touchstart",e=>{ if(e.cancelable) e.preventDefault(); },{passive:false}); });
+if(matchMedia("(pointer:coarse)").matches) document.addEventListener("contextmenu",e=>{ if(!(e.target.closest&&e.target.closest("input,textarea"))) e.preventDefault(); });   // タッチ端末の長押しメニュー（PC の右クリックは残す）
+
 // ---------- 切替で高さが変わらないよう、PADSの高さに統一（PC） ----------
 let refViewH = 0;
 function lockViewHeight(){

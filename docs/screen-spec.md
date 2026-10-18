@@ -1975,3 +1975,12 @@ LIVE LOCK（Wake Lock・離脱確認・編集系ロック・■ で演奏前に�
 - 実機（iPhone / iPad の Files → Dropbox）では未確認。まだ灰色なら、Dropbox アプリで「オフラインで使用可能」にするか「"ファイル"に保存」してから選ぶ。
 検査：`iosLoad`：iPhone UA では `#samp` にも `accept` が無い／他では `audio/*` の制限が残る。
 
+## 149. iPhone：長押しで拡大鏡が立ち上がる（v0.3.156）
+「長押しで拡大が立ち上がっちゃうのをやめて」。SET のホールド（1 拍の長押し）や EDIT のコピー（長押し）で、iOS の拡大鏡（ルーペ）や長押しメニューが出ていた。
+- §140 は `body` にだけ `user-select:none` / `-webkit-touch-callout:none` を付けていた。`user-select` は子に継がれないので、文字のある子要素（パッド名など）で iOS が選択と拡大鏡を始めていた。
+- 対処：**全要素**に `-webkit-touch-callout:none; -webkit-user-select:none; user-select:none`（入力欄だけ選べる）。
+  **パッドの格子（`#pads` / `#setGrid`）は `touchstart` の既定動作を止める**（`passive:false`）。pointer イベントだけで動くので叩く・ドラッグ・長押しは影響なし。
+  click で動くボタン（ステップ・SEQ・窓）は既定動作を止めると叩けなくなるので CSS だけ。タッチ端末では長押しメニュー（`contextmenu`）も入力欄以外で止める（PC の右クリックは残す）。
+- 実機（iPhone）では未確認。まだ出る場所があれば、その場所を教えてもらって個別に止める。
+検査：`iosLoad`：パッド名・▶ は選べない／入力欄は選べる／パッドと SET の格子は touchstart の既定動作が止まり、▶ は止まらない。
+

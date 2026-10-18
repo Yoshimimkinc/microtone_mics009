@@ -498,6 +498,12 @@ async function iosLoad(){
     await p.waitForFunction(()=>typeof tracks!=='undefined' && tracks[0] && tracks[0].buffer, null, {timeout:20000});
     const acc=await p.$eval('#projFile',e=>e.getAttribute('accept'));
     ok_(`iOS読込 ${ua?'iPhone UA では accept 制限なし':'他では accept 制限あり'}`, expectAccept ? (acc||'').includes('.mics') : acc===null, JSON.stringify(acc));
+    // v0.3.156：長押しで拡大鏡・長押しメニューが出ない（全要素 user-select:none・入力欄だけ選べる・パッドの格子は touchstart の既定動作を止める）
+    const lp=await p.evaluate(()=>{ const nm=document.querySelector('#pads .pad .nm'), sg=document.querySelector('#setGrid .setpad'), inp=document.querySelector('input[type=text],textarea')||document.createElement('input');
+      const fire=el=>{ const t=new Touch({identifier:1,target:el,clientX:10,clientY:10}); const ev=new TouchEvent('touchstart',{cancelable:true,bubbles:true,touches:[t],targetTouches:[t],changedTouches:[t]}); el.dispatchEvent(ev); return ev.defaultPrevented; };
+      if(!inp.isConnected) document.body.appendChild(inp);
+      return {nm:getComputedStyle(nm).userSelect, btn:getComputedStyle(document.getElementById('play')).userSelect, inp:getComputedStyle(inp).userSelect, padTouch:fire(nm), setTouch:fire(sg), playTouch:fire(document.getElementById('play'))}; });
+    ok_(`長押し ${ua?'iPhone':'他'}：文字は選べない（パッド・ボタン）・入力欄は選べる・パッドの格子だけ touch の既定動作を止める`, lp.nm==='none' && lp.btn==='none' && lp.inp!=='none' && lp.padTouch && lp.setTouch && !lp.playTouch, JSON.stringify(lp));
     const accS=await p.$eval('#samp',e=>e.getAttribute('accept'));   // v0.3.155：音の取り込みも（クラウドにしか無いファイルが灰色になる対策）
     ok_(`iOS読込 音の取り込みも ${ua?'iPhone UA では accept 制限なし':'他では audio/* の制限あり'}`, expectAccept ? (accS||'').includes('audio/*') : accS===null, JSON.stringify(accS));
     // 中身の検証は残る：壊れたファイルは弾き、正しい .mics は読める

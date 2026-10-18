@@ -93,6 +93,8 @@
   body{-webkit-touch-callout:none;}
   /* 楽器の画面：文字をなぞって選べない（長押し・ドラッグでラベルが青くならない）。入力欄だけは選べる（v0.3.131 §140） */
   body{-webkit-user-select:none;user-select:none;}
+  /* iOS：長押しで拡大鏡（ルーペ）・長押しメニューが出ないように（v0.3.156 §149）。user-select は子に継がれないので全要素に。入力欄だけ選べる */
+  *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
   input,textarea{-webkit-user-select:text;user-select:text;}
   body{
     background:#000;  /* アプリ外側（周りの余白）は常に黒 */
@@ -1100,7 +1102,7 @@
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.155</div>
+  <div class="s-ver" id="splashVer">v0.3.156</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -5271,6 +5273,12 @@ document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("clic
   },{passive:true});
 })();
 
+// iOS：長押しで拡大鏡（ルーペ）や長押しメニューが立ち上がらないように（v0.3.156 §149）。
+// パッドの格子（#pads / #setGrid）は pointer イベントだけで動く（長押し＝SET のホールド・EDIT のコピー）ので、touch の既定動作を止めてよい。
+// click で動くボタン類（ステップ・SEQ・窓）は止めると叩けなくなるので CSS（-webkit-user-select / -webkit-touch-callout）だけ
+["pads","setGrid"].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener("touchstart",e=>{ if(e.cancelable) e.preventDefault(); },{passive:false}); });
+if(matchMedia("(pointer:coarse)").matches) document.addEventListener("contextmenu",e=>{ if(!(e.target.closest&&e.target.closest("input,textarea"))) e.preventDefault(); });   // タッチ端末の長押しメニュー（PC の右クリックは残す）
+
 // ---------- 切替で高さが変わらないよう、PADSの高さに統一（PC） ----------
 let refViewH = 0;
 function lockViewHeight(){
@@ -6284,7 +6292,7 @@ function setModeEnter(on){
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.155";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.156";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
