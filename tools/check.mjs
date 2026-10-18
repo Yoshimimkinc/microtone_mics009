@@ -504,6 +504,9 @@ async function iosLoad(){
       if(!inp.isConnected) document.body.appendChild(inp);
       return {nm:getComputedStyle(nm).userSelect, btn:getComputedStyle(document.getElementById('play')).userSelect, inp:getComputedStyle(inp).userSelect, padTouch:fire(nm), setTouch:fire(sg), playTouch:fire(document.getElementById('play'))}; });
     ok_(`長押し ${ua?'iPhone':'他'}：文字は選べない（パッド・ボタン）・入力欄は選べる・パッドの格子だけ touch の既定動作を止める`, lp.nm==='none' && lp.btn==='none' && lp.inp!=='none' && lp.padTouch && lp.setTouch && !lp.playTouch, JSON.stringify(lp));
+    // v0.3.157：ダブルタップで拡大しない（どこでも touch-action:manipulation。パッドは none のまま）
+    const ta=await p.evaluate(()=>({html:getComputedStyle(document.documentElement).touchAction, win:getComputedStyle(document.querySelector('.perf-screen')||document.body).touchAction, txt:getComputedStyle(document.getElementById('sampName')||document.body).touchAction, pad:getComputedStyle(document.querySelector('#pads .pad')).touchAction}));
+    ok_(`ダブルタップ ${ua?'iPhone':'他'}：どこでも拡大しない（manipulation）・パッドは none のまま`, ta.html==='manipulation' && ta.win==='manipulation' && ta.txt==='manipulation' && ta.pad==='none', JSON.stringify(ta));
     const accS=await p.$eval('#samp',e=>e.getAttribute('accept'));   // v0.3.155：音の取り込みも（クラウドにしか無いファイルが灰色になる対策）
     ok_(`iOS読込 音の取り込みも ${ua?'iPhone UA では accept 制限なし':'他では audio/* の制限あり'}`, expectAccept ? (accS||'').includes('audio/*') : accS===null, JSON.stringify(accS));
     // 中身の検証は残る：壊れたファイルは弾き、正しい .mics は読める

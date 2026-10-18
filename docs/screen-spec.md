@@ -1984,3 +1984,11 @@ LIVE LOCK（Wake Lock・離脱確認・編集系ロック・■ で演奏前に�
 - 実機（iPhone）では未確認。まだ出る場所があれば、その場所を教えてもらって個別に止める。
 検査：`iosLoad`：パッド名・▶ は選べない／入力欄は選べる／パッドと SET の格子は touchstart の既定動作が止まり、▶ は止まらない。
 
+## 150. iPhone：ダブルタップで拡大する（v0.3.157）
+「画面をダブルタップすると拡大になってしまうのもオフに」。iOS Safari は `user-scalable=no` を無視する（iOS 10〜）。ダブルタップ拡大を止めるのは `touch-action:manipulation`。
+これまでは `body` とボタン類にだけ付けていて、文字だけの場所（情報窓・メッセージ・余白）や `html` でダブルタップすると拡大していた。
+- 対処：`html,*{touch-action:manipulation}`。manipulation は「ダブルタップ拡大だけ無し」でスクロールとピンチは残る。パッド・ステップ・窓の数値など `touch-action:none` の要素はクラス指定が勝つのでそのまま。
+- ピンチでの拡大は残している（頼まれていない・見えにくいときの逃げ道）。止めたければ `gesturestart` を止める。
+- 実機（iPhone）では未確認。
+検査：`iosLoad`：`html`・情報窓・メッセージ行は manipulation、パッドは none。
+
