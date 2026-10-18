@@ -1074,6 +1074,32 @@
     text-transform:uppercase;animation:spblink 1.4s ease-in-out infinite;}
   @keyframes spblink{0%,100%{opacity:.35}50%{opacity:1}}
   #splash.hide{opacity:0;pointer-events:none;transition:opacity .35s ease;}
+  /* 起動アニメーション（v0.3.158 §151）：16 セット → 拡大 → 16 パッド → A B C D で光る */
+  #splash .s-anim{display:flex;flex-direction:column;align-items:center;gap:6px;margin:14px 0 2px;}
+  .sa-stage{position:relative;width:min(168px,44vw);aspect-ratio:1;overflow:hidden;border-radius:8px;}
+  .sa-sets,.sa-pads{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:5px;}
+  .sa-sets{transition:transform .9s cubic-bezier(.6,0,.2,1),opacity .35s;}
+  .sa-sets.zoom{transform:scale(4.3);}
+  .sa-sets.gone{opacity:0;}
+  .sa-cell{display:block;border-radius:4px;background:var(--line);opacity:0;transform:scale(.4);transition:opacity .25s,transform .25s,background .2s,box-shadow .2s;}
+  .sa-cell.in{opacity:1;transform:scale(1);}
+  .sa-cell.pick{background:var(--teal);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 70%,transparent);}
+  .sa-pads{opacity:0;transition:opacity .3s;pointer-events:none;}
+  .sa-pads.show{opacity:1;}
+  .sa-pad{display:block;border-radius:5px;background:linear-gradient(180deg,var(--pad-face),var(--pad));border:1px solid var(--edge);
+    opacity:0;transform:scale(.6);transition:opacity .2s,transform .2s,background .1s,box-shadow .1s;}
+  .sa-pad.in{opacity:1;transform:scale(1);}
+  .sa-pad.drum{border-bottom:2px solid color-mix(in srgb,var(--amber) 70%,transparent);}
+  .sa-pad.hit{background:linear-gradient(180deg,var(--amber),var(--hit-c2));box-shadow:0 0 12px rgba(var(--hit-glow-a),.75);transition:none;}
+  .sa-keys{display:flex;gap:6px;}
+  .sa-keys i{font-style:normal;font-size:10px;letter-spacing:.1em;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:1px 7px;transition:.15s;}
+  .sa-keys i.on{color:#06201d;background:var(--teal);border-color:var(--teal);}
+  .sa-steps{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;width:min(168px,44vw);}
+  .sa-steps i{display:block;height:4px;border-radius:1px;background:var(--line);}
+  .sa-steps i:nth-child(4n+1){background:color-mix(in srgb,var(--line) 55%,var(--ink));}
+  .sa-steps i.on{background:var(--amber);}
+  .sa-cap{font-size:10px;letter-spacing:.22em;color:var(--dim);min-height:13px;text-transform:uppercase;}
+  .sa-cap b{color:var(--teal);font-weight:700;}
   /* 合言葉：通るまで TAP TO START は出さない */
   .s-pass{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:18px 0 6px;width:min(320px,80vw);}
   .s-pass input{flex:1 1 160px;min-height:44px;padding:8px 12px;font:inherit;font-size:16px;letter-spacing:.08em;
@@ -1104,8 +1130,10 @@
 <div id="splash">
   <div class="s-logo">micro<b>tone</b></div>
   <div class="s-model">MICS009</div>
+  <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
+  <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.157</div>
+  <div class="s-ver" id="splashVer">v0.3.158</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1162,6 +1190,7 @@
             <button data-th="sp">SP</button>
             <button data-th="rl">TR</button>
           </div>
+          <label class="toggle on" id="splashAnimToggle" style="margin-top:10px;"><span class="sw"></span><span>起動アニメーション</span></label>
         </div>
         <div class="modal-sec">
           <div class="modal-label">Master</div>
@@ -6274,6 +6303,77 @@ function setModeEnter(on){
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
   setInterval(()=>{ if(setMode) paintSet(); }, 500);   // 経過時間と、鳴っているセットの印（16 個の塗り直しは軽い）
 })();
+// @module ui/splash-anim
+// @provides SPLASH_ANIM_KEY, SPLASH_PATS, splashAnimOn
+// @uses sampNameEl
+// @depends -
+// ---------- 起動画面のアニメーション：1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せる（v0.3.158 §151） ----------
+// 「スプラッシュ画面に、16SET × 16PAD × 4SEQ をビジュアルで示すアニメーションを出す（設定で切り替え可能）。
+//  最初 16 グリッドが出て、拡大してまた 16 パッドに、それが 4 シーケンスで鳴るイメージ。動画ではなくアニメーション」
+// 16 のセットが並ぶ → 1 つが光って拡大 → 16 パッドになる → A B C D の順にステップが進んでパッドが光る → 引いて 16 セットに戻る（くり返し）。
+// 音は出さない（起動前で AudioContext も動いていない）。メニューの「起動アニメーション」で OFF（次の起動から）。動きを減らす設定の端末では止めた 1 枚だけ
+const SPLASH_ANIM_KEY="mics-splash-anim";
+function splashAnimOn(){ try{ return localStorage.getItem(SPLASH_ANIM_KEY)!=="0"; }catch(_){ return true; } }
+// 4 つのシーケンスで光るパッド（0-7＝上 2 段のサンプル、8-15＝下 2 段のドラム：8 KICK 9 SNARE 10 HAT 11 OHAT 12 CLAP …）
+const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]));
+  const put=(p,pad,steps)=>steps.forEach(s=>P[p][s].push(pad));
+  put(0,8,[0,8]); put(0,9,[4,12]); put(0,10,[0,2,4,6,8,10,12,14]); put(0,0,[0]);                                   // A：素の 2 ビート＋ネタ 1 発
+  put(1,8,[0,7,8,10]); put(1,9,[4,12]); put(1,10,[0,2,4,6,8,10,12,14]); put(1,0,[0]); put(1,1,[6,14]);           // B：キック増し＋ネタ 2
+  put(2,8,[0,8]); put(2,9,[4,12]); put(2,10,[...Array(16).keys()]); put(2,2,[0,3]); put(2,3,[8,11]); put(2,12,[12]);   // C：16 分ハット＋チョップ
+  put(3,8,[0,3,8,11]); put(3,9,[4,12]); put(3,11,[14]); put(3,4,[0]); put(3,5,[4]); put(3,6,[8]); put(3,7,[12]);  // D：ブレイク＋ネタ 4 つ
+  return P; })();
+(function(){
+  const tg=document.getElementById("splashAnimToggle");
+  if(tg){ tg.classList.toggle("on", splashAnimOn());
+    tg.addEventListener("click",()=>{ const on=!tg.classList.contains("on"); tg.classList.toggle("on",on);
+      try{ localStorage.setItem(SPLASH_ANIM_KEY, on?"1":"0"); }catch(_){}
+      if(typeof sampNameEl!=="undefined") sampNameEl.textContent = on ? "起動アニメーション ON（次の起動から）" : "起動アニメーション OFF（次の起動から）"; }); }
+  const host=document.getElementById("splashAnim");
+  if(!host) return;
+  if(!splashAnimOn()){ host.remove(); return; }
+  host.innerHTML='<div class="sa-stage"><div class="sa-sets"></div><div class="sa-pads"></div></div>'+
+    '<div class="sa-keys"><i>A</i><i>B</i><i>C</i><i>D</i></div><div class="sa-steps"></div><div class="sa-cap"></div>';
+  const sets=host.querySelector(".sa-sets"), pads=host.querySelector(".sa-pads"), steps=host.querySelector(".sa-steps"), cap=host.querySelector(".sa-cap");
+  const keys=[...host.querySelectorAll(".sa-keys i")];
+  for(let k=0;k<16;k++){ const c=document.createElement("i"); c.className="sa-cell"; sets.appendChild(c);
+    const d=document.createElement("i"); d.className="sa-pad"+(k>=8?" drum":""); pads.appendChild(d);
+    steps.appendChild(document.createElement("i")); }
+  const cells=[...sets.children], padEls=[...pads.children], stepEls=[...steps.children];
+  const say=h=>{ cap.innerHTML=h; };
+  const n2=k=>String(k+1).padStart(2,"0");
+  if(matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches){   // 動きを減らす設定：止めた 1 枚
+    cells.forEach(c=>c.classList.add("in")); cells[5].classList.add("pick"); say("<b>16</b> SET × <b>16</b> PAD × <b>4</b> SEQ"); return; }
+  const alive=()=>host.isConnected;
+  let timers=[];
+  const at=(ms,fn)=>timers.push(setTimeout(()=>{ if(alive()) fn(); else { timers.forEach(clearTimeout); timers=[]; } }, ms));
+  const STEP=80;   // 16 分 1 つ＝80ms（BPM 約 188 相当。1 シーケンス 1.3 秒）
+  function cycle(n){
+    timers=[];
+    const pick=[5,10,2,13][n%4];
+    cells.forEach(c=>c.classList.remove("in","pick")); padEls.forEach(d=>d.classList.remove("in","hit"));
+    sets.classList.remove("zoom","gone"); pads.classList.remove("show");
+    keys.forEach(k=>k.classList.remove("on")); stepEls.forEach(s=>s.classList.remove("on"));
+    say("<b>16</b> SET");
+    cells.forEach((c,k)=>at(k*55, ()=>c.classList.add("in")));                                   // 16 のセットが並ぶ
+    at(1300, ()=>{ cells[pick].classList.add("pick"); say("SET <b>"+n2(pick)+"</b>"); });         // 1 つが光る
+    at(1700, ()=>{ sets.style.transformOrigin=((pick%4)+.5)*25+"% "+(((pick>>2)+.5)*25)+"%"; sets.classList.add("zoom"); });   // 拡大
+    at(2600, ()=>{ sets.classList.add("gone"); pads.classList.add("show"); say("<b>16</b> PAD"); });
+    padEls.forEach((d,k)=>at(2600+k*25, ()=>d.classList.add("in")));                              // 16 パッドになる
+    const S=3400;
+    for(let p=0;p<4;p++){
+      at(S+p*16*STEP, ()=>{ keys.forEach((k,j)=>k.classList.toggle("on",j===p)); say("SEQ <b>"+"ABCD"[p]+"</b>"); });
+      for(let s=0;s<16;s++) at(S+(p*16+s)*STEP, ()=>{                                              // A B C D の順に鳴る
+        stepEls.forEach((e,j)=>e.classList.toggle("on",j===s));
+        SPLASH_PATS[p][s].forEach(i=>{ const d=padEls[i]; d.classList.remove("hit"); void d.offsetWidth; d.classList.add("hit"); setTimeout(()=>d.classList.remove("hit"), 110); });
+      });
+    }
+    const E=S+64*STEP;
+    at(E+250, ()=>{ pads.classList.remove("show"); sets.classList.remove("gone","zoom"); keys.forEach(k=>k.classList.remove("on")); stepEls.forEach(s=>s.classList.remove("on"));
+      say("<b>16</b> SET × <b>16</b> PAD × <b>4</b> SEQ"); });                                     // 引いて 16 セットに戻る
+    at(E+2300, ()=>cycle(n+1));
+  }
+  cycle(0);
+})();
 // @module skin-version-splash
 // @provides APP_VERSION
 // @uses AC, buildAllTrackWaves, drawAllPadWaves, previewName
@@ -6295,7 +6395,7 @@ function setModeEnter(on){
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.157";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.158";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
