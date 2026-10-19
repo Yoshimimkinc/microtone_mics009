@@ -1,6 +1,6 @@
 // @module ui/set-view
-// @provides _clPagePrev, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, paintSetMap, setGridEl,
-//    setModeEnter
+// @provides _clPagePrev, _setIn, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, paintSetMap,
+//    setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp, setPadUpAll
 // @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet,
 //    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat,
 //    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop,
@@ -37,6 +37,12 @@ function paintSetMap(){
     c.classList.toggle("cur",k===setCur); c.classList.toggle("play",on); c.classList.toggle("held",on&&isSetHeld(k)); } });
   document.querySelectorAll(".setno").forEach(b=>{ if(b.textContent!==no) b.textContent=no; });
 }
+// SET のパッドをキーボード / MIDI から（v0.3.159）：指と同じ押す・離す・ホールド・音量。src はその入力を見分ける文字列（"key:Digit1" / "midi:60"）
+const _setIn={};
+function setPadDown(k,src){ return _setIn.down ? _setIn.down(k,src) : false; }
+function setPadUp(src){ if(_setIn.up) _setIn.up(src); }
+function setPadUpAll(){ if(_setIn.upAll) _setIn.upAll(); }
+function setPadNudge(dDb){ return _setIn.nudge ? _setIn.nudge(dDb) : false; }
 function _snapPatHas(tr,p){ return tr.some(t=>t.patterns&&t.patterns[p]&&t.patterns[p].some(b=>b.some(v=>v>0))); }
 function _setInfo(k){   // 表示用：いまのセットは live から、他は snapshot から
   if(k===setCur) return {name:setName(k), bpm:bpmVal, has:[0,1,2,3].map(p=>_snapPatHas(tracks,p)), fresh:false};
@@ -100,36 +106,49 @@ function setModeEnter(on){
   const no=k=>String(k+1).padStart(2,"0");
   const endHold=(h)=>{ clearTimeout(h.timer); h.d.classList.remove("pressing","adj"); };
   // v0.3.151：「鳴っている Pad を止めるときは、押して離して止まる」「押して始めるとき、押しながら上下スワイプで音量」
-  // 押している指ごとに h = {k, d, mode, y0, db0, moved}。mode：start＝押して鳴らした／held＝ホールド中を押した（離すと止まる）／vol＝別の指で鳴っている最中（音量だけ）
+  // 押している入力ごとに h = {k, d, mode, y0, db0, moved}。入力＝指（pointerId）・キー（"key:"+code）・MIDI（"midi:"+note）（v0.3.159）。
+  // mode：start＝押して鳴らした／held＝ホールド中を押した（離すと止まる）／vol＝別の入力で鳴っている最中（音量だけ）
   const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
-  const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
-    const k=+d.dataset.k;
-    try{ d.setPointerCapture(e.pointerId); }catch(_){}
-    if(armMode==="chop"){ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); return; }
-    const h={k, d, timer:0, mode:"start", y0:e.clientY, db0:setLevels[k]||0, moved:false};
-    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら「離すと止まる」（スワイプしたら止めない＝音量だけ）。別の指で押している最中なら音量だけ
+  const copyTo=k=>{ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); };
+  const down=(k,id,y)=>{
+    if(holds.has(id)) return;
+    const d=setGridEl.children[k];
+    const h={k, d, timer:0, mode:"start", y0:y||0, db0:setLevels[k]||0, moved:false};
+    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら「離すと止まる」（音量を動かしたら止めない）。別の入力で押している最中なら音量だけ
       h.mode = isSetHeld(k) ? "held" : "vol";
-      holds.set(e.pointerId, h);
-      say((h.mode==="held" ? "離すと止まる："+no(k)+" "+setName(k)+"（上下スワイプで音量）" : "上下スワイプで音量："+no(k)+" "+setName(k)));
+      holds.set(id, h);
+      say((h.mode==="held" ? "離すと止まる："+no(k)+" "+setName(k)+"（上下で音量）" : "上下で音量："+no(k)+" "+setName(k)));
       return; }
     startSet(k);
     const ms=Math.round(60000/(bpmVal||100));   // 1 拍＝4 ステップ（押したセットの BPM）。v0.3.153 で 1 小節から短くした
-    h.timer=setTimeout(()=>{ if(holds.get(e.pointerId)!==h) return; h.d.classList.remove("pressing");
+    h.timer=setTimeout(()=>{ if(holds.get(id)!==h) return; h.d.classList.remove("pressing");
       if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（押して離すと止まる）"); paintSet(); } }, ms);
-    holds.set(e.pointerId, h);
+    holds.set(id, h);
     d.style.setProperty("--hold-ms", ms+"ms"); d.classList.add("pressing");
     say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 拍押し続けるとホールド・上下で音量）"); paintSet(); };
+  const showLv=h=>{ paintSetLevel(h.d, h.k); say("VOL "+no(h.k)+" "+setName(h.k)+"  "+fmtSetLevel(setLevels[h.k])+" dB"); };   // 動かしている 1 枚だけ塗る（毎回 16 枚は重い）
+  const up=(id,cancelled)=>{ const h=holds.get(id); if(!h) return; holds.delete(id); endHold(h);
+    if(cancelled && h.mode!=="start") return;   // 取り消された入力では止めない
+    if(h.mode==="held"){ if(!h.moved && setIsPlaying(h.k)){ stopSet(h.k); say("■ "+no(h.k)+" "+setName(h.k)); paintSet(); } return; }
+    if(h.mode==="start" && !isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
+  // 指
+  const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
+    const k=+d.dataset.k;
+    try{ d.setPointerCapture(e.pointerId); }catch(_){}
+    if(armMode==="chop"){ copyTo(k); return; }
+    down(k, e.pointerId, e.clientY); };
   const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
     const dy=e.clientY-h.y0;
     if(!h.moved){ if(Math.abs(dy)<SWIPE_PX) return; h.moved=true; h.d.classList.add("adj"); }
     const eff = dy>0 ? dy-SWIPE_PX : dy+SWIPE_PX;   // 遊びの分を引く＝動き出しで跳ばない
-    setSetLevel(h.k, h.db0 - eff/PX_PER_DB);
-    paintSetLevel(h.d, h.k);   // 動かしている 1 枚だけ塗る（毎回 16 枚は重い）
-    say("VOL "+no(h.k)+" "+setName(h.k)+"  "+fmtSetLevel(setLevels[h.k])+" dB"); };
-  const pressEnd=(e)=>{ const h=holds.get(e.pointerId); if(!h) return; holds.delete(e.pointerId); endHold(h);
-    if(e.type==="pointercancel" && h.mode!=="start") return;   // 取り消された指では止めない
-    if(h.mode==="held"){ if(!h.moved && setIsPlaying(h.k)){ stopSet(h.k); say("■ "+no(h.k)+" "+setName(h.k)); paintSet(); } return; }
-    if(h.mode==="start" && !isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
+    setSetLevel(h.k, h.db0 - eff/PX_PER_DB); showLv(h); };
+  const pressEnd=(e)=>{ up(e.pointerId, e.type==="pointercancel"); };
+  // キーボード・MIDI（v0.3.159）：52-chop / 72-midi の入口から。押しているキーの ↑ ↓ ＝音量 ±1 dB（指の上下スワイプの代わり）
+  _setIn.down=(k,src)=>{ if(!setMode || !(k>=0&&k<16)) return false; if(armMode==="chop"){ copyTo(k); return true; } down(k,src,0); return true; };
+  _setIn.up=(src)=>{ up(src,false); };
+  _setIn.upAll=()=>{ [...holds.keys()].filter(id=>typeof id==="string").forEach(id=>up(id,true)); };   // 窓を離れたらキーの押しっぱなしを放す
+  _setIn.nudge=(dDb)=>{ const ids=[...holds.keys()].filter(id=>typeof id==="string"); if(!ids.length) return false;
+    const h=holds.get(ids[ids.length-1]); h.moved=true; h.d.classList.add("adj"); setSetLevel(h.k,(setLevels[h.k]||0)+dDb); showLv(h); return true; };
   if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointermove",pressMove); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
   setInterval(()=>{ if(setMode) paintSet(); }, 500);   // 経過時間と、鳴っているセットの印（16 個の塗り直しは軽い）

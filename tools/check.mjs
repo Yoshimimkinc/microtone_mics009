@@ -806,6 +806,42 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function setKeys(){
+  // v0.3.159：SET のパッドをキーボード（1-8 / Q-I）と MIDI（C4〜D#5）から。押す＝鳴る／離す＝止まる／1 拍でホールド／押しながら ↑ ↓ ＝音量
+  const V='SETKEYS 1280x800';
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); setSlots[0].bpm=60; setSlots[1].bpm=60; setSlots[2].bpm=240; document.activeElement&&document.activeElement.blur&&document.activeElement.blur(); });
+  const st=()=>p.evaluate(()=>({mode:setMode, cur:setCur, playing, sides:[...sidePlayers.keys()].join(), held:[0,1,2].filter(k=>isSetHeld(k)).join(), lv0:setLevels[0]}));
+  await p.keyboard.press('Tab'); await p.keyboard.press('Tab'); await p.waitForTimeout(150);
+  const t0=await st();
+  ok_(`${V} TAB で PADS → SEQ → SET`, t0.mode===true, JSON.stringify(t0));
+  await p.keyboard.down('2'); await p.waitForTimeout(150); const a1=await st();
+  await p.keyboard.up('2'); await p.waitForTimeout(120); const a2=await st();
+  ok_(`${V} キー 2 を押す＝SET 02 が鳴る／離す＝止まる`, a1.cur===1 && a1.playing && a2.cur===1 && !a2.playing, JSON.stringify({a1,a2}));
+  await p.keyboard.down('3'); await p.waitForTimeout(500); await p.keyboard.up('3'); await p.waitForTimeout(120); const b1=await st();
+  ok_(`${V} キー 3 を 1 拍押し続ける＝ホールド（離しても鳴る）`, b1.cur===2 && b1.playing && b1.held==='2', JSON.stringify(b1));
+  await p.keyboard.down('1'); await p.waitForTimeout(100);
+  for(let n=0;n<3;n++){ await p.keyboard.press('ArrowDown'); }
+  await p.waitForTimeout(60); const c1=await st();
+  await p.keyboard.up('1'); await p.waitForTimeout(120); const c2=await st();
+  ok_(`${V} ホールド中にキー 1 ＝ 2 つ鳴る／押しながら ↓ 3 回で -3 dB／離すと SET 01 だけ止まる`, c1.cur===0 && c1.playing && c1.sides==='2' && c1.lv0===-3 && !c2.playing && c2.sides==='2' && c2.lv0===-3, JSON.stringify({c1,c2}));
+  await p.keyboard.down('3'); await p.waitForTimeout(100); const d0=await st(); await p.keyboard.up('3'); await p.waitForTimeout(120); const d1=await st();
+  ok_(`${V} ホールド中のキー 3 は押した瞬間には止まらず、離すと止まる`, d0.sides==='2' && d1.sides==='' && d1.held==='', JSON.stringify({d0,d1}));
+  await p.keyboard.down('2'); await p.waitForTimeout(100); await p.evaluate(()=>window.dispatchEvent(new Event('blur'))); await p.waitForTimeout(100); const e1=await st(); await p.keyboard.up('2');
+  ok_(`${V} キーを押したまま窓を離れたら放す（鳴りっぱなしにしない）`, !e1.playing && e1.sides==='', JSON.stringify(e1));
+  const m=await p.evaluate(async()=>{ midiEnabled=true; handleMIDI([0x90,62,100]); await new Promise(r=>setTimeout(r,120)); const on={cur:setCur, playing};
+    handleMIDI([0x80,62,0]); await new Promise(r=>setTimeout(r,100)); const off={playing};
+    handleMIDI([0x90,61,100]); await new Promise(r=>setTimeout(r,80)); handleMIDI([0x90,61,0]); await new Promise(r=>setTimeout(r,100)); const off2={cur:setCur, playing}; midiEnabled=false; return {on,off,off2}; });
+  ok_(`${V} MIDI：D4 で SET 03 が鳴り、ノートオフで止まる（ベロシティ 0 のノートオンも）`, m.on.cur===2 && m.on.playing && !m.off.playing && m.off2.cur===1 && !m.off2.playing, JSON.stringify(m));
+  await p.keyboard.press('Tab'); await p.waitForTimeout(120);
+  ok_(`${V} SET で TAB ＝ PADS に戻る`, await p.evaluate(()=>!setMode && document.getElementById('viewPads').classList.contains('active')), 'still set');
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function splashAnim(){
   // v0.3.158：起動画面のアニメーション（16 セット → 拡大 → 16 パッド → A B C D）。メニューで OFF（次の起動から）
   const V='SPLASH 390x844';
@@ -907,6 +943,7 @@ await setMode();
 await patMute();
 await patFx();
 await splashAnim();
+await setKeys();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

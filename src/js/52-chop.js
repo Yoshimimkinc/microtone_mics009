@@ -6,8 +6,9 @@
 //    barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, effectiveSwing, extractViaPlayback, flashPad,
 //    getPattern, inBlink, isMelodic, isSilent, makeLofi, nextChokeGroup, openPadEdit, paintMixer,
 //    paintPadStates, paintPerf, pickCaptureTarget, playBtn, playVoice, playing, pushUndo, refreshPadDisplay,
-//    sampNameEl, scaleSemi, selectPad, selected, setDelayTempo, stepIdx, stepTimeClean, stepTrackName,
-//    swingPct, switchView, toggleStepAt, tracks, trigger, vuHit
+//    sampNameEl, scaleSemi, selectPad, selected, setDelayTempo, setMode, setPadDown, setPadNudge, setPadUp,
+//    setPadUpAll, stepIdx, stepTimeClean, stepTrackName, swingPct, switchView, toggleStepAt, tracks,
+//    trigger, vuHit
 // @depends engine-bus, engine-fx, ui/pads-view
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
@@ -186,11 +187,11 @@ window.addEventListener("keydown",async(e)=>{
   if(e.repeat)return;
   // Ctrl/Cmd+Z：元に戻す
   if((e.ctrlKey||e.metaKey) && (e.key==="z"||e.key==="Z")){ e.preventDefault(); doUndo(); return; }
-  // TAB：PADS→SEQ→MIX を順送り（Shift+TABで逆）
+  // TAB：PADS→SEQ→SET を順送り（Shift+TABで逆）。SET は v0.3.159 から
   if(e.key==="Tab"){
     e.preventDefault();
-    const order=["viewPads","viewSeq"];
-    let cur=order.findIndex(v=>document.getElementById(v).classList.contains("active")); if(cur<0)cur=0;
+    const order=["viewPads","viewSeq","viewSet"];
+    let cur=(typeof setMode!=="undefined"&&setMode) ? 2 : order.findIndex(v=>document.getElementById(v).classList.contains("active")); if(cur<0)cur=0;
     switchView(order[(cur+(e.shiftKey?-1:1)+order.length)%order.length]);
     return;
   }
@@ -209,6 +210,13 @@ window.addEventListener("keydown",async(e)=>{
     inBlink(kk.toUpperCase());   // 覚えた瞬間もランプで見える（MIDIと同じ作法）
     assignTo(assignTarget,"key",kk,kk.toUpperCase());
     return;
+  }
+  // SET モード（v0.3.159）：パッドのキー（1-8 / Q-I）＝16 セット。押す＝鳴る／離す＝止まる（keyup）／1 拍押し続けるとホールド。
+  // キーを押している間の ↑ ↓ ＝そのセットの音量 ±1 dB（指の上下スワイプの代わり）。ステップのキー（A-K / Z-,）は今までどおり
+  if(typeof setMode!=="undefined" && setMode){
+    if((e.key==="ArrowUp"||e.key==="ArrowDown") && typeof setPadNudge==="function" && setPadNudge(e.key==="ArrowUp"?1:-1)){ e.preventDefault(); return; }
+    const si=KEYMAP.indexOf(e.key.toLowerCase());
+    if(si>=0 && !e.altKey && !e.ctrlKey && !e.metaKey && typeof setPadDown==="function" && setPadDown(si,"key:"+e.code)){ e.preventDefault(); return; }
   }
   const custom=tracks.findIndex(t=>t.key===e.key.toLowerCase());   // 明示割り当ては既定キー(STEP/音階/KEYMAP)より優先
   if(custom>=0 && !e.altKey && !e.shiftKey){
@@ -254,6 +262,9 @@ window.addEventListener("keydown",async(e)=>{
   const i=KEYMAP.indexOf(k);
   if(i>=0){if(AC.state!=="running")await AC.resume();trigger(i);selectPad(i,true);}
 });
+// SET のキーを離した＝そのセットを止める（ホールドしていなければ）。窓を離れたら押しっぱなしのキーを放す（v0.3.159）
+window.addEventListener("keyup",e=>{ if(typeof setPadUp==="function") setPadUp("key:"+e.code); });
+window.addEventListener("blur",()=>{ if(typeof setPadUpAll==="function") setPadUpAll(); });
 
 // 全スライダー：タップ/クリックで確実にフォーカスし、↑↓←→キーで操作可能にする
 document.querySelectorAll('input[type=range]').forEach(r=>{
