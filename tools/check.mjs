@@ -806,6 +806,23 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function wireSkin(){
+  // v0.3.163：スキン WIRE（黒地＋線だけのワイヤーフレーム）
+  const V='WIRE 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const r=await p.evaluate(()=>{ document.querySelector('#themeSeg button[data-th="wf"]').click();
+    const cs=sel=>getComputedStyle(document.querySelector(sel));
+    return {cls:document.body.className.match(/t-\w+/g).join(), ls:localStorage.getItem('mics-skin'), on:document.querySelector('#themeSeg button.on').dataset.th,
+      bg:cs('body').backgroundColor, pad:cs('#pads .pad').backgroundImage+'|'+cs('#pads .pad').backgroundColor, step:(document.querySelector('#stepStrip .stepbtn:not(.on)')?cs('#stepStrip .stepbtn:not(.on)').backgroundColor:'-') }; });
+  ok_(`${V} スキン WIRE：黒地・パッドとステップは塗らない（線だけ）・選んだスキンを覚える`, r.cls==='t-wf' && r.ls==='wf' && r.on==='wf' && r.bg==='rgb(0, 0, 0)' && /none\|rgb\(0, 0, 0\)/.test(r.pad) && (r.step==='-'||r.step==='rgb(0, 0, 0)'), JSON.stringify(r));
+  await p.evaluate(()=>{ document.querySelector('#themeSeg button[data-th="ak"]').click(); });
+  ok_(`${V} AK に戻せる`, await p.evaluate(()=>document.body.classList.contains('t-ak') && !document.body.classList.contains('t-wf')), 'stuck');
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function saveScopeTest(){
   // v0.3.162：SAVE / LOAD をステージ・セット・シーケンス単位で
   const V='SAVESCOPE 1280x800';
@@ -1091,6 +1108,7 @@ await peCueTest();
 await editTools();
 await barHoldTest();
 await saveScopeTest();
+await wireSkin();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
