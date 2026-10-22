@@ -6,7 +6,7 @@
 (function(){
   const seg=document.getElementById("themeSeg"), KEY="mics-skin";
   function apply(th){
-    document.body.classList.remove("t-ak","t-sp","t-rl");
+    document.body.classList.remove("t-ak","t-sp","t-rl","t-wf");   // WIRE（t-wf）は v0.3.163
     document.body.classList.add("t-"+th);
     if(typeof drawAllPadWaves==="function") drawAllPadWaves();
     if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // テーマ変更でink色が変わるので波形も再生成
