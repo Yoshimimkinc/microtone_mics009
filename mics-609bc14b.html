@@ -59,6 +59,45 @@
   body.t-rl .step:nth-child(4n+3):not(.on){border-color:#a85a18;}  /* 拍内2 */
   body.t-rl .step:nth-child(4n):not(.on){border-color:#d98426;}    /* 拍内3 */
   body.t-rl .step:nth-child(4n+1):not(.on){border-color:#ffb24d;}  /* 拍内4: 明オレンジ */
+  /* WIRE（v0.3.163 §157）：「ヴェイパー調ワイヤーフレーム。シンプルな線とブラックバックな 80 年代のワイヤーフレームゲームのような」。
+     黒一色の地に、シアンの細い線（枠）とマゼンタの点灯。面は塗らない＝線だけ。光はベクター管の滲み程度に薄く */
+  body.t-wf{--bg:#000;--panel:#000;--panel2:#000;--edge:#1d6b7a;--line:#164a57;--well:#000;--well-ink:#2de2e6;--modal-deep:#000;
+    --ink:#d8fbff;--dim:#7fb8c8;--amber:#ff2bd6;--amber-dim:#4a0c40;--teal:#2de2e6;--red:#ff4d6d;--pad:#000;--pad-face:#000;
+    --hit-c2:#b0189a;--hit-glow-a:255,43,214;--hit-ink:#000;background:#000;}
+  body.t-wf .unit{background:#000;border-color:var(--teal);box-shadow:0 0 0 1px rgba(45,226,230,.15),0 0 24px rgba(45,226,230,.12);}
+  body.t-wf #splash{background:#000;}
+  /* 地平線のグリッド（ヴェイパー）：スプラッシュの下半分だけ。マゼンタの線を遠近で */
+  body.t-wf #splash::before{content:"";position:absolute;left:-50%;right:-50%;bottom:0;height:46%;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(255,43,214,.55) 0 1px,transparent 1px 34px),repeating-linear-gradient(90deg,rgba(255,43,214,.55) 0 1px,transparent 1px 48px);
+    transform:perspective(260px) rotateX(62deg);transform-origin:50% 100%;opacity:.45;
+    -webkit-mask-image:linear-gradient(0deg,#000 30%,transparent 100%);mask-image:linear-gradient(0deg,#000 30%,transparent 100%);}
+  body.t-wf #splash>*{position:relative;}
+  /* 線だけ：ボタン・パッド・窓は黒地＋細い線（状態つきの塗り＝.on 等はクラス 2 つなのでそちらが勝つ） */
+  body.t-wf button{background:#000;border:1px solid var(--edge);}
+  body.t-wf .pad{background:#000;border:1px solid var(--edge);box-shadow:0 0 6px rgba(45,226,230,.18);}
+  body.t-wf .pad .nm{text-shadow:0 0 6px rgba(45,226,230,.45);}
+  body.t-wf .pad.sel{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset,0 0 10px rgba(45,226,230,.55);}
+  body.t-wf .pad.hit{background:rgba(255,43,214,.16);border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset,0 0 16px rgba(255,43,214,.75);}
+  body.t-wf .pad.hit .nm,body.t-wf .pad.hit .n,body.t-wf .pad.hit .k{color:#fff;}
+  body.t-wf .pad>.pad-wave{opacity:.55;}
+  body.t-wf .perf-screen,body.t-wf .modal{background:#000;border-color:var(--teal);}
+  body.t-wf .logo b,body.t-wf .s-logo b{color:var(--amber);text-shadow:0 0 10px rgba(255,43,214,.7);}
+  /* ステップ（SEQ の格子・下段の 16 ステップ）：休符は黒地に線、拍内で線の明るさを変える（塗りのグレー段階の代わり）。打ったステップはマゼンタの面 */
+  body.t-wf .step:not(.on),body.t-wf .stepbtn:not(.on){background:#000;border:1px solid #123c47;}
+  body.t-wf .step:nth-child(4n+2):not(.on),body.t-wf .stepbtn:nth-child(4n+1):not(.on){border-color:#2a8a9c;}   /* 拍頭は明るい線 */
+  body.t-wf .step:nth-child(4n+2),body.t-wf .stepbtn:nth-child(4n+1){border-left:2px solid var(--teal);}
+  /* iPad 横の選択パッド：面で塗らず、線と光で */
+  body.t-wf.perf #viewPads.split>.pads .pad.sel{background:#000;border-color:var(--teal);box-shadow:0 0 0 2px var(--teal) inset,0 0 14px rgba(45,226,230,.6);}
+  body.t-wf.perf #viewPads.split>.pads .pad.sel .nm,body.t-wf.perf #viewPads.split>.pads .pad.sel .n,body.t-wf.perf #viewPads.split>.pads .pad.sel .k{color:var(--ink);}
+  /* iPad 横の点灯（種別色）：面は薄く、線と光で */
+  body.t-wf.perf #viewPads.split>.pads .pad.hit{background:color-mix(in srgb,var(--cat) 22%,#000);border-color:var(--cat);
+    box-shadow:0 0 0 1px var(--cat) inset,0 0 18px color-mix(in srgb,var(--cat) 75%,transparent);}
+  body.t-wf.perf #viewPads.split>.pads .pad.hit .nm,body.t-wf.perf #viewPads.split>.pads .pad.hit .n,body.t-wf.perf #viewPads.split>.pads .pad.hit .k{color:#fff;}
+  /* 起動アニメーション：セル・パッドも線で */
+  body.t-wf .sa-cell{background:#000;border:1px solid var(--edge);}
+  body.t-wf .sa-cell.pick{background:rgba(45,226,230,.12);border-color:var(--teal);box-shadow:0 0 12px rgba(45,226,230,.7);}
+  body.t-wf .sa-pad{background:#000;border-color:var(--edge);}
+  body.t-wf .sa-pad.hit{background:rgba(255,43,214,.25);border-color:var(--amber);box-shadow:0 0 12px rgba(255,43,214,.8);}
   /* skin切替：右上角の最上位に小さく配置（行を増やさない） */
   /* ケバブメニュー & モーダル（DADS dialog風） */
   .tempo-row{display:contents;}   /* PCはインライン（透過） */
@@ -1144,7 +1183,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.162</div>
+  <div class="s-ver" id="splashVer">v0.3.163</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1200,6 +1239,7 @@
             <button data-th="ak" class="on">AK</button>
             <button data-th="sp">SP</button>
             <button data-th="rl">TR</button>
+            <button data-th="wf">WIRE</button>
           </div>
           <label class="toggle on" id="splashAnimToggle" style="margin-top:10px;"><span class="sw"></span><span>起動アニメーション</span></label>
         </div>
@@ -6612,7 +6652,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 (function(){
   const seg=document.getElementById("themeSeg"), KEY="mics-skin";
   function apply(th){
-    document.body.classList.remove("t-ak","t-sp","t-rl");
+    document.body.classList.remove("t-ak","t-sp","t-rl","t-wf");   // WIRE（t-wf）は v0.3.163
     document.body.classList.add("t-"+th);
     if(typeof drawAllPadWaves==="function") drawAllPadWaves();
     if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // テーマ変更でink色が変わるので波形も再生成
@@ -6625,7 +6665,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.162";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.163";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
