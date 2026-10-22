@@ -1,10 +1,12 @@
 // @module share-export
-// @provides _expBlob, _expBusy, _expName, applyProject, shareOrDownload
-// @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
-//    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
-//    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
-//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSetLevel,
-//    setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
+// @provides _expBlob, _expBusy, _expName, applyProject, loadFileData, shareOrDownload
+// @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySeqData, applySetSnapshot,
+//    autosaveNow, bufToWav, compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn,
+//    fxReverbAmt, fxReverbOn, groupVol, loadSetData, makeSatCurve, masterGain, multiOut, outBGain,
+//    paintPadStates, paintPatBar, paintPerf, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat,
+//    queuedSet, refreshStepWaves, sampNameEl, saturator, saveScope, seqFromSetData, setCompBypass, setCur,
+//    setHoldClear, setName, setSetLevel, setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices,
+//    tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -101,14 +103,38 @@ async function applyProject(proj, opts){
     if(typeof setSetLevel==="function"){ const ss=Array.isArray(proj.sets)?proj.sets:[]; for(let k=0;k<16;k++) setSetLevel(k, (ss[k]&&+ss[k].level)||0); }   // ミックス音量（v0.3.151。v2 は 0）
     applySetSnapshot(setSlots[setCur], opts);
 }
+// 読み込み先を決める（v0.3.162 §156）：ファイルの種類（stage / set / seq）とメニューの単位（saveScope）の小さいほうへ。
+// SEQ のファイル → 編集中のパターンへ。SET のファイル → いまのセットへ（単位が SEQ なら、そのセットから編集中と同じ文字のパターンだけ）。
+// STAGE のファイル → 単位 STAGE なら全体、SET ならファイルのいまのセットをいまのセットへ、SEQ ならそのセットの同じ文字のパターンを編集中のパターンへ。
+// どれも Load の前へ ↩ で戻れる（pushUndo）
+async function loadFileData(proj, scope){
+  if(!proj || !proj.version) throw new Error("Invalid project file");
+  const kind=(proj.kind==="set"||proj.kind==="seq") ? proj.kind : "stage";
+  if(kind==="stage" && !(proj.tracks||Array.isArray(proj.sets))) throw new Error("Invalid project file");   // v2（tracks）／v3（sets）
+  const L="ABCD"[editPat], sn=String(setCur+1).padStart(2,"0");
+  const fileSet = kind==="set" ? proj.set : (kind==="stage" ? (Array.isArray(proj.sets) ? proj.sets[+proj.cur||0] : proj) : null);
+  if(kind==="seq" || scope==="seq"){
+    const trs = kind==="seq" ? proj.tracks : seqFromSetData(fileSet, editPat);
+    if(!Array.isArray(trs)) throw new Error("Invalid sequence");
+    pushUndo(); applySeqData(editPat, trs);
+    paintSteps(); paintPatBar(); paintPadStates(); if(typeof refreshStepWaves==="function") refreshStepWaves(); if(typeof paintPerf==="function") paintPerf();
+    return "LOADED SEQ → SET "+sn+" の "+L;
+  }
+  if(kind==="set" || scope==="set"){
+    if(!fileSet || !Array.isArray(fileSet.tracks)) throw new Error("Invalid set");
+    pushUndo(); await loadSetData(fileSet);
+    return "LOADED SET → SET "+sn+"（"+setName(setCur)+"）";
+  }
+  pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
+  await applyProject(proj);
+  return null;
+}
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
   try{
     const proj=JSON.parse(await f.text());
-    if(!proj.version||!(proj.tracks||Array.isArray(proj.sets))) throw new Error("Invalid project file");   // v2（tracks）／v3（sets）
-    pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
-    await applyProject(proj);
-    sampNameEl.textContent="LOADED — "+f.name.slice(0,12).toUpperCase();
+    const msg=await loadFileData(proj, (typeof saveScope==="function") ? saveScope() : "stage");
+    sampNameEl.textContent=msg || ("LOADED — "+f.name.slice(0,12).toUpperCase());
     if(typeof autosaveNow==="function") autosaveNow(true);   // 読んだ直後に必ず書く。次回起動で「読む前」に戻らない
   }catch(err){ console.warn("[project load]",err); sampNameEl.textContent="LOAD FAILED — このファイルは読めない"; }
 });

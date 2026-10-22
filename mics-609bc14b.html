@@ -1144,7 +1144,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.161</div>
+  <div class="s-ver" id="splashVer">v0.3.162</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1253,6 +1253,8 @@
         </div>
         <div class="modal-sec">
           <div class="modal-label">Project</div>
+          <!-- SAVE / LOAD の単位（v0.3.162 §156）：ステージ全体 / いまのセット / 編集中のシーケンス -->
+          <div class="seg" id="saveScope" style="margin-bottom:10px;"><button data-u="stage" class="on">STAGE</button><button data-u="set">SET</button><button data-u="seq">SEQ</button></div>
           <div class="modal-btns">
             <button class="t" id="saveBtn">Save</button>
             <button class="t" id="loadProjBtn">Load</button>
@@ -3280,9 +3282,9 @@ function swapPads(a,b){
 }
 
 // @module data/patterns
-// @provides PAT_FX, _fxOf, _patArr, copyBar, copyPattern, patLoad, patRead, patSync, patWrite, setStep,
-//    setStepAt
-// @uses clearLockEdit, editPat, getPattern, patSlot, pushUndo, tracks
+// @provides PAT_FX, _fxOf, _patArr, applySeqData, copyBar, copyPattern, patLoad, patRead, patSync, patWrite,
+//    seqDataOf, seqFromSetData, setStep, setStepAt
+// @uses STEPS, clearLockEdit, editPat, getPattern, patSlot, pushUndo, stripLegacyLocks, tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
@@ -3325,6 +3327,37 @@ function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を 
       Object.keys(t.locks).forEach(k=>{ if(k.indexOf(src+"_")===0) t.locks[dst+k.slice(String(src).length)]=JSON.parse(JSON.stringify(t.locks[k])); }); }
   }
 }
+// ---------- シーケンス（パターン 1 つ）の書き出し / 読み込み（v0.3.162 §156）：「SAVE も LOAD もセット単位かシーケンス単位でできるように」 ----------
+// 1 シーケンス＝16 パッドぶんの 4 小節のステップ・P-LOCK・そのパターンのミュート / ソロ / エフェクト。音は入れない（音はセットのもの）
+function seqDataOf(p){
+  patSync();
+  return tracks.map(t=>{ const locks={};
+    Object.keys(t.locks||{}).forEach(k=>{ if(k.indexOf(p+"_")===0) locks[k.slice(String(p).length+1)]=JSON.parse(JSON.stringify(t.locks[k])); });
+    return {patterns:t.patterns[p].map(b=>b.slice()), locks, mute:!!t.mutes[p], solo:!!t.solos[p], fx:Object.assign({}, t.patFx[p])}; });
+}
+// セットのファイル（.mics の sets[k] / v2 丸ごと）からパターン p を取り出して、シーケンスの形に
+function seqFromSetData(sd, p){
+  return (sd && Array.isArray(sd.tracks) ? sd.tracks : []).slice(0,16).map(pt=>{
+    const pat=pt&&pt.patterns&&pt.patterns[p], bars=[];
+    for(let b=0;b<4;b++) bars.push(Array.isArray(pat) ? (typeof pat[0]==="number" ? (b===0?pat.slice(0,STEPS):[]) : (Array.isArray(pat[b])?pat[b].slice(0,STEPS):[])) : []);
+    const locks={}; Object.keys((pt&&pt.locks)||{}).forEach(k=>{ if(k.indexOf(p+"_")===0) locks[k.slice(String(p).length+1)]=JSON.parse(JSON.stringify(pt.locks[k])); });
+    const fx = pt&&Array.isArray(pt.patFx)&&pt.patFx[p] ? pt.patFx[p] : (pt ? {delaySend:pt.delaySend||0, reverbSend:pt.reverbSend||0, filter:pt.filter||"off", cutoff:pt.cutoff??12000, reso:pt.reso??0.7} : null);
+    return {patterns:bars, locks:stripLegacyLocks(locks), mute:!!(pt&&(Array.isArray(pt.mutes)?pt.mutes[p]:pt.mute)), solo:!!(pt&&(Array.isArray(pt.solos)?pt.solos[p]:pt.solo)), fx};
+  });
+}
+// シーケンスをパターン p へ（ステップ・P-LOCK・ミュート / ソロ / エフェクトを置き換え）。undo と塗りは呼び出し側
+function applySeqData(p, trs){
+  patSync();
+  tracks.forEach((t,i)=>{ const x=trs&&trs[i];
+    for(let b=0;b<4;b++){ const src=x&&x.patterns&&Array.isArray(x.patterns[b]) ? x.patterns[b].slice(0,STEPS) : []; while(src.length<STEPS) src.push(0); t.patterns[p][b]=src; }
+    if(!t.locks) t.locks={};
+    Object.keys(t.locks).forEach(k=>{ if(k.indexOf(p+"_")===0) delete t.locks[k]; });
+    if(x) Object.keys(x.locks||{}).forEach(k=>{ t.locks[p+"_"+k]=JSON.parse(JSON.stringify(x.locks[k])); });
+    t.mutes[p]=!!(x&&x.mute); t.solos[p]=!!(x&&x.solo);
+    if(x&&x.fx) t.patFx[p]=Object.assign({}, t.patFx[p], x.fx);
+  });
+  if(patSlot===p) patLoad(p, true);
+}
 function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst へ（DUPの汎用版）
   if(src===dst) return; pushUndo();
   const ps=editPat+"_"+src+"_", pd=editPat+"_"+dst+"_";
@@ -3336,8 +3369,8 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 }
 // @module data/set
 // @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
-//    setRename, setsFromProject, snapshotSet, switchSetNow
+//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet, resetSet, setElapsed,
+//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat,
@@ -3439,6 +3472,14 @@ function switchSetNow(k, stopAt){
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
   if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// セットのファイル（.mics の 1 セット）をいまのセットへ読み込む（v0.3.162 §156）。音は復号。undo と塗りは呼び出し側
+async function loadSetData(sd){
+  const snap=await decodeSetData(sd, setCur);
+  stopAllVoices(AC.currentTime);
+  setSlots[setCur]=snap;   // 名前など（いまのセットの中身は live が正。切替のときに snapshotSet で書き戻る）
+  applySetSnapshot(snap, {});
+  if(typeof setSetLevel==="function") setSetLevel(setCur, +(sd&&sd.level)||0);
 }
 // SET のポン出し（v0.3.147）：k をいまのセット（PADS / SEQ の対象）にする。音は止めない＝いま鳴っている声とループの状態は
 // 退避先の snapshot へ引き継ぐ（いまのセットが鳴っていれば、呼ぶ前に audio/set-players の sideTakeCurrent で「他のセットの再生」に移してある）
@@ -5944,10 +5985,11 @@ async function finalizeRec(){
 }
 
 // @module save-load
-// @provides b64ToUint8, bufToWav, buildProject, calcCrop, setData, trackData, uint8ToB64, wavB64Cached
+// @provides SAVE_SCOPE_KEY, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop, curSetData,
+//    saveScope, setData, trackData, uint8ToB64, wavB64Cached
 // @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, setCur, setLevels, setSlots,
-//    shareOrDownload, swingPct, tracks
+//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, sampNameEl, seqDataOf,
+//    setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -6058,14 +6100,35 @@ document.getElementById("resetBtn").addEventListener("click",async()=>{
   _asDirty=false;
   location.reload();
 });
-document.getElementById("saveBtn").addEventListener("click",()=>{
-  const proj=buildProject();
-  const json=JSON.stringify(proj);
-  const blob=new Blob([json],{type:"application/json"});
-  // ファイル名に日時を付与: mics009-YYMMDD-HHMM.mics。共有シート（メンバーへ直接）→非対応はDL
+// ---------- SAVE / LOAD の単位（v0.3.162 §156）：「SAVE も LOAD もセット単位かシーケンス単位でできるように」 ----------
+// STAGE＝ファイル全体（16 セット）／SET＝いまのセット 1 つ（音つき）／SEQ＝編集中のパターン 1 つ（ステップ・P-LOCK・ミュート / エフェクト。音は無し）。
+// 単位はメニューの Project で選ぶ（この端末で覚える）。読み込みは 73-share-export の loadFileData
+const SAVE_SCOPE_KEY="mics-save-scope";
+function saveScope(){ let s="stage"; try{ s=localStorage.getItem(SAVE_SCOPE_KEY)||"stage"; }catch(_){} return ["stage","set","seq"].includes(s)?s:"stage"; }
+(function(){
+  const seg=document.getElementById("saveScope"); if(!seg) return;
+  const paint=()=>[...seg.children].forEach(b=>b.classList.toggle("on", b.dataset.u===saveScope()));
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    try{ localStorage.setItem(SAVE_SCOPE_KEY, b.dataset.u); }catch(_){}
+    paint(); sampNameEl.textContent = ({stage:"SAVE / LOAD ＝ ステージ全体（16 セット）", set:"SAVE / LOAD ＝ いまのセット（音つき）", seq:"SAVE / LOAD ＝ 編集中のシーケンス（"+"ABCD"[editPat]+"・音は無し）"})[saveScope()]; });
+  paint();
+})();
+// いまのセット（live）をファイルのセットの形に
+function curSetData(){ patSync(); return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, level:setLevels[setCur]||0, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))}; }
+// 単位ごとの書き出し内容とファイル名
+function buildSaveFile(scope){
   const d=new Date(), z=n=>String(n).padStart(2,"0");
   const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
-  shareOrDownload(blob, "mics009-"+stamp+".mics");
+  const sn="set"+z(setCur+1);
+  if(scope==="set") return {obj:{version:3, kind:"set", set:curSetData()}, name:"mics009-"+sn+"-"+stamp+".mics"};
+  if(scope==="seq") return {obj:{version:3, kind:"seq", pat:editPat, from:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:seqDataOf(editPat)},
+                            name:"mics009-"+sn+"ABCD"[editPat]+"-"+stamp+".mics"};
+  return {obj:buildProject(), name:"mics009-"+stamp+".mics"};   // ファイル名に日時: mics009-YYMMDD-HHMM.mics
+}
+document.getElementById("saveBtn").addEventListener("click",()=>{
+  const f=buildSaveFile(saveScope());
+  const blob=new Blob([JSON.stringify(f.obj)],{type:"application/json"});
+  shareOrDownload(blob, f.name);   // 共有シート（メンバーへ直接）→非対応はDL
 });
 
 // GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）
@@ -6169,12 +6232,14 @@ function handleMIDI(data){
 })();
 
 // @module share-export
-// @provides _expBlob, _expBusy, _expName, applyProject, shareOrDownload
-// @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
-//    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
-//    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
-//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSetLevel,
-//    setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
+// @provides _expBlob, _expBusy, _expName, applyProject, loadFileData, shareOrDownload
+// @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySeqData, applySetSnapshot,
+//    autosaveNow, bufToWav, compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn,
+//    fxReverbAmt, fxReverbOn, groupVol, loadSetData, makeSatCurve, masterGain, multiOut, outBGain,
+//    paintPadStates, paintPatBar, paintPerf, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat,
+//    queuedSet, refreshStepWaves, sampNameEl, saturator, saveScope, seqFromSetData, setCompBypass, setCur,
+//    setHoldClear, setName, setSetLevel, setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices,
+//    tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -6271,14 +6336,38 @@ async function applyProject(proj, opts){
     if(typeof setSetLevel==="function"){ const ss=Array.isArray(proj.sets)?proj.sets:[]; for(let k=0;k<16;k++) setSetLevel(k, (ss[k]&&+ss[k].level)||0); }   // ミックス音量（v0.3.151。v2 は 0）
     applySetSnapshot(setSlots[setCur], opts);
 }
+// 読み込み先を決める（v0.3.162 §156）：ファイルの種類（stage / set / seq）とメニューの単位（saveScope）の小さいほうへ。
+// SEQ のファイル → 編集中のパターンへ。SET のファイル → いまのセットへ（単位が SEQ なら、そのセットから編集中と同じ文字のパターンだけ）。
+// STAGE のファイル → 単位 STAGE なら全体、SET ならファイルのいまのセットをいまのセットへ、SEQ ならそのセットの同じ文字のパターンを編集中のパターンへ。
+// どれも Load の前へ ↩ で戻れる（pushUndo）
+async function loadFileData(proj, scope){
+  if(!proj || !proj.version) throw new Error("Invalid project file");
+  const kind=(proj.kind==="set"||proj.kind==="seq") ? proj.kind : "stage";
+  if(kind==="stage" && !(proj.tracks||Array.isArray(proj.sets))) throw new Error("Invalid project file");   // v2（tracks）／v3（sets）
+  const L="ABCD"[editPat], sn=String(setCur+1).padStart(2,"0");
+  const fileSet = kind==="set" ? proj.set : (kind==="stage" ? (Array.isArray(proj.sets) ? proj.sets[+proj.cur||0] : proj) : null);
+  if(kind==="seq" || scope==="seq"){
+    const trs = kind==="seq" ? proj.tracks : seqFromSetData(fileSet, editPat);
+    if(!Array.isArray(trs)) throw new Error("Invalid sequence");
+    pushUndo(); applySeqData(editPat, trs);
+    paintSteps(); paintPatBar(); paintPadStates(); if(typeof refreshStepWaves==="function") refreshStepWaves(); if(typeof paintPerf==="function") paintPerf();
+    return "LOADED SEQ → SET "+sn+" の "+L;
+  }
+  if(kind==="set" || scope==="set"){
+    if(!fileSet || !Array.isArray(fileSet.tracks)) throw new Error("Invalid set");
+    pushUndo(); await loadSetData(fileSet);
+    return "LOADED SET → SET "+sn+"（"+setName(setCur)+"）";
+  }
+  pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
+  await applyProject(proj);
+  return null;
+}
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
   try{
     const proj=JSON.parse(await f.text());
-    if(!proj.version||!(proj.tracks||Array.isArray(proj.sets))) throw new Error("Invalid project file");   // v2（tracks）／v3（sets）
-    pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
-    await applyProject(proj);
-    sampNameEl.textContent="LOADED — "+f.name.slice(0,12).toUpperCase();
+    const msg=await loadFileData(proj, (typeof saveScope==="function") ? saveScope() : "stage");
+    sampNameEl.textContent=msg || ("LOADED — "+f.name.slice(0,12).toUpperCase());
     if(typeof autosaveNow==="function") autosaveNow(true);   // 読んだ直後に必ず書く。次回起動で「読む前」に戻らない
   }catch(err){ console.warn("[project load]",err); sampNameEl.textContent="LOAD FAILED — このファイルは読めない"; }
 });
@@ -6536,7 +6625,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.161";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.162";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

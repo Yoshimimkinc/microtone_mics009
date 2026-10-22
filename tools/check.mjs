@@ -806,6 +806,53 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function saveScopeTest(){
+  // v0.3.162：SAVE / LOAD をステージ・セット・シーケンス単位で
+  const V='SAVESCOPE 1280x800';
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const r=await p.evaluate(async()=>{ await clearAutosave(); const out={};
+    tracks.forEach(t=>t.patterns.forEach(pt=>pt.forEach(b=>b.fill(0))));
+    setEditPat(0); tracks[8].patterns[0][0][0]=1; tracks[8].patterns[0][1][2]=1; tracks[8].mute=true; tracks[9].patterns[1][0][4]=1;
+    tracks[0].name='SS1'; paintPadName(0); applyBpm(91);
+    // SEQ：書き出し → A を消して読む（単位 STAGE でもファイルが SEQ なら編集中のパターンへ）→ B へも読める → ↩
+    const fq=buildSaveFile('seq'); out.seqFile={kind:fq.obj.kind, k8:fq.obj.tracks[8].patterns[0][0], k8b:fq.obj.tracks[8].patterns[1][2], mute:fq.obj.tracks[8].mute, audio:JSON.stringify(fq.obj).includes('"audio"'), name:/set01A/.test(fq.name)};
+    tracks[8].patterns[0][0][0]=0; tracks[8].patterns[0][1][2]=0; tracks[8].mute=false;
+    await loadFileData(JSON.parse(JSON.stringify(fq.obj)),'stage');
+    out.seqBack={a0:tracks[8].patterns[0][0][0], a1:tracks[8].patterns[0][1][2], mute:tracks[8].mute, b:tracks[9].patterns[1][0][4]};
+    setEditPat(1); await loadFileData(JSON.parse(JSON.stringify(fq.obj)),'seq');
+    out.seqToB={b8:tracks[8].patterns[1][0][0], b9:tracks[9].patterns[1][0][4], a0:tracks[8].patterns[0][0][0]};
+    doUndo(); out.undoB={b9:tracks[9].patterns[1][0][4], b8:tracks[8].patterns[1][0][0]};
+    setEditPat(0);
+    // SET：書き出し → 変えて読む（単位 SET）→ 名前・BPM・音量が戻る。他のセットは触らない
+    setSetLevel(0,-6); const fs=buildSaveFile('set'); out.setFile={kind:fs.obj.kind, n:fs.obj.set.tracks.length, level:fs.obj.set.level, bpm:fs.obj.set.bpm, name:/set01-/.test(fs.name)};
+    tracks[0].name='X'; applyBpm(150); setSetLevel(0,0); setSlots[3].name='KEEP3';
+    await loadFileData(JSON.parse(JSON.stringify(fs.obj)),'set');
+    out.setBack={name:tracks[0].name, bpm:bpmVal, level:setLevels[0], other:setSlots[3].name, a0:tracks[8].patterns[0][0][0]};
+    // STAGE のファイルを単位 SET で → ファイルのいまのセットだけ。単位 SEQ で → 同じ文字のパターンだけ
+    const st=buildSaveFile('stage').obj; tracks[0].name='Y'; setSlots[5].name='KEEP5';
+    await loadFileData(JSON.parse(JSON.stringify(st)),'set');
+    out.stageSet={name:tracks[0].name, other:setSlots[5].name};
+    tracks[8].patterns[0][0][0]=0; await loadFileData(JSON.parse(JSON.stringify(st)),'seq');
+    out.stageSeq={a0:tracks[8].patterns[0][0][0], other:setSlots[5].name};
+    try{ await loadFileData({version:3, kind:'seq'},'stage'); out.bad='accepted'; }catch(_){ out.bad='rejected'; }
+    return out; });
+  ok_(`${V} SEQ の書き出し：パターン 1 つ（4 小節のステップ・ミュート）・音は入れない・名前に set01A`, r.seqFile.kind==='seq' && r.seqFile.k8===1 && r.seqFile.k8b===1 && r.seqFile.mute && !r.seqFile.audio && r.seqFile.name, JSON.stringify(r.seqFile));
+  ok_(`${V} SEQ を読む＝編集中のパターンへ（他のパターンは触らない）`, r.seqBack.a0===1 && r.seqBack.a1===1 && r.seqBack.mute && r.seqBack.b===1, JSON.stringify(r.seqBack));
+  ok_(`${V} SEQ は別の文字（B）へも読める・↩ で戻る`, r.seqToB.b8===1 && r.seqToB.b9===0 && r.seqToB.a0===1 && r.undoB.b9===1 && r.undoB.b8===0, JSON.stringify({a:r.seqToB,b:r.undoB}));
+  ok_(`${V} SET の書き出し・読み込み＝いまのセットだけ（名前・BPM・音量が戻る・他のセットは触らない）`, r.setFile.kind==='set' && r.setFile.n===16 && r.setFile.level===-6 && r.setFile.bpm===91 && r.setFile.name && r.setBack.name==='SS1' && r.setBack.bpm===91 && r.setBack.level===-6 && r.setBack.other==='KEEP3' && r.setBack.a0===1, JSON.stringify({f:r.setFile,b:r.setBack}));
+  ok_(`${V} STAGE のファイルを SET / SEQ 単位で読む＝その単位だけ（他のセットは触らない）`, r.stageSet.name==='SS1' && r.stageSet.other==='KEEP5' && r.stageSeq.a0===1 && r.stageSeq.other==='KEEP5', JSON.stringify({a:r.stageSet,b:r.stageSeq}));
+  ok_(`${V} 中身の無いファイルは読まない`, r.bad==='rejected', r.bad);
+  // 単位のスイッチ（メニュー）
+  const u=await p.evaluate(()=>{ document.querySelector('#saveScope button[data-u="seq"]').click(); const a={ls:localStorage.getItem('mics-save-scope'), on:document.querySelector('#saveScope button.on').dataset.u, scope:saveScope()};
+    document.querySelector('#saveScope button[data-u="stage"]').click(); return a; });
+  ok_(`${V} メニューの単位スイッチ（STAGE / SET / SEQ）を覚える`, u.ls==='seq' && u.on==='seq' && u.scope==='seq', JSON.stringify(u));
+  await p.evaluate(async()=>{ await clearAutosave(); localStorage.removeItem('mics-save-scope'); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function barHoldTest(){
   // v0.3.161：BAR はシングル＝選択、ダブルタップ＝ホールド。ホールドがあればその小節だけを順番にくり返す
   const V='BARHOLD 1280x800';
@@ -1043,6 +1090,7 @@ await setKeys();
 await peCueTest();
 await editTools();
 await barHoldTest();
+await saveScopeTest();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

@@ -1,8 +1,9 @@
 // @module save-load
-// @provides b64ToUint8, bufToWav, buildProject, calcCrop, setData, trackData, uint8ToB64, wavB64Cached
+// @provides SAVE_SCOPE_KEY, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop, curSetData,
+//    saveScope, setData, trackData, uint8ToB64, wavB64Cached
 // @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, setCur, setLevels, setSlots,
-//    shareOrDownload, swingPct, tracks
+//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, sampNameEl, seqDataOf,
+//    setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -113,14 +114,35 @@ document.getElementById("resetBtn").addEventListener("click",async()=>{
   _asDirty=false;
   location.reload();
 });
-document.getElementById("saveBtn").addEventListener("click",()=>{
-  const proj=buildProject();
-  const json=JSON.stringify(proj);
-  const blob=new Blob([json],{type:"application/json"});
-  // ファイル名に日時を付与: mics009-YYMMDD-HHMM.mics。共有シート（メンバーへ直接）→非対応はDL
+// ---------- SAVE / LOAD の単位（v0.3.162 §156）：「SAVE も LOAD もセット単位かシーケンス単位でできるように」 ----------
+// STAGE＝ファイル全体（16 セット）／SET＝いまのセット 1 つ（音つき）／SEQ＝編集中のパターン 1 つ（ステップ・P-LOCK・ミュート / エフェクト。音は無し）。
+// 単位はメニューの Project で選ぶ（この端末で覚える）。読み込みは 73-share-export の loadFileData
+const SAVE_SCOPE_KEY="mics-save-scope";
+function saveScope(){ let s="stage"; try{ s=localStorage.getItem(SAVE_SCOPE_KEY)||"stage"; }catch(_){} return ["stage","set","seq"].includes(s)?s:"stage"; }
+(function(){
+  const seg=document.getElementById("saveScope"); if(!seg) return;
+  const paint=()=>[...seg.children].forEach(b=>b.classList.toggle("on", b.dataset.u===saveScope()));
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    try{ localStorage.setItem(SAVE_SCOPE_KEY, b.dataset.u); }catch(_){}
+    paint(); sampNameEl.textContent = ({stage:"SAVE / LOAD ＝ ステージ全体（16 セット）", set:"SAVE / LOAD ＝ いまのセット（音つき）", seq:"SAVE / LOAD ＝ 編集中のシーケンス（"+"ABCD"[editPat]+"・音は無し）"})[saveScope()]; });
+  paint();
+})();
+// いまのセット（live）をファイルのセットの形に
+function curSetData(){ patSync(); return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, level:setLevels[setCur]||0, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))}; }
+// 単位ごとの書き出し内容とファイル名
+function buildSaveFile(scope){
   const d=new Date(), z=n=>String(n).padStart(2,"0");
   const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
-  shareOrDownload(blob, "mics009-"+stamp+".mics");
+  const sn="set"+z(setCur+1);
+  if(scope==="set") return {obj:{version:3, kind:"set", set:curSetData()}, name:"mics009-"+sn+"-"+stamp+".mics"};
+  if(scope==="seq") return {obj:{version:3, kind:"seq", pat:editPat, from:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:seqDataOf(editPat)},
+                            name:"mics009-"+sn+"ABCD"[editPat]+"-"+stamp+".mics"};
+  return {obj:buildProject(), name:"mics009-"+stamp+".mics"};   // ファイル名に日時: mics009-YYMMDD-HHMM.mics
+}
+document.getElementById("saveBtn").addEventListener("click",()=>{
+  const f=buildSaveFile(saveScope());
+  const blob=new Blob([JSON.stringify(f.obj)],{type:"application/json"});
+  shareOrDownload(blob, f.name);   // 共有シート（メンバーへ直接）→非対応はDL
 });
 
 // GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）

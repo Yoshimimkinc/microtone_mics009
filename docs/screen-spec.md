@@ -2039,3 +2039,14 @@ LIVE LOCK（Wake Lock・離脱確認・編集系ロック・■ で演奏前に�
 - 状態は `app/state` の `barHold`（書くのは `62-pattern-master` の `toggleBarHold` / `clearBarHold` だけ）。
 検査：`barHoldTest`（1280）：シングル＝選択だけ／ダブル＝ホールドと印／1 つで BAR 2 だけ／2 つで 2 と 4 だけ／全部外すと 1〜4。
 
+## 156. SAVE / LOAD をステージ・セット・シーケンス単位で（v0.3.162）
+「SAVE も LOAD もセット単位かシーケンス単位でできるように」
+- メニュー ⋮ の Project に **単位のスイッチ STAGE / SET / SEQ**（この端末で覚える。`mics-save-scope`）。
+- **SAVE**：STAGE＝今までどおりファイル全体（16 セット、`mics009-日時.mics`）。SET＝いまのセット 1 つ（音つき・BPM・SWING・音量、`mics009-set03-日時.mics`、中身は `{kind:"set", set}`）。
+  SEQ＝編集中のパターン 1 つ（16 パッドぶんの 4 小節のステップ・P-LOCK・そのパターンのミュート / ソロ / エフェクト。**音は入れない**。`mics009-set03B-日時.mics`、中身は `{kind:"seq", tracks}`）。
+- **LOAD**：ファイルの種類と単位の**小さいほう**に入れる。SEQ のファイル → 編集中のパターンへ（別の文字にも入れられる）。SET のファイル → いまのセットへ（単位 SEQ なら、そのセットから編集中と同じ文字のパターンだけ）。
+  STAGE のファイル → 単位 STAGE なら全体、SET ならファイルのいまのセットをいまのセットへ、SEQ ならそのセットの同じ文字のパターンを編集中のパターンへ。どれも ↩ で読む前へ戻せる。
+- **作り**：書き出しは `71-save-load` の `buildSaveFile(scope)` / `curSetData()`、読み込みは `73-share-export` の `loadFileData(proj, scope)`。
+  シーケンスの出し入れは `data/patterns` の `seqDataOf` / `seqFromSetData` / `applySeqData`、セットは `data/set` の `loadSetData`。拡張子は全部 `.mics`（中の `kind` で見分ける）。
+検査：`saveScopeTest`（1280）：SEQ の中身（音なし・ミュート込み）／SEQ を読む＝編集中のパターンだけ・B へも・↩／SET の往復（名前・BPM・音量・他のセットは触らない）／STAGE のファイルを SET・SEQ 単位で／壊れたファイルは読まない／単位スイッチ。
+

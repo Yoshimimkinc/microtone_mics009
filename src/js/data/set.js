@@ -1,7 +1,7 @@
 // @module data/set
 // @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
-//    setRename, setsFromProject, snapshotSet, switchSetNow
+//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet, resetSet, setElapsed,
+//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat,
@@ -103,6 +103,14 @@ function switchSetNow(k, stopAt){
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
   if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// セットのファイル（.mics の 1 セット）をいまのセットへ読み込む（v0.3.162 §156）。音は復号。undo と塗りは呼び出し側
+async function loadSetData(sd){
+  const snap=await decodeSetData(sd, setCur);
+  stopAllVoices(AC.currentTime);
+  setSlots[setCur]=snap;   // 名前など（いまのセットの中身は live が正。切替のときに snapshotSet で書き戻る）
+  applySetSnapshot(snap, {});
+  if(typeof setSetLevel==="function") setSetLevel(setCur, +(sd&&sd.level)||0);
 }
 // SET のポン出し（v0.3.147）：k をいまのセット（PADS / SEQ の対象）にする。音は止めない＝いま鳴っている声とループの状態は
 // 退避先の snapshot へ引き継ぐ（いまのセットが鳴っていれば、呼ぶ前に audio/set-players の sideTakeCurrent で「他のセットの再生」に移してある）
