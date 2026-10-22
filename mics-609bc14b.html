@@ -815,6 +815,13 @@
     border-radius:4px;box-sizing:border-box;pointer-events:none;}
   .pe-over-win::before,.pe-over-win::after{content:"";position:absolute;top:4px;bottom:4px;width:3px;border-radius:2px;background:var(--teal);}
   .pe-over-win::before{left:-1px;} .pe-over-win::after{right:-1px;}
+  /* 試聴カーソル（v0.3.160）：ここから PREVIEW。波形の何もない所をタップ / 線をドラッグで動かす。点線＝ハンドルと見分ける */
+  .pe-wave .cue{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--ink);opacity:.85;z-index:2;pointer-events:none;display:none;margin-left:-1px;}
+  .pe-wave .cue.show{display:block;}
+  .pe-wave .cue .cap{position:absolute;bottom:2px;left:-6px;font-size:9px;line-height:1;color:var(--bg);background:var(--ink);border-radius:2px;padding:1px 2px;}
+  /* DELETE（v0.3.160）：赤。1 回目で「もう一度」の状態（塗り）、2 回目で消す */
+  .pe-trim.pe-del{border-color:var(--red);color:var(--red);}
+  .pe-trim.pe-del.armed{background:var(--red);color:#fff;}
   .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;touch-action:none;cursor:ew-resize;z-index:2;}
   .pe-wave .handle::before{content:"";position:absolute;top:0;bottom:0;left:-11px;right:-11px;}  /* 見た目2pxのままタッチ判定だけ拡張 */
   .pe-wave .handle.start{background:var(--teal);}
@@ -1133,7 +1140,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.159</div>
+  <div class="s-ver" id="splashVer">v0.3.160</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1307,6 +1314,7 @@
               <div class="shade" id="peShadeL"></div>
               <div class="shade" id="peShadeR"></div>
               <div class="playhead" id="pePlayhead"></div>
+              <div class="cue" id="peCue"><span class="cap">▶</span></div>
               <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
               <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
               <div class="handle end" id="peEnd"><span class="cap">END</span></div>
@@ -1317,6 +1325,7 @@
           <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
           <button class="pe-trim" id="peTrunc">✂ TRIM</button>
           <button class="pe-trim" id="peRev">⇄ REV</button>
+          <button class="pe-trim pe-del" id="peDel" title="このパッドの音を消す（2 回押す・↩ で戻せる）">✕ DELETE</button>
         </div>
         <div class="pe-chop">
           <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATK</button></div>
@@ -2433,7 +2442,7 @@ function dbToGain(db){ return Math.pow(10, db/20); }
 
 // @module voice
 // @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, hitVoice, makeLofi, pitchBufferNN,
-//    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
+//    playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
 //    playStep, playing, recording, reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode,
@@ -2551,7 +2560,8 @@ function warmPitch(i){
 }
 // 1ヒット発音
 // trs：鳴らすセットのトラック列（既定＝いまのセット。SET のミックスで他のセットを鳴らすときは snapshot の列 v0.3.147）
-function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
+// fromN：ここから鳴らす（0..1、バッファ全体に対する位置）。EDIT の試聴カーソル（v0.3.160）。null＝START から
+function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=null){
   const t = trs[i];
   if(!t || !t.buffer) return;
   if(!t.activeVoices) t.activeVoices=[];
@@ -2567,7 +2577,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
   const semi = t.tune + (noteSemi||0) + lkPitch;
   const pbuf = getPitchedBuffer(t, semi);       // 半音キーでキャッシュ
   const dur = pbuf.duration;   // ピッチ済みバッファの尺で以降の開始/終了/ループ点が正しくスケール
-  const sN = Math.min(0.999, Math.max(0, t.start));
+  const sN = Math.min(0.999, Math.max(0, fromN!=null ? fromN : t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
   const startSec = sN*dur, endSec = eN*dur;
 
@@ -2677,6 +2687,12 @@ function hitVoice(i, semi=0, accent=false){
   playVoice(i, AC.currentTime, accent, false, semi);
   if(t.loop) t.loopPlaying=true;
   return true;
+}
+// EDIT の試聴をカーソル位置から（v0.3.160）：鳴っていても鳴らし直す（ループもトグルせずに頭出し）。END まで（ループは LOOP へ戻る）
+function previewVoiceFrom(i, fromN){
+  const t=tracks[i]; if(!t||!t.buffer) return;
+  playVoice(i, AC.currentTime, false, false, 0, null, tracks, fromN);
+  if(t.loop) t.loopPlaying=true;
 }
 // 全パッドの発音を止め、ループのトグル状態も戻す（停止・読込のとき）
 function stopAllVoices(when){ tracks.forEach(t=>{ stopVoices(t, when); t.loopPlaying=false; }); }
@@ -2881,7 +2897,6 @@ PADS.forEach((p,i)=>{
     if(armMode==="select"){ e.preventDefault(); selectPad(i); arm("select",false); return; }   // SELECT＝ワンショット：1パッド選択でトグル消費＆自動解除
     if(e.altKey){ e.preventDefault(); selectPad(i); return; }                                  // Alt+PAD＝選択のみ・発音なし（Ctrlはブラウザ衝突のためAlt）
     if(e.shiftKey){ e.preventDefault(); tracks[i].mute=!tracks[i].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }   // Shift+PAD＝ミュート（既定）
-    if(perfPadDown(e,i,d)) return;   // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート（ui/performance-view）
     if(armMode==="edit"){                  // EDIT中：タップ=編集モーダル / ドラッグ=並べ替え（移動）/ 長押し→ドラッグ=コピー（発音なし）
       e.preventDefault();
       editDrag={pad:i, x0:e.clientX, y0:e.clientY, moved:false, copy:false, over:-1, timer:0};
@@ -2894,6 +2909,9 @@ PADS.forEach((p,i)=>{
     }
     if(armMode==="chop"){ copyTap("pad", i); return; }   // COPY：元→先でパッド(音色+FX)をコピー（発音なし）
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
+    // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート（ui/performance-view）。
+    // v0.3.160：EDIT / COPY / MUTE / SOLO を押しているときはそちらが先（P-LOCK を選んだまま EDIT にすると、ドラッグで入れ替えられずに値が動いていた）
+    if(perfPadDown(e,i,d)) return;
     if(AC.state!=="running")await AC.resume();
     // 空パッドの「＋」(中央40%)タップ＝ワンタップで音入れ（Koala流・案1）。端のタップは選択＋案内のみ
     if(PADS[i].type==="empty" && !tracks[i].buffer){
@@ -3209,8 +3227,8 @@ function moveCursors(){
   }
 }
 // @module data/pads
-// @provides chopBaseName, copyPadSound, nextChokeGroup, swapPads
-// @uses PADS, patSync, pushUndo, tracks
+// @provides chopBaseName, clearPadSound, copyPadSound, nextChokeGroup, swapPads
+// @uses AC, PADS, patSync, pushUndo, stopVoices, tracks
 // @depends -
 // ---------- パッドのデータ更新：コピー・スライス名・チョークグループの発行 ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。UI の描画とデータ更新を分ける入口。
@@ -3232,6 +3250,15 @@ function copyPadSound(src,dst){
   if(Array.isArray(s.patFx)) d.patFx=s.patFx.map(o=>Object.assign({},o));   // エフェクトは A B C D ごと（v0.3.150）＝4 つとも写す
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
+}
+// パッドの音を消す（EDIT の DELETE、v0.3.160）：空のパッドに戻す。打ち込み・音量・ミュート・エフェクトは残す（音が無ければ鳴らない）。↩ で戻せる
+function clearPadSound(i){
+  const t=tracks[i]; if(!t) return;
+  pushUndo();
+  stopVoices(t, AC.currentTime); t.loopPlaying=false;
+  t.buffer=null; t.rawBuffer=null; t.start=0; t.end=1; t.loop=false; t.loopStart=0; t.tune=0;
+  t.name="PAD "+(i+1);
+  PADS[i].type="empty"; PADS[i].voice=null; PADS[i].name="PAD "+(i+1);
 }
 // パッドの音色設定をまるごと入れ替え（EDITドラッグの移動）。バッファ差替でピッチキャッシュは自動破棄。
 function swapPads(a,b){
@@ -4397,12 +4424,13 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 })();
 
 // @module edit-modal
-// @provides _ovCache, cropBufferToSelection, openPadEdit, peNameSync, pePlayRAF, pePlayheadRun,
-//    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+// @provides _ovCache, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor, peCueFrom, peCueT,
+//    peCueTimer, peNameSync, pePlayRAF, pePlayheadRun, peSetCue, peWaveVisible, refreshOpenPadEdit,
+//    renameTrack, renderPeOver, renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
-//    clWaveTo, computeChopBounds, drawPadWave, paintClPage, paintPadName, paintPerf, peOpenedAt, peTarget,
-//    peV0, peV1, pushUndo, sampNameEl, scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, tracks,
-//    trigger
+//    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
+//    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
+//    scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, tracks, trigger
 // @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
@@ -4424,6 +4452,24 @@ function cropBufferToSelection(t){
   t.buffer=cropOne(buf);
   if(t.rawBuffer) t.rawBuffer=cropOne(t.rawBuffer);
   t.start=0; t.end=1; t.loopStart=0;
+}
+// 試聴カーソル（v0.3.160）：「プレビューを回すときに、再生位置のカーソルを動かして好きなところから再生できるように。
+// ロングサンプルの終わりの方の終わり方・切り方を確認できる」。位置は 0..1（バッファ全体）。START より前・END 以降は「START から」。
+// パッドか音が替わったら消す。波形の何もない所のタップ（全体表示ならドラッグも）・線のドラッグで動かす。鳴っている最中に動かすとそこから鳴らし直す
+let peCue=null, peCueFor=-1, peCueBuf=null, peCueT=0, peCueTimer=0;
+function peCueFrom(){ const t=tracks[peTarget]; if(peCue==null||!t||!t.buffer) return null;
+  const s=t.start||0, e=t.end??1; return (peCue<=s+0.0005 || peCue>=e-0.002) ? null : peCue; }
+function peSetCue(n, restart){
+  const t=tracks[peTarget]; if(!t||!t.buffer) return;
+  peCue=Math.max(0,Math.min(1,n)); peCueFor=peTarget; peCueBuf=t.buffer;
+  renderPeWave(peTarget);
+  const f=peCueFrom();
+  if(typeof sampNameEl!=="undefined") sampNameEl.textContent = f==null ? "PREVIEW は START から" : "PREVIEW ▸ "+(f*t.buffer.duration).toFixed(2)+"s から（END "+((t.end??1)*t.buffer.duration).toFixed(2)+"s まで）";
+  if(restart && t.activeVoices && t.activeVoices.length){   // 鳴っている最中＝そこから鳴らし直す（ドラッグ中は 70ms に 1 回。最後の位置は必ず後追いで反映）
+    const now=performance.now(); clearTimeout(peCueTimer);
+    if(now-peCueT>70){ peCueT=now; previewVoiceFrom(peTarget, f); }
+    else peCueTimer=setTimeout(()=>{ const tt=tracks[peTarget]; if(tt && tt.activeVoices && tt.activeVoices.length){ peCueT=performance.now(); previewVoiceFrom(peTarget, peCueFrom()); } }, 70-(now-peCueT)+5);
+  }
 }
 // 波形上の再生位置トレース（playbackRate=1なので経過秒＝バッファ秒で正確に追える）
 let pePlayRAF=0;
@@ -4545,6 +4591,9 @@ function renderPeWave(i){
   document.getElementById("peStart").style.left=sx+"px";
   document.getElementById("peEnd").style.left=ex+"px";
   const pl=document.getElementById("peLoop"); pl.style.left=lx+"px"; pl.style.display=t.loop?"block":"none";
+  if(peCueFor!==i || peCueBuf!==t.buffer){ peCue=null; peCueFor=i; peCueBuf=t.buffer; }   // パッドか音が替わったら試聴カーソルは消す
+  const cu=document.getElementById("peCue");
+  if(cu){ const cx=peCue==null?-1:nx(peCue); cu.classList.toggle("show", peCue!=null && cx>=0 && cx<=W); if(peCue!=null) cu.style.left=cx+"px"; }
   const shL=document.getElementById("peShadeL"), shR=document.getElementById("peShadeR");
   const sxc=Math.max(0,Math.min(W,sx)), exc=Math.max(0,Math.min(W,ex));
   shL.style.left="0"; shL.style.width=sxc+"px"; shR.style.left=exc+"px"; shR.style.width=(W-exc)+"px";
@@ -4627,8 +4676,25 @@ function openPadEdit(i){
   modal.addEventListener("click",e=>{ if(performance.now()-peOpenedAt<450){ e.stopPropagation(); e.preventDefault(); } },true);
   document.getElementById("peClose").addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
+  // DELETE（v0.3.160）：「EDIT メニューの中に、サンプルを消す DELETE がないといけない」。2 回押す（2.5 秒以内）＝消す。↩ で戻せる
+  let peDelT=-1e9;   // 起動直後（performance.now() が 2.5 秒未満）の 1 回目を 2 回目と取り違えない
+  const peDelBtn=document.getElementById("peDel");
+  if(peDelBtn) peDelBtn.addEventListener("click",()=>{
+    const i=peTarget, t=tracks[i], no=String(i+1).padStart(2,"0");
+    if(!t || !t.buffer){ sampNameEl.textContent="PAD "+no+" は空"; return; }
+    if(performance.now()-peDelT>2500){ peDelT=performance.now(); peDelBtn.classList.add("armed");
+      sampNameEl.textContent="もう一度 DELETE で PAD "+no+" の音を消す（↩ で戻せる）";
+      setTimeout(()=>{ if(performance.now()-peDelT>=2400) peDelBtn.classList.remove("armed"); },2500); return; }
+    peDelT=-1e9; peDelBtn.classList.remove("armed");
+    clearPadSound(i);
+    refreshPadDisplay(i); refreshOpenPadEdit(i); if(typeof paintPerf==="function") paintPerf();
+    sampNameEl.textContent="DELETE ▸ PAD "+no+" を空にした（↩ で戻せる）";
+  });
   document.getElementById("peAudition").addEventListener("click",async()=>{
-    if(AC.state!=="running")await AC.resume(); trigger(peTarget);
+    if(AC.state!=="running")await AC.resume();
+    const t=tracks[peTarget], f=peCueFrom();
+    if(f==null || (t.loop && t.loopPlaying)){ trigger(peTarget); return; }   // カーソル無し＝今までどおり START から（ループの 2 回目＝止める）
+    previewVoiceFrom(peTarget, f); flashPad(peTarget);                        // 試聴カーソルから END まで（v0.3.160）
   });
   // ハンドルは「±26pxで掴んだ時だけ」動く（どこでもタップ＝移動は廃止：ピンチ1本目や誤タップでSTRT/ENDが飛ぶため）。
   // 何もない場所の1本指ドラッグはズーム中のパン。精密配置はズームで＝掴みやすさはズームが担う
@@ -4643,12 +4709,14 @@ function openPadEdit(i){
     if(t.loop) cands.push(["loop",t.loopStart||0]);
     if(peTarget===chopTarget && chopBounds.length>2)   // CHOPの内側の線（両端はSTRT/ENDが担当）
       for(let k=1;k<chopBounds.length-1;k++) cands.push(["chop:"+k, chopBounds[k]]);
+    if(peCue!=null) cands.push(["cue",peCue]);   // 試聴カーソル（同じ距離ならハンドルが優先＝最後に足す）
     let best=null, bd=thr;
     for(const [k,v] of cands){ const d=Math.abs(v-n); if(d<=bd){ bd=d; best=k; } }
     return best;
   };
   const peApply=(n)=>{
     const t=tracks[peTarget];
+    if(dragKind==="cue"){ peSetCue(n, true); return; }
     if(dragKind && dragKind.indexOf("chop:")===0){
       const k=+dragKind.slice(5);
       chopBounds[k]=Math.max(chopBounds[k-1]+0.002, Math.min(chopBounds[k+1]-0.002, n));
@@ -4663,17 +4731,20 @@ function openPadEdit(i){
     if(!tracks[peTarget]||!tracks[peTarget].buffer) return;   // 空パッドは無視
     e.preventDefault();
     const tt=tracks[peTarget];
-    const n=peNorm(e.clientX); dragKind=pickHandle(n);
+    const n=peNorm(e.clientX); dragKind=pickHandle(n); peCuePrev=peCue;
     if(dragKind){
       dragPrev={s:tt.start||0, e:tt.end??1, l:tt.loopStart||0,
         cb:(peTarget===chopTarget&&chopBounds.length>2)?chopBounds.slice():null};   // ピンチ開始時の復元用
       const gv=dragKind.indexOf("chop:")===0 ? chopBounds[+dragKind.slice(5)]
              : ({start:tt.start||0, end:tt.end??1, loop:tt.loopStart||0})[dragKind];
       dragOff=gv-n;   // 掴んだ瞬間に跳ねない
-      pushUndo();
+      if(dragKind==="cue") dragOff=0; else pushUndo();   // 試聴カーソルは音の設定ではない＝undo に積まない
     } else if(peV1-peV0<0.999){
-      panLast=e.clientX;   // ズーム中の何もない場所＝1本指パン
+      panLast=e.clientX;   // ズーム中の何もない場所＝1本指パン（動かさずに離したら＝そこへ試聴カーソル）
+    } else {
+      dragKind="cue"; dragOff=0; peSetCue(n, true);   // 全体表示の何もない場所＝試聴カーソルをそこへ（ドラッグで動かせる）
     }
+    peDownX=e.clientX; peDownN=n;
     try{ peWaveEl.setPointerCapture(e.pointerId); }catch(_){}
   });
   peWaveEl.addEventListener("pointermove",e=>{
@@ -4686,7 +4757,9 @@ function openPadEdit(i){
     }
   });
   // 開始点は離した瞬間に最寄りのアタックへ吸着（±12ms）。CLAUDE.md「Start point snaps to attack transients」
-  const peUp=()=>{
+  let peDownX=0, peDownN=0, peCuePrev=null;
+  const peUp=(e)=>{
+    if(panLast!=null && e && e.type==="pointerup" && Math.abs(e.clientX-peDownX)<6 && pePtrs.size<=1) peSetCue(peDownN, true);   // ズーム中のタップ＝試聴カーソル
     panLast=null;
     const wasStart=(dragKind==="start"); dragKind=null;
     if(wasStart){ snapStartToOnset(peTarget); renderPeWave(peTarget); if(typeof drawPadWave==="function") drawPadWave(peTarget); }
@@ -4718,6 +4791,7 @@ function openPadEdit(i){
     pePtrs.set(e.pointerId,{x:e.clientX, x0:e.clientX});
     if(pePtrs.size===2){
       // 2本目の指＝ピンチ開始。1本目のタップで動いたハンドルは元に戻す
+      if(dragKind==="cue") peCue=peCuePrev;   // 1 本目の指で動いた試聴カーソルも戻す
       if(dragKind && dragPrev){ const t=tracks[peTarget]; t.start=dragPrev.s; t.end=dragPrev.e; t.loopStart=dragPrev.l; if(dragPrev.cb) chopBounds=dragPrev.cb.slice(); dragPrev=null; }
       dragKind=null; panLast=null; renderPeWave(peTarget); return;
     }
@@ -6429,7 +6503,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.159";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.160";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

@@ -806,6 +806,71 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function editTools(){
+  // v0.3.160：EDIT 中のドラッグ＝パッド入れ替え（P-LOCK を選んだままでも EDIT が先）／EDIT 画面の DELETE（2 回押す・↩ で戻せる）
+  const V='EDITTOOLS 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  const ctr=k=>p.evaluate(k=>{ const b=document.querySelectorAll('#pads .pad')[k].getBoundingClientRect(); return [b.left+b.width/2,b.top+b.height/2]; },k);
+  const before=await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',true); return {a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend, lock:activeLock}; });
+  const a=await ctr(8), b=await ctr(12);
+  await p.mouse.move(a[0],a[1]); await p.mouse.down(); await p.mouse.move(b[0],b[1],{steps:8}); await p.mouse.up(); await p.waitForTimeout(150);
+  const after=await p.evaluate(()=>({a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend, msg:sampNameEl.textContent}));
+  ok_(`${V} P-LOCK（DELAY）を選んだまま EDIT でドラッグ＝パッドの入れ替え（送り量は動かない）`, before.lock==='delay' && after.a===before.b && after.b===before.a && /MOVE 09/.test(after.msg), JSON.stringify({before,after}));
+  await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',false); doUndo(); });
+  // DELETE：1 回目は「もう一度」、2 回目で空のパッドに。↩ で戻る
+  const nm0=await p.evaluate(()=>{ selectPad(0); openPadEdit(0); return tracks[0].name; });
+  await p.waitForTimeout(500);   // 開いた直後 450ms のゴーストクリック除け
+  await p.click('#peDel'); await p.waitForTimeout(80);
+  const d1=await p.evaluate(()=>({buf:!!tracks[0].buffer, armed:document.getElementById('peDel').classList.contains('armed'), msg:sampNameEl.textContent}));
+  await p.click('#peDel'); await p.waitForTimeout(150);
+  const d2=await p.evaluate(()=>({buf:!!tracks[0].buffer, type:PADS[0].type, name:tracks[0].name, steps:tracks[0].patterns.flat(2).filter(Boolean).length, padName:document.querySelector('#pads .pad[data-i="0"] .nm').textContent, msg:sampNameEl.textContent}));
+  const d3=await p.evaluate(()=>{ doUndo(); return {buf:!!tracks[0].buffer, name:tracks[0].name, type:PADS[0].type}; });
+  ok_(`${V} EDIT 画面の DELETE：1 回目は確認だけ・2 回目で空のパッド（打ち込みは残る）・↩ で戻る`, d1.buf && d1.armed && /もう一度/.test(d1.msg) && !d2.buf && d2.type==='empty' && d2.name==='PAD 1' && /DELETE/.test(d2.msg) && d3.buf && d3.name===nm0 && d3.type!=='empty', JSON.stringify({d1,d2,d3}));
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
+async function peCueTest(){
+  // v0.3.160：EDIT の試聴カーソル。波形をタップ／ドラッグした位置から PREVIEW（END まで）。鳴っている最中に動かすとそこから鳴らし直す
+  const V='PECUE 1280x800';
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await AC.resume(); const n=AC.sampleRate*4, b=AC.createBuffer(1,n,AC.sampleRate), d=b.getChannelData(0); for(let k=0;k<n;k++) d[k]=Math.sin(k*0.05)*0.3;
+    const t=tracks[0]; t.buffer=b; t.rawBuffer=b; t.start=0; t.end=1; t.loop=false; PADS[0].type='sample'; selectPad(0); openPadEdit(0); });
+  await p.waitForTimeout(300);
+  const box=await p.evaluate(()=>{ const r=document.getElementById('peWave').parentElement.getBoundingClientRect(); return {x:r.left,y:r.top,w:r.width,h:r.height}; });
+  const at=f=>[box.x+box.w*f, box.y+box.h*0.6];
+  const ph=()=>p.evaluate(()=>{ const ph=document.getElementById('pePlayhead'), w=document.getElementById('peWave').parentElement.clientWidth; return {pos:parseFloat(ph.style.left||'0')/w, on:ph.style.opacity==='1', voices:tracks[0].activeVoices.length}; });
+  let c=at(0.7); await p.mouse.click(c[0],c[1]); await p.waitForTimeout(100);
+  const a=await p.evaluate(()=>({cue:peCue, from:peCueFrom(), show:document.getElementById('peCue').classList.contains('show'), start:tracks[0].start, undo:undoStack.length}));
+  ok_(`${V} 波形の何もない所をタップ＝そこに試聴カーソル（START は動かない）`, Math.abs(a.cue-0.7)<0.02 && Math.abs(a.from-0.7)<0.02 && a.show && a.start===0, JSON.stringify(a));
+  await p.click('#peAudition'); await p.waitForTimeout(250);
+  const b=await ph();
+  ok_(`${V} PREVIEW はカーソルから鳴る（再生位置が 70% 付近から進む）`, b.voices>0 && b.on && b.pos>0.69 && b.pos<0.8, JSON.stringify(b));
+  c=at(0.7); const c2=at(0.3); await p.mouse.move(c[0],c[1]); await p.mouse.down(); await p.mouse.move(c2[0],c2[1],{steps:5}); await p.mouse.up(); await p.waitForTimeout(250);
+  const d=await ph(); const dc=await p.evaluate(()=>peCue);
+  ok_(`${V} 鳴っている最中にカーソルをドラッグ＝そこから鳴らし直す（30% 付近）`, Math.abs(dc-0.3)<0.03 && d.voices>0 && d.pos>0.29 && d.pos<0.4, JSON.stringify({dc,d}));
+  await p.waitForTimeout(3200);
+  const e=await ph();
+  ok_(`${V} END で止まる`, e.voices===0, JSON.stringify(e));
+  await p.evaluate(()=>{ tracks[0].start=0.5; renderPeWave(0); });
+  c=at(0.2); await p.mouse.click(c[0],c[1]); await p.waitForTimeout(80);
+  await p.click('#peAudition'); await p.waitForTimeout(200);
+  const f=await ph(); const ff=await p.evaluate(()=>peCueFrom());
+  ok_(`${V} START より前にカーソル＝START から鳴る`, ff===null && f.pos>0.49 && f.pos<0.6, JSON.stringify({ff,f}));
+  const g=await p.evaluate(async()=>{ const raf=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    stopAllVoices(AC.currentTime); tracks[1].buffer=tracks[0].buffer; tracks[1].start=0; tracks[1].end=1; PADS[1].type='sample'; openPadEdit(1); await raf(); const c1=peCue; openPadEdit(0); await raf(); return {other:c1, back:peCue}; });
+  ok_(`${V} パッドを替えるとカーソルは消える`, g.other===null && g.back===null, JSON.stringify(g));
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function setKeys(){
   // v0.3.159：SET のパッドをキーボード（1-8 / Q-I）と MIDI（C4〜D#5）から。押す＝鳴る／離す＝止まる／1 拍でホールド／押しながら ↑ ↓ ＝音量
   const V='SETKEYS 1280x800';
@@ -944,6 +1009,8 @@ await patMute();
 await patFx();
 await splashAnim();
 await setKeys();
+await peCueTest();
+await editTools();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

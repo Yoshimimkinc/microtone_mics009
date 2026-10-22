@@ -1,6 +1,6 @@
 // @module data/pads
-// @provides chopBaseName, copyPadSound, nextChokeGroup, swapPads
-// @uses PADS, patSync, pushUndo, tracks
+// @provides chopBaseName, clearPadSound, copyPadSound, nextChokeGroup, swapPads
+// @uses AC, PADS, patSync, pushUndo, stopVoices, tracks
 // @depends -
 // ---------- パッドのデータ更新：コピー・スライス名・チョークグループの発行 ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。UI の描画とデータ更新を分ける入口。
@@ -22,6 +22,15 @@ function copyPadSound(src,dst){
   if(Array.isArray(s.patFx)) d.patFx=s.patFx.map(o=>Object.assign({},o));   // エフェクトは A B C D ごと（v0.3.150）＝4 つとも写す
   PADS[dst].type=PADS[src].type;
   PADS[dst].voice=PADS[src].voice;
+}
+// パッドの音を消す（EDIT の DELETE、v0.3.160）：空のパッドに戻す。打ち込み・音量・ミュート・エフェクトは残す（音が無ければ鳴らない）。↩ で戻せる
+function clearPadSound(i){
+  const t=tracks[i]; if(!t) return;
+  pushUndo();
+  stopVoices(t, AC.currentTime); t.loopPlaying=false;
+  t.buffer=null; t.rawBuffer=null; t.start=0; t.end=1; t.loop=false; t.loopStart=0; t.tune=0;
+  t.name="PAD "+(i+1);
+  PADS[i].type="empty"; PADS[i].voice=null; PADS[i].name="PAD "+(i+1);
 }
 // パッドの音色設定をまるごと入れ替え（EDITドラッグの移動）。バッファ差替でピッチキャッシュは自動破棄。
 function swapPads(a,b){

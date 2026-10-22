@@ -27,6 +27,13 @@
     border-radius:4px;box-sizing:border-box;pointer-events:none;}
   .pe-over-win::before,.pe-over-win::after{content:"";position:absolute;top:4px;bottom:4px;width:3px;border-radius:2px;background:var(--teal);}
   .pe-over-win::before{left:-1px;} .pe-over-win::after{right:-1px;}
+  /* 試聴カーソル（v0.3.160）：ここから PREVIEW。波形の何もない所をタップ / 線をドラッグで動かす。点線＝ハンドルと見分ける */
+  .pe-wave .cue{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--ink);opacity:.85;z-index:2;pointer-events:none;display:none;margin-left:-1px;}
+  .pe-wave .cue.show{display:block;}
+  .pe-wave .cue .cap{position:absolute;bottom:2px;left:-6px;font-size:9px;line-height:1;color:var(--bg);background:var(--ink);border-radius:2px;padding:1px 2px;}
+  /* DELETE（v0.3.160）：赤。1 回目で「もう一度」の状態（塗り）、2 回目で消す */
+  .pe-trim.pe-del{border-color:var(--red);color:var(--red);}
+  .pe-trim.pe-del.armed{background:var(--red);color:#fff;}
   .pe-wave .handle{position:absolute;top:0;bottom:0;width:2px;touch-action:none;cursor:ew-resize;z-index:2;}
   .pe-wave .handle::before{content:"";position:absolute;top:0;bottom:0;left:-11px;right:-11px;}  /* 見た目2pxのままタッチ判定だけ拡張 */
   .pe-wave .handle.start{background:var(--teal);}

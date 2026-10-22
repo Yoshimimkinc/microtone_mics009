@@ -58,7 +58,6 @@ PADS.forEach((p,i)=>{
     if(armMode==="select"){ e.preventDefault(); selectPad(i); arm("select",false); return; }   // SELECT＝ワンショット：1パッド選択でトグル消費＆自動解除
     if(e.altKey){ e.preventDefault(); selectPad(i); return; }                                  // Alt+PAD＝選択のみ・発音なし（Ctrlはブラウザ衝突のためAlt）
     if(e.shiftKey){ e.preventDefault(); tracks[i].mute=!tracks[i].mute; paintPadStates(); if(typeof paintMixer==="function") paintMixer(); return; }   // Shift+PAD＝ミュート（既定）
-    if(perfPadDown(e,i,d)) return;   // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート（ui/performance-view）
     if(armMode==="edit"){                  // EDIT中：タップ=編集モーダル / ドラッグ=並べ替え（移動）/ 長押し→ドラッグ=コピー（発音なし）
       e.preventDefault();
       editDrag={pad:i, x0:e.clientX, y0:e.clientY, moved:false, copy:false, over:-1, timer:0};
@@ -71,6 +70,9 @@ PADS.forEach((p,i)=>{
     }
     if(armMode==="chop"){ copyTap("pad", i); return; }   // COPY：元→先でパッド(音色+FX)をコピー（発音なし）
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
+    // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート（ui/performance-view）。
+    // v0.3.160：EDIT / COPY / MUTE / SOLO を押しているときはそちらが先（P-LOCK を選んだまま EDIT にすると、ドラッグで入れ替えられずに値が動いていた）
+    if(perfPadDown(e,i,d)) return;
     if(AC.state!=="running")await AC.resume();
     // 空パッドの「＋」(中央40%)タップ＝ワンタップで音入れ（Koala流・案1）。端のタップは選択＋案内のみ
     if(PADS[i].type==="empty" && !tracks[i].buffer){

@@ -1,6 +1,6 @@
 // @module voice
 // @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, hitVoice, makeLofi, pitchBufferNN,
-//    playVoice, stopAllVoices, stopVoices, trigger, warmPitch
+//    playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
 //    playStep, playing, recording, reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode,
@@ -118,7 +118,8 @@ function warmPitch(i){
 }
 // 1ヒット発音
 // trs：鳴らすセットのトラック列（既定＝いまのセット。SET のミックスで他のセットを鳴らすときは snapshot の列 v0.3.147）
-function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
+// fromN：ここから鳴らす（0..1、バッファ全体に対する位置）。EDIT の試聴カーソル（v0.3.160）。null＝START から
+function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=null){
   const t = trs[i];
   if(!t || !t.buffer) return;
   if(!t.activeVoices) t.activeVoices=[];
@@ -134,7 +135,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks){
   const semi = t.tune + (noteSemi||0) + lkPitch;
   const pbuf = getPitchedBuffer(t, semi);       // 半音キーでキャッシュ
   const dur = pbuf.duration;   // ピッチ済みバッファの尺で以降の開始/終了/ループ点が正しくスケール
-  const sN = Math.min(0.999, Math.max(0, t.start));
+  const sN = Math.min(0.999, Math.max(0, fromN!=null ? fromN : t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
   const startSec = sN*dur, endSec = eN*dur;
 
@@ -244,6 +245,12 @@ function hitVoice(i, semi=0, accent=false){
   playVoice(i, AC.currentTime, accent, false, semi);
   if(t.loop) t.loopPlaying=true;
   return true;
+}
+// EDIT の試聴をカーソル位置から（v0.3.160）：鳴っていても鳴らし直す（ループもトグルせずに頭出し）。END まで（ループは LOOP へ戻る）
+function previewVoiceFrom(i, fromN){
+  const t=tracks[i]; if(!t||!t.buffer) return;
+  playVoice(i, AC.currentTime, false, false, 0, null, tracks, fromN);
+  if(t.loop) t.loopPlaying=true;
 }
 // 全パッドの発音を止め、ループのトグル状態も戻す（停止・読込のとき）
 function stopAllVoices(when){ tracks.forEach(t=>{ stopVoices(t, when); t.loopPlaying=false; }); }
