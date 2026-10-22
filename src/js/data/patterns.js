@@ -1,7 +1,7 @@
 // @module data/patterns
-// @provides PAT_FX, _fxOf, _patArr, copyBar, copyPattern, patLoad, patRead, patSync, patWrite, setStep,
-//    setStepAt
-// @uses clearLockEdit, editPat, getPattern, patSlot, pushUndo, tracks
+// @provides PAT_FX, _fxOf, _patArr, applySeqData, copyBar, copyPattern, patLoad, patRead, patSync, patWrite,
+//    seqDataOf, seqFromSetData, setStep, setStepAt
+// @uses STEPS, clearLockEdit, editPat, getPattern, patSlot, pushUndo, stripLegacyLocks, tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
@@ -43,6 +43,37 @@ function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を 
     if(t.locks){ Object.keys(t.locks).forEach(k=>{ if(k.indexOf(dst+"_")===0) delete t.locks[k]; });
       Object.keys(t.locks).forEach(k=>{ if(k.indexOf(src+"_")===0) t.locks[dst+k.slice(String(src).length)]=JSON.parse(JSON.stringify(t.locks[k])); }); }
   }
+}
+// ---------- シーケンス（パターン 1 つ）の書き出し / 読み込み（v0.3.162 §156）：「SAVE も LOAD もセット単位かシーケンス単位でできるように」 ----------
+// 1 シーケンス＝16 パッドぶんの 4 小節のステップ・P-LOCK・そのパターンのミュート / ソロ / エフェクト。音は入れない（音はセットのもの）
+function seqDataOf(p){
+  patSync();
+  return tracks.map(t=>{ const locks={};
+    Object.keys(t.locks||{}).forEach(k=>{ if(k.indexOf(p+"_")===0) locks[k.slice(String(p).length+1)]=JSON.parse(JSON.stringify(t.locks[k])); });
+    return {patterns:t.patterns[p].map(b=>b.slice()), locks, mute:!!t.mutes[p], solo:!!t.solos[p], fx:Object.assign({}, t.patFx[p])}; });
+}
+// セットのファイル（.mics の sets[k] / v2 丸ごと）からパターン p を取り出して、シーケンスの形に
+function seqFromSetData(sd, p){
+  return (sd && Array.isArray(sd.tracks) ? sd.tracks : []).slice(0,16).map(pt=>{
+    const pat=pt&&pt.patterns&&pt.patterns[p], bars=[];
+    for(let b=0;b<4;b++) bars.push(Array.isArray(pat) ? (typeof pat[0]==="number" ? (b===0?pat.slice(0,STEPS):[]) : (Array.isArray(pat[b])?pat[b].slice(0,STEPS):[])) : []);
+    const locks={}; Object.keys((pt&&pt.locks)||{}).forEach(k=>{ if(k.indexOf(p+"_")===0) locks[k.slice(String(p).length+1)]=JSON.parse(JSON.stringify(pt.locks[k])); });
+    const fx = pt&&Array.isArray(pt.patFx)&&pt.patFx[p] ? pt.patFx[p] : (pt ? {delaySend:pt.delaySend||0, reverbSend:pt.reverbSend||0, filter:pt.filter||"off", cutoff:pt.cutoff??12000, reso:pt.reso??0.7} : null);
+    return {patterns:bars, locks:stripLegacyLocks(locks), mute:!!(pt&&(Array.isArray(pt.mutes)?pt.mutes[p]:pt.mute)), solo:!!(pt&&(Array.isArray(pt.solos)?pt.solos[p]:pt.solo)), fx};
+  });
+}
+// シーケンスをパターン p へ（ステップ・P-LOCK・ミュート / ソロ / エフェクトを置き換え）。undo と塗りは呼び出し側
+function applySeqData(p, trs){
+  patSync();
+  tracks.forEach((t,i)=>{ const x=trs&&trs[i];
+    for(let b=0;b<4;b++){ const src=x&&x.patterns&&Array.isArray(x.patterns[b]) ? x.patterns[b].slice(0,STEPS) : []; while(src.length<STEPS) src.push(0); t.patterns[p][b]=src; }
+    if(!t.locks) t.locks={};
+    Object.keys(t.locks).forEach(k=>{ if(k.indexOf(p+"_")===0) delete t.locks[k]; });
+    if(x) Object.keys(x.locks||{}).forEach(k=>{ t.locks[p+"_"+k]=JSON.parse(JSON.stringify(x.locks[k])); });
+    t.mutes[p]=!!(x&&x.mute); t.solos[p]=!!(x&&x.solo);
+    if(x&&x.fx) t.patFx[p]=Object.assign({}, t.patFx[p], x.fx);
+  });
+  if(patSlot===p) patLoad(p, true);
 }
 function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst へ（DUPの汎用版）
   if(src===dst) return; pushUndo();

@@ -1,12 +1,12 @@
 // @module data/set
 // @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
-//    setRename, setsFromProject, snapshotSet, switchSetNow
+//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet, resetSet, setElapsed,
+//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
-//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
-//    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat, queuedSet,
-//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel, setSlots,
-//    sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
+//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat,
+//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel,
+//    setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -99,9 +99,18 @@ function switchSetNow(k, stopAt){
   setSlots[setCur]=snapshotSet();                 // いまのセットを退避（live が正だったぶんを書き戻す）
   stopAllVoices(stopAt||AC.currentTime); queuedPat=null;
   setCur=k; queuedSet=null; _setStart=performance.now();
+  if(typeof clearBarHold==="function") clearBarHold();
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
   if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// セットのファイル（.mics の 1 セット）をいまのセットへ読み込む（v0.3.162 §156）。音は復号。undo と塗りは呼び出し側
+async function loadSetData(sd){
+  const snap=await decodeSetData(sd, setCur);
+  stopAllVoices(AC.currentTime);
+  setSlots[setCur]=snap;   // 名前など（いまのセットの中身は live が正。切替のときに snapshotSet で書き戻る）
+  applySetSnapshot(snap, {});
+  if(typeof setSetLevel==="function") setSetLevel(setCur, +(sd&&sd.level)||0);
 }
 // SET のポン出し（v0.3.147）：k をいまのセット（PADS / SEQ の対象）にする。音は止めない＝いま鳴っている声とループの状態は
 // 退避先の snapshot へ引き継ぐ（いまのセットが鳴っていれば、呼ぶ前に audio/set-players の sideTakeCurrent で「他のセットの再生」に移してある）
@@ -113,6 +122,7 @@ function focusSet(k){
   tracks.forEach((t,i)=>{ const x=snap.tracks[i]; x.activeVoices=t.activeVoices||[]; x.loopPlaying=!!t.loopPlaying; t.activeVoices=[]; t.loopPlaying=false; });
   setSlots[setCur]=snap;
   queuedPat=null; setCur=k; queuedSet=null; _setStart=performance.now();
+  if(typeof clearBarHold==="function") clearBarHold();   // BAR ホールドは別の曲には持ち越さない（v0.3.161）
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();

@@ -1,11 +1,13 @@
 // @module pattern-master
-// @provides barSeg, chainLatencyMs, clearBarIndicator, clearPatIndicator, compToggle, kickVu, masterVuEl,
-//    masterVuLevel, paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat,
+// @provides _barTapB, _barTapT, barSeg, barTapHold, chainLatencyMs, clearBarHold, clearBarIndicator,
+//    clearPatIndicator, compToggle, firstPlayBar, heldBars, kickVu, masterVuEl, masterVuLevel, nextPlayBar,
+//    paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat, toggleBarHold,
 //    updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
-// @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, compDrive, compMakeup, compNode, compOn,
-//    compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
+// @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, barHold, compDrive, compMakeup, compNode,
+//    compOn, compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
 //    makeSatCurve, makeupGain, masterGain, paintPadStates, paintPerf, paintSteps, patHasContent, patLength,
-//    patLoad, playing, pushUndo, queuedPat, saturator, selectPad, setCompBypass, tapeDelay, tracks
+//    patLoad, playing, pushUndo, queuedPat, sampNameEl, saturator, selectPad, setCompBypass, tapeDelay,
+//    tracks
 // @depends -
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
@@ -26,11 +28,33 @@ function setEditPat(p){
   paintSteps(); paintPatBar(); refreshStepWaves();
 }
 function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves(); }
+// ---------- BAR のホールド（v0.3.161 §155）：「BAR はシングル＝従来どおり選択、ダブルクリック＝ホールドして繰り返す、
+// 複数ホールドされてると選択したとこだけ順番に繰り返す」。ホールドは鳴っているパターンに効く。切替は小節の終わりで（audio/transport が nextPlayBar を聞く）
+function heldBars(){ return [0,1,2,3].filter(b=>barHold[b]); }
+function toggleBarHold(b){ const h=barHold.slice(); h[b]=!h[b]; barHold=h; }
+function clearBarHold(){ if(barHold.some(Boolean)) barHold=[false,false,false,false]; }
+function firstPlayBar(){ const h=heldBars(); return h.length ? h[0] : 0; }
+function nextPlayBar(p, cur){
+  const h=heldBars();
+  if(h.length){ const n=h.find(b=>b>cur); return n!=null ? n : h[0]; }
+  return (cur+1>=patLength(p)) ? 0 : cur+1;
+}
+// 同じ BAR を 350ms 以内にもう一度＝ダブルタップ（iOS は dblclick が当てにならないので自前で）。1 回目の選択はそのまま効く
+let _barTapT=-1e9, _barTapB=-1;
+function barTapHold(b){
+  const now=performance.now();
+  if(b===_barTapB && now-_barTapT<350){ _barTapT=-1e9; _barTapB=-1; toggleBarHold(b);
+    const h=heldBars();
+    sampNameEl.textContent = h.length ? "BAR HOLD ▸ "+h.map(x=>x+1).join(" → ")+"（ここだけ"+(h.length>1?"順番に":"")+"くり返す）" : "BAR HOLD 解除（全部の小節を順に）";
+    paintPatBar(); return true; }
+  _barTapB=b; _barTapT=now; return false;
+}
 // SEQ/GRIDのパターンA-D・小節1-4を押して選ぶ（COPY中は元→先でコピー）
 [[patSeg,"p",setEditPat,"pat"],[barSeg,"b",setEditBar,"bar"]].forEach(([seg,k,fn,ct])=>{
   if(!seg) return;
   seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
-    if(copyTap(ct,+b.dataset[k])) return; fn(+b.dataset[k]); });
+    if(copyTap(ct,+b.dataset[k])) return; fn(+b.dataset[k]);
+    if(ct==="bar") barTapHold(+b.dataset[k]); });   // BAR のダブルタップ＝ホールド（v0.3.161）
 });
 function updatePatIndicator(p){
   [patSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
@@ -50,7 +74,9 @@ function paintPatBar(){
     b.classList.toggle("on", j===editBar);
     b.classList.toggle("has", barHasContent(editPat,j));
     b.classList.toggle("dim", j>=patLength(editPat) && !barHasContent(editPat,j));
+    b.classList.toggle("hold", !!barHold[j]);
   }));
+  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("hold", !!barHold[+b.dataset.b]));
 }
 
 // ---------- Master（メニュー内）----------

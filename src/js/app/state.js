@@ -1,8 +1,8 @@
 // @module app/state
-// @provides activeLock, armMode, assignTarget, bpmVal, copyArm, displayBar, displayPat, editBar, editDrag,
-//    editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm,
-//    perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected,
-//    setCur, setLevels, setMode, setSlots, stepIdx, swingPct
+// @provides activeLock, armMode, assignTarget, barHold, bpmVal, copyArm, displayBar, displayPat, editBar,
+//    editDrag, editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast,
+//    perfRecArm, perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording,
+//    selected, setCur, setLevels, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -37,6 +37,7 @@ let swingPct = 50;      // スウィング（セットごとに保存）。SP流
 // --- 編集（editPat / editBar は保存） ---
 let editPat = 0;        // 編集中パターン 0-3 (A-D)。入口は setEditPat（pattern-master）  @writers pattern-master, plock-undo, data/set
 let patSlot = 0;        // live の t.mute / t.solo / エフェクト（PAT_FX）がどのパターン（A-D）の値か。A B C D ごとに覚える（v0.3.149 / v0.3.150）。入口は patLoad  @writers data/patterns
+let barHold = new Array(4).fill(false);   // BAR のホールド（v0.3.161）：ダブルタップで ON。ホールドがあれば再生はその小節だけを順番にくり返す（保存しない・セットを替えると消える）  @writers pattern-master
 let editBar = 0;        // 編集中の小節 0-3 (1-4)。入口は setEditBar（pattern-master）  @writers pattern-master, plock-undo, data/set
 let peTarget=0;         // 波形エディタの対象パッド（窓とモーダルで共有する1実体）  @writers ui-window, edit-modal
 let peOpenedAt=0;       // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する  @writers edit-modal
