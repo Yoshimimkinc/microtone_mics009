@@ -66,7 +66,7 @@
   .setmap i.held{background:var(--amber);}
   .setmap i.cur{background:var(--teal);box-shadow:0 0 4px color-mix(in srgb,var(--teal) 70%,transparent);}
   .setmap i.cur.play{background:var(--amber);box-shadow:0 0 0 1px var(--teal);}
-  .setno{font-variant-numeric:tabular-nums;letter-spacing:.04em;color:var(--teal);}
+  .setno{font-variant-numeric:tabular-nums;letter-spacing:.04em;color:inherit;font-weight:700;}   /* 地の文字色（ティールは明るい盤で 1.9:1 しか出なかった。いまのセットは地図のティールで示す） */
   #clKeysSet{display:none;}
   body.setmode #clKeys{display:none;}
   body.setmode #clKeysSet{display:grid;}   /* .cl-keys と同じ 4 等分のグリッド（flex だと幅が中身なりに縮む） */

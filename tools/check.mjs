@@ -843,7 +843,7 @@ async function peCueTest(){
   await ready(p);
   await p.evaluate(async()=>{ await AC.resume(); const n=AC.sampleRate*4, b=AC.createBuffer(1,n,AC.sampleRate), d=b.getChannelData(0); for(let k=0;k<n;k++) d[k]=Math.sin(k*0.05)*0.3;
     const t=tracks[0]; t.buffer=b; t.rawBuffer=b; t.start=0; t.end=1; t.loop=false; PADS[0].type='sample'; selectPad(0); openPadEdit(0); });
-  await p.waitForTimeout(300);
+  await p.waitForTimeout(700);   // 開いた直後 450ms はゴーストクリック除けでタップを飲む（仕様）。CI は遅いので余裕を持つ
   const box=await p.evaluate(()=>{ const r=document.getElementById('peWave').parentElement.getBoundingClientRect(); return {x:r.left,y:r.top,w:r.width,h:r.height}; });
   const at=f=>[box.x+box.w*f, box.y+box.h*0.6];
   const ph=()=>p.evaluate(()=>{ const ph=document.getElementById('pePlayhead'), w=document.getElementById('peWave').parentElement.clientWidth; return {pos:parseFloat(ph.style.left||'0')/w, on:ph.style.opacity==='1', voices:tracks[0].activeVoices.length}; });
