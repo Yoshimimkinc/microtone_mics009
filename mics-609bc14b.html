@@ -584,6 +584,10 @@
   .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
   .patbtn{position:relative;}
   .patbtn.on{background:var(--amber);color:var(--hit-ink);}
+  /* BAR ホールド（v0.3.161）：ダブルタップで ON。下にアンバーの線＋小さなループ印 */
+  .patbtn.hold,.perf-bar.hold{box-shadow:inset 0 -3px 0 var(--amber);position:relative;}
+  .patbtn.hold::after,.perf-bar.hold::after{content:"⟳";position:absolute;top:1px;right:3px;font-size:9px;line-height:1;color:var(--amber);}
+  .patbtn.on.hold::after{color:var(--hit-ink);}
   .patbtn.playing{box-shadow:0 0 0 2px var(--teal);position:relative;z-index:2;}  /* 現在再生中を外枠で・最前面 */
   .patbtn.queued{box-shadow:0 0 0 2px var(--teal);z-index:2;animation:spblink .8s ease-in-out infinite;}  /* 予約中＝点滅 */
   .patbtn.has::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:.85;}  /* 中身ありドット */
@@ -1140,7 +1144,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.160</div>
+  <div class="s-ver" id="splashVer">v0.3.162</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1249,6 +1253,8 @@
         </div>
         <div class="modal-sec">
           <div class="modal-label">Project</div>
+          <!-- SAVE / LOAD の単位（v0.3.162 §156）：ステージ全体 / いまのセット / 編集中のシーケンス -->
+          <div class="seg" id="saveScope" style="margin-bottom:10px;"><button data-u="stage" class="on">STAGE</button><button data-u="set">SET</button><button data-u="seq">SEQ</button></div>
           <div class="modal-btns">
             <button class="t" id="saveBtn">Save</button>
             <button class="t" id="loadProjBtn">Load</button>
@@ -1537,10 +1543,10 @@ const CODEMAP = ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7",
 const MELO_KEYS = ["a","s","d","f","g","h","j","k","l",";"];
 
 // @module app/state
-// @provides activeLock, armMode, assignTarget, bpmVal, copyArm, displayBar, displayPat, editBar, editDrag,
-//    editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast, perfRecArm,
-//    perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected,
-//    setCur, setLevels, setMode, setSlots, stepIdx, swingPct
+// @provides activeLock, armMode, assignTarget, barHold, bpmVal, copyArm, displayBar, displayPat, editBar,
+//    editDrag, editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast,
+//    perfRecArm, perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording,
+//    selected, setCur, setLevels, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -1575,6 +1581,7 @@ let swingPct = 50;      // スウィング（セットごとに保存）。SP流
 // --- 編集（editPat / editBar は保存） ---
 let editPat = 0;        // 編集中パターン 0-3 (A-D)。入口は setEditPat（pattern-master）  @writers pattern-master, plock-undo, data/set
 let patSlot = 0;        // live の t.mute / t.solo / エフェクト（PAT_FX）がどのパターン（A-D）の値か。A B C D ごとに覚える（v0.3.149 / v0.3.150）。入口は patLoad  @writers data/patterns
+let barHold = new Array(4).fill(false);   // BAR のホールド（v0.3.161）：ダブルタップで ON。ホールドがあれば再生はその小節だけを順番にくり返す（保存しない・セットを替えると消える）  @writers pattern-master
 let editBar = 0;        // 編集中の小節 0-3 (1-4)。入口は setEditBar（pattern-master）  @writers pattern-master, plock-undo, data/set
 let peTarget=0;         // 波形エディタの対象パッド（窓とモーダルで共有する1実体）  @writers ui-window, edit-modal
 let peOpenedAt=0;       // モーダルを開いた時刻。直後450msのクリックは「開いたタップの残り」なので無視する  @writers edit-modal
@@ -3275,9 +3282,9 @@ function swapPads(a,b){
 }
 
 // @module data/patterns
-// @provides PAT_FX, _fxOf, _patArr, copyBar, copyPattern, patLoad, patRead, patSync, patWrite, setStep,
-//    setStepAt
-// @uses clearLockEdit, editPat, getPattern, patSlot, pushUndo, tracks
+// @provides PAT_FX, _fxOf, _patArr, applySeqData, copyBar, copyPattern, patLoad, patRead, patSync, patWrite,
+//    seqDataOf, seqFromSetData, setStep, setStepAt
+// @uses STEPS, clearLockEdit, editPat, getPattern, patSlot, pushUndo, stripLegacyLocks, tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
@@ -3320,6 +3327,37 @@ function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を 
       Object.keys(t.locks).forEach(k=>{ if(k.indexOf(src+"_")===0) t.locks[dst+k.slice(String(src).length)]=JSON.parse(JSON.stringify(t.locks[k])); }); }
   }
 }
+// ---------- シーケンス（パターン 1 つ）の書き出し / 読み込み（v0.3.162 §156）：「SAVE も LOAD もセット単位かシーケンス単位でできるように」 ----------
+// 1 シーケンス＝16 パッドぶんの 4 小節のステップ・P-LOCK・そのパターンのミュート / ソロ / エフェクト。音は入れない（音はセットのもの）
+function seqDataOf(p){
+  patSync();
+  return tracks.map(t=>{ const locks={};
+    Object.keys(t.locks||{}).forEach(k=>{ if(k.indexOf(p+"_")===0) locks[k.slice(String(p).length+1)]=JSON.parse(JSON.stringify(t.locks[k])); });
+    return {patterns:t.patterns[p].map(b=>b.slice()), locks, mute:!!t.mutes[p], solo:!!t.solos[p], fx:Object.assign({}, t.patFx[p])}; });
+}
+// セットのファイル（.mics の sets[k] / v2 丸ごと）からパターン p を取り出して、シーケンスの形に
+function seqFromSetData(sd, p){
+  return (sd && Array.isArray(sd.tracks) ? sd.tracks : []).slice(0,16).map(pt=>{
+    const pat=pt&&pt.patterns&&pt.patterns[p], bars=[];
+    for(let b=0;b<4;b++) bars.push(Array.isArray(pat) ? (typeof pat[0]==="number" ? (b===0?pat.slice(0,STEPS):[]) : (Array.isArray(pat[b])?pat[b].slice(0,STEPS):[])) : []);
+    const locks={}; Object.keys((pt&&pt.locks)||{}).forEach(k=>{ if(k.indexOf(p+"_")===0) locks[k.slice(String(p).length+1)]=JSON.parse(JSON.stringify(pt.locks[k])); });
+    const fx = pt&&Array.isArray(pt.patFx)&&pt.patFx[p] ? pt.patFx[p] : (pt ? {delaySend:pt.delaySend||0, reverbSend:pt.reverbSend||0, filter:pt.filter||"off", cutoff:pt.cutoff??12000, reso:pt.reso??0.7} : null);
+    return {patterns:bars, locks:stripLegacyLocks(locks), mute:!!(pt&&(Array.isArray(pt.mutes)?pt.mutes[p]:pt.mute)), solo:!!(pt&&(Array.isArray(pt.solos)?pt.solos[p]:pt.solo)), fx};
+  });
+}
+// シーケンスをパターン p へ（ステップ・P-LOCK・ミュート / ソロ / エフェクトを置き換え）。undo と塗りは呼び出し側
+function applySeqData(p, trs){
+  patSync();
+  tracks.forEach((t,i)=>{ const x=trs&&trs[i];
+    for(let b=0;b<4;b++){ const src=x&&x.patterns&&Array.isArray(x.patterns[b]) ? x.patterns[b].slice(0,STEPS) : []; while(src.length<STEPS) src.push(0); t.patterns[p][b]=src; }
+    if(!t.locks) t.locks={};
+    Object.keys(t.locks).forEach(k=>{ if(k.indexOf(p+"_")===0) delete t.locks[k]; });
+    if(x) Object.keys(x.locks||{}).forEach(k=>{ t.locks[p+"_"+k]=JSON.parse(JSON.stringify(x.locks[k])); });
+    t.mutes[p]=!!(x&&x.mute); t.solos[p]=!!(x&&x.solo);
+    if(x&&x.fx) t.patFx[p]=Object.assign({}, t.patFx[p], x.fx);
+  });
+  if(patSlot===p) patLoad(p, true);
+}
 function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst へ（DUPの汎用版）
   if(src===dst) return; pushUndo();
   const ps=editPat+"_"+src+"_", pd=editPat+"_"+dst+"_";
@@ -3331,13 +3369,13 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 }
 // @module data/set
 // @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
-//    setRename, setsFromProject, snapshotSet, switchSetNow
+//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet, resetSet, setElapsed,
+//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
-//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
-//    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat, queuedSet,
-//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel, setSlots,
-//    sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
+//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat,
+//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel,
+//    setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -3430,9 +3468,18 @@ function switchSetNow(k, stopAt){
   setSlots[setCur]=snapshotSet();                 // いまのセットを退避（live が正だったぶんを書き戻す）
   stopAllVoices(stopAt||AC.currentTime); queuedPat=null;
   setCur=k; queuedSet=null; _setStart=performance.now();
+  if(typeof clearBarHold==="function") clearBarHold();
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
   if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// セットのファイル（.mics の 1 セット）をいまのセットへ読み込む（v0.3.162 §156）。音は復号。undo と塗りは呼び出し側
+async function loadSetData(sd){
+  const snap=await decodeSetData(sd, setCur);
+  stopAllVoices(AC.currentTime);
+  setSlots[setCur]=snap;   // 名前など（いまのセットの中身は live が正。切替のときに snapshotSet で書き戻る）
+  applySetSnapshot(snap, {});
+  if(typeof setSetLevel==="function") setSetLevel(setCur, +(sd&&sd.level)||0);
 }
 // SET のポン出し（v0.3.147）：k をいまのセット（PADS / SEQ の対象）にする。音は止めない＝いま鳴っている声とループの状態は
 // 退避先の snapshot へ引き継ぐ（いまのセットが鳴っていれば、呼ぶ前に audio/set-players の sideTakeCurrent で「他のセットの再生」に移してある）
@@ -3444,6 +3491,7 @@ function focusSet(k){
   tracks.forEach((t,i)=>{ const x=snap.tracks[i]; x.activeVoices=t.activeVoices||[]; x.loopPlaying=!!t.loopPlaying; t.activeVoices=[]; t.loopPlaying=false; });
   setSlots[setCur]=snap;
   queuedPat=null; setCur=k; queuedSet=null; _setStart=performance.now();
+  if(typeof clearBarHold==="function") clearBarHold();   // BAR ホールドは別の曲には持ち越さない（v0.3.161）
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();
@@ -3899,10 +3947,10 @@ function paintClPage(){
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
 //    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
-// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, getLockPlay,
-//    getPlayPattern, isMelodic, mainOut, patLength, patLoad, patSlot, perfDrag, perfRecArm, perfSnap,
-//    playBar, playPat, playStep, playVoice, playing, pushUndo, queuedPat, queuedSet, scaleSemi, setLockPlay,
-//    stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
+// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar,
+//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLoad, patSlot, perfDrag, perfRecArm,
+//    perfSnap, playBar, playPat, playStep, playVoice, playing, pushUndo, queuedPat, queuedSet, scaleSemi,
+//    setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -4000,7 +4048,7 @@ function scheduleClick(when, acc){
 function startTransport(){
   playing=true;
   stepIdx=0; playStep=0; drawQueue.length=0;
-  playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
+  playPat=editPat; playBar=firstPlayBar(); queuedPat=null; displayPat=editPat; displayBar=playBar;   // BAR ホールドがあればその小節から（v0.3.161）
   if(patSlot!==playPat) patLoad(playPat);   // ミュートは A B C D ごと（v0.3.149）
   tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
   // ポン出し（v0.3.146 §145）：小節頭は「いま」。最初の scheduler を timer（25ms 後）を待たずに同期で回す。
@@ -4033,8 +4081,8 @@ function scheduler(){
       stepIdx = 0;
       barStartTime += STEPS * TICKS_PER_16TH * tickDur();
       // 小節アタマ：予約があれば次パターンへ切替、無ければ同パターン内の次小節（書いた分でループ）
-      if(queuedPat !== null){ playPat = queuedPat; playBar = 0; queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
-      else { playBar++; if(playBar >= patLength(playPat)) playBar = 0; }
+      if(queuedPat !== null){ playPat = queuedPat; playBar = firstPlayBar(); queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
+      else playBar = nextPlayBar(playPat, playBar);   // 次の小節（BAR ホールドがあればホールドした小節だけを順に v0.3.161）
       // SET：予約された枠へは小節頭で差し替える（音は barStartTime で止める。dec 済みなので同期＝予約は遅れない）
       if(queuedSet !== null){ switchSetNow(queuedSet, barStartTime); playPat = 0; playBar = 0; }
     }
@@ -5345,10 +5393,10 @@ loadPresets().then(async ()=>{
 // @provides IS_IOS, barHasContent, fitMobileHeight, landscapeMode, lockViewHeight, modeBtns, paintPerf,
 //    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
 //    updatePerf
-// @uses activeLock, armMode, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar, editPat,
-//    paintClPage, paintSteps, perfLast, perfLockApply, perfReadVals, perfRecArm, perfRevertSnap, perfSnap,
-//    playStep, playing, plockFillsOn, queuedPat, renderPerfFills, sampNameEl, setActiveLock, setEditBar,
-//    setEditPat, setMode, setModeEnter, stepTrackName, swingPct, tracks, viewPadsEl
+// @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
+//    editPat, paintClPage, paintSteps, perfLast, perfLockApply, perfReadVals, perfRecArm, perfRevertSnap,
+//    perfSnap, playStep, playing, plockFillsOn, queuedPat, renderPerfFills, sampNameEl, setActiveLock,
+//    setEditBar, setEditPat, setMode, setModeEnter, stepTrackName, swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
@@ -5537,7 +5585,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   const $=id=>document.getElementById(id);
   document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
   // 小節(1-4)：COPY中は元→先で小節コピー、通常は setEditBar。DUPはCOPYに統合し撤去。
-  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); paintPerf(); }));
+  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); if(typeof barTapHold==="function") barTapHold(+b.dataset.b); paintPerf(); }));   // ダブルタップ＝BAR ホールド（v0.3.161）
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
   // comp/edit は P-LOCK ではなくモードボタン（.perf-mode）なので除外し、専用配線で既存の真へproxy。
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
@@ -5576,13 +5624,15 @@ setTimeout(updatePerf, 350);
 setInterval(()=>{ if(playing || document.body.classList.contains("perf")) paintPerf(); }, 200);   // 再生中は全レイアウトで窓を同期
 
 // @module pattern-master
-// @provides barSeg, chainLatencyMs, clearBarIndicator, clearPatIndicator, compToggle, kickVu, masterVuEl,
-//    masterVuLevel, paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat,
+// @provides _barTapB, _barTapT, barSeg, barTapHold, chainLatencyMs, clearBarHold, clearBarIndicator,
+//    clearPatIndicator, compToggle, firstPlayBar, heldBars, kickVu, masterVuEl, masterVuLevel, nextPlayBar,
+//    paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat, toggleBarHold,
 //    updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
-// @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, compDrive, compMakeup, compNode, compOn,
-//    compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
+// @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, barHold, compDrive, compMakeup, compNode,
+//    compOn, compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
 //    makeSatCurve, makeupGain, masterGain, paintPadStates, paintPerf, paintSteps, patHasContent, patLength,
-//    patLoad, playing, pushUndo, queuedPat, saturator, selectPad, setCompBypass, tapeDelay, tracks
+//    patLoad, playing, pushUndo, queuedPat, sampNameEl, saturator, selectPad, setCompBypass, tapeDelay,
+//    tracks
 // @depends -
 // ---------- pattern selector / chain ----------
 const patSeg=document.getElementById("patSeg");
@@ -5603,11 +5653,33 @@ function setEditPat(p){
   paintSteps(); paintPatBar(); refreshStepWaves();
 }
 function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves(); }
+// ---------- BAR のホールド（v0.3.161 §155）：「BAR はシングル＝従来どおり選択、ダブルクリック＝ホールドして繰り返す、
+// 複数ホールドされてると選択したとこだけ順番に繰り返す」。ホールドは鳴っているパターンに効く。切替は小節の終わりで（audio/transport が nextPlayBar を聞く）
+function heldBars(){ return [0,1,2,3].filter(b=>barHold[b]); }
+function toggleBarHold(b){ const h=barHold.slice(); h[b]=!h[b]; barHold=h; }
+function clearBarHold(){ if(barHold.some(Boolean)) barHold=[false,false,false,false]; }
+function firstPlayBar(){ const h=heldBars(); return h.length ? h[0] : 0; }
+function nextPlayBar(p, cur){
+  const h=heldBars();
+  if(h.length){ const n=h.find(b=>b>cur); return n!=null ? n : h[0]; }
+  return (cur+1>=patLength(p)) ? 0 : cur+1;
+}
+// 同じ BAR を 350ms 以内にもう一度＝ダブルタップ（iOS は dblclick が当てにならないので自前で）。1 回目の選択はそのまま効く
+let _barTapT=-1e9, _barTapB=-1;
+function barTapHold(b){
+  const now=performance.now();
+  if(b===_barTapB && now-_barTapT<350){ _barTapT=-1e9; _barTapB=-1; toggleBarHold(b);
+    const h=heldBars();
+    sampNameEl.textContent = h.length ? "BAR HOLD ▸ "+h.map(x=>x+1).join(" → ")+"（ここだけ"+(h.length>1?"順番に":"")+"くり返す）" : "BAR HOLD 解除（全部の小節を順に）";
+    paintPatBar(); return true; }
+  _barTapB=b; _barTapT=now; return false;
+}
 // SEQ/GRIDのパターンA-D・小節1-4を押して選ぶ（COPY中は元→先でコピー）
 [[patSeg,"p",setEditPat,"pat"],[barSeg,"b",setEditBar,"bar"]].forEach(([seg,k,fn,ct])=>{
   if(!seg) return;
   seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
-    if(copyTap(ct,+b.dataset[k])) return; fn(+b.dataset[k]); });
+    if(copyTap(ct,+b.dataset[k])) return; fn(+b.dataset[k]);
+    if(ct==="bar") barTapHold(+b.dataset[k]); });   // BAR のダブルタップ＝ホールド（v0.3.161）
 });
 function updatePatIndicator(p){
   [patSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
@@ -5627,7 +5699,9 @@ function paintPatBar(){
     b.classList.toggle("on", j===editBar);
     b.classList.toggle("has", barHasContent(editPat,j));
     b.classList.toggle("dim", j>=patLength(editPat) && !barHasContent(editPat,j));
+    b.classList.toggle("hold", !!barHold[j]);
   }));
+  document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("hold", !!barHold[+b.dataset.b]));
 }
 
 // ---------- Master（メニュー内）----------
@@ -5911,10 +5985,11 @@ async function finalizeRec(){
 }
 
 // @module save-load
-// @provides b64ToUint8, bufToWav, buildProject, calcCrop, setData, trackData, uint8ToB64, wavB64Cached
+// @provides SAVE_SCOPE_KEY, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop, curSetData,
+//    saveScope, setData, trackData, uint8ToB64, wavB64Cached
 // @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, setCur, setLevels, setSlots,
-//    shareOrDownload, swingPct, tracks
+//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, sampNameEl, seqDataOf,
+//    setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -6025,14 +6100,35 @@ document.getElementById("resetBtn").addEventListener("click",async()=>{
   _asDirty=false;
   location.reload();
 });
-document.getElementById("saveBtn").addEventListener("click",()=>{
-  const proj=buildProject();
-  const json=JSON.stringify(proj);
-  const blob=new Blob([json],{type:"application/json"});
-  // ファイル名に日時を付与: mics009-YYMMDD-HHMM.mics。共有シート（メンバーへ直接）→非対応はDL
+// ---------- SAVE / LOAD の単位（v0.3.162 §156）：「SAVE も LOAD もセット単位かシーケンス単位でできるように」 ----------
+// STAGE＝ファイル全体（16 セット）／SET＝いまのセット 1 つ（音つき）／SEQ＝編集中のパターン 1 つ（ステップ・P-LOCK・ミュート / エフェクト。音は無し）。
+// 単位はメニューの Project で選ぶ（この端末で覚える）。読み込みは 73-share-export の loadFileData
+const SAVE_SCOPE_KEY="mics-save-scope";
+function saveScope(){ let s="stage"; try{ s=localStorage.getItem(SAVE_SCOPE_KEY)||"stage"; }catch(_){} return ["stage","set","seq"].includes(s)?s:"stage"; }
+(function(){
+  const seg=document.getElementById("saveScope"); if(!seg) return;
+  const paint=()=>[...seg.children].forEach(b=>b.classList.toggle("on", b.dataset.u===saveScope()));
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    try{ localStorage.setItem(SAVE_SCOPE_KEY, b.dataset.u); }catch(_){}
+    paint(); sampNameEl.textContent = ({stage:"SAVE / LOAD ＝ ステージ全体（16 セット）", set:"SAVE / LOAD ＝ いまのセット（音つき）", seq:"SAVE / LOAD ＝ 編集中のシーケンス（"+"ABCD"[editPat]+"・音は無し）"})[saveScope()]; });
+  paint();
+})();
+// いまのセット（live）をファイルのセットの形に
+function curSetData(){ patSync(); return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, level:setLevels[setCur]||0, tracks:tracks.map((t,i)=>trackData(t,i,PADS[i].type,PADS[i].voice))}; }
+// 単位ごとの書き出し内容とファイル名
+function buildSaveFile(scope){
   const d=new Date(), z=n=>String(n).padStart(2,"0");
   const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
-  shareOrDownload(blob, "mics009-"+stamp+".mics");
+  const sn="set"+z(setCur+1);
+  if(scope==="set") return {obj:{version:3, kind:"set", set:curSetData()}, name:"mics009-"+sn+"-"+stamp+".mics"};
+  if(scope==="seq") return {obj:{version:3, kind:"seq", pat:editPat, from:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:seqDataOf(editPat)},
+                            name:"mics009-"+sn+"ABCD"[editPat]+"-"+stamp+".mics"};
+  return {obj:buildProject(), name:"mics009-"+stamp+".mics"};   // ファイル名に日時: mics009-YYMMDD-HHMM.mics
+}
+document.getElementById("saveBtn").addEventListener("click",()=>{
+  const f=buildSaveFile(saveScope());
+  const blob=new Blob([JSON.stringify(f.obj)],{type:"application/json"});
+  shareOrDownload(blob, f.name);   // 共有シート（メンバーへ直接）→非対応はDL
 });
 
 // GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）
@@ -6136,12 +6232,14 @@ function handleMIDI(data){
 })();
 
 // @module share-export
-// @provides _expBlob, _expBusy, _expName, applyProject, shareOrDownload
-// @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySetSnapshot, autosaveNow, bufToWav,
-//    compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn,
-//    groupVol, makeSatCurve, masterGain, multiOut, outBGain, patLength, playBtn, playing, pushUndo,
-//    queuedPat, queuedSet, sampNameEl, saturator, setCompBypass, setCur, setHoldClear, setSetLevel,
-//    setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices, tickDur
+// @provides _expBlob, _expBusy, _expName, applyProject, loadFileData, shareOrDownload
+// @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySeqData, applySetSnapshot,
+//    autosaveNow, bufToWav, compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn,
+//    fxReverbAmt, fxReverbOn, groupVol, loadSetData, makeSatCurve, masterGain, multiOut, outBGain,
+//    paintPadStates, paintPatBar, paintPerf, paintSteps, patLength, playBtn, playing, pushUndo, queuedPat,
+//    queuedSet, refreshStepWaves, sampNameEl, saturator, saveScope, seqFromSetData, setCompBypass, setCur,
+//    setHoldClear, setName, setSetLevel, setSlots, setsFromProject, sideCount, sideStopAll, stopAllVoices,
+//    tickDur
 // @depends layout
 // ===== 共有：Web Share APIの共有シート（iPhone=AirDrop/LINE等へ直接）。非対応環境はダウンロードにフォールバック =====
 async function shareOrDownload(blob, name){
@@ -6238,14 +6336,38 @@ async function applyProject(proj, opts){
     if(typeof setSetLevel==="function"){ const ss=Array.isArray(proj.sets)?proj.sets:[]; for(let k=0;k<16;k++) setSetLevel(k, (ss[k]&&+ss[k].level)||0); }   // ミックス音量（v0.3.151。v2 は 0）
     applySetSnapshot(setSlots[setCur], opts);
 }
+// 読み込み先を決める（v0.3.162 §156）：ファイルの種類（stage / set / seq）とメニューの単位（saveScope）の小さいほうへ。
+// SEQ のファイル → 編集中のパターンへ。SET のファイル → いまのセットへ（単位が SEQ なら、そのセットから編集中と同じ文字のパターンだけ）。
+// STAGE のファイル → 単位 STAGE なら全体、SET ならファイルのいまのセットをいまのセットへ、SEQ ならそのセットの同じ文字のパターンを編集中のパターンへ。
+// どれも Load の前へ ↩ で戻れる（pushUndo）
+async function loadFileData(proj, scope){
+  if(!proj || !proj.version) throw new Error("Invalid project file");
+  const kind=(proj.kind==="set"||proj.kind==="seq") ? proj.kind : "stage";
+  if(kind==="stage" && !(proj.tracks||Array.isArray(proj.sets))) throw new Error("Invalid project file");   // v2（tracks）／v3（sets）
+  const L="ABCD"[editPat], sn=String(setCur+1).padStart(2,"0");
+  const fileSet = kind==="set" ? proj.set : (kind==="stage" ? (Array.isArray(proj.sets) ? proj.sets[+proj.cur||0] : proj) : null);
+  if(kind==="seq" || scope==="seq"){
+    const trs = kind==="seq" ? proj.tracks : seqFromSetData(fileSet, editPat);
+    if(!Array.isArray(trs)) throw new Error("Invalid sequence");
+    pushUndo(); applySeqData(editPat, trs);
+    paintSteps(); paintPatBar(); paintPadStates(); if(typeof refreshStepWaves==="function") refreshStepWaves(); if(typeof paintPerf==="function") paintPerf();
+    return "LOADED SEQ → SET "+sn+" の "+L;
+  }
+  if(kind==="set" || scope==="set"){
+    if(!fileSet || !Array.isArray(fileSet.tracks)) throw new Error("Invalid set");
+    pushUndo(); await loadSetData(fileSet);
+    return "LOADED SET → SET "+sn+"（"+setName(setCur)+"）";
+  }
+  pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
+  await applyProject(proj);
+  return null;
+}
 document.getElementById("projFile").addEventListener("change",async(e)=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
   try{
     const proj=JSON.parse(await f.text());
-    if(!proj.version||!(proj.tracks||Array.isArray(proj.sets))) throw new Error("Invalid project file");   // v2（tracks）／v3（sets）
-    pushUndo();                       // Load 前へ戻れるように（＝自動保存の「変更あり」も立つ）
-    await applyProject(proj);
-    sampNameEl.textContent="LOADED — "+f.name.slice(0,12).toUpperCase();
+    const msg=await loadFileData(proj, (typeof saveScope==="function") ? saveScope() : "stage");
+    sampNameEl.textContent=msg || ("LOADED — "+f.name.slice(0,12).toUpperCase());
     if(typeof autosaveNow==="function") autosaveNow(true);   // 読んだ直後に必ず書く。次回起動で「読む前」に戻らない
   }catch(err){ console.warn("[project load]",err); sampNameEl.textContent="LOAD FAILED — このファイルは読めない"; }
 });
@@ -6503,7 +6625,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.160";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.162";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
