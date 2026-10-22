@@ -3,10 +3,10 @@
 //    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, queueSet, resetSet, setElapsed, setName,
 //    setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
-//    buildAllTrackWaves, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi, paintMixer,
-//    paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat, queuedSet,
-//    scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel, setSlots,
-//    sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
+//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat,
+//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel,
+//    setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -99,6 +99,7 @@ function switchSetNow(k, stopAt){
   setSlots[setCur]=snapshotSet();                 // いまのセットを退避（live が正だったぶんを書き戻す）
   stopAllVoices(stopAt||AC.currentTime); queuedPat=null;
   setCur=k; queuedSet=null; _setStart=performance.now();
+  if(typeof clearBarHold==="function") clearBarHold();
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();                                     // 別のセットの状態へ戻すのは事故
   if(typeof scheduleAutosave==="function") scheduleAutosave();
@@ -113,6 +114,7 @@ function focusSet(k){
   tracks.forEach((t,i)=>{ const x=snap.tracks[i]; x.activeVoices=t.activeVoices||[]; x.loopPlaying=!!t.loopPlaying; t.activeVoices=[]; t.loopPlaying=false; });
   setSlots[setCur]=snap;
   queuedPat=null; setCur=k; queuedSet=null; _setStart=performance.now();
+  if(typeof clearBarHold==="function") clearBarHold();   // BAR ホールドは別の曲には持ち越さない（v0.3.161）
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();

@@ -2,10 +2,10 @@
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
 //    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
-// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, getLockPlay,
-//    getPlayPattern, isMelodic, mainOut, patLength, patLoad, patSlot, perfDrag, perfRecArm, perfSnap,
-//    playBar, playPat, playStep, playVoice, playing, pushUndo, queuedPat, queuedSet, scaleSemi, setLockPlay,
-//    stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
+// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar,
+//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLoad, patSlot, perfDrag, perfRecArm,
+//    perfSnap, playBar, playPat, playStep, playVoice, playing, pushUndo, queuedPat, queuedSet, scaleSemi,
+//    setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -103,7 +103,7 @@ function scheduleClick(when, acc){
 function startTransport(){
   playing=true;
   stepIdx=0; playStep=0; drawQueue.length=0;
-  playPat=editPat; playBar=0; queuedPat=null; displayPat=editPat; displayBar=0;
+  playPat=editPat; playBar=firstPlayBar(); queuedPat=null; displayPat=editPat; displayBar=playBar;   // BAR ホールドがあればその小節から（v0.3.161）
   if(patSlot!==playPat) patLoad(playPat);   // ミュートは A B C D ごと（v0.3.149）
   tracks.forEach(t=>t.loopPlaying=false);   // ループのトグル状態をリセット
   // ポン出し（v0.3.146 §145）：小節頭は「いま」。最初の scheduler を timer（25ms 後）を待たずに同期で回す。
@@ -136,8 +136,8 @@ function scheduler(){
       stepIdx = 0;
       barStartTime += STEPS * TICKS_PER_16TH * tickDur();
       // 小節アタマ：予約があれば次パターンへ切替、無ければ同パターン内の次小節（書いた分でループ）
-      if(queuedPat !== null){ playPat = queuedPat; playBar = 0; queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
-      else { playBar++; if(playBar >= patLength(playPat)) playBar = 0; }
+      if(queuedPat !== null){ playPat = queuedPat; playBar = firstPlayBar(); queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
+      else playBar = nextPlayBar(playPat, playBar);   // 次の小節（BAR ホールドがあればホールドした小節だけを順に v0.3.161）
       // SET：予約された枠へは小節頭で差し替える（音は barStartTime で止める。dec 済みなので同期＝予約は遅れない）
       if(queuedSet !== null){ switchSetNow(queuedSet, barStartTime); playPat = 0; playBar = 0; }
     }

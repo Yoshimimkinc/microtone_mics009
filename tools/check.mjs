@@ -806,6 +806,37 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function barHoldTest(){
+  // v0.3.161：BAR はシングル＝選択、ダブルタップ＝ホールド。ホールドがあればその小節だけを順番にくり返す
+  const V='BARHOLD 1280x800';
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); switchView('viewSeq'); setEditPat(0); for(let b=0;b<4;b++) tracks[8].patterns[0][b][0]=1; applyBpm(240); paintPatBar(); });
+  const bar=k=>`#barSeg button[data-b="${k}"]`;
+  await p.click(bar(2)); await p.waitForTimeout(400);
+  const s1=await p.evaluate(()=>({editBar, hold:barHold.join()}));
+  ok_(`${V} シングルタップ＝選択だけ（ホールドしない）`, s1.editBar===2 && s1.hold==='false,false,false,false', JSON.stringify(s1));
+  await p.click(bar(1)); await p.click(bar(1)); await p.waitForTimeout(100);
+  const s2=await p.evaluate(()=>({editBar, hold:barHold.join(), cls:document.querySelector('#barSeg button[data-b="1"]').classList.contains('hold')}));
+  ok_(`${V} ダブルタップ＝ホールド（印が付く）`, s2.editBar===1 && s2.hold==='false,true,false,false' && s2.cls, JSON.stringify(s2));
+  const watch=ms=>p.evaluate(async ms=>{ const seen=new Set(); const t0=performance.now(); while(performance.now()-t0<ms){ seen.add(playBar); await new Promise(r=>setTimeout(r,40)); } return [...seen].sort().join(); }, ms);
+  await p.evaluate(()=>document.getElementById('play').click());
+  const w1=await watch(2600);
+  ok_(`${V} 1 つホールド＝その小節だけをくり返す（BAR 2）`, w1==='1', w1);
+  await p.click(bar(3)); await p.click(bar(3)); await p.waitForTimeout(50);
+  const w2=await watch(3200);
+  ok_(`${V} 2 つホールド＝その 2 つだけを順番に（BAR 2 → 4）`, w2==='1,3', w2);
+  await p.click(bar(1)); await p.click(bar(1)); await p.waitForTimeout(400); await p.click(bar(3)); await p.click(bar(3)); await p.waitForTimeout(50);
+  const s3=await p.evaluate(()=>barHold.join());
+  const w3=await watch(4400);
+  ok_(`${V} ホールドを全部外す＝全部の小節を順に`, s3==='false,false,false,false' && w3==='0,1,2,3', JSON.stringify({s3,w3}));
+  await p.evaluate(()=>document.getElementById('play').click());
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function editTools(){
   // v0.3.160：EDIT 中のドラッグ＝パッド入れ替え（P-LOCK を選んだままでも EDIT が先）／EDIT 画面の DELETE（2 回押す・↩ で戻せる）
   const V='EDITTOOLS 390x844';
@@ -1011,6 +1042,7 @@ await splashAnim();
 await setKeys();
 await peCueTest();
 await editTools();
+await barHoldTest();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
