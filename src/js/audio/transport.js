@@ -3,9 +3,9 @@
 //    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar,
-//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLoad, patSlot, perfDrag, perfRecArm,
-//    perfSnap, playBar, playPat, playStep, playVoice, playing, pushUndo, queuedPat, queuedSet, scaleSemi,
-//    setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
+//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot,
+//    patSwitchMode, perfDrag, perfRecArm, playBar, playPat, playStep, playVoice, playing, queuedPat,
+//    queuedSet, scaleSemi, setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -57,7 +57,6 @@ function scheduleStep(stepNo, when){
     if(v>0 && aud){
       // 演奏ライブ記録：REC ON中、ドラッグ中のパッドのこのトリガにp-lockを焼く（GRIDと同一データ）
       if(perfRecArm && perfDrag && perfDrag.moved && perfDrag.pad===i && perfDrag.param){
-        if(perfSnap && !perfSnap.recorded){ pushUndo(); perfSnap.recorded=true; }
         const pp=perfDrag.param, pv=(pp==="filter")?t.cutoff:t[PERF_BASE[pp]];
         setLockPlay(i, playPat, playBar, stepNo, pp, pv);
       }
@@ -129,15 +128,23 @@ function scheduler(){
   while(stepTimeClean(stepIdx) < AC.currentTime + LOOKAHEAD){
     // SP的微細ドリフトはスケジュール時のみ適用
     const when = stepTimeClean(stepIdx) + driftSec();
+    // BEAT（v0.3.168）：予約したパターンへ次の拍で。小節の中の位置はそのまま（その小節が無ければ頭の小節へ）
+    if(queuedPat !== null && stepIdx%4===0 && stepIdx>0 && patSwitchMode()==="beat"){
+      playPat = queuedPat; queuedPat = null; if(playBar >= patLength(playPat)) playBar = firstPlayBar();
+      if(patSlot!==playPat) patLoad(playPat);
+    }
     if(metroOn && stepIdx%4===0) scheduleClick(when, stepIdx===0);   // 拍頭（小節頭はアクセント）
     scheduleStep(stepIdx, when);
     stepIdx++;
     if(stepIdx >= STEPS){
       stepIdx = 0;
       barStartTime += STEPS * TICKS_PER_16TH * tickDur();
-      // 小節アタマ：予約があれば次パターンへ切替、無ければ同パターン内の次小節（書いた分でループ）
-      if(queuedPat !== null){ playPat = queuedPat; playBar = firstPlayBar(); queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
-      else playBar = nextPlayBar(playPat, playBar);   // 次の小節（BAR ホールドがあればホールドした小節だけを順に v0.3.161）
+      // 小節アタマ：次の小節（書いた分でループ。BAR ホールドがあればホールドした小節だけを順に v0.3.161）。
+      // 予約したパターンへは、既定（PATTERN）ではいまのパターンを鳴らし切ってから（次の小節が頭へ戻るとき）切り替える（v0.3.168 §161）。
+      // v0.3.167 までは次の小節アタマで切り替えていたので、3 小節目で押すと 4 小節目を飛ばして次の頭に来ていた（＝メニューの BAR）
+      const nb = nextPlayBar(playPat, playBar);
+      if(queuedPat !== null && (nb <= playBar || patSwitchMode()!=="end")){ playPat = queuedPat; playBar = firstPlayBar(); queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
+      else playBar = nb;
       // SET：予約された枠へは小節頭で差し替える（音は barStartTime で止める。dec 済みなので同期＝予約は遅れない）
       if(queuedSet !== null){ switchSetNow(queuedSet, barStartTime); playPat = 0; playBar = 0; }
     }

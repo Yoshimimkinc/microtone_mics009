@@ -1,8 +1,8 @@
 // @module app/state
 // @provides activeLock, armMode, assignTarget, barHold, bpmVal, copyArm, displayBar, displayPat, editBar,
-//    editDrag, editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast,
-//    perfRecArm, perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording,
-//    selected, setCur, setLevels, setMode, setSlots, stepIdx, swingPct
+//    editDrag, editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfRecArm,
+//    perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected, setCur,
+//    setLevels, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -28,7 +28,7 @@ let stepIdx = 0;        // スケジューラが次に予約するステップ  
 let playStep = 0;       // 表示中のステップ（カーソル）  @writers audio/transport, ui/transport-view
 let playPat = 0;        // 再生中パターン（スケジューラ用）  @writers audio/transport
 let playBar = 0;        // 再生中の小節（スケジューラ用）  @writers audio/transport
-let queuedPat = null;   // 予約中パターン（次の小節アタマで切替）  @writers pattern-master, audio/transport, share-export, data/set
+let queuedPat = null;   // 予約中パターン（切替どきはメニューで：パターンの終わり／小節の終わり／次の拍 v0.3.168）  @writers pattern-master, audio/transport, share-export, data/set
 let displayPat = 0;     // 表示中の再生パターン（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
 let displayBar = 0;     // 表示中の再生小節（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
 let bpmVal = 100;       // テンポ（セットごとに保存）。書く入口は applyBpm（chop）、復元は plock-undo / data/set  @writers chop, plock-undo, data/set
@@ -53,7 +53,5 @@ let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格�
 // --- P-LOCK・演奏（一時） ---
 let activeLock = null;  // 選択中のp-lockパラメータ（null=ON/OFFトグル）。入口は setActiveLock（step-strip）  @writers step-strip
 let perfDrag = null;    // Performance中のパッドドラッグ＝ライブ・モジュレート  @writers ui/performance-view
-let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録（解放しても基本値を保持）/ OFF=解放で掛ける前へ戻る  @writers layout
-let perfSnap = null;    // P-LOCK選択時に取った16パッドの「掛ける前の値」（解放でここへ戻る＝効果オフ／ダブルタップの基準）  @writers ui/performance-view, layout
-let perfLast = {};      // P-LOCKごとの「最後にいじった16パッドの値」（もう一度押すと復活する記憶 v0.3.121）  @writers -
+let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録 / OFF=パッドの値だけ（どちらも解除しても値は残る v0.3.168）  @writers layout
 let perfTapT = [];      // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）  @writers -

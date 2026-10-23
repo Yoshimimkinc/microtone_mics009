@@ -66,6 +66,9 @@
             <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム</span></label>
             <label class="toggle" id="midiSyncToggle"><span class="sw"></span><span>MIDI SYNC — そとのテンポに合わせる</span></label>
           </div>
+          <!-- 再生中の A B C D の切替どき（v0.3.168 §161）：パターンの終わり / 小節の終わり / 次の拍 -->
+          <div class="modal-sublabel">A B C D の切替</div>
+          <div class="seg" id="patSwitch"><button data-u="end" class="on">PATTERN</button><button data-u="bar">BAR</button><button data-u="beat">BEAT</button></div>
         </div>
         <div class="modal-sec">
           <div class="modal-label">I/O</div>

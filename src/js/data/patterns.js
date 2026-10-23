@@ -1,8 +1,7 @@
 // @module data/patterns
 // @provides PAT_FX, _fxOf, _patArr, applySeqData, copyBar, copyPattern, patLoad, patRead, patSync, patWrite,
 //    seqDataOf, seqFromSetData, setStep, setStepAt
-// @uses STEPS, clearLockEdit, editBar, editBars, editPat, patSlot, perfPatEnter, pushUndo, stripLegacyLocks,
-//    tracks
+// @uses STEPS, clearLockEdit, editBar, editBars, editPat, patSlot, pushUndo, stripLegacyLocks, tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
@@ -38,7 +37,6 @@ function patLoad(p, noSync){
   if(!noSync) patSync();
   patSlot=p;
   tracks.forEach(t=>patRead(t,p));
-  if(typeof perfPatEnter==="function") perfPatEnter();   // P-LOCK の「掛ける前の値」を新しいパターンで取り直す（v0.3.164）
 }
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ。ミュート / ソロ / エフェクトも写す（A を作って B に写し、変化をつける）
   if(src===dst) return; pushUndo();
