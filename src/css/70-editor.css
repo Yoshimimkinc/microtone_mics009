@@ -125,3 +125,20 @@
   .toggle.on .sw{background:var(--amber-dim);}
   .toggle.on .sw::after{left:20px;background:var(--amber);}
 
+
+  /* エフェクトのボタンのポッチ＝設定あり（v0.3.168 §162）。解除しても値は残るので、どれに掛かっているかをボタンで見せる。
+     色はボタンの文字色（点いている時は暗い文字色＝背景に対して見える）。#perfPlk は ::after を下線に使っているので ::before */
+  .msbtn.fx,.perf-plkbtn{position:relative;}
+  .msbtn.fx.fxset::after,.perf-plkbtn.fxset::before{content:"";position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;
+    background:currentColor;pointer-events:none;}
+  /* EDIT → エフェクトのボタン＝詳しい設定（パッドごとの量・FILTER の種類・RESET） */
+  .modal.fxm{width:min(420px,94vw);}
+  .fxm-list{display:flex;flex-direction:column;gap:2px;}
+  .fxm-row{display:grid;grid-template-columns:9ch 1fr 4ch;align-items:center;gap:8px;min-height:32px;font-size:12px;color:var(--dim);}
+  .fxm-list.filt .fxm-row{grid-template-columns:9ch 44px 1fr 4ch;}
+  .fxm-row.set{color:var(--ink);}
+  .fxm-row input{width:100%;min-width:0;}
+  .fxm-n{white-space:nowrap;overflow:hidden;}
+  .fxm-v{text-align:right;font-variant-numeric:tabular-nums;}
+  .fxm-type{display:none;min-height:28px;padding:2px 4px;font-size:11px;background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;cursor:pointer;}
+  .fxm-list.filt .fxm-type{display:block;}

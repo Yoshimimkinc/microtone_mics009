@@ -2,7 +2,7 @@
 // @provides LOFI, PERF_BASE, _ledT, applyFx, delaySend, echoFb, echoFbHP, echoFbLP, echoLfo, echoLfoDepth,
 //    echoSat, echoWet, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern,
 //    perfResetPad, reverb, reverbLP, reverbPre, reverbSend, reverbWet, setDelayTempo, tapeEcho, tracks
-// @uses AC, PADS, PLOCKS, STEPS, bpmVal, editBar, editPat, finalClip, perfFillPad, perfSnap, playBar,
+// @uses AC, PADS, STEPS, bpmVal, editBar, editPat, finalClip, fxClearPad, paintFxDots, perfFillPad, playBar,
 //    playPat, pushUndo, syncEditor, tapeDelay
 // @depends boot, engine-core, engine-master
 // ===== センドFX：RE-101風テープディレイ ＋ ホールリバーブ（マスター最終段からパラレル送り）=====
@@ -92,19 +92,13 @@ const LOFI = { bits:12, targetRate:26040 }; // SP-1200 ≒ 26kHz
 // UI・再生・編集・演奏の状態（selected / playing / editPat / activeLock / perf* …）は app/state.js へ移した（v0.3.133）
 let _ledT=null;   // ASSIGN の LED 点滅タイマ
 const PERF_BASE = {pitch:"tune", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 4つとも演奏のパラメータ・ページで同等に扱う（LEVEL は v0.3.124 で P-LOCK から廃止 §135）
-// 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）
+// 演奏P-LOCK：パッドのダブルタップ＝そのパッドからこのエフェクトを外す（v0.3.168 から「押した時の値」ではなく掛かっていない値。PITCH は 0）
 function perfResetPad(i, param){
   if(!param || !PERF_BASE[param]) return;
-  const t=tracks[i], prop=PERF_BASE[param];
-  const hasSnap = perfSnap && perfSnap.param===param;
   pushUndo();
-  if(param==="filter"){
-    t.cutoff = hasSnap ? perfSnap.vals[i] : PLOCKS.filter.def;
-    if(hasSnap) t.filter = perfSnap.filt[i];
-  } else {
-    t[prop] = hasSnap ? perfSnap.vals[i] : PLOCKS[param].def;
-  }
+  if(param==="pitch") tracks[i].tune=0; else fxClearPad(i, param);
   perfFillPad(i, param);
+  paintFxDots();
   if(typeof syncEditor==="function") syncEditor();
 }
 

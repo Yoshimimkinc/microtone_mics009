@@ -1,8 +1,8 @@
 // @module step-strip
 // @provides paintStepStrip, setActiveLock, stepBtns, stepShift, stepStripEl, stepTrackName, stripDrag,
 //    toggleStepAt
-// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, getLockEdit,
-//    getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls, sampNameEl, selectPad,
+// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, fxBtnTap,
+//    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, pushUndo, rowEls, sampNameEl, selectPad,
 //    selected, setCellWave, setLockEdit, setStep, trackWaveURL, tracks, updateRecBtnLabel
 // @depends boot, plock-undo, ui/transport-view
 // ===== GRID（Digitakt式）ステップ入力 =====
@@ -102,13 +102,11 @@ function setActiveLock(p){
   activeLock=(activeLock===p)?null:p;
   document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock], .msbar .msbtn.fx[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
 }
-// スマホの DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの送り量。
-// PC の perf と同じく perfLockApply を通す＝解除で掛ける前へ戻り、もう一度押すと前回の値が復活（v0.3.121）
+// スマホの PITCH / FILTER / DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの量。
+// PC の perf と同じく fxBtnTap を通す＝解除しても値は残る（ポッチ）／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
 document.querySelectorAll(".msbar .msbtn.fx").forEach(b=>b.addEventListener("click",()=>{
-  const prev=activeLock;
-  setActiveLock(b.dataset.lock);
-  if(typeof perfLockApply==="function") perfLockApply(prev);
-  if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent = activeLock ? (b.textContent.trim()+"：パッドを左右にドラッグ＝送り量 / もう一度で解除（値は覚えている）") : "";
+  fxBtnTap(b.dataset.lock);
+  if(typeof sampNameEl!=="undefined"&&sampNameEl && activeLock===b.dataset.lock) sampNameEl.textContent = b.textContent.trim()+"：パッドを左右にドラッグ＝量 / もう一度で解除（値は残る）・ダブルタップでリセット";
   if(typeof paintPerf==="function") paintPerf();
 }));
 function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); }

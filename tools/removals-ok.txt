@@ -75,3 +75,7 @@ setGridEl [pointerleave]
 _muteArr
 muteLoad
 muteSync
+# v0.3.168 §162 エフェクトのボタンは解除しても値が残る。押した時の値を控えて解除で戻す仕組み（perfSnap / perfLast）を撤去した（SET を替えて解除すると前のセットの値を書き込むバグの元）
+perfPatEnter
+perfReadVals
+perfRevertSnap

@@ -39,9 +39,10 @@ tapeHiss ───────────────────────�
   `.mics` v3 = `{version:3, cur, sets:[16 × {name,bpm,swing,tracks}], comp, masterVol, groupVol, fx}`（v2 は SET 1 に入る）。触っていないプリセットの音は同梱しない。
 - `tracks[16]`: each has `patterns[4][16]`, buffer, vol, tune, start, end, loop, filter, choke, etc.
 - **ミュート / ソロ / エフェクトは A B C D ごと（v0.3.149–150, §146）**：各トラックの `mutes[4]` / `solos[4]` / `patFx[4]`（DELAY・REVERB の送り、FILTER 種類・カットオフ・レゾ＝`PAT_FX`）。live の値は `patSlot` のパターンのもので、パターンを移るとき `patLoad`（`data/patterns`）が書き戻し→読み出しする。
+  エフェクトのボタン（PITCH / FILTER / DELAY / REVERB）は解除しても値が残る（v0.3.168 §162）。掛かっていればボタンにポッチ、ダブルタップで全パッドから外す、EDIT 中に押すとモーダル（FILTER / DELAY / REVERB。`ui/performance-view` の `fxBtnTap`）。
 - `editPat` (0-3): which pattern is being edited
 - **BAR ホールド（v0.3.161, §155）**：BAR のダブルタップで `barHold`。ホールドがあれば再生はその小節だけを順にくり返す（`nextPlayBar`）。保存しない。ホールドした小節で打ち込むと、ホールドした小節すべての同じステップへ入る（`editBars`、v0.3.166 §159）
-- Pattern length is derived from bar content via `patLength(p)` (no separate chainLen state; A/B/C/D switching is `queuedPat` at pattern boundary)
+- Pattern length is derived from bar content via `patLength(p)` (no separate chainLen state; A/B/C/D switching is `queuedPat`; when it switches is a menu setting PATTERN (default, after the pattern plays out) / BAR / BEAT — `patSwitchMode()`, v0.3.168 §161)
 - Accessor functions: `getPattern(i)` for edit, `getPlayPattern(i)` for playback
 
 ### UI Modes (2 screens since v0.2.8)
@@ -141,7 +142,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.167
+MICS009 beta v0.3.168
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

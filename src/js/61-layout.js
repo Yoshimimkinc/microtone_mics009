@@ -3,9 +3,9 @@
 //    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editPat, paintClPage, paintSteps, perfLast, perfLockApply, perfReadVals, perfRecArm, perfRevertSnap,
-//    perfSnap, playStep, playing, plockFillsOn, queuedPat, renderPerfFills, sampNameEl, setActiveLock,
-//    setEditBar, setEditPat, setMode, setModeEnter, stepTrackName, swingPct, tracks, viewPadsEl
+//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, perfRecArm, playStep, playing, plockFillsOn,
+//    queuedPat, renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName,
+//    swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
@@ -187,6 +187,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
+  if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
 }
 // P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
@@ -198,14 +199,12 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
   // comp/edit は P-LOCK ではなくモードボタン（.perf-mode）なので除外し、専用配線で既存の真へproxy。
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
-    const prev=activeLock;
-    setActiveLock(b.dataset.lock);
-    perfLockApply(prev); paintPerf();
+    fxBtnTap(b.dataset.lock); paintPerf();   // 解除しても値は残る／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
   }));
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：離すと戻る（次に押すと前回の値）"; });
+    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：いじった値はパッドに残る（ステップには記録しない）"; });
 })();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
@@ -215,8 +214,7 @@ function updatePerf(){
   const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
   document.body.classList.toggle("perf", four && land);
   document.body.classList.toggle("perf-rotate", four && !land && coarse);
-  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKを解放（記憶して掛ける前へ戻す）
-    if(perfSnap){ perfLast[perfSnap.param]=perfReadVals(perfSnap.param); if(!perfRecArm || perfSnap.recorded) perfRevertSnap(); perfSnap=null; }
+  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCK の塗りを消す（値は残る v0.3.168）
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }

@@ -1,8 +1,9 @@
 // @module pattern-master
-// @provides _barTapB, _barTapT, barSeg, barTapHold, chainLatencyMs, clearBarHold, clearBarIndicator,
-//    clearPatIndicator, compToggle, editBars, firstPlayBar, heldBars, kickVu, masterVuEl, masterVuLevel,
-//    nextPlayBar, paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat,
-//    toggleBarHold, updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
+// @provides PAT_SW_KEY, _barTapB, _barTapT, barSeg, barTapHold, chainLatencyMs, clearBarHold,
+//    clearBarIndicator, clearPatIndicator, compToggle, editBars, firstPlayBar, heldBars, kickVu, masterVuEl,
+//    masterVuLevel, nextPlayBar, paintLatency, paintMixer, paintPatBar, patSeg, patSwitchMode,
+//    refreshStepWaves, setEditBar, setEditPat, toggleBarHold, updateBarIndicator, updatePatIndicator, vuHit,
+//    vuLoop, vuRaf
 // @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, barHold, compDrive, compMakeup, compNode,
 //    compOn, compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
 //    makeSatCurve, makeupGain, masterGain, paintPadStates, paintPerf, paintSteps, patHasContent, patLength,
@@ -27,6 +28,18 @@ function setEditPat(p){
   else { patLoad(p); paintPadStates(); if(typeof paintPerf==="function") paintPerf(); }   // 止まっていればミュート / エフェクトも p のものに（鳴っていれば切り替わる小節頭で。v0.3.149 / v0.3.150）
   paintSteps(); paintPatBar(); refreshStepWaves();
 }
+// ---------- 再生中の A B C D の切替どき（v0.3.168 §161）。メニューの Timing で選ぶ（この端末で覚える） ----------
+// end＝いまのパターンを鳴らし切ってから（既定）／bar＝いまの小節の終わり（v0.3.167 までの動き）／beat＝次の拍で、小節の中の位置はそのまま
+const PAT_SW_KEY="mics-pat-switch";
+function patSwitchMode(){ let s="end"; try{ s=localStorage.getItem(PAT_SW_KEY)||"end"; }catch(_){} return ["end","bar","beat"].includes(s)?s:"end"; }
+(function(){
+  const seg=document.getElementById("patSwitch"); if(!seg) return;
+  const paint=()=>[...seg.children].forEach(b=>b.classList.toggle("on", b.dataset.u===patSwitchMode()));
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    try{ localStorage.setItem(PAT_SW_KEY, b.dataset.u); }catch(_){}
+    paint(); sampNameEl.textContent = ({end:"A B C D の切替 ＝ パターンを鳴らし切ってから", bar:"A B C D の切替 ＝ いまの小節の終わりで", beat:"A B C D の切替 ＝ 次の拍で（小節の中の位置はそのまま）"})[patSwitchMode()]; });
+  paint();
+})();
 function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves(); }
 // ---------- BAR のホールド（v0.3.161 §155）：「BAR はシングル＝従来どおり選択、ダブルクリック＝ホールドして繰り返す、
 // 複数ホールドされてると選択したとこだけ順番に繰り返す」。ホールドは鳴っているパターンに効く。切替は小節の終わりで（audio/transport が nextPlayBar を聞く）

@@ -81,6 +81,7 @@
   .modal-sec:last-child{margin-bottom:0;}
   .modal-label{font-size:10px;color:var(--dim);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;}
   .modal-btns{display:flex;gap:8px;flex-wrap:wrap;}
+  .modal-sublabel{font-size:11px;color:var(--dim);margin:14px 0 6px;}   /* セクションの中の小見出し（A B C D の切替 v0.3.168） */
   .modal .master-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
   .modal .master-ctrls .knob{flex:1 1 90px;}
   *{box-sizing:border-box;margin:0;padding:0;}
