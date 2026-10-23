@@ -1,13 +1,19 @@
 // @module data/patterns
 // @provides PAT_FX, _fxOf, _patArr, applySeqData, copyBar, copyPattern, patLoad, patRead, patSync, patWrite,
 //    seqDataOf, seqFromSetData, setStep, setStepAt
-// @uses STEPS, clearLockEdit, editPat, getPattern, patSlot, perfPatEnter, pushUndo, stripLegacyLocks, tracks
+// @uses STEPS, clearLockEdit, editBar, editBars, editPat, patSlot, perfPatEnter, pushUndo, stripLegacyLocks,
+//    tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
 // 編集中パターン（editPat/editBar）のステップを書く唯一の口（v0.3.135）。0=OFF / 1=ON / 2=アクセント / 音階モードは音程+1。
 // OFF にしたらそのステップの p-lock も消す。undo（pushUndo）と描画は呼び出し側
-function setStep(i, s, v){ getPattern(i)[s]=v; if(v===0) clearLockEdit(i, s); }
+// v0.3.166：編集中の小節がホールドされていれば、ホールドした小節すべての同じステップへ（editBars、62-pattern-master）
+function setStep(i, s, v){
+  const bars=(typeof editBars==="function") ? editBars() : [editBar];
+  bars.forEach(b=>{ tracks[i].patterns[editPat][b][s]=v; });
+  if(v===0) clearLockEdit(i, s);
+}
 // 任意のパターン p・小節 b のステップを書く（● REC 中の手叩き＝鳴っている小節へ記録。p-lock は触らない）
 function setStepAt(i, p, b, s, v){ tracks[i].patterns[p][b][s]=v; }
 // ---------- パターンごとに覚える状態（A B C D）：ミュート / ソロ（v0.3.149 §146）とエフェクト（v0.3.150 §146） ----------

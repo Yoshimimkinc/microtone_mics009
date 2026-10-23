@@ -889,6 +889,21 @@ async function barHoldTest(){
   const look=await p.evaluate(()=>{ const b=k=>document.querySelector(`#barSeg button[data-b="${k}"]`); const cs=getComputedStyle;
     return {loop:cs(b(1),'::before').content, held:+cs(b(1)).opacity, other:+cs(b(3)).opacity, frame:/inset/.test(cs(b(1)).boxShadow), segCls:document.getElementById('barSeg').classList.contains('has-hold')}; });
   ok_(`${V} 見た目：ホールドした小節は太い枠＋⟳、していない小節は薄く（v0.3.164）`, /⟳/.test(look.loop) && look.held===1 && look.other<0.5 && look.frame && look.segCls, JSON.stringify(look));
+  // v0.3.166：ホールドした小節で打ち込む＝ホールドした小節すべての同じステップへ（Excel の複数シート選択のように）
+  await p.click(bar(3)); await p.click(bar(3)); await p.waitForTimeout(50);   // BAR 2 と 4 をホールド
+  await p.click(bar(1)); await p.waitForTimeout(400);                          // 編集は BAR 2（ホールド中）
+  await p.click('#grid .row[data-i="9"] .step[data-s="6"]'); await p.waitForTimeout(80);
+  const g1=await p.evaluate(()=>tracks[9].patterns[0].map(b=>b[6]).join());
+  await p.evaluate(()=>{ setLockEdit(9,6,'pitch',5); });
+  const lk=await p.evaluate(()=>Object.keys(tracks[9].locks||{}).filter(k=>/_6$/.test(k)).sort().join());
+  await p.click('#grid .row[data-i="9"] .step[data-s="6"]'); await p.waitForTimeout(80);
+  const g2=await p.evaluate(()=>({steps:tracks[9].patterns[0].map(b=>b[6]).join(), locks:Object.keys(tracks[9].locks||{}).filter(k=>/_6$/.test(k)).join()}));
+  await p.click(bar(0)); await p.waitForTimeout(400);                          // 編集は BAR 1（ホールドしていない）
+  await p.click('#grid .row[data-i="9"] .step[data-s="6"]'); await p.waitForTimeout(80);
+  const g3=await p.evaluate(()=>tracks[9].patterns[0].map(b=>b[6]).join());
+  ok_(`${V} ホールドした小節で打つ＝ホールドした小節すべての同じ所に入る・消すのも・P-LOCK も／ホールドしていない小節はそこだけ`, g1==='0,1,0,1' && lk==='0_1_6,0_3_6' && g2.steps==='0,0,0,0' && g2.locks==='' && g3==='1,0,0,0', JSON.stringify({g1,lk,g2,g3}));
+  await p.evaluate(()=>{ tracks[9].patterns[0][0][6]=0; });
+  await p.click(bar(3)); await p.click(bar(3)); await p.waitForTimeout(400);   // 元に戻す（BAR 4 を外す＝BAR 2 だけホールド）
   const watch=ms=>p.evaluate(async ms=>{ const seen=new Set(); const t0=performance.now(); while(performance.now()-t0<ms){ seen.add(playBar); await new Promise(r=>setTimeout(r,40)); } return [...seen].sort().join(); }, ms);
   await p.evaluate(()=>document.getElementById('play').click());
   const w1=await watch(2600);

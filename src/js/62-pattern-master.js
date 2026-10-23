@@ -1,8 +1,8 @@
 // @module pattern-master
 // @provides _barTapB, _barTapT, barSeg, barTapHold, chainLatencyMs, clearBarHold, clearBarIndicator,
-//    clearPatIndicator, compToggle, firstPlayBar, heldBars, kickVu, masterVuEl, masterVuLevel, nextPlayBar,
-//    paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat, toggleBarHold,
-//    updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
+//    clearPatIndicator, compToggle, editBars, firstPlayBar, heldBars, kickVu, masterVuEl, masterVuLevel,
+//    nextPlayBar, paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat,
+//    toggleBarHold, updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
 // @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, barHold, compDrive, compMakeup, compNode,
 //    compOn, compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
 //    makeSatCurve, makeupGain, masterGain, paintPadStates, paintPerf, paintSteps, patHasContent, patLength,
@@ -31,6 +31,9 @@ function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves
 // ---------- BAR のホールド（v0.3.161 §155）：「BAR はシングル＝従来どおり選択、ダブルクリック＝ホールドして繰り返す、
 // 複数ホールドされてると選択したとこだけ順番に繰り返す」。ホールドは鳴っているパターンに効く。切替は小節の終わりで（audio/transport が nextPlayBar を聞く）
 function heldBars(){ return [0,1,2,3].filter(b=>barHold[b]); }
+// 打ち込みの書き先（v0.3.166 §159）：「HOLD した小節では、グリッドに音を置いたら同じ個所すべてに反映。Excel で選択したシートすべてに入るのと同じ」。
+// 編集中の小節がホールドされていれば、ホールドした小節すべて。そうでなければ編集中の小節だけ
+function editBars(){ return barHold[editBar] ? heldBars() : [editBar]; }
 function toggleBarHold(b){ const h=barHold.slice(); h[b]=!h[b]; barHold=h; }
 function clearBarHold(){ if(barHold.some(Boolean)) barHold=[false,false,false,false]; }
 function firstPlayBar(){ const h=heldBars(); return h.length ? h[0] : 0; }
@@ -45,7 +48,7 @@ function barTapHold(b){
   const now=performance.now();
   if(b===_barTapB && now-_barTapT<350){ _barTapT=-1e9; _barTapB=-1; toggleBarHold(b);
     const h=heldBars();
-    sampNameEl.textContent = h.length ? "BAR HOLD ▸ "+h.map(x=>x+1).join(" → ")+"（ここだけ"+(h.length>1?"順番に":"")+"くり返す）" : "BAR HOLD 解除（全部の小節を順に）";
+    sampNameEl.textContent = h.length ? "BAR HOLD ▸ "+h.map(x=>x+1).join(" → ")+"（ここだけ"+(h.length>1?"順番に":"")+"くり返す"+(h.length>1?"・打ち込みは "+h.map(x=>x+1).join("・")+" に同時に入る":"")+"）" : "BAR HOLD 解除（全部の小節を順に）";
     paintPatBar(); return true; }
   _barTapB=b; _barTapT=now; return false;
 }
