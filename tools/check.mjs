@@ -885,6 +885,9 @@ async function barHoldTest(){
   await p.click(bar(1)); await p.click(bar(1)); await p.waitForTimeout(100);
   const s2=await p.evaluate(()=>({editBar, hold:barHold.join(), cls:document.querySelector('#barSeg button[data-b="1"]').classList.contains('hold')}));
   ok_(`${V} ダブルタップ＝ホールド（印が付く）`, s2.editBar===1 && s2.hold==='false,true,false,false' && s2.cls, JSON.stringify(s2));
+  const look=await p.evaluate(()=>{ const b=k=>document.querySelector(`#barSeg button[data-b="${k}"]`); const cs=getComputedStyle;
+    return {loop:cs(b(1),'::before').content, held:+cs(b(1)).opacity, other:+cs(b(3)).opacity, frame:/inset/.test(cs(b(1)).boxShadow), segCls:document.getElementById('barSeg').classList.contains('has-hold')}; });
+  ok_(`${V} 見た目：ホールドした小節は太い枠＋⟳、していない小節は薄く（v0.3.164）`, /⟳/.test(look.loop) && look.held===1 && look.other<0.5 && look.frame && look.segCls, JSON.stringify(look));
   const watch=ms=>p.evaluate(async ms=>{ const seen=new Set(); const t0=performance.now(); while(performance.now()-t0<ms){ seen.add(playBar); await new Promise(r=>setTimeout(r,40)); } return [...seen].sort().join(); }, ms);
   await p.evaluate(()=>document.getElementById('play').click());
   const w1=await watch(2600);
@@ -1056,6 +1059,12 @@ async function patFx(){
   ok_(`${V} エフェクトを A B C D で持たない古いファイルは、全パターンに同じ値`, old.join()==='0.4,0.4,0.4,0.4', JSON.stringify(old));
   const un=await p.evaluate(()=>{ setEditPat(0); pushUndo(); tracks[10].reverbSend=0.9; setEditPat(1); setEditPat(0); const before=tracks[10].reverbSend; doUndo(); return {before, after:tracks[10].reverbSend}; });
   ok_(`${V} undo でエフェクトも戻る`, un.before===0.9 && un.after===0.4, JSON.stringify(un));
+  // v0.3.164：P-LOCK（DELAY）を選んだまま A B C D を替えると、パッドの塗り（値）が追従する／解放しても別のパターンの値を書き込まない
+  const pl=await p.evaluate(()=>{ setEditPat(0); tracks[8].delaySend=0.6; setEditPat(1); tracks[8].delaySend=0.1; setEditPat(0);
+    const btn=document.querySelector('.msbar .msbtn.fx[data-lock="delay"]')||document.querySelector('#perfPlk .perf-plkbtn[data-lock="delay"]'); btn.click();
+    const fill=()=>padsEl.children[8]._lockv.textContent; const a=fill(); setEditPat(1); const b=fill();
+    btn.click(); const afterRelease={lock:activeLock, b:tracks[8].delaySend}; setEditPat(0); return {a, b, afterRelease, backA:tracks[8].delaySend}; });
+  ok_(`${V} P-LOCK を選んだまま A→B：パッドの値の表示が B に追従・解放しても B は B の値・A は A の値`, pl.a==='60' && pl.b==='10' && pl.afterRelease.lock===null && pl.afterRelease.b===0.1 && pl.backA===0.6, JSON.stringify(pl));
   await p.evaluate(async()=>{ await clearAutosave(); });
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
