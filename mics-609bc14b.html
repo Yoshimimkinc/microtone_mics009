@@ -1187,7 +1187,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.164</div>
+  <div class="s-ver" id="splashVer">v0.3.165</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1304,7 +1304,7 @@
             <button class="t" id="loadProjBtn">Load</button>
             <button class="t" id="exportWavBtn">WAV ↓</button>
             <button class="t" id="resetBtn" title="自動保存を消して初期状態から始める">RESET</button>
-            <input type="file" id="projFile" accept=".mics,.json" style="display:none;">
+            <input type="file" id="projFile" accept=".mics,.micset,.micseq,.json" style="display:none;">
           </div>
         </div>
       </div>
@@ -6174,9 +6174,10 @@ function buildSaveFile(scope){
   const d=new Date(), z=n=>String(n).padStart(2,"0");
   const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
   const sn="set"+z(setCur+1);
-  if(scope==="set") return {obj:{version:3, kind:"set", set:curSetData()}, name:"mics009-"+sn+"-"+stamp+".mics"};
+  // 拡張子で単位が分かる（v0.3.165）：STAGE＝.mics／SET＝.micset／SEQ＝.micseq。読み込みは拡張子ではなく中身（kind）で決める
+  if(scope==="set") return {obj:{version:3, kind:"set", set:curSetData()}, name:"mics009-"+sn+"-"+stamp+".micset"};
   if(scope==="seq") return {obj:{version:3, kind:"seq", pat:editPat, from:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:seqDataOf(editPat)},
-                            name:"mics009-"+sn+"ABCD"[editPat]+"-"+stamp+".mics"};
+                            name:"mics009-"+sn+"ABCD"[editPat]+"-"+stamp+".micseq"};
   return {obj:buildProject(), name:"mics009-"+stamp+".mics"};   // ファイル名に日時: mics009-YYMMDD-HHMM.mics
 }
 document.getElementById("saveBtn").addEventListener("click",()=>{
@@ -6679,7 +6680,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.164";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.165";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
