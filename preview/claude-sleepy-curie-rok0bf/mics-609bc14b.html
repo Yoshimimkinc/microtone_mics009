@@ -623,11 +623,15 @@
   .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
   .patbtn{position:relative;}
   .patbtn.on{background:var(--amber);color:var(--hit-ink);}
-  /* BAR ホールド（v0.3.161）：ダブルタップで ON。下にアンバーの線＋小さなループ印 */
-  .patbtn.hold,.perf-bar.hold{box-shadow:inset 0 -3px 0 var(--amber);position:relative;}
-  .patbtn.hold::after,.perf-bar.hold::after{content:"⟳";position:absolute;top:1px;right:3px;font-size:9px;line-height:1;color:var(--amber);}
-  .patbtn.on.hold::after{color:var(--hit-ink);}
+  /* BAR ホールド（v0.3.161、v0.3.164 で見やすく §155）：ホールドした小節＝点灯色の太い枠＋光＋数字の下に ⟳。
+     ホールドがある間は、ホールドしていない小節を薄く＝「鳴るのはこの小節だけ」が一目で分かる。⟳ は ::before（::after は中身ありのドット） */
+  .patbtn.hold,.perf-bar.hold{box-shadow:0 0 0 2px var(--amber) inset,0 0 10px rgba(var(--hit-glow-a),.5);color:var(--amber);font-weight:800;position:relative;}
+  .patbtn.hold::before,.perf-bar.hold::before{content:"⟳";position:absolute;left:0;right:0;bottom:1px;text-align:center;font-size:10px;line-height:1;font-weight:700;color:var(--amber);pointer-events:none;}
+  .patbtn.on.hold,.perf-bar.on.hold{color:var(--hit-ink);}
+  .patbtn.on.hold::before,.perf-bar.on.hold::before{color:var(--hit-ink);}
+  #barSeg.has-hold>.patbtn:not(.hold),#perfPats.has-hold .perf-bar:not(.hold){opacity:.35;}
   .patbtn.playing{box-shadow:0 0 0 2px var(--teal);position:relative;z-index:2;}  /* 現在再生中を外枠で・最前面 */
+  .patbtn.hold.playing{box-shadow:0 0 0 2px var(--amber) inset,0 0 0 2px var(--teal),0 0 10px rgba(var(--hit-glow-a),.5);}   /* ホールド中に鳴っている小節＝両方の枠 */
   .patbtn.queued{box-shadow:0 0 0 2px var(--teal);z-index:2;animation:spblink .8s ease-in-out infinite;}  /* 予約中＝点滅 */
   .patbtn.has::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:.85;}  /* 中身ありドット */
   .patbtn.dim{opacity:.4;}  /* ループ外の小節は薄く */
@@ -1183,7 +1187,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.163</div>
+  <div class="s-ver" id="splashVer">v0.3.164</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -2890,7 +2894,7 @@ new MutationObserver(()=>{
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
-//    refreshSeqMode, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
+//    refreshSeqMode, renderPerfFills, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -3053,10 +3057,12 @@ function paintPadStates(){
     el.classList.toggle("soloed",tracks[i].solo);
     el.classList.toggle("copysrc", !!copyArm && copyArm.type==="pad" && copyArm.idx===i);
   }
+  // P-LOCK 選択中のパッドの塗り（エフェクトの値）も。A B C D を替えると値が替わるので（v0.3.164 §158：表示が前のパターンのままだった）
+  if(typeof renderPerfFills==="function") renderPerfFills();
 }
 // @module ui/performance-view
-// @provides perfFillPad, perfLockApply, perfPadDown, perfPadEnd, perfPadMove, perfReadVals, perfRevertSnap,
-//    plockFillsOn, renderPerfFills
+// @provides perfFillPad, perfLockApply, perfPadDown, perfPadEnd, perfPadMove, perfPatEnter, perfReadVals,
+//    perfRevertSnap, plockFillsOn, renderPerfFills
 // @uses PERF_BASE, PLOCKS, activeLock, padsEl, paintPerf, perfDrag, perfLast, perfRecArm, perfResetPad,
 //    perfSnap, perfTapT, syncEditor, tracks
 // @depends -
@@ -3144,6 +3150,10 @@ function perfReadVals(p){     // いまの16パッドの値を控える（filter
   for(let i=0;i<16;i++){ const t=tracks[i]; o.vals[i]= p==="filter"?t.cutoff : t[PERF_BASE[p]]; o.filt[i]=t.filter; }
   return o;
 }
+// パターンが替わったとき（data/patterns の patLoad から。v0.3.164 §158）：エフェクトは A B C D ごと（§146）なので、
+// P-LOCK を掛けたままパターンが替わったら、「掛ける前の値」を新しいパターンの値で取り直す。
+// 取り直さないと、解放したときに前のパターンの値を新しいパターンへ書き込んでしまう。前のパターンにはいじった値がそのまま残る（パターンごとの記憶）
+function perfPatEnter(){ if(perfSnap) perfSnap={param:perfSnap.param, recorded:false, ...perfReadVals(perfSnap.param)}; }
 function perfLockApply(prev){
   // 動き（v0.3.121）：**解放＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活**。
   // v0.3.118 までは解放で戻るが記憶が無く「もう一度押すと素の値」だった。v0.3.119 は逆に解放しても残す形にしたが、
@@ -3324,7 +3334,7 @@ function swapPads(a,b){
 // @module data/patterns
 // @provides PAT_FX, _fxOf, _patArr, applySeqData, copyBar, copyPattern, patLoad, patRead, patSync, patWrite,
 //    seqDataOf, seqFromSetData, setStep, setStepAt
-// @uses STEPS, clearLockEdit, editPat, getPattern, patSlot, pushUndo, stripLegacyLocks, tracks
+// @uses STEPS, clearLockEdit, editPat, getPattern, patSlot, perfPatEnter, pushUndo, stripLegacyLocks, tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
@@ -3355,6 +3365,7 @@ function patLoad(p, noSync){
   if(!noSync) patSync();
   patSlot=p;
   tracks.forEach(t=>patRead(t,p));
+  if(typeof perfPatEnter==="function") perfPatEnter();   // P-LOCK の「掛ける前の値」を新しいパターンで取り直す（v0.3.164）
 }
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ。ミュート / ソロ / エフェクトも写す（A を作って B に写し、変化をつける）
   if(src===dst) return; pushUndo();
@@ -5742,6 +5753,9 @@ function paintPatBar(){
     b.classList.toggle("hold", !!barHold[j]);
   }));
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("hold", !!barHold[+b.dataset.b]));
+  const anyHold=barHold.some(Boolean);   // ホールドがある間は、ホールドしていない小節を薄く（v0.3.164）
+  if(barSeg) barSeg.classList.toggle("has-hold", anyHold);
+  const pp=document.getElementById("perfPats"); if(pp) pp.classList.toggle("has-hold", anyHold);
 }
 
 // ---------- Master（メニュー内）----------
@@ -6665,7 +6679,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.163";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.164";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
