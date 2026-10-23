@@ -79,3 +79,5 @@ muteSync
 perfPatEnter
 perfReadVals
 perfRevertSnap
+# v0.3.169 §163 ピッチは鳴らす範囲だけを焼く getPitchedRegion に置き換えた（全体を焼いて 12 秒で打ち切り、START をその長さに掛けていたのでロングサンプルで START がずれた）
+getPitchedBuffer
