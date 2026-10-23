@@ -42,7 +42,9 @@ const CL_PAGES=[
   // SET 演奏モード（v0.3.143 §144）：キー列には出さない（モード切替で入る）。中身は ui/set-view の paintSet が書く
   {id:"set",  lbl:"SET",    f:[],
    x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
-     +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b></span>'
+     +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b>'
+     +'<input class="cl-setname-in" id="clSetNameIn" type="text" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" hidden aria-label="セットの名前">'
+     +'<button class="cl-setname-edit" id="clSetRename" title="セットの名前を変える" aria-label="セットの名前を変える">✎</button></span>'
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
      +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>MIX</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
@@ -127,12 +129,14 @@ function paintClPage(){
     if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=sp.lbl+" → "+sp.fmt(GET(sp))+(sp.u||"");
   };
   scr.addEventListener("dblclick",e=>{   // マウス
+    if(e.target.closest("button,input")) return;   // 欄の中のボタン・入力（SET の名前の ✎ など）は数値欄の操作にしない（v0.3.167）
     const el=e.target.closest(".cl-par"); if(!el) return;
     e.preventDefault(); if(el.dataset.p==="bpm") return;   // BPM は叩く＝タップテンポ（v0.3.126 §137）。2連打を0/100へのリセットと見なさない
     resetPar(el.dataset.p);
   });
   let drag=null, lastTap=0, lastTapEl=null;
   scr.addEventListener("pointerdown",e=>{
+    if(e.target.closest("button,input")) return;   // 欄の中のボタン・入力は既定動作のまま（入力欄にカーソルを置ける）
     const el=e.target.closest(".cl-par"); if(!el) return;
     e.preventDefault();
     const k=el.dataset.p, sp=SPEC[k]; if(!sp||sp.ro) return;

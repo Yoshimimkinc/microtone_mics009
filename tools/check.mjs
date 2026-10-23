@@ -806,6 +806,27 @@ async function setMode(){
     await ctx.close();
   }
 }
+async function setNameTest(){
+  // v0.3.167：セットの名前を ✎ で変える（情報窓の SET ページ）。打った文字で SET のキーが動かない
+  const V='SETNAME 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  await p.click('#viewDots .vdot[data-view="viewSet"]'); await p.waitForTimeout(250);
+  await p.click('#clSetRename'); await p.waitForTimeout(100);
+  const o=await p.evaluate(()=>{ const i=document.getElementById('clSetNameIn'); return {vis:!i.hidden && getComputedStyle(i).display!=='none', val:i.value, focus:document.activeElement===i, nameHidden:getComputedStyle(document.getElementById('clSetName')).display==='none'}; });
+  await p.keyboard.press('Control+A'); await p.keyboard.type('VERSE CITY'); await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  const a=await p.evaluate(()=>({name:setName(0), pad:document.querySelector('#setGrid .setpad[data-k="0"] .nm').textContent, win:document.getElementById('clSetName').textContent, inHidden:document.getElementById('clSetNameIn').hidden, playing, sides:sideCount(), file:buildSaveFile('set').obj.set.name}));
+  ok_(`${V} ✎ で入力欄（いまの名前が入っている）`, o.vis && o.val==='SET 1' && o.focus && o.nameHidden, JSON.stringify(o));
+  ok_(`${V} Enter で確定＝パッド・窓・ファイルの名前が変わる／打った文字で SET のキー（E・R …）は動かない`, a.name==='VERSE CITY' && a.pad==='VERSE CITY' && a.win==='VERSE CITY' && a.inHidden && !a.playing && a.sides===0 && a.file==='VERSE CITY', JSON.stringify(a));
+  await p.click('#clSetRename'); await p.keyboard.type('XX'); await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+  ok_(`${V} Escape は取消`, await p.evaluate(()=>setName(0)==='VERSE CITY' && document.getElementById('clSetNameIn').hidden), 'renamed');
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function wireSkin(){
   // v0.3.163：スキン WIRE（黒地＋線だけのワイヤーフレーム）
   const V='WIRE 390x844';
@@ -1134,6 +1155,7 @@ await editTools();
 await barHoldTest();
 await saveScopeTest();
 await wireSkin();
+await setNameTest();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
