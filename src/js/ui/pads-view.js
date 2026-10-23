@@ -4,7 +4,7 @@
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
-//    refreshSeqMode, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
+//    refreshSeqMode, renderPerfFills, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -167,4 +167,6 @@ function paintPadStates(){
     el.classList.toggle("soloed",tracks[i].solo);
     el.classList.toggle("copysrc", !!copyArm && copyArm.type==="pad" && copyArm.idx===i);
   }
+  // P-LOCK 選択中のパッドの塗り（エフェクトの値）も。A B C D を替えると値が替わるので（v0.3.164 §158：表示が前のパターンのままだった）
+  if(typeof renderPerfFills==="function") renderPerfFills();
 }

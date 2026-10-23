@@ -6,11 +6,15 @@
   .patlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;}
   .patbtn{position:relative;}
   .patbtn.on{background:var(--amber);color:var(--hit-ink);}
-  /* BAR ホールド（v0.3.161）：ダブルタップで ON。下にアンバーの線＋小さなループ印 */
-  .patbtn.hold,.perf-bar.hold{box-shadow:inset 0 -3px 0 var(--amber);position:relative;}
-  .patbtn.hold::after,.perf-bar.hold::after{content:"⟳";position:absolute;top:1px;right:3px;font-size:9px;line-height:1;color:var(--amber);}
-  .patbtn.on.hold::after{color:var(--hit-ink);}
+  /* BAR ホールド（v0.3.161、v0.3.164 で見やすく §155）：ホールドした小節＝点灯色の太い枠＋光＋数字の下に ⟳。
+     ホールドがある間は、ホールドしていない小節を薄く＝「鳴るのはこの小節だけ」が一目で分かる。⟳ は ::before（::after は中身ありのドット） */
+  .patbtn.hold,.perf-bar.hold{box-shadow:0 0 0 2px var(--amber) inset,0 0 10px rgba(var(--hit-glow-a),.5);color:var(--amber);font-weight:800;position:relative;}
+  .patbtn.hold::before,.perf-bar.hold::before{content:"⟳";position:absolute;left:0;right:0;bottom:1px;text-align:center;font-size:10px;line-height:1;font-weight:700;color:var(--amber);pointer-events:none;}
+  .patbtn.on.hold,.perf-bar.on.hold{color:var(--hit-ink);}
+  .patbtn.on.hold::before,.perf-bar.on.hold::before{color:var(--hit-ink);}
+  #barSeg.has-hold>.patbtn:not(.hold),#perfPats.has-hold .perf-bar:not(.hold){opacity:.35;}
   .patbtn.playing{box-shadow:0 0 0 2px var(--teal);position:relative;z-index:2;}  /* 現在再生中を外枠で・最前面 */
+  .patbtn.hold.playing{box-shadow:0 0 0 2px var(--amber) inset,0 0 0 2px var(--teal),0 0 10px rgba(var(--hit-glow-a),.5);}   /* ホールド中に鳴っている小節＝両方の枠 */
   .patbtn.queued{box-shadow:0 0 0 2px var(--teal);z-index:2;animation:spblink .8s ease-in-out infinite;}  /* 予約中＝点滅 */
   .patbtn.has::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--teal);opacity:.85;}  /* 中身ありドット */
   .patbtn.dim{opacity:.4;}  /* ループ外の小節は薄く */

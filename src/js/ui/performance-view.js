@@ -1,6 +1,6 @@
 // @module ui/performance-view
-// @provides perfFillPad, perfLockApply, perfPadDown, perfPadEnd, perfPadMove, perfReadVals, perfRevertSnap,
-//    plockFillsOn, renderPerfFills
+// @provides perfFillPad, perfLockApply, perfPadDown, perfPadEnd, perfPadMove, perfPatEnter, perfReadVals,
+//    perfRevertSnap, plockFillsOn, renderPerfFills
 // @uses PERF_BASE, PLOCKS, activeLock, padsEl, paintPerf, perfDrag, perfLast, perfRecArm, perfResetPad,
 //    perfSnap, perfTapT, syncEditor, tracks
 // @depends -
@@ -88,6 +88,10 @@ function perfReadVals(p){     // いまの16パッドの値を控える（filter
   for(let i=0;i<16;i++){ const t=tracks[i]; o.vals[i]= p==="filter"?t.cutoff : t[PERF_BASE[p]]; o.filt[i]=t.filter; }
   return o;
 }
+// パターンが替わったとき（data/patterns の patLoad から。v0.3.164 §158）：エフェクトは A B C D ごと（§146）なので、
+// P-LOCK を掛けたままパターンが替わったら、「掛ける前の値」を新しいパターンの値で取り直す。
+// 取り直さないと、解放したときに前のパターンの値を新しいパターンへ書き込んでしまう。前のパターンにはいじった値がそのまま残る（パターンごとの記憶）
+function perfPatEnter(){ if(perfSnap) perfSnap={param:perfSnap.param, recorded:false, ...perfReadVals(perfSnap.param)}; }
 function perfLockApply(prev){
   // 動き（v0.3.121）：**解放＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活**。
   // v0.3.118 までは解放で戻るが記憶が無く「もう一度押すと素の値」だった。v0.3.119 は逆に解放しても残す形にしたが、

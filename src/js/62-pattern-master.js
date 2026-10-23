@@ -77,6 +77,9 @@ function paintPatBar(){
     b.classList.toggle("hold", !!barHold[j]);
   }));
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("hold", !!barHold[+b.dataset.b]));
+  const anyHold=barHold.some(Boolean);   // ホールドがある間は、ホールドしていない小節を薄く（v0.3.164）
+  if(barSeg) barSeg.classList.toggle("has-hold", anyHold);
+  const pp=document.getElementById("perfPats"); if(pp) pp.classList.toggle("has-hold", anyHold);
 }
 
 // ---------- Master（メニュー内）----------
