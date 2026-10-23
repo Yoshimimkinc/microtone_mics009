@@ -5,10 +5,10 @@
 //    stripLegacyLocks, undoStack
 // @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
 //    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
-//    masterGain, melodicMode, nextChokeGroup, paintMixer, paintPadName, paintPadStates, paintPatBar,
-//    paintSteps, patLoad, patRead, patSlot, patSync, playPat, playStep, playing, rowEls, saturator,
-//    scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
+//    editBars, editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol,
+//    makeSatCurve, masterGain, melodicMode, nextChokeGroup, paintMixer, paintPadName, paintPadStates,
+//    paintPatBar, paintSteps, patLoad, patRead, patSlot, patSync, playPat, playStep, playing, rowEls,
+//    saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
 // @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
@@ -30,13 +30,15 @@ function stripLegacyLocks(locks){
 function lockKey(pat,bar,step){ return pat+"_"+bar+"_"+step; }
 function getLockEdit(trackIdx, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(editPat,editBar,step)]; }
 function getLockPlay(trackIdx, pat, bar, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(pat,bar,step)]; }
+// P-LOCK もステップと同じく、編集中の小節がホールドされていればホールドした小節すべてへ（v0.3.166 §159）
 function setLockEdit(trackIdx, step, param, value){
   const t=tracks[trackIdx]; if(!t.locks) t.locks={};
-  const k=lockKey(editPat,editBar,step);
-  if(!t.locks[k]) t.locks[k]={};
-  t.locks[k][param]=value;
+  ((typeof editBars==="function") ? editBars() : [editBar]).forEach(b=>{
+    const k=lockKey(editPat,b,step);
+    if(!t.locks[k]) t.locks[k]={};
+    t.locks[k][param]=value; });
 }
-function clearLockEdit(trackIdx, step){ const t=tracks[trackIdx]; if(t.locks) delete t.locks[lockKey(editPat,editBar,step)]; }
+function clearLockEdit(trackIdx, step){ const t=tracks[trackIdx]; if(t.locks) ((typeof editBars==="function") ? editBars() : [editBar]).forEach(b=>{ delete t.locks[lockKey(editPat,b,step)]; }); }
 // 再生座標へp-lockを書く（演奏ライブ記録：再生中のプレイヘッドのステップにオートメーションを焼く）
 function setLockPlay(trackIdx, pat, bar, step, param, value){
   const t=tracks[trackIdx]; if(!t.locks) t.locks={};

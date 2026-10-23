@@ -40,7 +40,7 @@ tapeHiss ───────────────────────�
 - `tracks[16]`: each has `patterns[4][16]`, buffer, vol, tune, start, end, loop, filter, choke, etc.
 - **ミュート / ソロ / エフェクトは A B C D ごと（v0.3.149–150, §146）**：各トラックの `mutes[4]` / `solos[4]` / `patFx[4]`（DELAY・REVERB の送り、FILTER 種類・カットオフ・レゾ＝`PAT_FX`）。live の値は `patSlot` のパターンのもので、パターンを移るとき `patLoad`（`data/patterns`）が書き戻し→読み出しする。
 - `editPat` (0-3): which pattern is being edited
-- **BAR ホールド（v0.3.161, §155）**：BAR のダブルタップで `barHold`。ホールドがあれば再生はその小節だけを順にくり返す（`nextPlayBar`）。保存しない
+- **BAR ホールド（v0.3.161, §155）**：BAR のダブルタップで `barHold`。ホールドがあれば再生はその小節だけを順にくり返す（`nextPlayBar`）。保存しない。ホールドした小節で打ち込むと、ホールドした小節すべての同じステップへ入る（`editBars`、v0.3.166 §159）
 - Pattern length is derived from bar content via `patLength(p)` (no separate chainLen state; A/B/C/D switching is `queuedPat` at pattern boundary)
 - Accessor functions: `getPattern(i)` for edit, `getPlayPattern(i)` for playback
 
@@ -141,7 +141,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.165
+MICS009 beta v0.3.166
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
