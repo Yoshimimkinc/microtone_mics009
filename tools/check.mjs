@@ -835,7 +835,7 @@ async function saveScopeTest(){
     setEditPat(0); tracks[8].patterns[0][0][0]=1; tracks[8].patterns[0][1][2]=1; tracks[8].mute=true; tracks[9].patterns[1][0][4]=1;
     tracks[0].name='SS1'; paintPadName(0); applyBpm(91);
     // SEQ：書き出し → A を消して読む（単位 STAGE でもファイルが SEQ なら編集中のパターンへ）→ B へも読める → ↩
-    const fq=buildSaveFile('seq'); out.seqFile={kind:fq.obj.kind, k8:fq.obj.tracks[8].patterns[0][0], k8b:fq.obj.tracks[8].patterns[1][2], mute:fq.obj.tracks[8].mute, audio:JSON.stringify(fq.obj).includes('"audio"'), name:/set01A/.test(fq.name)};
+    const fq=buildSaveFile('seq'); out.seqFile={kind:fq.obj.kind, k8:fq.obj.tracks[8].patterns[0][0], k8b:fq.obj.tracks[8].patterns[1][2], mute:fq.obj.tracks[8].mute, audio:JSON.stringify(fq.obj).includes('"audio"'), name:/set01A-.*\.micseq$/.test(fq.name)};
     tracks[8].patterns[0][0][0]=0; tracks[8].patterns[0][1][2]=0; tracks[8].mute=false;
     await loadFileData(JSON.parse(JSON.stringify(fq.obj)),'stage');
     out.seqBack={a0:tracks[8].patterns[0][0][0], a1:tracks[8].patterns[0][1][2], mute:tracks[8].mute, b:tracks[9].patterns[1][0][4]};
@@ -844,12 +844,12 @@ async function saveScopeTest(){
     doUndo(); out.undoB={b9:tracks[9].patterns[1][0][4], b8:tracks[8].patterns[1][0][0]};
     setEditPat(0);
     // SET：書き出し → 変えて読む（単位 SET）→ 名前・BPM・音量が戻る。他のセットは触らない
-    setSetLevel(0,-6); const fs=buildSaveFile('set'); out.setFile={kind:fs.obj.kind, n:fs.obj.set.tracks.length, level:fs.obj.set.level, bpm:fs.obj.set.bpm, name:/set01-/.test(fs.name)};
+    setSetLevel(0,-6); const fs=buildSaveFile('set'); out.setFile={kind:fs.obj.kind, n:fs.obj.set.tracks.length, level:fs.obj.set.level, bpm:fs.obj.set.bpm, name:/set01-.*\.micset$/.test(fs.name)};
     tracks[0].name='X'; applyBpm(150); setSetLevel(0,0); setSlots[3].name='KEEP3';
     await loadFileData(JSON.parse(JSON.stringify(fs.obj)),'set');
     out.setBack={name:tracks[0].name, bpm:bpmVal, level:setLevels[0], other:setSlots[3].name, a0:tracks[8].patterns[0][0][0]};
     // STAGE のファイルを単位 SET で → ファイルのいまのセットだけ。単位 SEQ で → 同じ文字のパターンだけ
-    const st=buildSaveFile('stage').obj; tracks[0].name='Y'; setSlots[5].name='KEEP5';
+    const stf=buildSaveFile('stage'); out.stageName=/^mics009-\d{6}-\d{4}\.mics$/.test(stf.name); const st=stf.obj; tracks[0].name='Y'; setSlots[5].name='KEEP5';
     await loadFileData(JSON.parse(JSON.stringify(st)),'set');
     out.stageSet={name:tracks[0].name, other:setSlots[5].name};
     tracks[8].patterns[0][0][0]=0; await loadFileData(JSON.parse(JSON.stringify(st)),'seq');
@@ -862,6 +862,7 @@ async function saveScopeTest(){
   ok_(`${V} SET の書き出し・読み込み＝いまのセットだけ（名前・BPM・音量が戻る・他のセットは触らない）`, r.setFile.kind==='set' && r.setFile.n===16 && r.setFile.level===-6 && r.setFile.bpm===91 && r.setFile.name && r.setBack.name==='SS1' && r.setBack.bpm===91 && r.setBack.level===-6 && r.setBack.other==='KEEP3' && r.setBack.a0===1, JSON.stringify({f:r.setFile,b:r.setBack}));
   ok_(`${V} STAGE のファイルを SET / SEQ 単位で読む＝その単位だけ（他のセットは触らない）`, r.stageSet.name==='SS1' && r.stageSet.other==='KEEP5' && r.stageSeq.a0===1 && r.stageSeq.other==='KEEP5', JSON.stringify({a:r.stageSet,b:r.stageSeq}));
   ok_(`${V} 中身の無いファイルは読まない`, r.bad==='rejected', r.bad);
+  ok_(`${V} 拡張子で単位が分かる：STAGE .mics／SET .micset／SEQ .micseq（v0.3.165）`, r.stageName && r.setFile.name && r.seqFile.name, JSON.stringify({stage:r.stageName, set:r.setFile.name, seq:r.seqFile.name}));
   // 単位のスイッチ（メニュー）
   const u=await p.evaluate(()=>{ document.querySelector('#saveScope button[data-u="seq"]').click(); const a={ls:localStorage.getItem('mics-save-scope'), on:document.querySelector('#saveScope button.on').dataset.u, scope:saveScope()};
     document.querySelector('#saveScope button[data-u="stage"]').click(); return a; });

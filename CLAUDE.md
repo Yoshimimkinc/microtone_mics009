@@ -66,7 +66,7 @@ tapeHiss ───────────────────────�
 ### File Format (.mics)
 JSON with base64-encoded WAV audio. On save, buffers are cropped to start-1s..end+1s to reduce size.
 v3（v0.3.144〜）: 16 sets, each with 16 pad settings, 4×4×16 step patterns, BPM, swing; global comp/master/group/fx. v2 (single set) still loads as SET 1.
-SAVE / LOAD は単位 STAGE / SET / SEQ を選べる（v0.3.162, §156）：SET のファイル＝`{kind:"set", set}`、SEQ のファイル＝`{kind:"seq", tracks}`（音なし）。読み込みはファイルと単位の小さいほうへ（`loadFileData`）。
+SAVE / LOAD は単位 STAGE / SET / SEQ を選べる（v0.3.162, §156）：拡張子は STAGE `.mics`／SET `.micset`（`{kind:"set", set}`）／SEQ `.micseq`（`{kind:"seq", tracks}`、音なし）（v0.3.165）。読み込みはファイルと単位の小さいほうへ（`loadFileData`）。
 
 ## Key Functions
 | Function | Purpose |
@@ -141,7 +141,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.164
+MICS009 beta v0.3.165
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

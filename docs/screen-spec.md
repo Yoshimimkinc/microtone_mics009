@@ -2053,6 +2053,9 @@ LIVE LOCK（Wake Lock・離脱確認・編集系ロック・■ で演奏前に�
   STAGE のファイル → 単位 STAGE なら全体、SET ならファイルのいまのセットをいまのセットへ、SEQ ならそのセットの同じ文字のパターンを編集中のパターンへ。どれも ↩ で読む前へ戻せる。
 - **作り**：書き出しは `71-save-load` の `buildSaveFile(scope)` / `curSetData()`、読み込みは `73-share-export` の `loadFileData(proj, scope)`。
   シーケンスの出し入れは `data/patterns` の `seqDataOf` / `seqFromSetData` / `applySeqData`、セットは `data/set` の `loadSetData`。拡張子は全部 `.mics`（中の `kind` で見分ける）。
+**v0.3.165 追記：拡張子で単位を見分ける。**「保存したファイル名が、STAGE、SET などで一緒なので、拡張子などで区別されたい」→ **STAGE＝`.mics`／SET＝`.micset`／SEQ＝`.micseq`**
+（例：`mics009-251023-1405.mics`、`mics009-set03-251023-1405.micset`、`mics009-set03B-251023-1405.micseq`）。読み込みは今までどおり**中身の `kind` で決める**ので、拡張子を付け替えられても正しく読む。
+PC のファイル選択は 3 つとも選べる（`#projFile` の accept）。iOS は accept を外しているので何でも選べる（§128）。v0.3.143 で一時あった `.micset`（SET 枠の一覧）とは中身が違い、それは読めない（LOAD FAILED）。
 検査：`saveScopeTest`（1280）：SEQ の中身（音なし・ミュート込み）／SEQ を読む＝編集中のパターンだけ・B へも・↩／SET の往復（名前・BPM・音量・他のセットは触らない）／STAGE のファイルを SET・SEQ 単位で／壊れたファイルは読まない／単位スイッチ。
 
 ## 157. スキン WIRE：ヴェイパー調ワイヤーフレーム（v0.3.163）
