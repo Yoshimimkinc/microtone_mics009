@@ -134,9 +134,10 @@ function buildSaveFile(scope){
   const d=new Date(), z=n=>String(n).padStart(2,"0");
   const stamp=String(d.getFullYear()).slice(2)+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes());
   const sn="set"+z(setCur+1);
-  if(scope==="set") return {obj:{version:3, kind:"set", set:curSetData()}, name:"mics009-"+sn+"-"+stamp+".mics"};
+  // 拡張子で単位が分かる（v0.3.165）：STAGE＝.mics／SET＝.micset／SEQ＝.micseq。読み込みは拡張子ではなく中身（kind）で決める
+  if(scope==="set") return {obj:{version:3, kind:"set", set:curSetData()}, name:"mics009-"+sn+"-"+stamp+".micset"};
   if(scope==="seq") return {obj:{version:3, kind:"seq", pat:editPat, from:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:seqDataOf(editPat)},
-                            name:"mics009-"+sn+"ABCD"[editPat]+"-"+stamp+".mics"};
+                            name:"mics009-"+sn+"ABCD"[editPat]+"-"+stamp+".micseq"};
   return {obj:buildProject(), name:"mics009-"+stamp+".mics"};   // ファイル名に日時: mics009-YYMMDD-HHMM.mics
 }
 document.getElementById("saveBtn").addEventListener("click",()=>{
