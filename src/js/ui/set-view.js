@@ -3,8 +3,8 @@
 //    setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp, setPadUpAll
 // @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet,
 //    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat,
-//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop,
-//    sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
+//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -151,5 +151,19 @@ function setModeEnter(on){
     const h=holds.get(ids[ids.length-1]); h.moved=true; h.d.classList.add("adj"); setSetLevel(h.k,(setLevels[h.k]||0)+dDb); showLv(h); return true; };
   if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointermove",pressMove); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
+  // セットの名前を変える（v0.3.167 §160）：「鉛筆にして」＝情報窓の SET ページの NOW の横の ✎。パッドの名前（EDIT の ✎）と同じ作法：
+  // ✎＝入力欄 / Enter・外をタップ＝確定 / Escape＝取消。窓は innerHTML で描き直すので、ボタンは document で受ける
+  const nameOpen=()=>{ const inp=$("clSetNameIn"), txt=$("clSetName"), btn=$("clSetRename"); if(!inp) return;
+    inp.value=setName(setCur); inp.hidden=false; if(txt) txt.hidden=true; if(btn) btn.hidden=true; inp.focus(); inp.select(); };
+  const nameClose=commit=>{ const inp=$("clSetNameIn"), txt=$("clSetName"), btn=$("clSetRename"); if(!inp||inp.hidden) return;
+    const v=inp.value.trim();
+    inp.hidden=true; if(txt) txt.hidden=false; if(btn) btn.hidden=false;
+    if(commit && v && v!==setName(setCur)){ setRename(setCur, v); say("SET "+no(setCur)+" の名前 ▸ "+setName(setCur)); }
+    paintSet(); };
+  document.addEventListener("click",e=>{ if(!e.target.closest("#clSetRename")) return; e.preventDefault(); e.stopPropagation(); nameOpen(); });
+  document.addEventListener("keydown",e=>{ if(e.target.id!=="clSetNameIn") return;
+    e.stopPropagation();   // 打った文字で SET のキー（1-8 / Q-I）やショートカットが動かない
+    if(e.key==="Enter"){ e.preventDefault(); nameClose(true); } else if(e.key==="Escape"){ e.preventDefault(); nameClose(false); } }, true);
+  document.addEventListener("focusout",e=>{ if(e.target.id==="clSetNameIn") nameClose(true); });
   setInterval(()=>{ if(setMode) paintSet(); }, 500);   // 経過時間と、鳴っているセットの印（16 個の塗り直しは軽い）
 })();

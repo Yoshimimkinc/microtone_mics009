@@ -817,6 +817,14 @@
   .setpad.armed{box-shadow:0 0 0 2px var(--red) inset;}
   /* 情報窓の SET ページ */
   .cl-par.cl-setname b{max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
+  /* セットの名前の ✎（v0.3.167 §160）：パッドの名前の ✎ と同じ見た目。入力欄は 16px（iOS が拡大しない大きさ） */
+  .cl-setname-edit{flex:0 0 auto;min-width:32px;min-height:32px;margin:-8px 0 -8px 6px;   /* 触れる 32px は保ち、行の高さは増やさない（窓の不変性） */
+    padding:0;background:transparent;border:1px solid var(--line);
+    border-radius:6px;color:var(--teal);font:inherit;font-size:14px;line-height:1;cursor:pointer;touch-action:manipulation;align-self:center;}
+  .cl-setname-edit:hover{border-color:var(--teal);}
+  .cl-setname-in{width:13ch;min-width:0;min-height:30px;margin:-8px 0 -8px 8px;padding:3px 8px;font:inherit;font-size:16px;letter-spacing:.04em;
+    background:var(--well);color:var(--well-ink);border:1px solid var(--teal);border-radius:6px;align-self:center;}
+  .cl-setname-in[hidden],.cl-setname-edit[hidden],.cl-par.cl-setname b[hidden]{display:none;}
   .cl-par.cl-setnext b{max-width:16ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
   .cl-par.cl-setnext.queued b{color:var(--amber);}
   /* いま 16 セットのどこにいるか（v0.3.154）：SET の切替ボタンに 4×4 の地図と番号 */
@@ -1187,7 +1195,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.166</div>
+  <div class="s-ver" id="splashVer">v0.3.167</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -3843,7 +3851,9 @@ const CL_PAGES=[
   // SET 演奏モード（v0.3.143 §144）：キー列には出さない（モード切替で入る）。中身は ui/set-view の paintSet が書く
   {id:"set",  lbl:"SET",    f:[],
    x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
-     +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b></span>'
+     +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b>'
+     +'<input class="cl-setname-in" id="clSetNameIn" type="text" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" hidden aria-label="セットの名前">'
+     +'<button class="cl-setname-edit" id="clSetRename" title="セットの名前を変える" aria-label="セットの名前を変える">✎</button></span>'
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
      +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>MIX</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
@@ -3928,12 +3938,14 @@ function paintClPage(){
     if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=sp.lbl+" → "+sp.fmt(GET(sp))+(sp.u||"");
   };
   scr.addEventListener("dblclick",e=>{   // マウス
+    if(e.target.closest("button,input")) return;   // 欄の中のボタン・入力（SET の名前の ✎ など）は数値欄の操作にしない（v0.3.167）
     const el=e.target.closest(".cl-par"); if(!el) return;
     e.preventDefault(); if(el.dataset.p==="bpm") return;   // BPM は叩く＝タップテンポ（v0.3.126 §137）。2連打を0/100へのリセットと見なさない
     resetPar(el.dataset.p);
   });
   let drag=null, lastTap=0, lastTapEl=null;
   scr.addEventListener("pointerdown",e=>{
+    if(e.target.closest("button,input")) return;   // 欄の中のボタン・入力は既定動作のまま（入力欄にカーソルを置ける）
     const el=e.target.closest(".cl-par"); if(!el) return;
     e.preventDefault();
     const k=el.dataset.p, sp=SPEC[k]; if(!sp||sp.ro) return;
@@ -6449,8 +6461,8 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const sp=document.getElementById("sam
 //    setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp, setPadUpAll
 // @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet,
 //    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat,
-//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setSetLevel, setSlots, sideStop,
-//    sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
+//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -6597,6 +6609,20 @@ function setModeEnter(on){
     const h=holds.get(ids[ids.length-1]); h.moved=true; h.d.classList.add("adj"); setSetLevel(h.k,(setLevels[h.k]||0)+dDb); showLv(h); return true; };
   if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointermove",pressMove); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
   document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
+  // セットの名前を変える（v0.3.167 §160）：「鉛筆にして」＝情報窓の SET ページの NOW の横の ✎。パッドの名前（EDIT の ✎）と同じ作法：
+  // ✎＝入力欄 / Enter・外をタップ＝確定 / Escape＝取消。窓は innerHTML で描き直すので、ボタンは document で受ける
+  const nameOpen=()=>{ const inp=$("clSetNameIn"), txt=$("clSetName"), btn=$("clSetRename"); if(!inp) return;
+    inp.value=setName(setCur); inp.hidden=false; if(txt) txt.hidden=true; if(btn) btn.hidden=true; inp.focus(); inp.select(); };
+  const nameClose=commit=>{ const inp=$("clSetNameIn"), txt=$("clSetName"), btn=$("clSetRename"); if(!inp||inp.hidden) return;
+    const v=inp.value.trim();
+    inp.hidden=true; if(txt) txt.hidden=false; if(btn) btn.hidden=false;
+    if(commit && v && v!==setName(setCur)){ setRename(setCur, v); say("SET "+no(setCur)+" の名前 ▸ "+setName(setCur)); }
+    paintSet(); };
+  document.addEventListener("click",e=>{ if(!e.target.closest("#clSetRename")) return; e.preventDefault(); e.stopPropagation(); nameOpen(); });
+  document.addEventListener("keydown",e=>{ if(e.target.id!=="clSetNameIn") return;
+    e.stopPropagation();   // 打った文字で SET のキー（1-8 / Q-I）やショートカットが動かない
+    if(e.key==="Enter"){ e.preventDefault(); nameClose(true); } else if(e.key==="Escape"){ e.preventDefault(); nameClose(false); } }, true);
+  document.addEventListener("focusout",e=>{ if(e.target.id==="clSetNameIn") nameClose(true); });
   setInterval(()=>{ if(setMode) paintSet(); }, 500);   // 経過時間と、鳴っているセットの印（16 個の塗り直しは軽い）
 })();
 // @module ui/splash-anim
@@ -6691,7 +6717,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.166";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.167";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
