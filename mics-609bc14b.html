@@ -117,6 +117,7 @@
   .modal-sec:last-child{margin-bottom:0;}
   .modal-label{font-size:10px;color:var(--dim);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;}
   .modal-btns{display:flex;gap:8px;flex-wrap:wrap;}
+  .modal-sublabel{font-size:11px;color:var(--dim);margin:14px 0 6px;}   /* セクションの中の小見出し（A B C D の切替 v0.3.168） */
   .modal .master-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
   .modal .master-ctrls .knob{flex:1 1 90px;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -968,6 +969,23 @@
   .toggle.on .sw{background:var(--amber-dim);}
   .toggle.on .sw::after{left:20px;background:var(--amber);}
 
+
+  /* エフェクトのボタンのポッチ＝設定あり（v0.3.168 §162）。解除しても値は残るので、どれに掛かっているかをボタンで見せる。
+     色はボタンの文字色（点いている時は暗い文字色＝背景に対して見える）。#perfPlk は ::after を下線に使っているので ::before */
+  .msbtn.fx,.perf-plkbtn{position:relative;}
+  .msbtn.fx.fxset::after,.perf-plkbtn.fxset::before{content:"";position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;
+    background:currentColor;pointer-events:none;}
+  /* EDIT → エフェクトのボタン＝詳しい設定（パッドごとの量・FILTER の種類・RESET） */
+  .modal.fxm{width:min(420px,94vw);}
+  .fxm-list{display:flex;flex-direction:column;gap:2px;}
+  .fxm-row{display:grid;grid-template-columns:9ch 1fr 4ch;align-items:center;gap:8px;min-height:32px;font-size:12px;color:var(--dim);}
+  .fxm-list.filt .fxm-row{grid-template-columns:9ch 44px 1fr 4ch;}
+  .fxm-row.set{color:var(--ink);}
+  .fxm-row input{width:100%;min-width:0;}
+  .fxm-n{white-space:nowrap;overflow:hidden;}
+  .fxm-v{text-align:right;font-variant-numeric:tabular-nums;}
+  .fxm-type{display:none;min-height:28px;padding:2px 4px;font-size:11px;background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;cursor:pointer;}
+  .fxm-list.filt .fxm-type{display:block;}
   /* responsive */
   @media(max-width:767px){   /* 積み上げレイアウトを767pxまで＝splitの開始点と隙間なく接続 */
     /* セーフエリア（ノッチ/ステータスバー/ホームバー）を避ける＝ロゴが時刻に重ならない */
@@ -1195,7 +1213,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.167</div>
+  <div class="s-ver" id="splashVer">v0.3.168</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1288,6 +1306,9 @@
             <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム</span></label>
             <label class="toggle" id="midiSyncToggle"><span class="sw"></span><span>MIDI SYNC — そとのテンポに合わせる</span></label>
           </div>
+          <!-- 再生中の A B C D の切替どき（v0.3.168 §161）：パターンの終わり / 小節の終わり / 次の拍 -->
+          <div class="modal-sublabel">A B C D の切替</div>
+          <div class="seg" id="patSwitch"><button data-u="end" class="on">PATTERN</button><button data-u="bar">BAR</button><button data-u="beat">BEAT</button></div>
         </div>
         <div class="modal-sec">
           <div class="modal-label">I/O</div>
@@ -1403,6 +1424,18 @@
       <button class="modebtn" id="modeSet" data-view="viewSet" title="16 の枠に 16 パッドの状態を入れて、叩いて切り替える"><span class="led"></span>SET<span class="setmap" aria-hidden="true"></span><b class="setno">01</b></button>
     </div>
     <!-- スマホ専用：2モードはスワイプ切替＋このドットで現在地表示（タップでも切替可） -->
+    <div class="modal-backdrop" id="fxModal" style="display:none;">
+      <div class="modal fxm" role="dialog" aria-modal="true" aria-labelledby="fxmTitle">
+        <div class="modal-head"><span id="fxmTitle">EFFECT</span><button class="t" id="fxmClose" aria-label="Close">✕</button></div>
+        <div class="modal-sec">
+          <div class="modal-label" id="fxmLabel">パッドごと</div>
+          <div class="fxm-list" id="fxmList"></div>
+        </div>
+        <div class="modal-sec">
+          <div class="modal-btns"><button class="t fxm-reset" id="fxmReset">RESET（全パッドから外す）</button></div>
+        </div>
+      </div>
+    </div>
     <div class="viewdots" id="viewDots">
       <button class="vdot on" data-view="viewPads" aria-label="Pads"><span class="vd-dot"></span>PADS</button>
       <button class="vdot" data-view="viewSeq" aria-label="Seq"><span class="vd-dot"></span>SEQ</button>
@@ -1596,9 +1629,9 @@ const MELO_KEYS = ["a","s","d","f","g","h","j","k","l",";"];
 
 // @module app/state
 // @provides activeLock, armMode, assignTarget, barHold, bpmVal, copyArm, displayBar, displayPat, editBar,
-//    editDrag, editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfLast,
-//    perfRecArm, perfSnap, perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording,
-//    selected, setCur, setLevels, setMode, setSlots, stepIdx, swingPct
+//    editDrag, editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfRecArm,
+//    perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected, setCur,
+//    setLevels, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -1624,7 +1657,7 @@ let stepIdx = 0;        // スケジューラが次に予約するステップ  
 let playStep = 0;       // 表示中のステップ（カーソル）  @writers audio/transport, ui/transport-view
 let playPat = 0;        // 再生中パターン（スケジューラ用）  @writers audio/transport
 let playBar = 0;        // 再生中の小節（スケジューラ用）  @writers audio/transport
-let queuedPat = null;   // 予約中パターン（次の小節アタマで切替）  @writers pattern-master, audio/transport, share-export, data/set
+let queuedPat = null;   // 予約中パターン（切替どきはメニューで：パターンの終わり／小節の終わり／次の拍 v0.3.168）  @writers pattern-master, audio/transport, share-export, data/set
 let displayPat = 0;     // 表示中の再生パターン（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
 let displayBar = 0;     // 表示中の再生小節（drawLoop用。開始時の頭出しは startTransport）  @writers audio/transport, ui/transport-view
 let bpmVal = 100;       // テンポ（セットごとに保存）。書く入口は applyBpm（chop）、復元は plock-undo / data/set  @writers chop, plock-undo, data/set
@@ -1649,9 +1682,7 @@ let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格�
 // --- P-LOCK・演奏（一時） ---
 let activeLock = null;  // 選択中のp-lockパラメータ（null=ON/OFFトグル）。入口は setActiveLock（step-strip）  @writers step-strip
 let perfDrag = null;    // Performance中のパッドドラッグ＝ライブ・モジュレート  @writers ui/performance-view
-let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録（解放しても基本値を保持）/ OFF=解放で掛ける前へ戻る  @writers layout
-let perfSnap = null;    // P-LOCK選択時に取った16パッドの「掛ける前の値」（解放でここへ戻る＝効果オフ／ダブルタップの基準）  @writers ui/performance-view, layout
-let perfLast = {};      // P-LOCKごとの「最後にいじった16パッドの値」（もう一度押すと復活する記憶 v0.3.121）  @writers -
+let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録 / OFF=パッドの値だけ（どちらも解除しても値は残る v0.3.168）  @writers layout
 let perfTapT = [];      // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）  @writers -
 // @module engine-core
 // @provides AC, SP_DAC_RATE, decodeAudio, extractViaPlayback, isSilent, loopZeroSnap, masterGain,
@@ -2226,7 +2257,7 @@ registerProcessor('ssm-2044', SSM2044);`;
 // @provides LOFI, PERF_BASE, _ledT, applyFx, delaySend, echoFb, echoFbHP, echoFbLP, echoLfo, echoLfoDepth,
 //    echoSat, echoWet, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern,
 //    perfResetPad, reverb, reverbLP, reverbPre, reverbSend, reverbWet, setDelayTempo, tapeEcho, tracks
-// @uses AC, PADS, PLOCKS, STEPS, bpmVal, editBar, editPat, finalClip, perfFillPad, perfSnap, playBar,
+// @uses AC, PADS, STEPS, bpmVal, editBar, editPat, finalClip, fxClearPad, paintFxDots, perfFillPad, playBar,
 //    playPat, pushUndo, syncEditor, tapeDelay
 // @depends boot, engine-core, engine-master
 // ===== センドFX：RE-101風テープディレイ ＋ ホールリバーブ（マスター最終段からパラレル送り）=====
@@ -2316,19 +2347,13 @@ const LOFI = { bits:12, targetRate:26040 }; // SP-1200 ≒ 26kHz
 // UI・再生・編集・演奏の状態（selected / playing / editPat / activeLock / perf* …）は app/state.js へ移した（v0.3.133）
 let _ledT=null;   // ASSIGN の LED 点滅タイマ
 const PERF_BASE = {pitch:"tune", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 4つとも演奏のパラメータ・ページで同等に扱う（LEVEL は v0.3.124 で P-LOCK から廃止 §135）
-// 演奏P-LOCK：パッドを基準値へ戻す（基準＝選択時スナップショット、無ければPLOCKS既定）
+// 演奏P-LOCK：パッドのダブルタップ＝そのパッドからこのエフェクトを外す（v0.3.168 から「押した時の値」ではなく掛かっていない値。PITCH は 0）
 function perfResetPad(i, param){
   if(!param || !PERF_BASE[param]) return;
-  const t=tracks[i], prop=PERF_BASE[param];
-  const hasSnap = perfSnap && perfSnap.param===param;
   pushUndo();
-  if(param==="filter"){
-    t.cutoff = hasSnap ? perfSnap.vals[i] : PLOCKS.filter.def;
-    if(hasSnap) t.filter = perfSnap.filt[i];
-  } else {
-    t[prop] = hasSnap ? perfSnap.vals[i] : PLOCKS[param].def;
-  }
+  if(param==="pitch") tracks[i].tune=0; else fxClearPad(i, param);
   perfFillPad(i, param);
+  paintFxDots();
   if(typeof syncEditor==="function") syncEditor();
 }
 
@@ -3071,10 +3096,11 @@ function paintPadStates(){
   if(typeof renderPerfFills==="function") renderPerfFills();
 }
 // @module ui/performance-view
-// @provides perfFillPad, perfLockApply, perfPadDown, perfPadEnd, perfPadMove, perfPatEnter, perfReadVals,
-//    perfRevertSnap, plockFillsOn, renderPerfFills
-// @uses PERF_BASE, PLOCKS, activeLock, padsEl, paintPerf, perfDrag, perfLast, perfRecArm, perfResetPad,
-//    perfSnap, perfTapT, syncEditor, tracks
+// @provides FX_OFF, _fxTapL, _fxTapT, _fxmLog, _fxmUndo, fxBtnTap, fxClearPad, fxIsSet, fxModalClose,
+//    fxModalOpen, fxPadSet, fxResetAll, fxmPaint, fxmParam, paintFxDots, perfFillPad, perfLockApply,
+//    perfPadDown, perfPadEnd, perfPadMove, plockFillsOn, renderPerfFills
+// @uses PADS, PERF_BASE, PLOCKS, activeLock, armMode, editPat, padsEl, paintPerf, perfDrag, perfRecArm,
+//    perfResetPad, perfTapT, pushUndo, sampNameEl, setActiveLock, syncEditor, tracks
 // @depends -
 // ---------- Performance：P-LOCK 選択中のパッド操作（ライブ・モジュレート） ----------
 // 30-ui-pads.js のパッド生成ループに埋まっていた処理を関数に切り出した（v0.3.130 Phase 2）。呼び出し順・中身は同じ。
@@ -3102,8 +3128,9 @@ function perfPadMove(e,i){
   const t=tracks[i], spec=PLOCKS[perfDrag.param];
   const prop=PERF_BASE[perfDrag.param];
   if(perfDrag.orig===null){                             // 初回：相対ドラッグの基点＝現在値
+    if(!perfDrag.undone){ pushUndo(); perfDrag.undone=true; }   // ドラッグ1回で1手。値は残るので UNDO で戻す（v0.3.168）
     perfDrag.orig = perfDrag.param==="filter"?t.cutoff : t[prop];
-    if(perfDrag.param==="filter" && t.filter==="off") t.filter="lp";   // 音が出るようLPに（解放時に復帰）
+    if(perfDrag.param==="filter" && t.filter==="off") t.filter="lp";   // 音が出るようLPに（ダブルタップ／RESET で OFF へ）
   }
   let v;
   if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let lv=Math.log(perfDrag.orig)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv); }
@@ -3114,12 +3141,13 @@ function perfPadMove(e,i){
   const ps=document.getElementById("perfSel");          // 画面にライブ表示
   if(ps){ ps.textContent=String(i+1).padStart(2,"0")+" "+perfDrag.param.toUpperCase()+" ▸ "+spec.fmt(t[prop])+(perfRecArm?" ●REC":""); }
 }
-// 離した：// 値はP-LOCKを持っている間は保持（発音しない）。解放で掛ける前へ戻り、次に押すと復活
+// 離した：値はそのまま残る（ボタンを解除しても残る v0.3.168）。ボタンのポッチ（設定あり）を更新
 function perfPadEnd(e,i){
   if(!perfDrag || perfDrag.pad!==i) return;
   perfDrag=null;
   if(typeof syncEditor==="function") syncEditor();
   if(typeof paintPerf==="function") paintPerf();
+  paintFxDots();
 }
 
 // ---------- P-LOCK の塗り（.lockfill/.lockv）と、掛ける前の値の控え／復帰（61-layout.js から移動） ----------
@@ -3147,44 +3175,103 @@ function renderPerfFills(){
     if(param) perfFillPad(i, param);
     else { const el=padsEl.children[i]; if(el._lockfill) el._lockfill.style.width="0%"; if(el._lockv) el._lockv.textContent=""; }
   }
+  paintFxDots();
 }
-function perfRevertSnap(){    // perfSnap（掛ける前の値）へ16パッドを戻す＝効果オフ
-  if(!perfSnap) return;
-  const p=perfSnap.param;
-  for(let i=0;i<16;i++){ const t=tracks[i];
-    if(p==="filter"){ t.cutoff=perfSnap.vals[i]; t.filter=perfSnap.filt[i]; } else t[PERF_BASE[p]]=perfSnap.vals[i];
-  }
-}
-function perfReadVals(p){     // いまの16パッドの値を控える（filter は cutoff と種別の両方）
-  const o={vals:[],filt:[]};
-  for(let i=0;i<16;i++){ const t=tracks[i]; o.vals[i]= p==="filter"?t.cutoff : t[PERF_BASE[p]]; o.filt[i]=t.filter; }
-  return o;
-}
-// パターンが替わったとき（data/patterns の patLoad から。v0.3.164 §158）：エフェクトは A B C D ごと（§146）なので、
-// P-LOCK を掛けたままパターンが替わったら、「掛ける前の値」を新しいパターンの値で取り直す。
-// 取り直さないと、解放したときに前のパターンの値を新しいパターンへ書き込んでしまう。前のパターンにはいじった値がそのまま残る（パターンごとの記憶）
-function perfPatEnter(){ if(perfSnap) perfSnap={param:perfSnap.param, recorded:false, ...perfReadVals(perfSnap.param)}; }
-function perfLockApply(prev){
-  // 動き（v0.3.121）：**解放＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活**。
-  // v0.3.118 までは解放で戻るが記憶が無く「もう一度押すと素の値」だった。v0.3.119 は逆に解放しても残す形にしたが、
-  // 求められていたのは「エフェクトのON/OFF＋つまみ位置の記憶」。REC ON のときは従来どおり解放しても基本値を保持する。
-  if(perfSnap && prev && perfSnap.param===prev && prev!==activeLock){
-    perfLast[prev]=perfReadVals(prev);                          // 最後にいじった値を覚える
-    if(!perfRecArm || perfSnap.recorded) perfRevertSnap();      // 掛ける前へ戻す（REC ON で未記録なら保持）
-    perfSnap=null;
-  }
-  // 新しいP-LOCKが有効＝掛ける前の値を控えてから、前回の記憶があれば復活させる
-  if(activeLock && PERF_BASE[activeLock] && (!perfSnap || perfSnap.param!==activeLock)){
-    perfSnap={param:activeLock, recorded:false, ...perfReadVals(activeLock)};
-    const last=perfLast[activeLock];
-    if(last){ for(let i=0;i<16;i++){ const t=tracks[i];
-      if(activeLock==="filter"){ t.cutoff=last.vals[i]; t.filter=last.filt[i]; } else t[PERF_BASE[activeLock]]=last.vals[i]; } }
-  }
-  if(!(activeLock && PERF_BASE[activeLock])) perfSnap=null;
+// エフェクトのボタン（PITCH / FILTER / DELAY / REVERB）の動き（v0.3.168 §162）：
+// **押す＝パッドを左右にドラッグして掛ける／もう一度押す＝ボタンを解除するだけ（値は残る）**。
+// 一度掛けたエフェクトはボタンにポッチ（設定あり）が残る。ダブルタップ＝そのエフェクトを全パッドから外す。EDIT 中に押す＝詳しい設定のモーダル。
+// v0.3.121〜168 は「押した時の値を控え、解除でそこへ戻す」形だったので、解除すると消え、SET を替えて解除すると
+// 前のセットの値を新しいセットへ書き込んでいた（控えはセットを知らない）。値をそのまま tracks に置くので、セット / パターンの退避にもそのまま乗る
+function perfLockApply(){
   document.body.classList.toggle("perf-plock", plockFillsOn());
   renderPerfFills();
   if(typeof syncEditor==="function") syncEditor();
 }
+// 「設定あり」：どれか 1 つのパッドに掛かっている（掛かっていない値＝ FX_OFF と違う）。
+// ポッチ・ダブルタップのリセット・EDIT のモーダルは A B C D ごとのエフェクト（FILTER / DELAY / REVERB、§146）だけ。
+// PITCH はパッドの音程（EDIT の TUNE と同じ値）で、最初の音から +2 などが入っているので「設定あり」にもリセットにもしない（解除しても値は残るのは同じ）
+const FX_OFF = {filter:{filter:"off", cutoff:12000}, delay:{delaySend:0}, reverb:{reverbSend:0}};
+function fxPadSet(i, param){ const t=tracks[i];
+  return param==="filter" ? t.filter!=="off" : (t[PERF_BASE[param]]||0)!==0; }
+function fxIsSet(param){ for(let i=0;i<tracks.length;i++) if(fxPadSet(i,param)) return true; return false; }
+function paintFxDots(){
+  document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock], .msbar .msbtn.fx[data-lock]').forEach(b=>{
+    const p=b.dataset.lock; b.classList.toggle("fxset", !!FX_OFF[p] && fxIsSet(p)); });
+}
+// 1 パッド / 全パッドから外す（素の値へ）。UNDO で戻せる
+function fxClearPad(i, param){ Object.assign(tracks[i], FX_OFF[param]); }
+function fxResetAll(param){
+  if(!FX_OFF[param]) return;
+  pushUndo();
+  for(let i=0;i<tracks.length;i++) fxClearPad(i, param);
+  renderPerfFills();
+  if(typeof syncEditor==="function") syncEditor();
+  if(typeof paintPerf==="function") paintPerf();
+  if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=param.toUpperCase()+" をリセット（全パッド・UNDO で戻せる）";
+}
+// エフェクトのボタンを押した（PC の #perfPlk とスマホの .msbar から）。350ms 以内にもう一度＝ダブルタップ（iOS は dblclick が当てにならない）
+let _fxTapT=-1e9, _fxTapL=null;
+function fxBtnTap(lock){
+  if(FX_OFF[lock] && typeof armMode!=="undefined" && armMode==="edit"){ fxModalOpen(lock); return; }
+  const now=performance.now();
+  if(FX_OFF[lock] && lock===_fxTapL && now-_fxTapT<350){
+    _fxTapT=-1e9;
+    if(activeLock===lock) setActiveLock(lock);    // 1 回目で点いた分を戻す＝ダブルタップの後は解除
+    perfLockApply(); fxResetAll(lock);
+    return;
+  }
+  _fxTapT=now; _fxTapL=lock;
+  setActiveLock(lock);
+  perfLockApply();
+}
+// ---------- EDIT → エフェクトのボタン＝詳しい設定のモーダル（v0.3.168）：パッドごとの量、FILTER は種類も、RESET ----------
+let fxmParam=null, _fxmUndo=false;
+const _fxmLog=(spec,u)=>Math.exp(Math.log(spec.min)+u*(Math.log(spec.max)-Math.log(spec.min)));
+function fxmPaint(){
+  const list=document.getElementById("fxmList"); if(!list||!fxmParam) return;
+  const p=fxmParam, spec=PLOCKS[p], prop=PERF_BASE[p];
+  document.getElementById("fxmTitle").textContent=p.toUpperCase();
+  document.getElementById("fxmLabel").textContent = "パッドごと（パターン "+"ABCD"[editPat]+"）";
+  if(!list.children.length){
+    list.innerHTML=tracks.map((t,i)=>`<div class="fxm-row" data-i="${i}"><span class="fxm-n"></span>`+
+      `<button class="fxm-type" data-i="${i}"></button><input type="range" data-i="${i}" aria-label="pad ${i+1}"><span class="fxm-v"></span></div>`).join("");
+  }
+  list.classList.toggle("filt", p==="filter");
+  [...list.children].forEach((row,i)=>{ const t=tracks[i], inp=row.querySelector("input"), v=p==="filter"?t.cutoff:t[prop];
+    row.querySelector(".fxm-n").textContent=String(i+1).padStart(2,"0")+" "+(t.name||PADS[i].name||"").slice(0,8).toUpperCase();
+    if(spec.log){ inp.min=0; inp.max=1000; inp.step=1; inp.value=Math.round((Math.log(v)-Math.log(spec.min))/(Math.log(spec.max)-Math.log(spec.min))*1000); }
+    else { inp.min=spec.min; inp.max=spec.max; inp.step=0.01; inp.value=v; }
+    row.querySelector(".fxm-type").textContent=p==="filter"?t.filter.toUpperCase():"";
+    row.querySelector(".fxm-v").textContent=(p==="filter"&&t.filter==="off")?"–":spec.fmt(v);
+    row.classList.toggle("set", fxPadSet(i,p));
+  });
+}
+function fxModalOpen(param){
+  fxmParam=param; fxmPaint();
+  const m=document.getElementById("fxModal"); if(m){ m.style.display="flex"; document.getElementById("fxmClose").focus(); }
+}
+function fxModalClose(){ const m=document.getElementById("fxModal"); if(m) m.style.display="none"; fxmParam=null; }
+(function(){
+  const m=document.getElementById("fxModal"), list=document.getElementById("fxmList"); if(!m||!list) return;
+  document.getElementById("fxmClose").addEventListener("click", fxModalClose);
+  m.addEventListener("click",e=>{ if(e.target===m) fxModalClose(); });   // 背景クリックで閉じる
+  window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&m.style.display==="flex") fxModalClose(); });
+  document.getElementById("fxmReset").addEventListener("click",()=>{ if(fxmParam){ fxResetAll(fxmParam); fxmPaint(); } });
+  // スライダー＝そのパッドの量（ドラッグ1回で1手）。FILTER が OFF なら LP で掛ける
+  list.addEventListener("input",e=>{ const inp=e.target.closest("input"); if(!inp||!fxmParam) return;
+    if(!_fxmUndo){ pushUndo(); _fxmUndo=true; }
+    const i=+inp.dataset.i, t=tracks[i], p=fxmParam, spec=PLOCKS[p];
+    if(p==="filter"){ t.cutoff=_fxmLog(spec, +inp.value/1000); if(t.filter==="off") t.filter="lp"; }
+    else t[PERF_BASE[p]] = +inp.value;
+    fxmPaint(); renderPerfFills(); if(typeof syncEditor==="function") syncEditor();
+  });
+  list.addEventListener("change",()=>{ _fxmUndo=false; if(typeof paintPerf==="function") paintPerf(); });
+  // FILTER の種類：OFF → LP → HP → OFF
+  list.addEventListener("click",e=>{ const b=e.target.closest(".fxm-type"); if(!b||fxmParam!=="filter") return;
+    const t=tracks[+b.dataset.i]; pushUndo(); t.filter={off:"lp", lp:"hp", hp:"off"}[t.filter]||"off";
+    fxmPaint(); renderPerfFills(); if(typeof syncEditor==="function") syncEditor(); if(typeof paintPerf==="function") paintPerf();
+  });
+})();
 // @module ui/seq-view
 // @provides _padCurStep, _seqCurStep, _stripCurStep, colnums, curStepFor, grid, moveCursors, paintSteps,
 //    rowEls
@@ -3344,8 +3431,7 @@ function swapPads(a,b){
 // @module data/patterns
 // @provides PAT_FX, _fxOf, _patArr, applySeqData, copyBar, copyPattern, patLoad, patRead, patSync, patWrite,
 //    seqDataOf, seqFromSetData, setStep, setStepAt
-// @uses STEPS, clearLockEdit, editBar, editBars, editPat, patSlot, perfPatEnter, pushUndo, stripLegacyLocks,
-//    tracks
+// @uses STEPS, clearLockEdit, editBar, editBars, editPat, patSlot, pushUndo, stripLegacyLocks, tracks
 // @depends -
 // ---------- パターン／小節のデータ更新：ステップの ON/OFF と COPY の実体（DOM を触らない） ----------
 // 31-ui-copy.js から分離（v0.3.131 Phase 2 第2段）。呼び出し側（doCopy）が描画を行う。
@@ -3381,7 +3467,6 @@ function patLoad(p, noSync){
   if(!noSync) patSync();
   patSlot=p;
   tracks.forEach(t=>patRead(t,p));
-  if(typeof perfPatEnter==="function") perfPatEnter();   // P-LOCK の「掛ける前の値」を新しいパターンで取り直す（v0.3.164）
 }
 function copyPattern(src,dst){   // パターン src の全小節(＋p-lock)を dst へ。ミュート / ソロ / エフェクトも写す（A を作って B に写し、変化をつける）
   if(src===dst) return; pushUndo();
@@ -4019,9 +4104,9 @@ function paintClPage(){
 //    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
 //    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar,
-//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLoad, patSlot, perfDrag, perfRecArm,
-//    perfSnap, playBar, playPat, playStep, playVoice, playing, pushUndo, queuedPat, queuedSet, scaleSemi,
-//    setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
+//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot,
+//    patSwitchMode, perfDrag, perfRecArm, playBar, playPat, playStep, playVoice, playing, queuedPat,
+//    queuedSet, scaleSemi, setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -4073,7 +4158,6 @@ function scheduleStep(stepNo, when){
     if(v>0 && aud){
       // 演奏ライブ記録：REC ON中、ドラッグ中のパッドのこのトリガにp-lockを焼く（GRIDと同一データ）
       if(perfRecArm && perfDrag && perfDrag.moved && perfDrag.pad===i && perfDrag.param){
-        if(perfSnap && !perfSnap.recorded){ pushUndo(); perfSnap.recorded=true; }
         const pp=perfDrag.param, pv=(pp==="filter")?t.cutoff:t[PERF_BASE[pp]];
         setLockPlay(i, playPat, playBar, stepNo, pp, pv);
       }
@@ -4145,15 +4229,23 @@ function scheduler(){
   while(stepTimeClean(stepIdx) < AC.currentTime + LOOKAHEAD){
     // SP的微細ドリフトはスケジュール時のみ適用
     const when = stepTimeClean(stepIdx) + driftSec();
+    // BEAT（v0.3.168）：予約したパターンへ次の拍で。小節の中の位置はそのまま（その小節が無ければ頭の小節へ）
+    if(queuedPat !== null && stepIdx%4===0 && stepIdx>0 && patSwitchMode()==="beat"){
+      playPat = queuedPat; queuedPat = null; if(playBar >= patLength(playPat)) playBar = firstPlayBar();
+      if(patSlot!==playPat) patLoad(playPat);
+    }
     if(metroOn && stepIdx%4===0) scheduleClick(when, stepIdx===0);   // 拍頭（小節頭はアクセント）
     scheduleStep(stepIdx, when);
     stepIdx++;
     if(stepIdx >= STEPS){
       stepIdx = 0;
       barStartTime += STEPS * TICKS_PER_16TH * tickDur();
-      // 小節アタマ：予約があれば次パターンへ切替、無ければ同パターン内の次小節（書いた分でループ）
-      if(queuedPat !== null){ playPat = queuedPat; playBar = firstPlayBar(); queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
-      else playBar = nextPlayBar(playPat, playBar);   // 次の小節（BAR ホールドがあればホールドした小節だけを順に v0.3.161）
+      // 小節アタマ：次の小節（書いた分でループ。BAR ホールドがあればホールドした小節だけを順に v0.3.161）。
+      // 予約したパターンへは、既定（PATTERN）ではいまのパターンを鳴らし切ってから（次の小節が頭へ戻るとき）切り替える（v0.3.168 §161）。
+      // v0.3.167 までは次の小節アタマで切り替えていたので、3 小節目で押すと 4 小節目を飛ばして次の頭に来ていた（＝メニューの BAR）
+      const nb = nextPlayBar(playPat, playBar);
+      if(queuedPat !== null && (nb <= playBar || patSwitchMode()!=="end")){ playPat = queuedPat; playBar = firstPlayBar(); queuedPat = null; if(patSlot!==playPat) patLoad(playPat); }   // 次のパターンのミュートで鳴らす（v0.3.149）
+      else playBar = nb;
       // SET：予約された枠へは小節頭で差し替える（音は barStartTime で止める。dec 済みなので同期＝予約は遅れない）
       if(queuedSet !== null){ switchSetNow(queuedSet, barStartTime); playPat = 0; playBar = 0; }
     }
@@ -4330,8 +4422,8 @@ recBtn.addEventListener("click",()=>{
 // @module step-strip
 // @provides paintStepStrip, setActiveLock, stepBtns, stepShift, stepStripEl, stepTrackName, stripDrag,
 //    toggleStepAt
-// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, getLockEdit,
-//    getPattern, paintPatBar, paintPerf, paintSteps, perfLockApply, pushUndo, rowEls, sampNameEl, selectPad,
+// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, fxBtnTap,
+//    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, pushUndo, rowEls, sampNameEl, selectPad,
 //    selected, setCellWave, setLockEdit, setStep, trackWaveURL, tracks, updateRecBtnLabel
 // @depends boot, plock-undo, ui/transport-view
 // ===== GRID（Digitakt式）ステップ入力 =====
@@ -4431,13 +4523,11 @@ function setActiveLock(p){
   activeLock=(activeLock===p)?null:p;
   document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock], .msbar .msbtn.fx[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
 }
-// スマホの DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの送り量。
-// PC の perf と同じく perfLockApply を通す＝解除で掛ける前へ戻り、もう一度押すと前回の値が復活（v0.3.121）
+// スマホの PITCH / FILTER / DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの量。
+// PC の perf と同じく fxBtnTap を通す＝解除しても値は残る（ポッチ）／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
 document.querySelectorAll(".msbar .msbtn.fx").forEach(b=>b.addEventListener("click",()=>{
-  const prev=activeLock;
-  setActiveLock(b.dataset.lock);
-  if(typeof perfLockApply==="function") perfLockApply(prev);
-  if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent = activeLock ? (b.textContent.trim()+"：パッドを左右にドラッグ＝送り量 / もう一度で解除（値は覚えている）") : "";
+  fxBtnTap(b.dataset.lock);
+  if(typeof sampNameEl!=="undefined"&&sampNameEl && activeLock===b.dataset.lock) sampNameEl.textContent = b.textContent.trim()+"：パッドを左右にドラッグ＝量 / もう一度で解除（値は残る）・ダブルタップでリセット";
   if(typeof paintPerf==="function") paintPerf();
 }));
 function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); }
@@ -5465,9 +5555,9 @@ loadPresets().then(async ()=>{
 //    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editPat, paintClPage, paintSteps, perfLast, perfLockApply, perfReadVals, perfRecArm, perfRevertSnap,
-//    perfSnap, playStep, playing, plockFillsOn, queuedPat, renderPerfFills, sampNameEl, setActiveLock,
-//    setEditBar, setEditPat, setMode, setModeEnter, stepTrackName, swingPct, tracks, viewPadsEl
+//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, perfRecArm, playStep, playing, plockFillsOn,
+//    queuedPat, renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName,
+//    swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
@@ -5649,6 +5739,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
+  if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
 }
 // P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
@@ -5660,14 +5751,12 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
   // comp/edit は P-LOCK ではなくモードボタン（.perf-mode）なので除外し、専用配線で既存の真へproxy。
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
-    const prev=activeLock;
-    setActiveLock(b.dataset.lock);
-    perfLockApply(prev); paintPerf();
+    fxBtnTap(b.dataset.lock); paintPerf();   // 解除しても値は残る／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
   }));
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：離すと戻る（次に押すと前回の値）"; });
+    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：いじった値はパッドに残る（ステップには記録しない）"; });
 })();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
@@ -5677,8 +5766,7 @@ function updatePerf(){
   const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
   document.body.classList.toggle("perf", four && land);
   document.body.classList.toggle("perf-rotate", four && !land && coarse);
-  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCKを解放（記憶して掛ける前へ戻す）
-    if(perfSnap){ perfLast[perfSnap.param]=perfReadVals(perfSnap.param); if(!perfRecArm || perfSnap.recorded) perfRevertSnap(); perfSnap=null; }
+  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCK の塗りを消す（値は残る v0.3.168）
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
@@ -5695,10 +5783,11 @@ setTimeout(updatePerf, 350);
 setInterval(()=>{ if(playing || document.body.classList.contains("perf")) paintPerf(); }, 200);   // 再生中は全レイアウトで窓を同期
 
 // @module pattern-master
-// @provides _barTapB, _barTapT, barSeg, barTapHold, chainLatencyMs, clearBarHold, clearBarIndicator,
-//    clearPatIndicator, compToggle, editBars, firstPlayBar, heldBars, kickVu, masterVuEl, masterVuLevel,
-//    nextPlayBar, paintLatency, paintMixer, paintPatBar, patSeg, refreshStepWaves, setEditBar, setEditPat,
-//    toggleBarHold, updateBarIndicator, updatePatIndicator, vuHit, vuLoop, vuRaf
+// @provides PAT_SW_KEY, _barTapB, _barTapT, barSeg, barTapHold, chainLatencyMs, clearBarHold,
+//    clearBarIndicator, clearPatIndicator, compToggle, editBars, firstPlayBar, heldBars, kickVu, masterVuEl,
+//    masterVuLevel, nextPlayBar, paintLatency, paintMixer, paintPatBar, patSeg, patSwitchMode,
+//    refreshStepWaves, setEditBar, setEditPat, toggleBarHold, updateBarIndicator, updatePatIndicator, vuHit,
+//    vuLoop, vuRaf
 // @uses AC, PADS, applyWaveSEQ, applyWaveStrip, barHasContent, barHold, compDrive, compMakeup, compNode,
 //    compOn, compThr, compThreshold, copyTap, dbToGain, displayPat, editBar, editPat, finalClip, isMelodic,
 //    makeSatCurve, makeupGain, masterGain, paintPadStates, paintPerf, paintSteps, patHasContent, patLength,
@@ -5723,6 +5812,18 @@ function setEditPat(p){
   else { patLoad(p); paintPadStates(); if(typeof paintPerf==="function") paintPerf(); }   // 止まっていればミュート / エフェクトも p のものに（鳴っていれば切り替わる小節頭で。v0.3.149 / v0.3.150）
   paintSteps(); paintPatBar(); refreshStepWaves();
 }
+// ---------- 再生中の A B C D の切替どき（v0.3.168 §161）。メニューの Timing で選ぶ（この端末で覚える） ----------
+// end＝いまのパターンを鳴らし切ってから（既定）／bar＝いまの小節の終わり（v0.3.167 までの動き）／beat＝次の拍で、小節の中の位置はそのまま
+const PAT_SW_KEY="mics-pat-switch";
+function patSwitchMode(){ let s="end"; try{ s=localStorage.getItem(PAT_SW_KEY)||"end"; }catch(_){} return ["end","bar","beat"].includes(s)?s:"end"; }
+(function(){
+  const seg=document.getElementById("patSwitch"); if(!seg) return;
+  const paint=()=>[...seg.children].forEach(b=>b.classList.toggle("on", b.dataset.u===patSwitchMode()));
+  seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    try{ localStorage.setItem(PAT_SW_KEY, b.dataset.u); }catch(_){}
+    paint(); sampNameEl.textContent = ({end:"A B C D の切替 ＝ パターンを鳴らし切ってから", bar:"A B C D の切替 ＝ いまの小節の終わりで", beat:"A B C D の切替 ＝ 次の拍で（小節の中の位置はそのまま）"})[patSwitchMode()]; });
+  paint();
+})();
 function setEditBar(b){ editBar=b; paintSteps(); paintPatBar(); refreshStepWaves(); }
 // ---------- BAR のホールド（v0.3.161 §155）：「BAR はシングル＝従来どおり選択、ダブルクリック＝ホールドして繰り返す、
 // 複数ホールドされてると選択したとこだけ順番に繰り返す」。ホールドは鳴っているパターンに効く。切替は小節の終わりで（audio/transport が nextPlayBar を聞く）
@@ -6717,7 +6818,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.167";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.168";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
