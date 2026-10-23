@@ -24,8 +24,8 @@ function cropBufferToSelection(t){
     for(let c=0;c<ch;c++){ const s=src.getChannelData(c), d=out.getChannelData(c); for(let n=0;n<len;n++) d[n]=s[sa+n]; }
     return out;
   };
-  t.buffer=cropOne(buf);
-  if(t.rawBuffer) t.rawBuffer=cropOne(t.rawBuffer);
+  const nb=cropOne(buf), nr=t.rawBuffer?cropOne(t.rawBuffer):null;   // 両方作れてから差し替える（片方だけ切れた状態を残さない）
+  t.buffer=nb; if(nr) t.rawBuffer=nr;
   t.start=0; t.end=1; t.loopStart=0;
 }
 // 試聴カーソル（v0.3.160）：「プレビューを回すときに、再生位置のカーソルを動かして好きなところから再生できるように。
@@ -443,7 +443,9 @@ function openPadEdit(i){
   document.getElementById("peTrunc").addEventListener("click",()=>{
     const t=tracks[peTarget]; if(!t.buffer) return;
     pushUndo();
-    cropBufferToSelection(t);
+    // 失敗（ロングサンプルで端末のメモリが足りない等）は黙らず理由を出す。途中で落ちても buffer は差し替え前のまま（v0.3.169 §163）
+    try{ cropBufferToSelection(t); }
+    catch(err){ console.warn("[trim]",err); sampNameEl.textContent="TRIM できなかった — "+((err&&(err.name||err.message))||err)+"（範囲を短くしてもう一度）"; return; }
     renderPeWave(peTarget); drawPadWave(peTarget);
     sampNameEl.textContent="TRIM完了  ↩で戻せる";
   });

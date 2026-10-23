@@ -1016,6 +1016,31 @@ async function fxKeep(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function longPitch(){
+  // v0.3.169：ロングサンプルでピッチを変えても START がずれない（v0.3.168 までは 12 秒で打ち切ったバッファに START を掛けていた）
+  const V='LONGPITCH 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const r=await p.evaluate(()=>{
+    const sr=44100, N=sr*60, raw=AC.createBuffer(1,N,sr), d=raw.getChannelData(0);
+    for(let i=0;i<N;i++) d[i]=i/N;                                   // 値＝位置（0..1）のランプ
+    const t=tracks[2]; t.rawBuffer=raw; t.buffer=makeLofi(raw); t.start=0.5; t.end=0.55; t.loop=false; t.attack=0; t.fade=3;
+    const proto=AudioBufferSourceNode.prototype, orig=proto.start; let got=null;
+    proto.start=function(w,off){ got={buf:this.buffer, off:off||0, loop:this.loop, ls:this.loopStart}; return orig.apply(this, arguments); };
+    const at=tune=>{ t.tune=tune; got=null; playVoice(2, AC.currentTime+0.05, false, false, 0, null); stopVoices(t, AC.currentTime);
+      const b=got.buf, k=Math.min(b.length-1, Math.round(got.off*b.sampleRate)+2); return +b.getChannelData(0)[k].toFixed(3); };
+    const res={t0:at(0), up2:at(2), dn5:at(-5), up12:at(12)};
+    t.loop=true; t.loopStart=0.52; t.tune=3; got=null; playVoice(2, AC.currentTime+0.05, false, false, 0, null); stopVoices(t, AC.currentTime);
+    res.loopStart=+got.buf.getChannelData(0)[Math.min(got.buf.length-1, Math.round(got.ls*got.buf.sampleRate)+2)].toFixed(3);
+    t.loop=false; proto.start=orig; return res; });
+  const near=(v,x)=>Math.abs(v-x)<0.004;
+  ok_(`${V} 60 秒のサンプルの START 0.5：ピッチ 0 / +2 / -5 / +12 で同じ所（30 秒目）から鳴る`, near(r.t0,0.5) && near(r.up2,0.5) && near(r.dn5,0.5) && near(r.up12,0.5), JSON.stringify(r));
+  ok_(`${V} ループの戻り先もピッチでずれない`, near(r.loopStart,0.52), JSON.stringify(r));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function editTools(){
   // v0.3.160：EDIT 中のドラッグ＝パッド入れ替え（P-LOCK を選んだままでも EDIT が先）／EDIT 画面の DELETE（2 回押す・↩ で戻せる）
   const V='EDITTOOLS 390x844';
@@ -1230,6 +1255,7 @@ await editTools();
 await barHoldTest();
 await patSwitchEnd();
 await fxKeep();
+await longPitch();
 await saveScopeTest();
 await wireSkin();
 await setNameTest();

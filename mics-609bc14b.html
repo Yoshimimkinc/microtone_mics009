@@ -1213,7 +1213,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.168</div>
+  <div class="s-ver" id="splashVer">v0.3.169</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -2527,8 +2527,8 @@ function refreshSeqMode(){
 function dbToGain(db){ return Math.pow(10, db/20); }
 
 // @module voice
-// @provides _warmT, anySolo, audible, chokeGroup, getPitchedBuffer, hitVoice, makeLofi, pitchBufferNN,
-//    playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
+// @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
+//    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
 //    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
 //    playStep, playing, recording, reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode,
@@ -2611,38 +2611,48 @@ function audible(i, trs=tracks){
 // 元バッファを最近傍(nearest-neighbor)でratio倍にリサンプルし、AC.sampleRateのバッファに焼く。
 // これをplaybackRate=1.0で再生すると、ブラウザの補間を一切受けずSP的なエイリアス/粒立ちが出る。
 // 連続ベンドは無いアプリなので発音毎の生成で十分（短音はサブms、ループ系もトグル時のみ）。
-function pitchBufferNN(buf, ratio){
+// a..b：元バッファのこの範囲だけを焼く（フレーム。既定＝全体）
+const PITCH_CAP_SEC = 120;   // 焼いたバッファの長さの上限（極端なピッチダウン×ロングサンプルでメモリを食い尽くさない）
+function pitchBufferNN(buf, ratio, a=0, b=buf.length){
   const srcSr = buf.sampleRate, ch = buf.numberOfChannels;
   const step = ratio * srcSr / AC.sampleRate;            // 出力1サンプルあたり進める元サンプル数
-  const cap = AC.sampleRate * 12;                        // 念のため長さ上限（極端なピッチダウン対策）
-  const outLen = Math.max(1, Math.min(cap, Math.floor(buf.length / step)));
+  const cap = AC.sampleRate * PITCH_CAP_SEC;
+  const outLen = Math.max(1, Math.min(cap, Math.floor((b - a) / step)));
   const out = AC.createBuffer(ch, outLen, AC.sampleRate);
   for(let c=0;c<ch;c++){
     const s = buf.getChannelData(c), d = out.getChannelData(c);
-    let pos = 0;
+    let pos = a;
     for(let n=0;n<outLen;n++){ d[n] = s[pos|0] || 0; pos += step; }  // 整数indexのみ＝ドロップサンプル
   }
   return out;
 }
-// 半音キーでピッチ済みバッファをキャッシュ（同音程の連打で毎回生成しない＝負荷増を防ぐ）。
-// t.bufferが差し替わったら自動でキャッシュ破棄（録音/読込/CHOPPY/再12bit化に追従）。
-function getPitchedBuffer(t, semi){
-  if(!semi) return t.buffer;   // 等倍(ratio=1)は恒等コピー＝焼き込み不要。初回ヒットの全長コピー(＝発音前の数ms)を丸ごと省く
-  if(t._pcacheBuf !== t.buffer){ t._pcache = {}; t._pcacheKeys = []; t._pcacheBuf = t.buffer; }
-  let b = t._pcache[semi];
-  if(!b){
-    b = t._pcache[semi] = pitchBufferNN(t.buffer, Math.pow(2, semi/12));
-    // 長尺ループ×多音程でピッチ済みバッファが溜まりすぎないようLRU上限（最大16音程）
-    (t._pcacheKeys || (t._pcacheKeys=[])).push(semi);
-    while(t._pcacheKeys.length > 16){ const old=t._pcacheKeys.shift(); if(old!==semi) delete t._pcache[old]; }
-  }
-  return b;
+// 鳴らす範囲（正規化 aN..bN）をピッチ済みにして返す。{buf, at(x)＝正規化位置 x がこの buf の何秒目か, off, V}
+// v0.3.168 までは全体を焼いて 12 秒で打ち切り、START / END を「打ち切ったバッファの長さ」に掛けていた。
+// ロングサンプルでピッチを変えると START が手前へずれ（60 秒の 0.5＝30 秒目が 6 秒目に）、聞いている所と TRIM で切る所が食い違っていた（v0.3.169 §163）。
+// いまは鳴らす範囲だけを焼き、位置は元バッファのフレームから出す＝ピッチを変えても同じ所から鳴る。
+// 同じ音程×同じ範囲はキャッシュ。t.buffer が替わったら捨てる（録音/読込/CHOP/TRIM/再12bit化に追従）
+function getPitchedRegion(t, semi, aN=0, bN=1){
+  const src = t.buffer, N = src.length, srcSr = src.sampleRate;
+  if(!semi) return {buf:src, at:x=>x*N/srcSr, off:0, V:N/srcSr};   // 等倍は焼かない（初回ヒットの全長コピーを省く）
+  const ratio = Math.pow(2, semi/12), step = ratio*srcSr/AC.sampleRate, sr = AC.sampleRate;
+  const a = Math.max(0, Math.min(N-1, Math.floor(aN*N))), b = Math.max(a+1, Math.min(N, Math.ceil(bN*N)));
+  if(t._pcacheBuf !== src){ t._pcache = {}; t._pcacheKeys = []; t._pcacheBuf = src; }
+  const key = semi+":"+a+":"+b, keys = t._pcacheKeys || (t._pcacheKeys=[]);
+  let buf = t._pcache[key];
+  if(!buf){
+    buf = t._pcache[key] = pitchBufferNN(src, ratio, a, b);
+    keys.push(key);
+    // 溜めすぎない：最大 16 個、合計 PITCH_CAP_SEC 秒ぶんまで（いま焼いたのは残す）
+    let tot = keys.reduce((s,k)=>s+(t._pcache[k]?t._pcache[k].length:0), 0);
+    while(keys.length>1 && (keys.length>16 || tot>sr*PITCH_CAP_SEC)){ const old=keys.shift(); tot-=(t._pcache[old]?t._pcache[old].length:0); delete t._pcache[old]; }
+  } else { const k=keys.indexOf(key); if(k>=0){ keys.splice(k,1); keys.push(key); } }   // LRU：使ったら後ろへ
+  return {buf, at:x=>Math.max(0, (x*N - a)/step/sr), off:a/step/sr, V:N/step/sr};
 }
 // tune変更後にピッチ焼き込みを先回り＝次の発音時の全長コピーを発音前に済ませる（連続ドラッグはdebounce）
 const _warmT={};
 function warmPitch(i){
   clearTimeout(_warmT[i]);
-  _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.buffer&&t.tune) try{ getPitchedBuffer(t,t.tune); }catch(_){ } },150);
+  _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.buffer&&t.tune) try{ const s=t.start||0; getPitchedRegion(t, t.tune, t.loop?Math.min(s, t.loopStart||0):s, t.end??1); }catch(_){ } },150);
 }
 // 1ヒット発音
 // trs：鳴らすセットのトラック列（既定＝いまのセット。SET のミックスで他のセットを鳴らすときは snapshot の列 v0.3.147）
@@ -2661,11 +2671,13 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
   const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
   const semi = t.tune + (noteSemi||0) + lkPitch;
-  const pbuf = getPitchedBuffer(t, semi);       // 半音キーでキャッシュ
-  const dur = pbuf.duration;   // ピッチ済みバッファの尺で以降の開始/終了/ループ点が正しくスケール
   const sN = Math.min(0.999, Math.max(0, fromN!=null ? fromN : t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
-  const startSec = sN*dur, endSec = eN*dur;
+  const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;
+  // 鳴らす範囲だけピッチ済みに（試聴カーソルで START の後ろから鳴らすときも START からの範囲を使い回す）。位置は元バッファから＝ピッチで START がずれない（v0.3.169）
+  const pr = getPitchedRegion(t, semi, Math.min(sN, lsN, Math.max(0, t.start||0)), eN);
+  const pbuf = pr.buf;
+  const startSec = pr.at(sN), endSec = Math.max(startSec+0.001, Math.min(pbuf.duration, pr.at(eN)));
 
   const src = AC.createBufferSource();
   src.buffer = pbuf;
@@ -2711,9 +2723,8 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
 
   let oneShotLen = 0;   // 一発ものの再生長（ウォッチドッグ用。ループは0）
   if(t.loop){
-    const lsN = Math.min(eN-0.001, Math.max(0, t.loopStart));
     src.loop = true;
-    let lsSec = lsN*dur, leSec = endSec;
+    let lsSec = Math.min(pr.at(lsN), endSec-0.001), leSec = endSec;
     if(loopZeroSnap){   // A/B: ループ点を最近傍ゼロ交差へ（継ぎ目のプツ低減）
       const d=pbuf.getChannelData(0), sr=pbuf.sampleRate, win=Math.round(sr*0.002);
       lsSec = nearestZeroCross(d, Math.round(lsSec*sr), win)/sr;
@@ -2760,8 +2771,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   // 波形（モーダル or 情報窓のSAMPLEページ）が見えていて対象パッドが鳴ったら、再生位置カーソルを走らせる。
   // 手叩きもシーケンサーも同じ（v0.3.103）。ループは常に1本＝再トリガで前のを止めるので負荷は増えない
   if(trs===tracks && i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
-    const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;
-    pePlayheadRun(when, startSec, endSec, lsN*dur, dur, t.loop);
+    pePlayheadRun(when, startSec+pr.off, endSec+pr.off, pr.at(lsN)+pr.off, pr.V, t.loop);   // 波形の上の位置＝全体を焼いたときの秒（off で範囲の頭をずらす）
   }
 }
 
@@ -4658,8 +4668,8 @@ function cropBufferToSelection(t){
     for(let c=0;c<ch;c++){ const s=src.getChannelData(c), d=out.getChannelData(c); for(let n=0;n<len;n++) d[n]=s[sa+n]; }
     return out;
   };
-  t.buffer=cropOne(buf);
-  if(t.rawBuffer) t.rawBuffer=cropOne(t.rawBuffer);
+  const nb=cropOne(buf), nr=t.rawBuffer?cropOne(t.rawBuffer):null;   // 両方作れてから差し替える（片方だけ切れた状態を残さない）
+  t.buffer=nb; if(nr) t.rawBuffer=nr;
   t.start=0; t.end=1; t.loopStart=0;
 }
 // 試聴カーソル（v0.3.160）：「プレビューを回すときに、再生位置のカーソルを動かして好きなところから再生できるように。
@@ -5077,7 +5087,9 @@ function openPadEdit(i){
   document.getElementById("peTrunc").addEventListener("click",()=>{
     const t=tracks[peTarget]; if(!t.buffer) return;
     pushUndo();
-    cropBufferToSelection(t);
+    // 失敗（ロングサンプルで端末のメモリが足りない等）は黙らず理由を出す。途中で落ちても buffer は差し替え前のまま（v0.3.169 §163）
+    try{ cropBufferToSelection(t); }
+    catch(err){ console.warn("[trim]",err); sampNameEl.textContent="TRIM できなかった — "+((err&&(err.name||err.message))||err)+"（範囲を短くしてもう一度）"; return; }
     renderPeWave(peTarget); drawPadWave(peTarget);
     sampNameEl.textContent="TRIM完了  ↩で戻せる";
   });
@@ -6818,7 +6830,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.168";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.169";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
