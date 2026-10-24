@@ -194,6 +194,7 @@ async function finalizeRec(){
     tracks[selected].buffer=makeLofi(buf);
     tracks[selected].start=0;tracks[selected].end=1;
     tracks[selected].loop=false;tracks[selected].loopStart=0;
+    tracks[selected].tune=0;   // 新しい音は PITCH 0 から（v0.3.170 §164）
     PADS[selected].type="sample";
     const tn="TAKE "+(++recTakeN);   // 録るたびに名前が育つ（REC固定だとテイクの記憶が残らない）
     tracks[selected].name=tn;

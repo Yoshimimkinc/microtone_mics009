@@ -1213,7 +1213,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.169</div>
+  <div class="s-ver" id="splashVer">v0.3.170</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -5283,6 +5283,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     tracks[target].buffer = makeLofi(buf);
     tracks[target].start=0; tracks[target].end=1;
     tracks[target].loop=false; tracks[target].loopStart=0;
+    tracks[target].tune=0;   // 新しい音は PITCH 0 から（前の音の +2 などを引き継がない v0.3.170 §164）
     PADS[target].type="sample";
     tracks[target].name = f.name.slice(0,10);
     show("OK: "+f.name);
@@ -6161,6 +6162,7 @@ async function finalizeRec(){
     tracks[selected].buffer=makeLofi(buf);
     tracks[selected].start=0;tracks[selected].end=1;
     tracks[selected].loop=false;tracks[selected].loopStart=0;
+    tracks[selected].tune=0;   // 新しい音は PITCH 0 から（v0.3.170 §164）
     PADS[selected].type="sample";
     const tn="TAKE "+(++recTakeN);   // 録るたびに名前が育つ（REC固定だとテイクの記憶が残らない）
     tracks[selected].name=tn;
@@ -6830,7 +6832,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.169";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.170";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

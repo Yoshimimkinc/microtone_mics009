@@ -640,10 +640,11 @@ async function copyPaint(){
   { const sr=8000, n=sr/2, b=Buffer.alloc(44+n*2); b.write('RIFF',0); b.writeUInt32LE(36+n*2,4); b.write('WAVEfmt ',8); b.writeUInt32LE(16,16); b.writeUInt16LE(1,20); b.writeUInt16LE(1,22);
     b.writeUInt32LE(sr,24); b.writeUInt32LE(sr*2,28); b.writeUInt16LE(2,32); b.writeUInt16LE(16,34); b.write('data',36); b.writeUInt32LE(n*2,40);
     for(let i=0;i<n;i++) b.writeInt16LE(Math.round(Math.sin(i/sr*2*Math.PI*440)*12000),44+i*2); await fsp.writeFile(wavPath,b); }
-  await p.evaluate(()=>{ arm('edit',false); selectPad(9); });
+  await p.evaluate(()=>{ arm('edit',false); selectPad(9); tracks[9].tune=2; });
   await p.setInputFiles('#samp', wavPath); await p.waitForTimeout(1500);
-  const l=await p.evaluate(()=>({ name:tracks[9].name, type:PADS[9].type, nm:document.querySelectorAll('#pads .pad')[9].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[9].textContent, cat:document.querySelectorAll('#pads .pad')[9].className }));
+  const l=await p.evaluate(()=>({ name:tracks[9].name, type:PADS[9].type, tune:tracks[9].tune, nm:document.querySelectorAll('#pads .pad')[9].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[9].textContent, cat:document.querySelectorAll('#pads .pad')[9].className }));
   ok_(`LOAD 名前・パッド表示・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WA' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
+  ok_(`LOAD 新しい音は PITCH 0 から（前の +2 を引き継がない v0.3.170）`, l.tune===0, JSON.stringify(l));
   // Phase 3：EDIT モーダルの ● SMPL / LOAD は selected を直書きせず selectPad（入口）を通る＝エディタ側の選択表示も追従
   await p.evaluate(()=>{ document.getElementById('peClose').click(); selectPad(0); openPadEdit(4); });
   await p.waitForTimeout(600);
