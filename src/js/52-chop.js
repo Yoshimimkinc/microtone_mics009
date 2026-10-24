@@ -167,6 +167,7 @@ document.getElementById("samp").addEventListener("change",async(e)=>{
     tracks[target].buffer = makeLofi(buf);
     tracks[target].start=0; tracks[target].end=1;
     tracks[target].loop=false; tracks[target].loopStart=0;
+    tracks[target].tune=0;   // 新しい音は PITCH 0 から（前の音の +2 などを引き継がない v0.3.170 §164）
     PADS[target].type="sample";
     tracks[target].name = f.name.slice(0,10);
     show("OK: "+f.name);
