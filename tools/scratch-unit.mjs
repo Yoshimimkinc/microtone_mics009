@@ -5,11 +5,14 @@ const dspContext={Float32Array,Math,Number,sampleRate:26000,AudioWorkletProcesso
 const check=(label,fn)=>{fn();console.log('PASS '+label);passed++;};const data=Float32Array.from({length:2600},(_,i)=>Math.sin(i*.1));
 const head=new registered({processorOptions:{data}}),out=()=>{const o=[[new Float32Array(128)]];const alive=head.process([],o);return {samples:o[0][0],alive};},message=m=>head.port.onmessage({data:m});
 let block=out();check('motor advances sample head at normal speed',()=>{assert.equal(head.head.pos,128);assert.ok(block.samples.some(x=>x!==0));});
-message({type:'hold',on:true});const held=head.head.pos;block=out();check('holding record stops at the current position without a jump',()=>{assert.equal(head.head.pos,held);assert.ok(block.samples.every(x=>x===0));});
+// v0.3.179：掴むと手の止まる所まで数 ms で減速して止まる（一瞬で止めるとクリック）。止まったら完全に無音
+message({type:'hold',on:true});const held=head.head.pos;for(let k=0;k<30;k++)block=out();const settled=head.head.pos;out();
+check('holding record decelerates smoothly and then stays silent without a jump',()=>{assert.ok(settled>held&&settled-held<400);assert.equal(head.head.pos,settled);assert.ok(block.samples.every(x=>x===0));});
 message({type:'drag',delta:1000});out();check('forward platter motion reads forward',()=>assert.ok(head.head.pos>held));
 message({type:'drag',delta:-1000});for(let i=0;i<25;i++)block=out();check('backward motion crosses sample start without wrap-target jumps',()=>{assert.ok(head.head.pos<0);assert.ok(block.samples.every(Number.isFinite));});
-const before=head.head.pos;message({type:'hold',on:false});out();check('release resumes playback from the scratched position',()=>assert.ok(Math.abs(head.head.pos-before-128)<.001));
-message({type:'motor',on:false});const paused=head.head.pos;block=out();check('paused motor emits silence without DC',()=>{assert.equal(head.head.pos,paused);assert.ok(block.samples.every(x=>x===0));});
+const before=head.head.pos;message({type:'hold',on:false});out();const early=head.head.pos;for(let k=0;k<200;k++)out();
+check('release winds the motor back up from the scratched position (no click)',()=>{assert.ok(early>before&&early-before<128);assert.equal(head.head.vel,1);});
+message({type:'motor',on:false});for(let k=0;k<200;k++)block=out();const paused=head.head.pos;block=out();check('paused motor brakes to a stop and emits silence without DC',()=>{assert.equal(head.head.pos,paused);assert.ok(block.samples.every(x=>x===0));});
 message({type:'hold',on:true});message({type:'drag',delta:200});block=out();check('manual scratching works while motor is paused',()=>assert.ok(block.samples.some(x=>Math.abs(x)>.001)));
 message({type:'hold',on:false});out();check('release respects paused motor state',()=>assert.equal(head.head.motor,false));
 message({type:'cue'});check('CUE seeks to sample start and releases hold',()=>{assert.equal(head.head.pos,0);assert.equal(head.head.drag,false);});
@@ -23,7 +26,8 @@ const ctx={console,Math,Number,Float32Array,Promise,URL:{createObjectURL:()=> 'b
  AudioWorkletNode:class{constructor(ac,name,options){this.options=options;this.connections=[];this.messages=[];this.port={postMessage:m=>this.messages.push(m),close:()=>this.closed=true,onmessage:null};nodes.push(this);}connect(n){this.connections.push(n);}disconnect(){this.disconnected=true;}},
  tracks:[{padKind:'SCR',buffer:{length:data.length,sampleRate:26000,getChannelData:()=>data},start:0,end:1,vol:-4,filter:'off',delaySend:.2,reverbSend:.3,_contentEpoch:0}],GROUP_OF:[0],groupBus:[{}],multiOut:false,outBGain:{},tapeEcho:{},reverbPre:{},setCur:0,setLevelLin:()=>1,dbToGain:db=>10**(db/20),stopVoices(){},sampNameEl:{},scratchShow:()=>shown++,scratchHide:()=>hidden++,document:{getElementById:()=>({textContent:''})},stopTransport(){throw Error('scratch must not stop backing');}};
 vm.createContext(ctx);vm.runInContext(audioText,ctx);await ctx.scratchOpen(0);
-check('SCR opens the platter and resamples into the shared context rate',()=>{assert.equal(shown,1);assert.equal(nodes[0].options.processorOptions.data.length,4800);assert.equal(ctx.scratchState().duration,.1);});
+check('SCR opens the platter and resamples into the shared context rate',()=>{assert.equal(shown,1);assert.equal(nodes[0].options.processorOptions.levels[0][0].length,4800);assert.equal(ctx.scratchState().duration,.1);});
+check('SCR keeps band-limited copies for fast scratching (1/2 … 1/16)',()=>{const L=nodes[0].options.processorOptions.levels[0];assert.equal(L.length,5);assert.equal(L[1].length,2400);assert.equal(L[4].length,300);});
 const cut=gains[0],volume=gains[1];check('crossfader sits before dry and FX sends, outside the backing bus',()=>{assert.equal(cut.gain.value,0);assert.equal(nodes[0].connections[0],cut);assert.equal(cut.connections[0],volume);assert.ok(volume.connections.includes(ctx.groupBus[0]));assert.equal(volume.connections.length,3);});
 const volumeBefore=volume.gain.value;ctx.scratchSetFader(0);check('fader cuts only scratch audio',()=>{assert.equal(cut.gain.value,0);assert.equal(volume.gain.value,volumeBefore);});
 ctx.scratchSetFader(2);check('fader clamps to its valid range',()=>assert.equal(ctx.scratchState().fader,1));
@@ -36,7 +40,7 @@ check('late worklet load cannot open a replaced pad',()=>assert.equal(nodes.leng
 const fallbackNodes=[];ctx.AC.audioWorklet=null;ctx.AC.createScriptProcessor=()=>{const n={connections:[],connect(to){this.connections.push(to);},disconnect(){this.disconnected=true;}};fallbackNodes.push(n);return n;};
 await ctx.scratchOpen(0);const fallback=fallbackNodes[0],fbOut=new Float32Array(512);fallback.onaudioprocess({outputBuffer:{getChannelData:()=>fbOut}});
 check('compatibility path opens and produces scratch audio',()=>{assert.equal(fallbackNodes.length,1);assert.ok(fbOut.some(x=>Math.abs(x)>.001));});
-ctx.scratchHold(true);fallback.onaudioprocess({outputBuffer:{getChannelData:()=>fbOut}});check('compatibility record hold uses the same silent-stop core',()=>assert.ok(fbOut.every(x=>x===0)));
+ctx.scratchHold(true);for(let k=0;k<8;k++)fallback.onaudioprocess({outputBuffer:{getChannelData:()=>fbOut}});check('compatibility record hold uses the same silent-stop core',()=>assert.ok(fbOut.every(x=>x===0)));
 ctx.scratchClose();check('compatibility close releases callback and graph',()=>{assert.equal(fallback.onaudioprocess,null);assert.equal(fallback.disconnected,true);});
 // UI: angular wrap and a second pointer's fader do not disturb platter capture.
 const els=new Map(),noop=()=>{},drawing=new Proxy({},{get:()=>noop,set:()=>true});
@@ -87,4 +91,15 @@ vm.runInContext(fs.readFileSync(new URL('../src/js/72-midi.js',import.meta.url),
 inputCtx.handleMIDI([0x92,60,100]);inputCtx.handleMIDI([0x82,60,64]);check('MIDI default pad Note On/Off uses matching channel-aware gate source',()=>{assert.deepEqual(inputs.pop(),[0,'midi:2:60']);assert.equal(releases.pop(),'midi:2:60');assert.equal(triggered.length,0);});
 inputCtx.tracks[0].midiNote=48;inputCtx.handleMIDI([0x90,48,100]);inputCtx.handleMIDI([0x90,48,0]);check('custom MIDI assignment and velocity-zero Note On close correctly',()=>{assert.deepEqual(inputs.pop(),[0,'midi:0:48']);assert.equal(releases.pop(),'midi:0:48');});
 vm.runInContext('midiEnabled=false',inputCtx);inputCtx.handleMIDI([0x80,48,0]);check('MIDI Note Off is honored after input is disabled',()=>assert.equal(releases.pop(),'midi:0:48'));
+// v0.3.179 §166 音質：手の速さが一定ならうなりが無い・速く擦っても折り返しノイズが出ない・ステレオ
+{const rate=48000,N=rate*4,tone=f=>{const d=new Float32Array(N);for(let i=0;i<N;i++)d[i]=Math.sin(i*2*Math.PI*f/rate)*.5;return d;};
+ const lv=d=>vm.runInContext('scratchLevels',ctx)({numberOfChannels:1,sampleRate:rate,length:N,getChannelData:()=>d},0,N,rate);
+ const drive=(levels,speed)=>{const h=vm.runInContext('createScratchHead',ctx)(levels,rate),o=new Float32Array(128),vs=[];let acc=0,n=0,tot=0,t=0;
+  h.message({type:'hold',on:true});for(let ev=0;ev<90;ev++){t+=1000/60;tot+=speed*rate/60;h.message({type:'drag',delta:tot,t});for(let b=0;b<6;b++){h.render([o]);if(ev>30){vs.push(h.speed);for(const x of o){acc+=x*x;n++;}}}}
+  const m=vs.reduce((a,b)=>a+b,0)/vs.length;return {ripple:(Math.max(...vs)-Math.min(...vs))/m,rms:Math.sqrt(acc/n)};};
+ const steady=drive(lv(tone(440)),1);check('steady hand at 1x plays without 60 Hz speed ripple (was 0.2–1.9x)',()=>assert.ok(steady.ripple<.05,String(steady.ripple)));
+ const pass=drive(lv(tone(1000)),4),alias=drive(lv(tone(10000)),4);
+ check('fast scratch keeps in-band tone and removes fold-back noise',()=>{assert.ok(pass.rms>.2,String(pass.rms));assert.ok(alias.rms<.02,String(alias.rms));});
+ const st=vm.runInContext('scratchLevels',ctx)({numberOfChannels:2,sampleRate:rate,length:1000,getChannelData:c=>new Float32Array(1000).fill(c?-.5:.5)},0,1000,rate);
+ check('stereo source keeps both channels',()=>{assert.equal(st.length,2);assert.ok(st[0][0][10]>.4&&st[1][0][10]<-.4);});}
 console.log('All '+passed+' SCR checks passed.');
