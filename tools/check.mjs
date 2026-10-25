@@ -203,11 +203,11 @@ async function run(w,h,mobile){
     if(stacked){ ok_(`${V} 16枚のパッドが下段の上に収まる（スクロール無し）`, g.n===16 && g.lastBot<=g.msTop, JSON.stringify(g)); ok_(`${V} パッド高さ ≥44px`, g.minH>=44, g.minH); }
     ok_(`${V} ロゴが画面に残る（${stacked?'PADS/SEQ行':'ヘッダ'}）`, g.logoVis && g.logoIn===(stacked?'dots':'top'), JSON.stringify(g));
   }
-  // 6d) スマホの下段は [MUTE][PITCH][FILTER][DELAY][REVERB]（SOLO/EDIT は出さない）。押してパッド左右ドラッグで値（v0.3.106→v0.3.123 §134、LEVEL 廃止 v0.3.124 §135）
+  // 6d) スマホの下段は MUTE/FILTER/DELAY/REVERB/EDIT。SOLOはヘッダに残す。
   if(mobile){
     const vis=await p.evaluate(()=>{const g=id=>{const e=document.getElementById(id); if(!e)return 0; const r=e.getBoundingClientRect(); return r.height>0&&getComputedStyle(e).display!=='none'?Math.round(r.height):0;};
       return {mute:g('holdMute'), solo:g('holdSolo'), edit:g('holdEdit'), pitch:g('fxPitch'), filter:g('fxFilter'), delay:g('fxDelay'), reverb:g('fxReverb'), levelBtns:document.querySelectorAll('[data-lock="level"]').length};});
-    ok_(`${V} 下段は MUTE/FILTER/DELAY/REVERB`, vis.mute>=44 && vis.pitch===0 && vis.filter>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo>=44 && vis.edit===0, JSON.stringify(vis));
+    ok_(`${V} 下段は MUTE/FILTER/DELAY/REVERB/EDIT`, vis.mute>=44 && vis.pitch===0 && vis.filter>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo>=44 && vis.edit>=44, JSON.stringify(vis));
     // スマホは strip（‹名前› LOAD SMPL）を出さない。LOAD/SMPL は EDIT モーダルにある（v0.3.125 §136）
     { const st=await p.evaluate(()=>{ const s=document.querySelector('#viewPads>.strip'); const pad=document.querySelector('#pads .pad').getBoundingClientRect();
         return {strip:getComputedStyle(s).display, padH:Math.round(pad.height), samp:!!document.getElementById('samp')}; });
@@ -1058,11 +1058,11 @@ async function editTools(){
   await ready(p);
   await p.evaluate(async()=>{ await clearAutosave(); });
   const ctr=k=>p.evaluate(k=>{ const b=document.querySelectorAll('#pads .pad')[k].getBoundingClientRect(); return [b.left+b.width/2,b.top+b.height/2]; },k);
-  const before=await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',true); return {a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend, lock:activeLock}; });
+  const before=await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',true); tracks[8].delaySend=0.23;tracks[12].delaySend=0.71;return {a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend,d12:tracks[12].delaySend, lock:activeLock}; });
   const a=await ctr(8), b=await ctr(12);
   await p.mouse.move(a[0],a[1]); await p.mouse.down(); await p.mouse.move(b[0],b[1],{steps:8}); await p.mouse.up(); await p.waitForTimeout(150);
-  const after=await p.evaluate(()=>({a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend, msg:sampNameEl.textContent}));
-  ok_(`${V} P-LOCK（DELAY）を選んだまま EDIT でドラッグ＝パッドの入れ替え（送り量は動かない）`, before.lock===null && after.a===before.b && after.b===before.a && /MOVE 09/.test(after.msg), JSON.stringify({before,after}));
+  const after=await p.evaluate(()=>({a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend,d12:tracks[12].delaySend, msg:sampNameEl.textContent}));
+  ok_(`${V} P-LOCK（DELAY）を選んだまま EDIT でドラッグ＝パッドの入れ替え（送り量は動かない）`, before.lock==='delay' && after.a===before.b && after.b===before.a && after.d8===before.d12 && after.d12===before.d8 && /MOVE 09/.test(after.msg), JSON.stringify({before,after}));
   await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',false); doUndo(); });
   // DELETE：1 回目は「もう一度」、2 回目で空のパッドに。↩ で戻る
   const nm0=await p.evaluate(()=>{ selectPad(0); openPadEdit(0); return tracks[0].name; });
