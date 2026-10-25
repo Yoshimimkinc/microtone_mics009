@@ -74,8 +74,6 @@
   .pad.sel>.pad-wave{opacity:.85;}
 
 /* One row, two pages: four full-width pattern targets replace the FX buttons. */
-.msbtn.patcyc{display:none;font-size:15px!important;font-weight:800;letter-spacing:.04em!important;white-space:nowrap;}   /* A B C D 送り（スマホの FX 列。v0.3.179） */
-.msbtn.patcyc.queued{border-color:var(--amber);color:var(--amber);animation:spblink 1s ease-in-out infinite;}   /* 予約中＝点滅（他の予約表示と同じ） */
 .fx-swipe{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .fx-swipe .fx-pattern[hidden]{display:none!important}
 .fx-swipe[data-fx-page=patterns]>button:not(.fx-pattern){display:none!important}

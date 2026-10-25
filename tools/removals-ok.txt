@@ -104,3 +104,5 @@ closeGtrFrame
 # v0.3.180 §167 スマホの画面全体の横スワイプ（PADS / SEQ / SET の切替）を廃止。window の touchstart / touchend で拾っていて、FX 列を横にスワイプすると画面ごと SEQ へ飛んでいた
 window [touchstart]
 window [touchend]
+# v0.3.181 §168 FX 列の A B C D 送りボタン（v0.3.179）を撤去。FX 列のスワイプで A B C D が出せるようになったので不要（ユーザー判断）
+$("patCycle") [click]
