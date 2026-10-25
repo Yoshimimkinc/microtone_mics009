@@ -718,8 +718,8 @@
   .msbtn.edit.armed{background:#5b9dff;color:#06183a;border-color:#5b9dff;box-shadow:0 0 16px rgba(91,157,255,.5);}
   .msbtn.edit.armed .d{background:#06183a;}
   /* スマホ用エフェクト選択子（PCでは perf の P-LOCK 行が担う） */
-  .msbtn.fx{display:none;}
-  .msbtn.fx[data-lock="pitch"]{color:#3dd6c4;}   .msbtn.fx[data-lock="pitch"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;box-shadow:0 0 16px rgba(61,214,196,.5);}
+  .msbtn.fx{display:flex;flex:1 1 0;min-width:0;}
+  .msbtn.fx[data-lock="mute"]{color:#3dd6c4;}   .msbtn.fx[data-lock="mute"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;box-shadow:0 0 16px rgba(61,214,196,.5);}
   .msbtn.fx[data-lock="filter"]{color:#b07cff;}  .msbtn.fx[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;box-shadow:0 0 16px rgba(176,124,255,.5);}
   .msbtn.fx[data-lock="delay"]{color:#5fd35f;}   .msbtn.fx[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;box-shadow:0 0 16px rgba(95,211,95,.5);}
   .msbtn.fx[data-lock="reverb"]{color:#5aa9ff;}  .msbtn.fx[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;box-shadow:0 0 16px rgba(90,169,255,.5);}
@@ -759,6 +759,18 @@
   /* パッド内波形を主役に（撤去した窓波形の代わり） */
   .pad>.pad-wave{opacity:.6;}
   .pad.sel>.pad-wave{opacity:.85;}
+
+/* One row, two pages: four full-width pattern targets replace the FX buttons. */
+.fx-swipe{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.fx-swipe .fx-pattern[hidden]{display:none!important}
+.fx-swipe[data-fx-page=patterns]>button:not(.fx-pattern){display:none!important}
+.fx-swipe[data-fx-page=patterns]>.fx-pattern{display:flex!important;align-items:center;justify-content:center;flex:1 1 0!important;min-width:0!important;min-height:46px;font-size:22px;font-weight:800;letter-spacing:.08em;padding:8px 0;touch-action:pan-y}
+.fx-swipe::after{content:"● ○";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;line-height:7px;letter-spacing:3px;color:var(--ink);pointer-events:none;opacity:.55}
+.fx-swipe[data-fx-page=patterns]::after{content:"○ ●"}
+.fx-swipe.swiping{cursor:grabbing}
+
+/* EDIT is also reachable on phone; the pattern page still shows only A–D. */
+@media(max-width:600px){#viewPads>.msbar[data-fx-page=effects] #holdEdit{display:flex}}
   /* ===== SET モード（v0.3.143 §144）：情報窓が SET 演奏モード、格子が 16 の枠、下段が ◀ / NEXT / LIVE ===== */
   /* 格子：#pads と同じ .pads なので寸法は同じ。body.setmode で入れ替える */
   #setGrid{display:none;}
@@ -1201,6 +1213,102 @@
       font-size:18px;font-weight:600;letter-spacing:.14em;line-height:1.9;-webkit-tap-highlight-color:transparent;}
     #phoneRotate small{color:var(--dim);font-size:11px;font-weight:400;letter-spacing:.08em;}
   }
+.content-overlay[hidden]{display:none!important}.content-overlay{position:fixed;inset:0;z-index:10050;background:#090c10d9;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));color:var(--ink,#eee)}
+.content-panel{background:var(--bg,#14181d);border:1px solid var(--line,#444);border-radius:12px;padding:14px;width:min(900px,100%);max-height:100%;overflow:auto;font-size:13px;touch-action:pan-y}
+.content-panel header{display:flex;justify-content:space-between;align-items:center;gap:12px}.content-panel button,.content-panel input{min-height:44px;background:var(--panel,#242a30);color:inherit;border:1px solid var(--line,#555);border-radius:5px;padding:6px 10px}.content-panel input[type=number]{width:90px}.content-panel p{line-height:1.5;margin:10px 0}.content-tools{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin:10px 0}.content-tools label{display:flex;flex-direction:column;gap:4px}.content-import{display:block;margin:12px 0}.key-scroll{overflow:auto;max-height:42vh;touch-action:pan-x pan-y;border:1px solid #555}.key-scroll canvas{display:block;max-width:none;touch-action:pan-x pan-y}#scratchDeck{display:block;width:100%;height:45vh;min-height:150px;background:#101318;touch-action:none;border-radius:8px}.pad .pad-kind{position:absolute;right:5px;top:4px;font-size:9px;pointer-events:none;opacity:.65}#peKinds{display:flex;gap:6px;margin:8px 0}#peKinds button,#peKeyOpen{min-height:44px;padding:4px 12px}#peKinds .on{color:var(--teal,#3dd6c4);border-color:currentColor}
+
+#dropboxPanel{width:100%;padding:8px;border:1px solid var(--line);text-align:left}#dropboxPanel summary{cursor:pointer;min-height:36px}#dropboxPanel label{display:block;margin:8px 0}#dropboxPanel input{display:block;max-width:100%;min-height:40px}#dropboxPanel button{min-height:40px;margin:4px;white-space:normal}#dbFiles{max-height:240px;overflow:auto}#dbStatus{overflow-wrap:anywhere}
+
+#padEditModal[data-pad-kind=KEY] .pe-sample,#padEditModal[data-pad-kind=KEY] #peWaveHome,#padEditModal[data-pad-kind=KEY] .pe-transport,#padEditModal[data-pad-kind=KEY] .pe-chop{display:none}#peKeyOpen[hidden]{display:none}
+
+/* KEY: shared time axis for note, ruler and velocity lanes. Touch editing never pans. */
+#keyEditor .key-panel{width:min(1320px,100%);padding:14px;overscroll-behavior:contain;touch-action:pan-x pan-y}
+.key-voice{display:block;font-size:10px;letter-spacing:.12em;opacity:.7;margin-top:5px}
+.content-panel select{min-height:44px;background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:5px;padding:6px 8px;max-width:180px}
+.key-panel button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#101719;border-color:#24786f}
+.key-panel .content-tools{gap:6px;margin:8px 0}.key-panel .key-help{font-size:11px;margin:8px 0;line-height:1.6}
+.key-panel .key-zoom{flex:1;min-width:100px;max-width:180px}.key-zoom input{width:100%;padding:0}
+#keySelectionInfo{margin-left:auto;font-variant-numeric:tabular-nums;font-size:12px;min-height:20px}
+.key-horizontal{overflow-x:auto;overscroll-behavior:contain;border:1px solid #5b6366;background:#b7bbbc;touch-action:pan-x pan-y}
+.key-inner{width:max-content;min-width:100%}.key-panel .key-scroll{height:clamp(210px,40vh,450px);max-height:none;overflow-x:hidden;overflow-y:auto;border:0;touch-action:pan-x pan-y}
+.key-panel canvas{display:block;max-width:none;touch-action:none}.key-panel #keyRoll{cursor:crosshair;outline:none}.key-panel #keyRoll:focus-visible{outline:2px solid #0a8478;outline-offset:-2px}
+.key-panel.is-navigating #keyRoll{touch-action:pan-x pan-y;cursor:grab}.key-panel.is-navigating #keyVelocityRoll{touch-action:pan-x}
+#keyRuler{height:28px}#keyVelocityRoll{height:100px;border-top:1px solid #5c6469;cursor:ns-resize}
+.key-fields input{font-variant-numeric:tabular-nums}.key-panel .key-fields label{flex:1;min-width:90px;max-width:150px}.key-panel .key-fields input{width:100%}
+.key-panel .content-import input{max-width:100%;width:280px}.key-panel #keyStatus{font-size:11px;min-height:18px}
+@media(max-width:600px){#keyEditor{padding:6px}#keyEditor .key-panel{padding:10px;border-radius:8px}.key-panel button{font-size:11px;padding:6px 8px}.key-panel .key-transport{align-items:end}.key-panel input#keyBars{width:50px}.key-panel .key-zoom{max-width:none}.key-panel .key-scroll{height:32vh;min-height:200px}.key-panel .key-help{font-size:10px}.key-panel select{max-width:154px}#keySelectionInfo{margin-left:0;width:100%}}
+
+/* Keep notes and velocity together in a phone viewport; tools stay reachable. */
+.key-extra{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:6px 0}
+.key-extra summary{cursor:pointer;padding:8px 2px;min-height:34px;font-size:11px}
+.key-edit-tools #keyDragMode{width:125px}
+@media(max-width:600px){
+ .key-panel .key-transport{align-items:center}.key-panel .key-transport label{flex-direction:row;align-items:center;gap:6px}
+ .key-panel .key-edit-tools{align-items:center;flex-wrap:nowrap}.key-panel .key-edit-tools label{flex-direction:row;align-items:center;font-size:9px;gap:4px}
+ .key-panel .key-edit-tools button{padding:6px}.key-panel .key-edit-tools #keyDragMode{width:100px;padding:6px;font-size:11px}
+ .key-panel .key-scale-tools{align-items:center;flex-wrap:nowrap}.key-panel .key-scale-tools label{font-size:9px;gap:2px}
+ .key-panel .key-scale-tools #keyScaleType{max-width:124px;width:124px;font-size:11px;padding:6px}
+ .key-panel #keySelectionInfo{display:none}.key-panel .key-help{font-size:10px;line-height:1.4;margin:6px 0}
+ .key-panel .key-extra summary{min-height:32px;padding:8px 0}
+ .key-panel .key-scroll{height:clamp(180px,28vh,260px);min-height:180px}
+}
+
+/* Group actions by task: playback, edit/grid, scale, then secondary tools. */
+.key-mainbar{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:6px;flex-wrap:wrap}
+.key-tabs{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:44px}
+.key-panel .key-tabs button{border:0;border-radius:0;min-width:94px;font-weight:700;letter-spacing:.07em}
+.key-tabs [aria-selected=true]{background:var(--teal,#3dd6c4);color:#10221d}
+.key-toolbar-grid{display:grid;grid-template-columns:minmax(320px,1fr) minmax(340px,1fr);gap:14px;align-items:center}
+.key-toolbar-grid>.content-tools{border:1px solid var(--line);border-radius:6px;padding:8px;margin:2px 0;align-items:center}
+.key-toolbar-grid .key-edit-tools label{flex-direction:row;align-items:center;gap:8px}
+.key-toolbar-grid #keySelectionInfo{margin:0;font-size:10px;flex-basis:100%}
+#keyNotePanel[hidden],#keySoundPanel[hidden]{display:none!important}
+.key-panel #keyRoll{transition:none}
+.key-sound-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:16px 2px;font-size:12px;letter-spacing:.04em}
+.key-sound-heading span{font-size:11px;opacity:.7}
+.key-fx-rack{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.key-fx-unit{padding:16px;border:1px solid var(--line);border-radius:9px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.key-fx-unit h3{grid-column:1/-1;margin:0;font-size:12px;letter-spacing:.12em}
+.key-fx-switch{grid-column:1/-1;display:flex;gap:4px}.key-fx-switch button{flex:1;min-width:0;font-size:12px;padding:6px}
+.key-fx-unit label{display:grid;grid-template-columns:1fr auto;gap:6px;font-size:11px;letter-spacing:.05em}
+.key-fx-unit input{grid-column:1/-1;width:100%;min-width:0;padding:0;accent-color:var(--teal)}
+.key-fx-unit output{font-variant-numeric:tabular-nums;letter-spacing:0;min-width:50px;text-align:right}
+.key-panel .key-sound-help{font-size:12px;line-height:1.8;max-width:65ch}
+.pad[data-kind=KEY] .pad-wave{opacity:.92!important}
+@media(max-width:760px){.key-toolbar-grid{grid-template-columns:1fr;gap:5px}.key-toolbar-grid>.content-tools{padding:6px}.key-toolbar-grid .key-edit-tools label{gap:3px}.key-toolbar-grid .key-scale-tools{flex-wrap:nowrap}.key-fx-rack{gap:10px}.key-fx-unit{padding:12px;gap:12px}}
+@media(max-width:600px){
+ .key-mainbar{gap:5px;align-items:center}.key-panel .key-mainbar .key-transport{margin:3px 0;gap:5px}
+ .key-panel .key-mainbar .key-transport button{font-size:11px;padding:6px 8px}
+ .key-tabs{margin:0;flex:1;max-width:160px}.key-panel .key-tabs button{min-width:0;flex:1;padding:6px 10px;font-size:11px}
+ .key-toolbar-grid>.content-tools{padding:5px}.key-panel .key-edit-tools #keyDragMode{width:90px}
+ .key-panel .key-toolbar-grid .key-edit-tools{gap:4px}.key-panel .key-edit-tools button{font-size:10px;padding:6px 5px}
+ .key-panel .key-toolbar-grid .key-scale-tools #keyScaleType{width:118px;max-width:118px}
+ .key-fx-rack{grid-template-columns:1fr}.key-sound-heading{padding:12px 0}.key-fx-unit h3{font-size:11px}.key-fx-switch button{font-size:11px}
+}
+
+@media(max-width:600px){.key-mainbar .key-tabs{flex:0 0 100%;width:100%;max-width:none}.key-panel .key-mainbar .key-tabs button{flex:1;min-width:0}}
+
+/* SCR: flat record, dedicated hand area and a separate scratch-voice fader. */
+#scratchEditor .scratch-panel{width:min(900px,100%);background:#252e30;color:#eef1e5;padding:16px;touch-action:pan-y}
+.scratch-surface{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:20px;align-items:center;margin-top:14px}
+.scratch-platter-wrap{width:100%;max-width:550px;justify-self:center}
+#scratchDeck{display:block;width:100%;height:auto;aspect-ratio:1;min-height:0;background:#465052;border:0;border-radius:12px;cursor:grab;touch-action:none}
+#scratchDeck:active{cursor:grabbing}
+.scratch-controls{min-width:0}.scratch-buttons{display:flex;gap:8px}.scratch-buttons button{flex:1;min-width:0;font-size:11px;background:#465052;color:#fff}
+.scratch-readout{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;padding:20px 0;font-variant-numeric:tabular-nums;font-size:11px}.scratch-readout b{color:#c0c875}
+.scratch-fader-label{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em}.scratch-fader-label output{font-variant-numeric:tabular-nums}
+#scratchFader{width:100%;min-height:56px;padding:0;accent-color:#c0c875;touch-action:none;background:#171e20}
+.scratch-fader-scale{display:flex;justify-content:space-between;font-size:10px;color:#bbc4b5}
+.scratch-controls .scratch-help{font-size:11px;line-height:1.7;color:#d8dfd1}
+#scratchStatus{font-size:11px;color:#bbc4b5}
+@media(max-width:650px){#scratchEditor .scratch-panel{padding:12px;width:min(450px,100%)}.scratch-surface{grid-template-columns:1fr;gap:12px;margin-top:10px}.scratch-platter-wrap{width:min(100%,44vh)}.scratch-controls{width:100%}.scratch-readout{padding:10px 0}.scratch-controls .scratch-help{display:none}.scratch-buttons button{min-height:44px}#scratchFader{min-height:48px}#scratchStatus{margin:8px 0 0}}
+#scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
+.scratch-platter-wrap{max-width:min(550px,62vh)}
+@media(max-width:650px){.scratch-platter-wrap{max-width:44vh}}
+
+#scratchEditor .scratch-panel #scratchFader{width:100%;min-height:76px;margin:10px 0 4px;padding:12px;background:#141c1c;color:#d9dfc7;border:2px solid #83926e;border-radius:7px;font-size:16px;font-weight:800;letter-spacing:.06em;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+#scratchEditor .scratch-panel #scratchFader[aria-pressed=true]{background:#c0c875;color:#18201b;border-color:#e8edc1}
+#scratchEditor .scratch-panel #scratchFader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
 </style>
 </head>
 <body>
@@ -1213,7 +1321,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.170</div>
+  <div class="s-ver" id="splashVer">v0.3.178</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1233,7 +1341,6 @@
       <button class="t rec" id="rec" aria-label="Rec">●</button>
       <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩</button>
       <button class="t arm copy" id="holdCopy" title="押した後パッドで音色コピー">COPY</button>
-      <button class="t arm mute" id="holdMute" title="押した後パッドでミュート">MUTE</button>
       <button class="t arm solo" id="holdSolo" title="押した後パッドでソロ">SOLO</button>
       <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog">⋮</button>
     </div>
@@ -1320,8 +1427,16 @@
         <div class="modal-sec">
           <div class="modal-label">Source</div>
           <div class="modal-btns">
-            <button class="t" id="gtrBtn" title="ギターを開く">GTR</button>
-            <button class="t" id="scrBtn" title="スクラッチを開く">SCR</button>
+            <details id="dropboxPanel"><summary>Dropbox · ステージ共有</summary>
+              <p>共有フォルダをメンバーそれぞれのDropboxへ追加して使用します。</p>
+              <label>App key <input id="dbAppKey" type="text" autocomplete="off" placeholder="Dropboxの公開App key"></label>
+              <label>共有フォルダ <input id="dbFolder" type="text" placeholder="/microtone"></label>
+              <div><button class="t" id="dbConnect">接続</button><button class="t" id="dbDisconnect">接続解除</button><button class="t" id="dbList">一覧・更新</button></div>
+              <label>保存する名前 <input id="dbFilename" type="text" placeholder="空欄なら日時名.mics"></label><button class="t" id="dbSave">STAGEを別名保存</button>
+              <p id="dbStatus" role="status"></p><div id="dbFiles"></div>
+            </details>
+
+
           </div>
         </div>
         <div class="modal-sec">
@@ -1347,7 +1462,6 @@
           <button class="t" id="recTab">Tab Audio</button>
           <button class="t" id="recMic">Mic</button>
           <button class="t" id="recResmp" title="鳴っている音をそのまま録る">Resample</button>
-          <button class="t" id="recGtr" title="ギターを演奏して録る">Guitar</button>
           <button class="t" id="recCancel">✕</button>
         </div>
         <div class="rec-active" id="recActive" style="display:none;">
@@ -1375,6 +1489,7 @@
           <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
                  spellcheck="false" aria-label="パッドの名前" hidden>
         </div>
+        <div id="peKinds"><button class="t" data-kind="SPL">SPL</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCR</button><button class="t" id="peKeyOpen" hidden>PIANO ROLL</button></div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
@@ -1436,6 +1551,34 @@
         </div>
       </div>
     </div>
+<div id="keyEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="keyTitle" hidden>
+ <section class="content-panel key-panel"><header><div><b id="keyTitle">KEY</b><span class="key-voice">TINE ELECTRIC PIANO</span></div><button id="keyClose">CLOSE</button></header>
+ <div class="key-mainbar"><div class="content-tools key-transport"><button id="keyPreview">▶ PREVIEW</button><button id="keyUndo">↶ UNDO</button><label>BARS <input id="keyBars" type="number" min="1" max="4" value="1"></label></div><div class="key-tabs" role="tablist" aria-label="KEY編集ページ"><button id="keyTabNotes" role="tab" aria-selected="true" aria-controls="keyNotePanel">NOTES</button><button id="keyTabSound" role="tab" aria-selected="false" aria-controls="keySoundPanel">SOUND</button></div></div>
+ <div id="keyNotePanel" role="tabpanel" aria-labelledby="keyTabNotes"><div class="key-toolbar-grid">
+ <div class="content-tools key-edit-tools"><button id="keyNav" aria-pressed="false">SCROLL OFF</button><label>TOOL<select id="keyDragMode" aria-label="ノートのドラッグ操作"><option value="auto">Auto</option><option value="move">Move</option><option value="right">Length / End</option><option value="left">Start</option><option value="velocity">Velocity</option></select></label><button id="keySnap" aria-pressed="true">SNAP 1/16 ON</button></div>
+ <div class="content-tools key-scale-tools"><button id="keyScaleOn" aria-pressed="false">SCALE OFF</button><label>ROOT<select id="keyScaleRoot" aria-label="スケールのルート"></select></label><label>SCALE<select id="keyScaleType" aria-label="スケールの種類"><option value="major">Major</option><option value="minor">Minor</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="pentatonic">Major pentatonic</option><option value="minorPentatonic">Minor pentatonic</option><option value="chromatic">Chromatic</option></select></label><span id="keySelectionInfo" role="status">ノートを追加</span></div>
+ </div>
+ <details id="keyExtra" class="key-extra"><summary>MORE TOOLS · 複数選択 / 複製 / 表示</summary><div class="content-tools"><button id="keyMulti" aria-pressed="false">MULTI OFF</button><button id="keySelectAll">SELECT ALL</button><button id="keyDuplicate">DUPLICATE</button><button id="keyDelete">DELETE</button><button id="keyOctaveDown" aria-label="表示を1オクターブ下へ">OCT −</button><button id="keyOctaveUp" aria-label="表示を1オクターブ上へ">OCT ＋</button><button id="keyFit">FIT</button><label class="key-zoom">ZOOM <input id="keyZoom" type="range" min="32" max="384" step="1" value="128"></label></div></details>
+ <p class="key-help">空白をタップ／ドラッグして入力 · 本体をドラッグして移動 · 両端で長さ · 下段で強弱<br>スクロールは SCROLL ON · 複数選択は MULTI ON（PCはShift）</p>
+ <div id="keyHorizontal" class="key-horizontal"><div class="key-inner"><canvas id="keyRuler" aria-label="小節と拍"></canvas><div class="key-scroll"><canvas id="keyRoll" tabindex="0" aria-label="ピアノロール。ノートの移動と両端の長さ変更"></canvas></div><canvas id="keyVelocityRoll" tabindex="0" aria-label="ベロシティ。マーカーを上下にドラッグして強弱を編集"></canvas></div></div>
+ <div class="content-tools key-fields"><label>NOTE <input id="keyPitch" type="number" min="21" max="108"></label><label>START (beats)<input id="keyBeat" type="number" min="0" max="15.99" step="0.0104166667"></label><label>LENGTH (beats)<input id="keyLength" type="number" min="0.0104166667" max="16" step="0.0104166667"></label><label>VELOCITY <input id="keyVelocity" type="number" min="1" max="127"></label></div>
+ <label class="content-import">IMPORT MIDI <input id="keyMidiFile" type="file" accept=".mid,.midi,audio/midi"></label><div id="keyMidiTracks" class="content-tools"></div></div>
+ <div id="keySoundPanel" role="tabpanel" aria-labelledby="keyTabSound" hidden>
+  <div class="key-sound-heading"><b>TINE ELECTRIC PIANO</b><span>このパッドのエレピを調整</span></div>
+  <div class="key-fx-rack">
+   <section class="key-fx-unit"><h3>TREMOLO / WAH</h3><div class="key-fx-switch" role="group" aria-label="トレモロ・ワウ選択"><button data-key-motion="tremolo" aria-pressed="false">TREMOLO</button><button data-key-motion="off" aria-pressed="true">OFF</button><button data-key-motion="wah" aria-pressed="false">WAH</button></div><label>DEPTH <output id="keyMotionDepthRead" for="keyMotionDepth">50%</output><input id="keyMotionDepth" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="トレモロ・ワウの深さ"></label><label>RATE <output id="keyMotionRateRead" for="keyMotionRate">3.0 Hz</output><input id="keyMotionRate" type="range" min="0.1" max="10" step="0.1" value="3" aria-label="トレモロ・ワウの速さ"></label></section>
+   <section class="key-fx-unit"><h3>CHORUS / PHASER</h3><div class="key-fx-switch" role="group" aria-label="コーラス・フェイザー選択"><button data-key-color="chorus" aria-pressed="false">CHORUS</button><button data-key-color="off" aria-pressed="true">OFF</button><button data-key-color="phaser" aria-pressed="false">PHASER</button></div><label>DEPTH <output id="keyColorDepthRead" for="keyColorDepth">50%</output><input id="keyColorDepth" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="コーラス・フェイザーの深さ"></label><label>RATE <output id="keyColorRateRead" for="keyColorRate">0.80 Hz</output><input id="keyColorRate" type="range" min="0.05" max="5" step="0.05" value="0.8" aria-label="コーラス・フェイザーの速さ"></label></section>
+  </div><p class="key-sound-help">2つのエフェクトを組み合わせて、PREVIEWで試聴できます。設定はこのKEYパッドに保存されます。</p>
+ </div><p id="keyStatus" role="status">TINE MODEL · 4/4</p>
+ </section>
+</div>
+<div id="scratchEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="scratchTitle" hidden>
+ <section class="content-panel scratch-panel"><header><div><b id="scratchTitle">SCR</b><span class="key-voice">TURNTABLE</span></div><button id="scratchClose">CLOSE</button></header>
+ <div class="scratch-surface"><div class="scratch-platter-wrap"><canvas id="scratchDeck" tabindex="0" aria-label="レコード盤。円周方向に前後へ擦ってスクラッチ"></canvas></div>
+ <div class="scratch-controls"><div class="scratch-buttons"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button></div><div class="scratch-readout"><b id="scratchMotion">PLAY</b><span id="scratchPosition">0.00 s</span></div>
+ <div class="scratch-fader-label">FADER <output id="scratchFaderRead">CLOSED</output></div><button id="scratchFader" class="scratch-gate" aria-label="押している間だけSCR音を開く。離すと閉じる" aria-pressed="false">HOLD TO OPEN</button><div class="scratch-fader-scale"><span>押すと開く</span><span>離すと閉じる</span></div><p class="scratch-help">盤を前後に擦る。<br>押している間だけSCR音が出ます。</p></div></div>
+ <p id="scratchStatus" role="status">盤から指を離すと通常再生</p></section>
+</div>
     <div class="viewdots" id="viewDots">
       <button class="vdot on" data-view="viewPads" aria-label="Pads"><span class="vd-dot"></span>PADS</button>
       <button class="vdot" data-view="viewSeq" aria-label="Seq"><span class="vd-dot"></span>SEQ</button>
@@ -1471,15 +1614,16 @@
 
       <!-- MUTE/SOLO/COPY はトランスポート行へ移設（v0.3.5）。EDITは非perf用にここへ残置。
            スマホ(<600px)のみ relocateMuteSolo() が MUTE/SOLO をこの行に親替え＝[MUTE SOLO EDIT]（v0.3.31） -->
-      <div class="msbar">
-        <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
+      <div class="msbar fx-swipe" data-fx-page="effects" aria-label="エフェクト。左へスワイプでパターン切替" title="← パターン A B C D / エフェクト →">
+        <button class="perf-pat fx-pattern" data-p="0" aria-label="パターン A" hidden>A</button><button class="perf-pat fx-pattern" data-p="1" aria-label="パターン B" hidden>B</button><button class="perf-pat fx-pattern" data-p="2" aria-label="パターン C" hidden>C</button><button class="perf-pat fx-pattern" data-p="3" aria-label="パターン D" hidden>D</button>
         <!-- スマホだけ：エフェクトの P-LOCK 選択子（押してからパッドを左右にドラッグ＝そのパッドの送り量。
              下段ステップ列を左右にドラッグ＝そのステップだけ）。SOLO/EDIT はスマホでは出さない（v0.3.106） -->
         <!-- v0.3.123：PC の演奏ページと同じ並び（PITCH/FILTER/DELAY/REVERB）。1行に収めるため幅は2/3以下（§134）。LEVEL は v0.3.124 で廃止（§135） -->
-        <button class="msbtn fx" id="fxPitch"  data-lock="pitch"><span class="d"></span>PITCH</button>
+        <button class="msbtn fx mute" id="holdMute" data-lock="mute"><span class="d"></span>MUTE</button>
         <button class="msbtn fx" id="fxFilter" data-lock="filter"><span class="d"></span>FILTER</button>
         <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
+        <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
       </div>
 
       <!-- 音源ファイル入力：strip の外に置く（スマホは strip を出さない v0.3.125 §136。EDIT モーダルの ⤓ LOAD もこれを叩く） -->
@@ -1541,13 +1685,12 @@
       <!-- 左：BPM / Swing -->
       <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
       <!-- 下：P-LOCK 4つ均等（LEVEL は v0.3.124 で P-LOCK から廃止＝音量は EDIT の Level だけ §135）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
-      <div class="perf-plk" id="perfPlk">
-        <button class="perf-plkbtn" data-lock="pitch">PITCH</button>
+      <div class="perf-plk fx-swipe" id="perfPlk" data-fx-page="effects" aria-label="エフェクト。左へスワイプでパターン切替" title="← パターン A B C D / エフェクト →">
+        <button class="perf-pat fx-pattern" data-p="0" aria-label="パターン A" hidden>A</button><button class="perf-pat fx-pattern" data-p="1" aria-label="パターン B" hidden>B</button><button class="perf-pat fx-pattern" data-p="2" aria-label="パターン C" hidden>C</button><button class="perf-pat fx-pattern" data-p="3" aria-label="パターン D" hidden>D</button>
+        <button class="perf-plkbtn perf-mode" id="perfMute" data-lock="mute">MUTE</button>
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 離すと掛ける前へ戻る（次に押すと前回の値が復活）">REC</button>
-        <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
         <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
 
@@ -1680,9 +1823,9 @@ let setLevels = new Array(16).fill(0);     // 各セットのミックス音量�
 let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格子が枠）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
-let activeLock = null;  // 選択中のp-lockパラメータ（null=ON/OFFトグル）。入口は setActiveLock（step-strip）  @writers step-strip
-let perfDrag = null;    // Performance中のパッドドラッグ＝ライブ・モジュレート  @writers ui/performance-view
-let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録 / OFF=パッドの値だけ（どちらも解除しても値は残る v0.3.168）  @writers layout
+let activeLock = null;  // 選択中のライブFX（ステップ記録なし）。入口は setActiveLock（step-strip）  @writers step-strip
+let perfDrag = null;    // 旧データとの互換。新規のパラメータロック操作は持たない @writers -
+let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録 / OFF=パッドの値だけ（廃止、常にfalse）  @writers -
 let perfTapT = [];      // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）  @writers -
 // @module engine-core
 // @provides AC, SP_DAC_RATE, decodeAudio, extractViaPlayback, isSilent, loopZeroSnap, masterGain,
@@ -2290,7 +2433,7 @@ const reverbSend = AC.createGain(); reverbSend.gain.value = 0;
 const reverb = AC.createConvolver();
 (function(){
   // モノ＆短め(1.5s)のIR：コンボルバは常時稼働するためCPU負荷を大きく削減（音色はほぼ同等）
-  const dur=1.5, rate=AC.sampleRate, len=Math.floor(dur*rate);
+  const dur=1.8, rate=AC.sampleRate, len=Math.floor(dur*rate);
   const ir=AC.createBuffer(1,len,rate);
   const d=ir.getChannelData(0);
   for(let i=0;i<len;i++){ const t=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.2); }  // 指数減衰ノイズ=ホール
@@ -2362,54 +2505,82 @@ function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar
 // 再生中（パターン×小節）へのアクセサ
 function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][playBar]; }
 
+// @module data/key-phrase
+// @provides normalizeKeyPhrase, parseKeyMidi
+// @uses -
+// @depends -
+// 演奏位置は拍単位。サンプルやBPMを含めず再編集可能な正データを保存する。
+function normalizeKeyPhrase(src){
+  const bars=Math.max(1,Math.min(4,Math.round(+src?.bars||1))), end=bars*4;
+  const notes=(Array.isArray(src?.notes)?src.notes:[]).slice(0,512).filter(n=>Number.isFinite(+n.pitch)&&Number.isFinite(+n.beat)&&Number.isFinite(+n.length)&&+n.beat>=0&&+n.beat<end&&+n.length>0).map(n=>({pitch:Math.max(21,Math.min(108,Math.round(+n.pitch))),beat:Math.round(+n.beat*96)/96,length:Math.min(end-+n.beat,Math.max(1/96,+n.length)),velocity:Math.max(1,Math.min(127,Math.round(+n.velocity||96)))})).filter(n=>n.beat<end).map(n=>({...n,length:Math.min(n.length,end-n.beat)}));
+  const e=src?.editor||{};
+  const editor={root:Math.max(0,Math.min(11,Math.round(+e.root||0))),scale:['major','minor','dorian','mixolydian','pentatonic','minorPentatonic','chromatic'].includes(e.scale)?e.scale:'major',scaleEnabled:!!e.scaleEnabled,snap:e.snap!==false};
+  const fx=src?.effects||{}, clamp=(v,lo,hi,def)=>Number.isFinite(+v)?Math.max(lo,Math.min(hi,+v)):def;
+  const effects={motion:['off','tremolo','wah'].includes(fx.motion)?fx.motion:'off',motionDepth:clamp(fx.motionDepth,0,1,.5),motionRate:clamp(fx.motionRate,.1,10,3),color:['off','chorus','phaser'].includes(fx.color)?fx.color:'off',colorDepth:clamp(fx.colorDepth,0,1,.5),colorRate:clamp(fx.colorRate,.05,5,.8)};
+  return {bars,instrument:'rhodes-tine-v2',notes,editor,effects};
+}
+// SMF format 0/1, PPQ。SMPTE/format 2は明確なエラーにする。
+function parseKeyMidi(bytes){
+  const u=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
+  if(u.length>2*1024*1024) throw new Error('MIDIは2MB以内にしてください');
+  const d=new DataView(u.buffer,u.byteOffset,u.byteLength); let at=0;
+  const need=n=>{if(at+n>u.length)throw new Error('MIDIが途中で切れています');};
+  const text=n=>{need(n);let s='';while(n--)s+=String.fromCharCode(u[at++]);return s;};
+  const num=n=>{need(n);let x=0;while(n--)x=x*256+u[at++];return x;};
+  if(text(4)!=='MThd') throw new Error('MIDIヘッダがありません');
+  const hlen=num(4);if(hlen<6)throw new Error('MIDIヘッダが不正です');
+  const format=num(2), count=num(2), ppq=num(2);
+  if(format>1||(ppq&32768)||!ppq||count>128)throw new Error('対応するMIDIはformat 0/1、PPQ形式です');
+  need(hlen-6);at+=hlen-6;
+  const tracks=[], warnings=new Set(['演奏は本体BPM・4/4拍子で取り込みます']);
+  for(let ti=0;ti<count;ti++){
+    if(text(4)!=='MTrk')throw new Error('MIDIトラックが不正です');
+    const size=num(4);need(size);const end=at+size, active=new Map(),notes=[];let tick=0,status=0,name='TRACK '+(ti+1),events=0;
+    const vlq=()=>{let x=0;for(let j=0;j<4;j++){if(at>=end)throw new Error('MIDIイベントが不正です');const b=u[at++];x=(x<<7)|(b&127);if(!(b&128))return x;}throw new Error('MIDIの可変長数値が不正です');};
+    while(at<end){
+      if(++events>200000)throw new Error('MIDIイベント数が多すぎます');
+      tick+=vlq();let st=u[at];if(st&128){at++;if(st<240)status=st;}else{if(!status)throw new Error('MIDI running statusが不正です');st=status;}
+      if(st===255){status=0;if(at>=end)throw new Error('MIDI metaが不正です');const type=u[at++],len=vlq();if(at+len>end)throw new Error('MIDI meta長が不正です');if(type===3)name=new TextDecoder().decode(u.slice(at,at+len)).slice(0,40);if(type===88&&len>=2&&(u[at]!==4||u[at+1]!==2))warnings.add('4/4以外の拍子指定は反映していません');at+=len;continue;}
+      if(st===240||st===247){status=0;const len=vlq();if(at+len>end)throw new Error('SysEx長が不正です');at+=len;continue;}
+      if(st>=240)throw new Error('未対応のMIDIシステムイベントです');
+      const kind=st>>4,ch=st&15,n=kind===12||kind===13?1:2;if(at+n>end)throw new Error('MIDIイベント長が不正です');
+      const a=u[at++],b=n===2?u[at++]:0;if(a>127||b>127)throw new Error('MIDIデータが不正です');
+      const key=ch+':'+a;
+      if(kind===9&&b){if(!active.has(key))active.set(key,[]);active.get(key).push({tick,velocity:b});}
+      else if(kind===8||(kind===9&&!b)){const q=active.get(key),on=q?.shift();if(on)notes.push({pitch:a,beat:on.tick/ppq,length:(tick-on.tick)/ppq,velocity:on.velocity});}
+      else if(kind===11&&a===64)warnings.add('サステインペダルは未対応です');
+    }
+    if(active.size&&[...active.values()].some(q=>q.length))warnings.add('終了していないノートは取り込んでいません');
+    if(notes.length){if(notes.length>512)warnings.add('1パッドあたり最大512ノートです');if(notes.some(n=>n.beat+n.length>16))warnings.add('4小節を超える部分は取り込みません');if(notes.some(n=>n.pitch<21||n.pitch>108))warnings.add('音域はA0〜C8へ補正します');tracks.push({name,phrase:normalizeKeyPhrase({bars:Math.max(1,Math.min(4,Math.ceil(Math.max(...notes.map(n=>n.beat+n.length))/4))),notes})});}
+  }
+  if(!tracks.length)throw new Error('ノートを含むトラックがありません');
+  return {tracks,warnings:[...warnings]};
+}
 // @module plock-undo
 // @provides NOTE_NAMES, PLOCKS, SCALES, applyTrackSnapshot, clearLockEdit, clearUndo, dbToGain, doUndo,
-//    getLockEdit, getLockPlay, isMelodic, lockKey, noteLabel, paintMelodic, patLength, pushUndo,
-//    refreshSeqMode, restoreState, scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState,
-//    stripLegacyLocks, undoStack
+//    getLockEdit, isMelodic, lockKey, noteLabel, paintMelodic, patLength, pushUndo, refreshSeqMode,
+//    restoreState, scaleSemi, setDrumRowLabels, snapshotState, stripLegacyLocks, undoStack
 // @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
 //    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editBars, editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol,
-//    makeSatCurve, masterGain, melodicMode, nextChokeGroup, paintMixer, paintPadName, paintPadStates,
+//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
+//    masterGain, melodicMode, nextChokeGroup, normalizeKeyPhrase, paintMixer, paintPadName, paintPadStates,
 //    paintPatBar, paintSteps, patLoad, patRead, patSlot, patSync, playPat, playStep, playing, rowEls,
-//    saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
+//    saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks, warmKeyTracks
 // @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
 const PLOCKS = {
   pitch:  {min:-12, max:12,   def:0,     color:"61,214,196",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 半音
-  filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
+  filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>Math.round(v)}, // Hz(LPカットオフ)
   delay:  {min:0,   max:1,    def:0.3,   color:"95,211,95",   fmt:v=>Math.round(v*100)},                          // 送り%
   reverb: {min:0,   max:1,    def:0.3,   color:"90,169,255",  fmt:v=>Math.round(v*100)},                          // 送り%
   nudge:  {min:-50, max:50,   def:0,     color:"255,150,90",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 前後タイミング(ms)。-=前ノリ/+=後ノリ
 };
 // 古い .mics に残る廃止済みの P-LOCK（level: v0.3.124）を読み込み時に捨てる。空になったステップは丸ごと消す
-function stripLegacyLocks(locks){
-  if(!locks) return {};
-  for(const k of Object.keys(locks)){ const lk=locks[k]; if(!lk) { delete locks[k]; continue; }
-    delete lk.level;
-    if(Object.keys(lk).length===0) delete locks[k]; }
-  return locks;
-}
+function stripLegacyLocks(){ return {}; } // v0.3.171: 古いステップの自動化は再生しない
 function lockKey(pat,bar,step){ return pat+"_"+bar+"_"+step; }
-function getLockEdit(trackIdx, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(editPat,editBar,step)]; }
-function getLockPlay(trackIdx, pat, bar, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(pat,bar,step)]; }
-// P-LOCK もステップと同じく、編集中の小節がホールドされていればホールドした小節すべてへ（v0.3.166 §159）
-function setLockEdit(trackIdx, step, param, value){
-  const t=tracks[trackIdx]; if(!t.locks) t.locks={};
-  ((typeof editBars==="function") ? editBars() : [editBar]).forEach(b=>{
-    const k=lockKey(editPat,b,step);
-    if(!t.locks[k]) t.locks[k]={};
-    t.locks[k][param]=value; });
-}
-function clearLockEdit(trackIdx, step){ const t=tracks[trackIdx]; if(t.locks) ((typeof editBars==="function") ? editBars() : [editBar]).forEach(b=>{ delete t.locks[lockKey(editPat,b,step)]; }); }
-// 再生座標へp-lockを書く（演奏ライブ記録：再生中のプレイヘッドのステップにオートメーションを焼く）
-function setLockPlay(trackIdx, pat, bar, step, param, value){
-  const t=tracks[trackIdx]; if(!t.locks) t.locks={};
-  const k=lockKey(pat,bar,step);
-  if(!t.locks[k]) t.locks[k]={};
-  t.locks[k][param]=value;
-}
+function getLockEdit(){ return undefined; } // 旧コピー経路の読込互換。新規ロックは作らない
+function clearLockEdit(){ } // ステップ削除との旧契約（保存されるロックは常に空）
 // 小節に音があるか／パターンの長さ（書いた分・最低1小節）
 function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) last=b; return last+1; }
 
@@ -2438,14 +2609,17 @@ function snapshotState(){
       mute:t.mute,solo:t.solo,mutes:(t.mutes||[t.mute,t.mute,t.mute,t.mute]).slice(),solos:(t.solos||[t.solo,t.solo,t.solo,t.solo]).slice(),
       patFx:Array.isArray(t.patFx)?t.patFx.map(o=>Object.assign({},o)):null,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
+      _keySignature:t._keySignature||null,padKind:t.padKind||"SPL",keyPhrase:normalizeKeyPhrase(t.keyPhrase),sampleState:t.sampleState?Object.assign({},t.sampleState):null,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
-      locks:JSON.parse(JSON.stringify(t.locks||{})),
+      locks:{},
     })),
   };
 }
 // 1 トラックを snapshotState の形から戻す（undo の復元と、セット切替（data/set）で共用。v0.3.144）
 function applyTrackSnapshot(i,x){
   const t=tracks[i];
+  t._contentEpoch=(t._contentEpoch||0)+1;t._keySignature=x._keySignature||null;
+  t.padKind=x.padKind||"SPL";t.keyPhrase=normalizeKeyPhrase(x.keyPhrase);t.sampleState=x.sampleState?Object.assign({},x.sampleState):null;
   t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
   t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;t.key=x.key??null;
   t.mutes=Array.isArray(x.mutes)?x.mutes.map(Boolean):[!!x.mute,!!x.mute,!!x.mute,!!x.mute];   // ミュートは A B C D ごと（v0.3.149）。古い snapshot は全パターン同じ
@@ -2454,7 +2628,7 @@ function applyTrackSnapshot(i,x){
   t.mute=t.mutes[patSlot];t.solo=t.solos[patSlot];t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
   PADS[i].type=x.type;PADS[i].voice=x.voice;PADS[i].name=x.name||PADS[i].name;
   t.patterns=x.patterns.map(p=>p.map(b=>b.slice()));
-  t.locks=x.locks?JSON.parse(JSON.stringify(x.locks)):{};
+  t.locks={};
   t.loopPlaying=false;
   if(typeof patRead==="function") patRead(t, patSlot);   // いまのパターンの値を live へ（ミュート / ソロ / エフェクト）
   paintPadName(i);   // パッド名と SEQ 行名（ui/pads-view）
@@ -2489,7 +2663,8 @@ function restoreState(s){
   if(typeof paintPatBar==="function") paintPatBar();
   if(typeof applyPadCategory==="function") for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
-  if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // ステップ波形を再キャッシュ（読込/復元時）
+  if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();
+  if(typeof warmKeyTracks==="function") warmKeyTracks();   // ステップ波形を再キャッシュ（読込/復元時）
 }
 function pushUndo(){ undoStack.push(snapshotState()); if(undoStack.length>40) undoStack.shift();
   if(typeof scheduleAutosave==="function") scheduleAutosave(); }   // 変更があったら自動保存を予約
@@ -2526,13 +2701,138 @@ function refreshSeqMode(){
 
 function dbToGain(db){ return Math.pow(10, db/20); }
 
+// @module audio/key-instrument
+// @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyWarmTimer, keyApplyEffects, keyTineNote,
+//    prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
+// @uses bpmVal, normalizeKeyPhrase, sampNameEl, tracks
+// @depends -
+const _keyCache=new Map(), _keyDryCache=new Map(), _keyJobs=new WeakMap(), _keyBuffers=new WeakSet();
+let _keyWarmTimer=null;
+// Reduced modal model: finite hammer pulse -> damped tine/tonebar modes ->
+// nonlinear magnetic flux -> induced voltage (d flux / dt) -> pickup lowpass.
+// Parameters are voiced by ear, not fitted to an individual Rhodes instrument.
+// 2x internal rate, then lowpass/decimate. No FM oscillator or recorded sample.
+function keyTineNote(pitch,velocity,hold,rate=26000){
+  const sr=rate*2,freq=440*2**((pitch-69)/12),v=Math.max(1,Math.min(127,velocity))/127;
+  const length=Math.ceil((hold+1.2)*sr),output=new Float32Array(Math.ceil(length/2));
+  const contact=Math.max(12,Math.round(Math.min(sr/freq*.65,sr*(.0024-.0012*v)*Math.sqrt(261.626/freq)))),impulse=Math.PI/(2*contact);
+  const amplitude=.10+.52*v**1.65,modes=[];
+  // Beam modes of the tine and a nearby, weakly coupled tonebar mode.
+  for(const [ratio,weight,decay] of [[1,1,3.2],[6.267,.035+.16*v*v,.26],[17.55,.016*v*v,.065],[1.003,.055,1.4]]){
+    const f=freq*ratio;if(f>sr*.42)continue;const w=2*Math.PI*f/sr,r=Math.exp(-1/(sr*decay*(1.1-.4*pitch/108)));
+    modes.push({a:2*r*Math.cos(w),b:r*r,g:Math.sin(w)*weight*amplitude,y:0,z:0});
+  }
+  // Second order Butterworth, 9 kHz at the oversampled rate, before decimation.
+  const k=Math.tan(Math.PI*Math.min(9000,rate*.35)/sr),norm=1/(1+Math.SQRT2*k+k*k),b0=k*k*norm,b1=2*b0,b2=b0,a1=2*(k*k-1)*norm,a2=(1-Math.SQRT2*k+k*k)*norm;
+  let fluxPrev=1/(.9*.9+.6*.6)**1.5,dcIn=0,dcOut=0,x1=0,x2=0,y1=0,y2=0;
+  const off=Math.round(hold*sr),release=.075+.045*(1-pitch/108);
+  let damping=1;const damper=Math.exp(-1/(sr*release));
+  for(let i=0;i<length;i++){
+    const force=i<contact?Math.sin(Math.PI*(i+.5)/contact)*impulse:0;let displacement=0;
+    for(const m of modes){const y=m.a*m.y-m.b*m.z+m.g*force;m.z=m.y;m.y=y;displacement+=y;}
+    if(i>=off)damping*=damper;displacement*=damping;
+    // Fixed pickup offset turns the tine motion into asymmetric flux and bark.
+    const distance=.6-displacement,flux=1/(.9*.9+distance*distance)**1.5;
+    const induced=(flux-fluxPrev)*sr/(2*Math.PI*freq);fluxPrev=flux;
+    const high=induced-dcIn+.997*dcOut;dcIn=induced;dcOut=high;
+    const low=b0*high+b1*x1+b2*x2-a1*y1-a2*y2;x2=x1;x1=high;y2=y1;y1=low;
+    if(i%2===0)output[i/2]=low*.6;
+  }
+  return output;
+}
+function renderKeyDry(src,bpm){
+  const p=normalizeKeyPhrase(src),tempo=Math.max(40,Math.min(250,+bpm||100));
+  // Editor preferences cannot change the sound or create duplicate render jobs.
+  const key=JSON.stringify([p.bars,p.instrument,p.notes,tempo]);if(_keyDryCache.has(key))return _keyDryCache.get(key);
+  const job=(async()=>{
+    const rate=26000,beat=60/tempo,duration=p.bars*4*beat+1.2;
+    const ctx=new OfflineAudioContext(1,Math.ceil(duration*rate),rate),buf=ctx.createBuffer(1,Math.ceil(duration*rate),rate),a=buf.getChannelData(0);
+    for(let ni=0;ni<p.notes.length;ni++){
+      const n=p.notes[ni],note=keyTineNote(n.pitch,n.velocity,n.length*beat,rate),start=Math.round(n.beat*beat*rate);
+      for(let j=0;j<note.length&&start+j<a.length;j++)a[start+j]+=note[j]*.42;
+      // Yield between small batches so mobile editing can still respond.
+      if(ni%4===3)await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    let peak=0;for(let i=0;i<a.length;i++)peak=Math.max(peak,Math.abs(a[i]));
+    // Fixed soft limiter preserves velocity contrasts, unlike per-phrase normalisation.
+    if(peak>.86)for(let i=0;i<a.length;i++)a[i]=.9*Math.tanh(a[i]/.9);
+    return buf;
+  })();
+  _keyDryCache.set(key,job);while(_keyDryCache.size>8)_keyDryCache.delete(_keyDryCache.keys().next().value);
+  job.catch(()=>{if(_keyDryCache.get(key)===job)_keyDryCache.delete(key);});return job;
+}
+// Two independent insertion slots, inspired by CP-style controls. These are
+// original DSP approximations, not Yamaha VCM models. Effects are baked/cached
+// after the physical voice, never solved by the live sequencer.
+function keyApplyEffects(input,rate,effects){
+  const fx=normalizeKeyPhrase({effects}).effects;
+  if((fx.motion==='off'||fx.motionDepth===0)&&(fx.color==='off'||fx.colorDepth===0))return input;
+  const out=new Float32Array(input.length),delay=new Float32Array(Math.ceil(rate*.06)),apIn=new Float64Array(4),apOut=new Float64Array(4);
+  let write=0,ic1=0,ic2=0,feedback=0,envelope=0;
+  const readDelay=samples=>{let position=write-samples;while(position<0)position+=delay.length;const i=Math.floor(position),f=position-i;return delay[i]*(1-f)+delay[(i+1)%delay.length]*f;};
+  for(let i=0;i<input.length;i++){
+    let x=input[i];const time=i/rate;
+    if(fx.motion==='tremolo'&&fx.motionDepth>0)x*=1-fx.motionDepth*.5+fx.motionDepth*.5*Math.sin(2*Math.PI*fx.motionRate*time);
+    else if(fx.motion==='wah'&&fx.motionDepth>0){
+      // Resonant TPT state-variable bandpass. Touch envelope and LFO sweep the
+      // cutoff together; DEPTH controls both sweep and wet mix, RATE the LFO Hz.
+      const mag=Math.abs(x),coef=Math.exp(-1/(rate*(mag>envelope ? .008 : .14)));envelope=coef*envelope+(1-coef)*mag;
+      const sweep=.5+.5*Math.sin(2*Math.PI*fx.motionRate*time),touch=Math.min(1,envelope*8),cutoff=350*2**(fx.motionDepth*(sweep*2.2+touch*1.2));
+      const g=Math.tan(Math.PI*Math.min(rate*.3,cutoff)/rate),k=.8,a=1/(1+g*(g+k)),v1=a*(ic1+g*(x-ic2)),v2=ic2+g*v1;ic1=2*v1-ic1;ic2=2*v2-ic2;
+      x=x*(1-fx.motionDepth)+v1*k*fx.motionDepth;
+    }
+    if(fx.color==='chorus'&&fx.colorDepth>0){
+      delay[write]=x;const phase=2*Math.PI*fx.colorRate*time,base=rate*.016,depth=rate*.006*fx.colorDepth;
+      const wet=(readDelay(base+depth*Math.sin(phase))+readDelay(base+depth*Math.sin(phase+Math.PI*.65)))*.5,mix=fx.colorDepth*.5;
+      x=x*(1-mix)+wet*mix;write=(write+1)%delay.length;
+    }else if(fx.color==='phaser'&&fx.colorDepth>0){
+      const f=250*2**((.5+.5*Math.sin(2*Math.PI*fx.colorRate*time))*fx.colorDepth*3),g=Math.tan(Math.PI*f/rate),a=(1-g)/(1+g);let wet=x+feedback*.28*fx.colorDepth;
+      for(let stage=0;stage<4;stage++){const y=-a*wet+apIn[stage]+a*apOut[stage];apIn[stage]=wet;apOut[stage]=y;wet=y;}
+      feedback=wet;x=x*(1-fx.colorDepth*.5)+wet*fx.colorDepth*.5;
+    }
+    out[i]=x;
+  }
+  return out;
+}
+function renderKeyPhrase(src,bpm){
+  const p=normalizeKeyPhrase(src),tempo=Math.max(40,Math.min(250,+bpm||100)),key=JSON.stringify([p.bars,p.instrument,p.notes,p.effects,tempo]);
+  if(_keyCache.has(key))return _keyCache.get(key);
+  const job=(async()=>{
+    const dry=await renderKeyDry(p,tempo),processed=keyApplyEffects(dry.getChannelData(0),dry.sampleRate,p.effects);
+    if(processed===dry.getChannelData(0))return dry;
+    const ctx=new OfflineAudioContext(1,dry.length,dry.sampleRate),buffer=ctx.createBuffer(1,dry.length,dry.sampleRate),out=buffer.getChannelData(0);out.set(processed);
+    let peak=0;for(let i=0;i<out.length;i++)peak=Math.max(peak,Math.abs(out[i]));if(peak>.9)for(let i=0;i<out.length;i++)out[i]=.9*Math.tanh(out[i]/.9);
+    return buffer;
+  })();
+  _keyCache.set(key,job);while(_keyCache.size>12)_keyCache.delete(_keyCache.keys().next().value);
+  job.catch(()=>{if(_keyCache.get(key)===job)_keyCache.delete(key);});return job;
+}
+async function prepareKeyTrack(t,bpm){
+  const phrase=normalizeKeyPhrase(t.keyPhrase), signature=JSON.stringify([phrase,bpm]);
+  if(t.padKind!=='KEY')return null;
+  if(t._keySignature===signature&&t.buffer&&_keyBuffers.has(t.buffer))return t.buffer;
+  const token={},epoch=t._contentEpoch||0;_keyJobs.set(t,token);
+  const buffer=await renderKeyPhrase(phrase,bpm);
+  if(_keyJobs.get(t)!==token||t.padKind!=='KEY'||(t._contentEpoch||0)!==epoch||JSON.stringify([normalizeKeyPhrase(t.keyPhrase),bpm])!==signature)return null;
+  _keyBuffers.add(buffer);
+  t.keyPhrase=phrase;t.buffer=buffer;t.rawBuffer=buffer;t.start=0;t.end=1;t.loop=false;t.loopStart=0;t._keySignature=signature;
+  return buffer;
+}
+function warmKeyTracks(){
+  clearTimeout(_keyWarmTimer);
+  _keyWarmTimer=setTimeout(()=>{
+    const ts=tracks.slice(),tempo=bpmVal;
+    for(const t of ts)if(t.padKind==='KEY')prepareKeyTrack(t,tempo).catch(e=>{sampNameEl.textContent='KEY生成失敗：'+e.message;});
+  },120); // BPMドラッグ中に大量のOfflineAudioContextを作らない
+}
 // @module voice
 // @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
 //    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
-// @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
-//    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
-//    playStep, playing, recording, reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode,
-//    setStepAt, spDynOpen, tapeEcho, tracks, vuHit
+// @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
+//    liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, normalizeKeyPhrase, outBGain, paintSteps,
+//    pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording, reverbPre,
+//    sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen, tapeEcho, tracks,
+//    vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -2659,7 +2959,9 @@ function warmPitch(i){
 // fromN：ここから鳴らす（0..1、バッファ全体に対する位置）。EDIT の試聴カーソル（v0.3.160）。null＝START から
 function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=null){
   const t = trs[i];
-  if(!t || !t.buffer) return;
+  if(!t) return;
+  if(t.padKind==="KEY"){const k=JSON.stringify([normalizeKeyPhrase(t.keyPhrase),(trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal))]);if(t._keySignature!==k||!_keyBuffers.has(t.buffer)){prepareKeyTrack(t,trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal)).catch(()=>{});if(!fromSeq)sampNameEl.textContent="KEY生成中 — もう一度タップ";return;}}
+  if(!t.buffer) return;
   if(!t.activeVoices) t.activeVoices=[];
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
   if(fromSeq && !audible(i, trs)) return;
@@ -2669,7 +2971,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   chokeGroup(t.choke, i, when, trs);
 
   // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
-  const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
+  const lkPitch = 0; // 旧ファイル／呼出元のステップ値では上書きしない
   const semi = t.tune + (noteSemi||0) + lkPitch;
   const sN = Math.min(0.999, Math.max(0, fromN!=null ? fromN : t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
@@ -2687,7 +2989,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   let head = src;
   let filt = null;
   let fType = t.filter, fCut = t.cutoff;
-  if(plock && plock.filter!=null){ fCut = plock.filter; if(fType==="off") fType="lp"; }
+
   if(fType!=="off"){
     filt = AC.createBiquadFilter();
     filt.type = fType==="lp" ? "lowpass" : "highpass";
@@ -2712,10 +3014,10 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
 
   // DELAY/REVERBセンド：p-lock(そのステップ)が優先、無ければ per-pad ベース送り(t.delaySend/reverbSend)
   let dSend=null, rSend=null;
-  const dAmt = (plock && plock.delay!=null) ? plock.delay : (t.delaySend||0);
-  const rAmt = (plock && plock.reverb!=null) ? plock.reverb : (t.reverbSend||0);
+  const dAmt = (t.delaySend||0);
+  const rAmt = (t.reverbSend||0);
   if(!toB && dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; vg.connect(dSend); dSend.connect(tapeEcho); }
-  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; vg.connect(rSend); rSend.connect(reverbPre); }
+  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=Math.sqrt(Math.max(0,Math.min(1,rAmt))); vg.connect(rSend); rSend.connect(reverbPre); }
 
   // 頭=アタック(フェードイン)、終端=フェード(フェードアウト)。未設定はプツ音回避の既定値。
   const ATT  = Math.max(0.001, (t.attack||0)/1000);
@@ -2936,10 +3238,11 @@ new MutationObserver(()=>{
 // @module ui/pads-view
 // @provides _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl, paintPadName,
 //    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
-// @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, buildTrackWave,
+// @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
-//    refreshSeqMode, renderPerfFills, sampNameEl, selected, swapPads, syncEditor, tracks, trigger
+//    prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen, selected, swapPads,
+//    syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -2971,6 +3274,7 @@ function paintPadName(i){
   const nm=tracks[i].name||PADS[i].name||"";
   const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
   if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
+  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=tracks[i].padKind||"SPL";}
   const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
   if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
 }
@@ -2984,7 +3288,7 @@ function refreshPadDisplay(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><div class="stepn">${i+1}</div><div class="lockv"></div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><span class="pad-kind">SPL</span><div class="stepn">${i+1}</div><div class="lockv"></div>`;
   d._lockfill=d.querySelector(".lockfill"); d._lockv=d.querySelector(".lockv");   // 毎ステップ描画でquerySelectorしないよう参照をキャッシュ
   d.dataset.i=i;
   d.setAttribute("role","button");
@@ -3009,6 +3313,7 @@ PADS.forEach((p,i)=>{
     // v0.3.160：EDIT / COPY / MUTE / SOLO を押しているときはそちらが先（P-LOCK を選んだまま EDIT にすると、ドラッグで入れ替えられずに値が動いていた）
     if(perfPadDown(e,i,d)) return;
     if(AC.state!=="running")await AC.resume();
+    if(tracks[i].padKind==="SCR"){selectPad(i);scratchOpen(i).catch(e=>sampNameEl.textContent=e.message);return;}
     // 空パッドの「＋」(中央40%)タップ＝ワンタップで音入れ（Koala流・案1）。端のタップは選択＋案内のみ
     if(PADS[i].type==="empty" && !tracks[i].buffer){
       const r=d.getBoundingClientRect();
@@ -3016,6 +3321,7 @@ PADS.forEach((p,i)=>{
       const rad=Math.min(24, r.height*0.45);   // 円の見た目と同じ判定。低いパッドでも破綻しない
       if(Math.hypot(dx,dy)<=rad){ selectPad(i); flashPad(i); openPadEdit(i); return; }
     }
+    if(tracks[i].padKind==="KEY"){const target=tracks[i],epoch=target._contentEpoch||0;await prepareKeyTrack(target,bpmVal);if((target._contentEpoch||0)!==epoch||target.padKind!=="KEY")return;}
     trigger(i);selectPad(i,true);
   });
   // --- EDIT中のドラッグ並べ替え（移動/コピー）---
@@ -3106,60 +3412,42 @@ function paintPadStates(){
   if(typeof renderPerfFills==="function") renderPerfFills();
 }
 // @module ui/performance-view
-// @provides FX_OFF, _fxTapL, _fxTapT, _fxmLog, _fxmUndo, fxBtnTap, fxClearPad, fxIsSet, fxModalClose,
-//    fxModalOpen, fxPadSet, fxResetAll, fxmPaint, fxmParam, paintFxDots, perfFillPad, perfLockApply,
-//    perfPadDown, perfPadEnd, perfPadMove, plockFillsOn, renderPerfFills
-// @uses PADS, PERF_BASE, PLOCKS, activeLock, armMode, editPat, padsEl, paintPerf, perfDrag, perfRecArm,
-//    perfResetPad, perfTapT, pushUndo, sampNameEl, setActiveLock, syncEditor, tracks
+// @provides FX_OFF, _fxPadGesture, _fxTapL, _fxTapT, _fxmLog, _fxmUndo, fxBtnTap, fxClearPad, fxIsSet,
+//    fxModalClose, fxModalOpen, fxPadSet, fxResetAll, fxmPaint, fxmParam, paintFxDots, perfFillPad,
+//    perfLockApply, perfPadDown, perfPadEnd, perfPadMove, plockFillsOn, renderPerfFills
+// @uses PADS, PERF_BASE, PLOCKS, activeLock, arm, armMode, editPat, padsEl, paintPerf, pushUndo, sampNameEl,
+//    scheduleAutosave, setActiveLock, syncEditor, tracks
 // @depends -
 // ---------- Performance：P-LOCK 選択中のパッド操作（ライブ・モジュレート） ----------
 // 30-ui-pads.js のパッド生成ループに埋まっていた処理を関数に切り出した（v0.3.130 Phase 2）。呼び出し順・中身は同じ。
 // 表示側（perfFillPad／renderPerfFills／perfLockApply）も 61-layout.js からここへ寄せた（v0.3.131 Phase 2 第2段）
 // パッドを押した：P-LOCK 選択中だけ受け持つ（true を返したらパッド側はそこで終わる）
+// Live pad parameter editing only. Never writes step locks or records automation.
+let _fxPadGesture=null;
 function perfPadDown(e,i,d){
-  // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
-  if(!(activeLock && PERF_BASE[activeLock])) return false;   // P-LOCK選択中はドラッグ＝そのパッドの値（perf でもスマホの DELAY/REVERB でも）
-  e.preventDefault();
-  const now=Date.now();
-  if(now-(perfTapT[i]||0) < 320){      // ダブルタップ＝そのパッドを基準値へ戻す
-    perfTapT[i]=0; perfResetPad(i, activeLock); return true;
-  }
-  perfTapT[i]=now;
-  perfDrag={pad:i, x0:e.clientX, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
-  try{ d.setPointerCapture(e.pointerId); }catch(_){}
+  if(!FX_OFF[activeLock]||armMode)return false;
+  e.preventDefault();const t=tracks[i],param=activeLock;
+  _fxPadGesture={pad:i,id:e.pointerId,track:t,epoch:t._contentEpoch||0,param,x:e.clientX,y:e.clientY,axis:null,orig:param==='filter'?t.cutoff:t[PERF_BASE[param]],changed:false};
+  try{d.setPointerCapture(e.pointerId);}catch(_){}
   return true;
 }
-// パッド上の横ドラッグ＝そのパッドの P-LOCK 値を生いじり（ステップ列と向きを統一：右で増加）
 function perfPadMove(e,i){
-  if(!perfDrag || perfDrag.pad!==i) return;
-  const dx=e.clientX-perfDrag.x0;                       // 右で増加
-  if(!perfDrag.moved && Math.abs(dx)>6){ perfDrag.moved=true; perfTapT[i]=0; }   // ドラッグはダブルタップ計測に含めない
-  if(!perfDrag.moved) return;
-  const t=tracks[i], spec=PLOCKS[perfDrag.param];
-  const prop=PERF_BASE[perfDrag.param];
-  if(perfDrag.orig===null){                             // 初回：相対ドラッグの基点＝現在値
-    if(!perfDrag.undone){ pushUndo(); perfDrag.undone=true; }   // ドラッグ1回で1手。値は残るので UNDO で戻す（v0.3.168）
-    perfDrag.orig = perfDrag.param==="filter"?t.cutoff : t[prop];
-    if(perfDrag.param==="filter" && t.filter==="off") t.filter="lp";   // 音が出るようLPに（ダブルタップ／RESET で OFF へ）
-  }
-  let v;
-  if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let lv=Math.log(perfDrag.orig)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv); }
-  else { v=perfDrag.orig+(dx/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); }
-  if(perfDrag.param==="pitch") t[prop]=Math.round(v);
-  else t[prop]=v;                                       // filter(cutoff) / delay / reverb は連続値
-  perfFillPad(i, perfDrag.param);                       // このパッドのフィルを更新（発音なし）
-  const ps=document.getElementById("perfSel");          // 画面にライブ表示
-  if(ps){ ps.textContent=String(i+1).padStart(2,"0")+" "+perfDrag.param.toUpperCase()+" ▸ "+spec.fmt(t[prop])+(perfRecArm?" ●REC":""); }
+  const g=_fxPadGesture;if(!g||g.pad!==i||g.id!==e.pointerId)return;
+  if(tracks[i]!==g.track||(g.track._contentEpoch||0)!==g.epoch){_fxPadGesture=null;return;}
+  const dx=e.clientX-g.x,dy=e.clientY-g.y;
+  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<6)return;g.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';}
+  e.preventDefault();const delta=g.axis==='x'?dx:-dy,spec=PLOCKS[g.param],t=g.track,prop=PERF_BASE[g.param];
+  let value=spec.log?Math.exp(Math.log(Math.max(spec.min,g.orig))+(delta/200)*(Math.log(spec.max)-Math.log(spec.min))):g.orig+(delta/200)*(spec.max-spec.min);
+  value=Math.max(spec.min,Math.min(spec.max,value));
+  if(value===t[prop]&&!(g.param==='filter'&&t.filter==='off'))return;
+  if(!g.changed){pushUndo();g.changed=true;}
+  if(g.param==='filter'&&t.filter==='off')t.filter='lp';t[prop]=value;perfFillPad(i,g.param);
 }
-// 離した：値はそのまま残る（ボタンを解除しても残る v0.3.168）。ボタンのポッチ（設定あり）を更新
 function perfPadEnd(e,i){
-  if(!perfDrag || perfDrag.pad!==i) return;
-  perfDrag=null;
-  if(typeof syncEditor==="function") syncEditor();
-  if(typeof paintPerf==="function") paintPerf();
-  paintFxDots();
+  const g=_fxPadGesture;if(!g||g.pad!==i||g.id!==e.pointerId)return;_fxPadGesture=null;
+  if(g.changed)scheduleAutosave();
+  if(typeof syncEditor==='function')syncEditor();if(typeof paintPerf==='function')paintPerf();paintFxDots();
 }
-
 // ---------- P-LOCK の塗り（.lockfill/.lockv）と、掛ける前の値の控え／復帰（61-layout.js から移動） ----------
 // P-LOCKパラメータ・ページ：選択中は16パッドを「効果量のフィル」表示（発音せず）、キー解放で元値へ復帰
 function perfFillPad(i, param){
@@ -3174,10 +3462,7 @@ function perfFillPad(i, param){
 // P-LOCK の塗り（.lockfill/.lockv）を出す条件。PC は演奏(body.perf)のとき、スマホは msbar の DELAY/REVERB が見えているとき。
 // v0.3.121 までは body.perf だけを見ていたので、スマホで送り量をドラッグしても塗りも数字も出なかった（§133）。
 function plockFillsOn(){
-  if(!(activeLock && PERF_BASE[activeLock])) return false;
-  if(document.body.classList.contains("perf")) return true;
-  const b=document.querySelector(".msbar .msbtn.fx[data-lock]");
-  return !!b && getComputedStyle(b).display!=="none";
+  return !!FX_OFF[activeLock]&&!armMode; // Live pad values, never step locks
 }
 function renderPerfFills(){
   const param=plockFillsOn()?activeLock:null;
@@ -3188,8 +3473,8 @@ function renderPerfFills(){
   paintFxDots();
 }
 // エフェクトのボタン（PITCH / FILTER / DELAY / REVERB）の動き（v0.3.168 §162）：
-// **押す＝パッドを左右にドラッグして掛ける／もう一度押す＝ボタンを解除するだけ（値は残る）**。
-// 一度掛けたエフェクトはボタンにポッチ（設定あり）が残る。ダブルタップ＝そのエフェクトを全パッドから外す。EDIT 中に押す＝詳しい設定のモーダル。
+// 押す＝パッドを左右／上下に動かして現在値を調整。再押下＝選択解除（値は保持）。
+// 設定ありはボタンにポッチ。EDIT中だけ詳細設定。全リセットは詳細設定のRESETから。
 // v0.3.121〜168 は「押した時の値を控え、解除でそこへ戻す」形だったので、解除すると消え、SET を替えて解除すると
 // 前のセットの値を新しいセットへ書き込んでいた（控えはセットを知らない）。値をそのまま tracks に置くので、セット / パターンの退避にもそのまま乗る
 function perfLockApply(){
@@ -3219,20 +3504,15 @@ function fxResetAll(param){
   if(typeof paintPerf==="function") paintPerf();
   if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=param.toUpperCase()+" をリセット（全パッド・UNDO で戻せる）";
 }
-// エフェクトのボタンを押した（PC の #perfPlk とスマホの .msbar から）。350ms 以内にもう一度＝ダブルタップ（iOS は dblclick が当てにならない）
+// Normal tap selects live pad values; EDIT+tap opens parameter settings. No step recording.
 let _fxTapT=-1e9, _fxTapL=null;
-function fxBtnTap(lock){
-  if(FX_OFF[lock] && typeof armMode!=="undefined" && armMode==="edit"){ fxModalOpen(lock); return; }
-  const now=performance.now();
-  if(FX_OFF[lock] && lock===_fxTapL && now-_fxTapT<350){
-    _fxTapT=-1e9;
-    if(activeLock===lock) setActiveLock(lock);    // 1 回目で点いた分を戻す＝ダブルタップの後は解除
-    perfLockApply(); fxResetAll(lock);
-    return;
-  }
-  _fxTapT=now; _fxTapL=lock;
-  setActiveLock(lock);
-  perfLockApply();
+function fxBtnTap(effect){
+  if(effect==="mute"){setActiveLock(null);perfLockApply();arm("mute",armMode!=="mute");return;}
+  if(!FX_OFF[effect]) return;
+  if(armMode==='edit'){setActiveLock(null);perfLockApply();fxModalOpen(effect);return;}
+  if(armMode)arm(armMode,false);
+  setActiveLock(effect);perfLockApply();
+  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整':effect.toUpperCase()+' · 選択解除（設定値は保持）';
 }
 // ---------- EDIT → エフェクトのボタン＝詳しい設定のモーダル（v0.3.168）：パッドごとの量、FILTER は種類も、RESET ----------
 let fxmParam=null, _fxmUndo=false;
@@ -3392,7 +3672,7 @@ function moveCursors(){
 }
 // @module data/pads
 // @provides chopBaseName, clearPadSound, copyPadSound, nextChokeGroup, swapPads
-// @uses AC, PADS, patSync, pushUndo, stopVoices, tracks
+// @uses AC, PADS, normalizeKeyPhrase, patSync, pushUndo, stopVoices, tracks
 // @depends -
 // ---------- パッドのデータ更新：コピー・スライス名・チョークグループの発行 ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。UI の描画とデータ更新を分ける入口。
@@ -3406,6 +3686,7 @@ function copyPadSound(src,dst){
   const s=tracks[src],d=tracks[dst];
   // バッファは参照共有（AudioBufferは再生で変化しないため安全）
   d.buffer=s.buffer; d.rawBuffer=s.rawBuffer;
+  d._contentEpoch=(d._contentEpoch||0)+1;d._keySignature=s._keySignature||null;d.padKind=s.padKind||"SPL";d.keyPhrase=normalizeKeyPhrase(s.keyPhrase);d.sampleState=s.sampleState?Object.assign({},s.sampleState):null;
   d.tune=s.tune; d.start=s.start; d.end=s.end;
   d.loop=s.loop; d.loopStart=s.loopStart;
   d.filter=s.filter; d.cutoff=s.cutoff; d.reso=s.reso;
@@ -3420,6 +3701,7 @@ function clearPadSound(i){
   const t=tracks[i]; if(!t) return;
   pushUndo();
   stopVoices(t, AC.currentTime); t.loopPlaying=false;
+  t._contentEpoch=(t._contentEpoch||0)+1;t.padKind="SPL";t.keyPhrase=null;t.sampleState=null;t._keySignature=null;
   t.buffer=null; t.rawBuffer=null; t.start=0; t.end=1; t.loop=false; t.loopStart=0; t.tune=0;
   t.name="PAD "+(i+1);
   PADS[i].type="empty"; PADS[i].voice=null; PADS[i].name="PAD "+(i+1);
@@ -3430,7 +3712,8 @@ function swapPads(a,b){
   pushUndo();
   if(typeof patSync==="function") patSync();   // 入れ替える前に live を今のパターンへ書き戻す
   const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
+  ta._contentEpoch=(ta._contentEpoch||0)+1;tb._contentEpoch=(tb._contentEpoch||0)+1;
+  for(const k of ["_keySignature","padKind","keyPhrase","sampleState","buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   { const f=ta.patFx; ta.patFx=tb.patFx; tb.patFx=f; }   // A B C D ごとのエフェクトも一緒に（v0.3.150。live は入替前に patSync 済み）
@@ -3514,7 +3797,7 @@ function applySeqData(p, trs){
     for(let b=0;b<4;b++){ const src=x&&x.patterns&&Array.isArray(x.patterns[b]) ? x.patterns[b].slice(0,STEPS) : []; while(src.length<STEPS) src.push(0); t.patterns[p][b]=src; }
     if(!t.locks) t.locks={};
     Object.keys(t.locks).forEach(k=>{ if(k.indexOf(p+"_")===0) delete t.locks[k]; });
-    if(x) Object.keys(x.locks||{}).forEach(k=>{ t.locks[p+"_"+k]=JSON.parse(JSON.stringify(x.locks[k])); });
+    t.locks={};
     t.mutes[p]=!!(x&&x.mute); t.solos[p]=!!(x&&x.solo);
     if(x&&x.fx) t.patFx[p]=Object.assign({}, t.patFx[p], x.fx);
   });
@@ -3535,9 +3818,10 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 //    setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
-//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat,
-//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel,
-//    setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
+//    playing, prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur,
+//    setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
+//    stripLegacyLocks, swingPct, tracks, warmKeyTracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -3564,13 +3848,14 @@ function _defaultTrackSnap(i){
 function defaultSetSnapshot(k){ return {name:"SET "+(k+1), bpm:100, swing:67, tracks:PADS.map((_,i)=>_defaultTrackSnap(i))}; }
 // いまのセット（live）を snapshot に
 function snapshotSet(){ return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:snapshotState().tracks}; }
-function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {mutes:(x.mutes||[]).slice(), solos:(x.solos||[]).slice(), patFx:Array.isArray(x.patFx)?x.patFx.map(o=>Object.assign({},o)):null, activeVoices:[], loopPlaying:false, patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:JSON.parse(JSON.stringify(x.locks||{}))}))}; }
+function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {mutes:(x.mutes||[]).slice(), solos:(x.solos||[]).slice(), patFx:Array.isArray(x.patFx)?x.patFx.map(o=>Object.assign({},o)):null, activeVoices:[], loopPlaying:false, patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:{},keyPhrase:normalizeKeyPhrase(x.keyPhrase),sampleState:x.sampleState?Object.assign({},x.sampleState):null}))}; }
 // .mics のセット（v3 の sets[k]、または v2 のファイル丸ごと）を snapshot に（音を復号。audio の無い synth はプリセット）
 async function decodeSetData(sd,k){
   const snap=defaultSetSnapshot(k);
   if(!sd||!Array.isArray(sd.tracks)) return snap;
   snap.name=String(sd.name||("SET "+(k+1))).slice(0,24); snap.bpm=+sd.bpm||100; snap.swing=+sd.swing||50;
   for(let i=0;i<Math.min(sd.tracks.length,16);i++){ const pt=sd.tracks[i]; if(!pt) continue; const x=snap.tracks[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
+    x.padKind=["SPL","KEY","SCR"].includes(pt.padKind)?pt.padKind:"SPL";x.keyPhrase=normalizeKeyPhrase(pt.keyPhrase);
     x.name=pt.name||x.name; x.type=pt.type||"empty"; x.voice=pt.voice||null;
     x.vol=pt.vol??-4; x.tune=pt.tune??0; x.scale=pt.scale??"off";
     x.filter=pt.filter??"off"; x.cutoff=pt.cutoff??12000; x.reso=pt.reso??0.7;
@@ -3596,6 +3881,7 @@ async function decodeSetData(sd,k){
       x.start=pt.start??pr.start; x.end=pt.end??pr.end; x.loop=pt.loop??pr.loop; x.loopStart=pt.loopStart??pr.loopStart; }
     else { x.buffer=null; x.rawBuffer=null; x.start=pt.start??0; x.end=pt.end??1; x.loop=pt.loop??false; x.loopStart=pt.loopStart??0; }   // 空パッド（幽霊サンプル防止）
   }
+  for(let i=0;i<snap.tracks.length;i++){const x=snap.tracks[i];if(x.padKind==="KEY"){x.sampleState={buffer:x.buffer,rawBuffer:x.rawBuffer,start:x.start,end:x.end,loop:x.loop,loopStart:x.loopStart,type:x.type,voice:x.voice};await prepareKeyTrack(x,snap.bpm);x.type="sample";x.voice=null;}}
   return snap;
 }
 // ファイル → 16 の snapshot と cur（v3 は sets、v2 / 既定プロジェクトは丸ごと SET 1）。cur から復号する
@@ -3618,6 +3904,7 @@ function applySetSnapshot(s, opts){
   if($("swing")) $("swing").value=swingPct;
   if(typeof setDelayTempo==="function") setDelayTempo();
   if(!keepSel){ editPat=0; editBar=0; patLoad(0, true); }   // セットの頭は A＝ミュートも A のもの
+  if(typeof warmKeyTracks==="function") warmKeyTracks();
   for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
   if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();
@@ -3704,7 +3991,7 @@ function paintCopyHL(){
   paintPadStates();
   const hit=(sel,ty,key)=>document.querySelectorAll(sel).forEach(b=>
     b.classList.toggle("copysrc", !!copyArm && copyArm.type===ty && copyArm.idx===+b.dataset[key]));
-  hit("#perfPats .perf-pat","pat","p"); hit("#perfPats .perf-bar","bar","b");
+  hit("#perfPats .perf-pat, .fx-pattern","pat","p"); hit("#perfPats .perf-bar","bar","b");
   hit("#patSeg button","pat","p");
   hit("#barSeg button","bar","b");
   const isNote=!!copyArm && copyArm.type==="note";
@@ -3738,7 +4025,7 @@ function padAtPoint(x,y){
 }
 
 function assignMS(i){
-  if(armMode==="mute"){ tracks[i].mute=!tracks[i].mute; }
+  if(armMode==="mute"){ pushUndo(); tracks[i].mute=!tracks[i].mute; }
   else if(armMode==="solo"){ tracks[i].solo=!tracks[i].solo; }
   paintPadStates();
   if(typeof scheduleAutosave==="function") scheduleAutosave();   // .mics に入る状態なので自動保存にも乗せる
@@ -3746,7 +4033,7 @@ function assignMS(i){
 function arm(mode,on){
   armMode = on?mode:null;
   if(armMode!=="chop"){ copyArm=null; if(typeof paintCopyHL==="function") paintCopyHL(); }   // COPYから離れたら必ず元をリセット（他モードへ切替でも）
-  document.getElementById("holdMute").classList.toggle("armed",armMode==="mute");
+  document.querySelectorAll('[data-lock="mute"]').forEach(b=>{ b.classList.toggle("armed",armMode==="mute"); b.classList.toggle("on",armMode==="mute"); });
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
   const _cpBtn=document.getElementById("holdCopy"); if(_cpBtn) _cpBtn.classList.toggle("armed",armMode==="chop");
@@ -3767,7 +4054,7 @@ function bindHold(btnId,mode){
     arm(mode, armMode!==mode);
   });
 }
-bindHold("holdMute","mute");
+// MUTEはエフェクト列の共通fxBtnTapからarmへ。二重登録しない。
 bindHold("holdSolo","solo");
 bindHold("holdEdit","edit");
 bindHold("holdSelect","select");
@@ -3779,14 +4066,27 @@ window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&armMode) arm(armMode
 
 // @module ui-wave
 // @provides _rsT, applyWaveSEQ, applyWaveStrip, buildAllTrackWaves, buildTrackWave, drawAllPadWaves,
-//    drawPadWave, padWaveInk, setCellWave, snapStartToOnset, syncEditor, trackWaveURL
-// @uses PADS, STEPS, getPattern, padsEl, paintSteps, rowEls, selected, stepBtns, tracks, viewPadsEl,
-//    viewSeqEl
+//    drawKeyPadNotes, drawPadWave, keyPadGeometry, padWaveInk, setCellWave, snapStartToOnset, syncEditor,
+//    trackWaveURL
+// @uses PADS, STEPS, getPattern, normalizeKeyPhrase, padsEl, paintSteps, rowEls, selected, stepBtns, tracks,
+//    viewPadsEl, viewSeqEl
 // @depends -
 // ---------- sample editor ---------- （窓波形は撤去：drawWave/ハンドル/カーソル機構は廃止）
 
 // Koala風：各パッドに小さな波形を描く
 function padWaveInk(){ return (getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8"); }
+// Pad thumbnails show phrase geometry, never the rendered KEY audio waveform.
+function keyPadGeometry(src,w,h){
+  const p=normalizeKeyPhrase(src),left=8,top=Math.min(25,h*.24),width=Math.max(1,w-16),height=Math.max(8,h-top-Math.min(20,h*.2));
+  const pitches=p.notes.map(n=>n.pitch),low=pitches.length?Math.min(...pitches)-2:48,high=pitches.length?Math.max(...pitches)+2:72,span=Math.max(12,high-low),base=(low+high-span)/2;
+  return {left,top,width,height,bars:p.bars,notes:p.notes.map(n=>({x:left+n.beat/(p.bars*4)*width,y:top+(1-(n.pitch-base)/span)*height,width:Math.max(2,n.length/(p.bars*4)*width-1),height:Math.max(2,Math.min(5,height/span*.72)),velocity:n.velocity}))};
+}
+function drawKeyPadNotes(ctx,src,w,h,ink){
+  const g=keyPadGeometry(src,w,h);ctx.save();ctx.fillStyle='#14262d';ctx.fillRect(g.left,g.top,g.width,g.height);
+  ctx.beginPath();ctx.rect(g.left,g.top,g.width,g.height);ctx.clip();
+  for(let b=0;b<=g.bars*4;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+b/(g.bars*4)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
+  ctx.fillStyle=ink||'#48d9de';for(const n of g.notes){ctx.globalAlpha=.4+.6*n.velocity/127;ctx.fillRect(n.x,n.y-n.height/2,n.width,n.height);}ctx.restore();
+}
 function drawPadWave(i, ink){
   const pad=padsEl.children[i]; if(!pad) return;
   const cv=pad.querySelector(".pad-wave"); if(!cv) return;
@@ -3797,6 +4097,7 @@ function drawPadWave(i, ink){
   if(cv.width!==cw || cv.height!==ch){ cv.width=cw; cv.height=ch; }   // サイズ不変なら再確保しない（毎ヒットのコスト削減）
   const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);   // 絶対変換でscale二重掛けを回避
   ctx.clearRect(0,0,w,h);
+  if(tracks[i].padKind==="KEY"){drawKeyPadNotes(ctx,tracks[i].keyPhrase,w,h);return;}
   const buf=tracks[i].buffer; if(!buf) return;
   const data=buf.getChannelData(0);
   const s=Math.floor((tracks[i].start||0)*data.length);
@@ -3929,7 +4230,7 @@ const CL_SPEC={
           set:(t,v)=>{ t.filter=v; if(v==="lp"&&t.cutoff>=10000) t.cutoff=3000; if(v==="hp"&&t.cutoff>=10000) t.cutoff=700; },
           fmt:v=>v.toUpperCase(), w:3},
   cutoff:{lbl:"CUTOFF",u:"Hz", get:t=>t.cutoff,set:(t,v)=>t.cutoff=v,min:200,max:18000,st:100,px:2,
-          fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":String(v), w:5},
+          fmt:v=>String(Math.round(v)), w:5},
   reso:  {lbl:"RESO",  get:t=>t.reso, set:(t,v)=>t.reso=v, min:0.1,max:14,st:0.1,px:6, fmt:v=>v.toFixed(1), w:4},
   attack:{lbl:"ATTACK",u:"ms", get:t=>t.attack||0, set:(t,v)=>t.attack=v, min:0,max:200,st:1,px:4, fmt:v=>String(v), w:3},
   fade:  {lbl:"FADE",  u:"ms", get:t=>t.fade??3,  set:(t,v)=>t.fade=v,   min:0,max:500,st:5,px:4, fmt:v=>String(v), w:3},
@@ -4052,17 +4353,20 @@ function paintClPage(){
     }
     scr.querySelectorAll(".cl-par.sel").forEach(x=>x.classList.remove("sel"));   // カーソルは窓に1つ（上段のBPM/SWGも含む）
     el.classList.add("sel","tweak");   // MPC1000のカーソル＝いまデータホイールが効く欄
-    drag={el,sp,k,id:e.pointerId,x0:e.clientX,start:GET(sp),pad:selected,undone:false,moved:false};
+    drag={el,sp,k,id:e.pointerId,x0:e.clientX,y0:e.clientY,axis:null,start:GET(sp),pad:selected,undone:false,moved:false};
     try{ el.setPointerCapture(e.pointerId); }catch(_){}
   });
   scr.addEventListener("pointermove",e=>{
     if(!drag) return;
     if(e.pointerId!==undefined && e.pointerId!==drag.id) return;   // 2本指で別の欄を触っても、先の指の移動が後の欄に効かない
     const sp=drag.sp;
+    const dx=e.clientX-drag.x0, dy=drag.y0-e.clientY;
+    if(!drag.axis){ if(Math.max(Math.abs(dx),Math.abs(dy))<5) return; drag.axis=Math.abs(dx)>=Math.abs(dy)?"x":"y"; }
+    const delta=drag.axis==="x"?dx:dy;
     let v;
-    if(sp.en){ const d=Math.round((e.clientX-drag.x0)/26);   // d=0 は「元の値」＝往復して離せば戻る
+    if(sp.en){ const d=Math.round(delta/26);   // d=0 は「元の値」＝往復して離せば戻る
       v=sp.en[((sp.en.indexOf(drag.start)+d)%sp.en.length+sp.en.length)%sp.en.length]; }
-    else { v=quant(sp, drag.start + Math.round((e.clientX-drag.x0)/sp.px)*sp.st); }
+    else { v=quant(sp, drag.start + Math.round(delta/sp.px)*sp.st); }
     if(v===GET(sp)) return;
     drag.moved=true;
     if(!drag.undone){ pushUndo(); drag.undone=true; }   // ドラッグ1回で1手（連続でUndoを埋めない）
@@ -4111,12 +4415,13 @@ function paintClPage(){
 
 // @module audio/transport
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
-//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
-//    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
-// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar,
-//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot,
-//    patSwitchMode, perfDrag, perfRecArm, playBar, playPat, playStep, playVoice, playing, queuedPat,
-//    queuedSet, scaleSemi, setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
+//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock,
+//    resumeTransportClock, schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec, startTransport,
+//    stepTimeClean, stopTransport, swingDelayTicks, tickDur
+// @uses AC, PADS, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar, getPlayPattern,
+//    isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot, patSwitchMode, playBar, playPat,
+//    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, stepIdx, stopAllVoices, stopVoices,
+//    swingPct, switchSetNow, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -4166,14 +4471,7 @@ function scheduleStep(stepNo, when){
     if(t.loop && t.loopPlaying && !aud){ stopVoices(t, when); t.loopPlaying=false; }
     const v=getPlayPattern(i)[stepNo];
     if(v>0 && aud){
-      // 演奏ライブ記録：REC ON中、ドラッグ中のパッドのこのトリガにp-lockを焼く（GRIDと同一データ）
-      if(perfRecArm && perfDrag && perfDrag.moved && perfDrag.pad===i && perfDrag.param){
-        const pp=perfDrag.param, pv=(pp==="filter")?t.cutoff:t[PERF_BASE[pp]];
-        setLockPlay(i, playPat, playBar, stepNo, pp, pv);
-      }
-      const lk=getLockPlay(i, playPat, playBar, stepNo);   // そのステップのp-lock
-      // NUDGE p-lock：このトリガだけ前後にずらす（ms→sec）。LOOKAHEAD(100ms)内なので前ノリも予約可。過去には出さない
-      const nudgeSec=(lk && typeof lk.nudge==="number") ? lk.nudge/1000 : 0;
+      const lk=null, nudgeSec=0; // 発音は常に現在の設定
       const wn=Math.max(when + n*stg + nudgeSec, AC.currentTime);
       if(t.loop){
         // ループ系はシーケンス上でトグル：トリガが来るたびに ON→OFF→ON…（負荷もかからない）
@@ -4262,14 +4560,24 @@ function scheduler(){
     if(++guard > STEPS) break;   // 1tickで最大1小節分まで（暴走防止）
   }
 }
+
+// アプリが非表示の間にタイマーを回さず、次のステップを復帰時刻へ付け直す。
+function pauseTransportClock(){ clearInterval(schedTimer); schedTimer=null; drawQueue.length=0; }
+function resumeTransportClock(){
+  if(!playing) return;
+  const delta=stepTimeClean(stepIdx)-barStartTime;
+  barStartTime=AC.currentTime+0.005-delta;
+  drawQueue.length=0; tracks.forEach(t=>t.loopPlaying=false);
+  clearInterval(schedTimer); schedTimer=setInterval(scheduler,INTERVAL); scheduler();
+}
 // @module audio/set-players
 // @provides SET_LV_MAX, SET_LV_MIN, _lvlSrc, _sideArm, _sidePatLen, _sideStep, _sideStepTime, fmtSetLevel,
-//    isSetHeld, setHeldSet, setHold, setHoldClear, setIndexOfTrs, setIsPlaying, setLevelLin, setLevelNode,
-//    setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
-//    sideTimer, sideTrs
+//    isSetHeld, pauseSideClock, resumeSideClock, setHeldSet, setHold, setHoldClear, setIndexOfTrs,
+//    setIsPlaying, setLevelLin, setLevelNode, setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop,
+//    sideStopAll, sideTakeCurrent, sideTick, sideTimer, sideTrs
 // @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec,
-//    laidbackSec, lockKey, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels,
-//    setSlots, staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
+//    laidbackSec, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels, setSlots,
+//    staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
 // @depends -
 // ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
 // 「SET ポン出しはトグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」。
@@ -4305,7 +4613,7 @@ function _sideStep(p,trs,n,when){
     if(t.loop && t.loopPlaying && !aud){ stopVoices(t,when); t.loopPlaying=false; }
     const row=t.patterns && t.patterns[p.pat] && t.patterns[p.pat][p.bar]; const v=row ? row[n] : 0;
     if(!(v>0 && aud)) continue;
-    const lk=t.locks && t.locks[lockKey(p.pat,p.bar,n)];
+    const lk=null;
     const nudge=(lk && typeof lk.nudge==="number") ? lk.nudge/1000 : 0;
     const wn=Math.max(when + c*stg + nudge, AC.currentTime);
     const mel=!!(t.scale && t.scale!=="off");
@@ -4368,6 +4676,12 @@ function fmtSetLevel(db){ return db<=SET_LV_MIN ? "-∞" : ((db>0?"+":"")+db.toF
 // トラック列 → どのセットのものか（いまのセット＝tracks、他は setSlots[k].tracks）
 function setIndexOfTrs(trs){ if(trs===tracks) return setCur; for(let k=0;k<16;k++) if(setSlots[k] && setSlots[k].tracks===trs) return k; return setCur; }
 
+
+function pauseSideClock(){ clearInterval(sideTimer); sideTimer=null; }
+function resumeSideClock(){
+  sidePlayers.forEach(p=>{ const delta=_sideStepTime(p,p.idx)-p.t0; p.t0=AC.currentTime+0.005-delta; const ts=sideTrs(p.k); if(ts) ts.forEach(t=>t.loopPlaying=false); });
+  if(sidePlayers.size) _sideArm();
+}
 // @module ui/transport-view
 // @provides _drawOn, drawLoop, paintTransport, playBtn, recBtn, updateRecBtnLabel
 // @uses AC, clearBarIndicator, clearPatIndicator, displayBar, displayPat, drawQueue, flashPad, kickVu,
@@ -4432,9 +4746,9 @@ recBtn.addEventListener("click",()=>{
 // @module step-strip
 // @provides paintStepStrip, setActiveLock, stepBtns, stepShift, stepStripEl, stepTrackName, stripDrag,
 //    toggleStepAt
-// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, fxBtnTap,
-//    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, pushUndo, rowEls, sampNameEl, selectPad,
-//    selected, setCellWave, setLockEdit, setStep, trackWaveURL, tracks, updateRecBtnLabel
+// @uses FX_OFF, PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo,
+//    fxBtnTap, getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, pushUndo, rowEls, selectPad,
+//    selected, setCellWave, setStep, trackWaveURL, tracks, updateRecBtnLabel
 // @depends boot, plock-undo, ui/transport-view
 // ===== GRID（Digitakt式）ステップ入力 =====
 function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
@@ -4472,33 +4786,8 @@ if(stepStripEl){
     e.preventDefault();
     const s=+b.dataset.s;
     if(armMode==="chop"){ copyTap("note",{t:selected,s}); return; }   // COPY中＝ノート(値+P-LOCK)の元→先
-    if(activeLock && PLOCKS[activeLock]){
-      const spec=PLOCKS[activeLock], lk=getLockEdit(selected,s);
-      const startVal=(lk&&lk[activeLock]!=null)?lk[activeLock]:spec.def;
-      stripDrag={s, x0:e.clientX, moved:false, startVal, undone:false};
-      try{ stepStripEl.setPointerCapture(e.pointerId); }catch(_){}
-    } else {
-      toggleStepAt(s, e.shiftKey);
-    }
+    toggleStepAt(s, e.shiftKey);
   });
-  stepStripEl.addEventListener("pointermove",e=>{
-    if(!stripDrag || !activeLock || !PLOCKS[activeLock]) return;
-    const dx=e.clientX-stripDrag.x0;
-    if(!stripDrag.moved && Math.abs(dx)>5) stripDrag.moved=true;
-    if(stripDrag.moved){
-      if(!stripDrag.undone){ pushUndo(); stripDrag.undone=true; }
-      const spec=PLOCKS[activeLock]; let v;
-      if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let l=Math.log(stripDrag.startVal)+(dx/180)*(lmax-lmin); l=Math.max(lmin,Math.min(lmax,l)); v=Math.exp(l); }
-      else { v=stripDrag.startVal+(dx/180)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); if(activeLock==="pitch"||activeLock==="nudge") v=Math.round(v); }
-      if(!(getPattern(selected)[stripDrag.s]>0)) setStep(selected, stripDrag.s, 1);   // 値を入れたら自動ON（data/patterns）
-      setLockEdit(selected, stripDrag.s, activeLock, v);
-      paintStepStrip();
-      sampNameEl.textContent="STEP "+String(stripDrag.s+1).padStart(2,"0")+" "+activeLock.toUpperCase()+" "+spec.fmt(v)+"  · "+stepTrackName();
-    }
-  });
-  const stripEnd=e=>{ if(!stripDrag) return; if(!stripDrag.moved) toggleStepAt(stripDrag.s, e&&e.shiftKey); stripDrag=null; };
-  stepStripEl.addEventListener("pointerup",stripEnd);
-  stepStripEl.addEventListener("pointercancel",()=>{ stripDrag=null; });
 }
 function paintStepStrip(){
   if(!stepStripEl) return;
@@ -4530,14 +4819,14 @@ paintStepStrip();   // ボタン生成直後の初期描画（起動時の最初
 // p-lock ツールバー（1つだけ点灯／再押しで解除）
 // P-LOCK の選択（perf の #perfPlk から）。以前は隠れた #plockRow のボタンを click() で代理していた
 function setActiveLock(p){
-  activeLock=(activeLock===p)?null:p;
+  activeLock=FX_OFF[p]&&activeLock!==p?p:null; // Live FX selection only; step automation remains disabled.
   document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock], .msbar .msbtn.fx[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
 }
 // スマホの PITCH / FILTER / DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの量。
 // PC の perf と同じく fxBtnTap を通す＝解除しても値は残る（ポッチ）／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
 document.querySelectorAll(".msbar .msbtn.fx").forEach(b=>b.addEventListener("click",()=>{
   fxBtnTap(b.dataset.lock);
-  if(typeof sampNameEl!=="undefined"&&sampNameEl && activeLock===b.dataset.lock) sampNameEl.textContent = b.textContent.trim()+"：パッドを左右にドラッグ＝量 / もう一度で解除（値は残る）・ダブルタップでリセット";
+
   if(typeof paintPerf==="function") paintPerf();
 }));
 function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); }
@@ -4649,7 +4938,7 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
 //    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
 //    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
-//    scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, tracks, trigger
+//    scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, syncPadContentEditor, tracks, trigger
 // @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
@@ -4864,6 +5153,7 @@ function openPadEdit(i){
   if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
   const t=tracks[i];
+  if(typeof syncPadContentEditor==="function") syncPadContentEditor(i);
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
   document.getElementById("peTitle").textContent="EDIT";   // ボタンと同じ名前（v0.3.128）
   if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む
@@ -5122,9 +5412,9 @@ function openPadEdit(i){
 //    barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, effectiveSwing, extractViaPlayback, flashPad,
 //    getPattern, inBlink, isMelodic, isSilent, makeLofi, nextChokeGroup, openPadEdit, paintMixer,
 //    paintPadStates, paintPerf, pickCaptureTarget, playBtn, playVoice, playing, pushUndo, refreshPadDisplay,
-//    sampNameEl, scaleSemi, selectPad, selected, setDelayTempo, setMode, setPadDown, setPadNudge, setPadUp,
-//    setPadUpAll, stepIdx, stepTimeClean, stepTrackName, swingPct, switchView, toggleStepAt, tracks,
-//    trigger, vuHit
+//    sampNameEl, scaleSemi, scratchPadInputDown, scratchPadInputUp, selectPad, selected, setDelayTempo,
+//    setMode, setPadDown, setPadNudge, setPadUp, setPadUpAll, stepIdx, stepTimeClean, stepTrackName,
+//    swingPct, switchView, toggleStepAt, tracks, trigger, vuHit, warmKeyTracks
 // @depends engine-bus, engine-fx, ui/pads-view
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
@@ -5210,6 +5500,7 @@ function applyBpm(v){
   if(wasPlaying) barStartTime += anchor - stepTimeClean(stepIdx);   // 次ステップの時刻を据え置く＝位相維持
   bpm.value=bpmVal; bpmRead.textContent=bpmVal.toFixed(1);
   if(typeof setDelayTempo==="function") setDelayTempo();
+  if(typeof warmKeyTracks==="function") warmKeyTracks();
   if(typeof paintPerf==="function") paintPerf();
 }
 bpm.addEventListener("input",()=>applyBpm(+bpm.value));
@@ -5339,6 +5630,7 @@ window.addEventListener("keydown",async(e)=>{
   if(custom>=0 && !e.altKey && !e.shiftKey){
     e.preventDefault();
     if(typeof inBlink==="function") inBlink(e.key.toUpperCase());
+    if(typeof scratchPadInputDown==="function" && scratchPadInputDown(custom,"key:"+e.code)){selectPad(custom,true);return;}
     if(AC.state!=="running")await AC.resume();
     trigger(custom); selectPad(custom,true);
     return;
@@ -5377,10 +5669,10 @@ window.addEventListener("keydown",async(e)=>{
     }
   }
   const i=KEYMAP.indexOf(k);
-  if(i>=0){if(AC.state!=="running")await AC.resume();trigger(i);selectPad(i,true);}
+  if(i>=0){if(typeof scratchPadInputDown==="function" && scratchPadInputDown(i,"key:"+e.code)){e.preventDefault();selectPad(i,true);return;}if(AC.state!=="running")await AC.resume();trigger(i);selectPad(i,true);}
 });
 // SET のキーを離した＝そのセットを止める（ホールドしていなければ）。窓を離れたら押しっぱなしのキーを放す（v0.3.159）
-window.addEventListener("keyup",e=>{ if(typeof setPadUp==="function") setPadUp("key:"+e.code); });
+window.addEventListener("keyup",e=>{ if(typeof scratchPadInputUp==="function")scratchPadInputUp("key:"+e.code); if(typeof setPadUp==="function") setPadUp("key:"+e.code); });
 window.addEventListener("blur",()=>{ if(typeof setPadUpAll==="function") setPadUpAll(); });
 
 // 全スライダー：タップ/クリックで確実にフォーカスし、↑↓←→キーで操作可能にする
@@ -5568,9 +5860,9 @@ loadPresets().then(async ()=>{
 //    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, perfRecArm, playStep, playing, plockFillsOn,
-//    queuedPat, renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName,
-//    swingPct, tracks, viewPadsEl
+//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, queuedPat,
+//    renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName, swingPct,
+//    tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
@@ -5673,15 +5965,10 @@ setTimeout(lockViewHeight, 400);
 //   同一DOMノードを親替えするだけ＝armed状態/配線(ID参照)はそのまま。
 //   スマホ(<600px)はperf非該当なのでperf(ヘッダtransport依存)に影響なし。
 function relocateMuteSolo(){
-  const mute=document.getElementById("holdMute"), solo=document.getElementById("holdSolo");
-  const tr=document.querySelector(".transport"), msbar=document.querySelector(".msbar"), edit=document.getElementById("holdEdit"), menu=document.getElementById("menuBtn");
-  if(!mute||!solo||!tr||!msbar) return;
-  const mobile=window.innerWidth<=600;
-  if(mobile){
-    if(mute.parentNode!==msbar && edit){ msbar.insertBefore(mute,edit); msbar.insertBefore(solo,edit); mute.classList.add("ms-in-edit"); solo.classList.add("ms-in-edit"); }
-  } else {
-    if(mute.parentNode!==tr && menu){ tr.insertBefore(mute,menu); tr.insertBefore(solo,menu); mute.classList.remove("ms-in-edit"); solo.classList.remove("ms-in-edit"); }
-  }
+  const solo=document.getElementById("holdSolo"), tr=document.querySelector(".transport");
+  if(!solo||!tr) return;
+  // MUTEはエフェクト列に常設。SOLOは既存のヘッダを維持。
+
 }
 window.addEventListener("load", relocateMuteSolo);
 window.addEventListener("resize", relocateMuteSolo);
@@ -5731,14 +6018,15 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     else if(am==="solo") h="SOLO中：パッド=ソロトグル";
     else if(am==="edit") h="EDIT中：パッド=中身編集 / ドラッグ=入替 / 長押し=コピー";
     else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
-    else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右=基本値 / 下段ステップ左右=そのステップだけ(P-LOCK)";
+    else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右／上下で現在値を調整";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
     $("clHint").textContent = _msg ? "" : h;   // メッセージが出ている間はヒントを引っ込める（1行を共用）
   }
   // パターン：現在=on、再生中の予約=queued
-  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{
+  document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>{
     const p=+b.dataset.p;
     b.classList.toggle("on", p===ep);
+    if(b.classList.contains("fx-pattern"))b.setAttribute("aria-pressed",String(p===ep));
     b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
     b.classList.toggle("has", patHasContent(p));   // 中身あり＝ドット表示
   });
@@ -5751,14 +6039,14 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
   // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
-  if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
+  if($("perfMute")) $("perfMute").classList.toggle("on",armMode==="mute");
   if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
 }
 // P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
 (function(){
   const $=id=>document.getElementById(id);
-  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
+  document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
   // 小節(1-4)：COPY中は元→先で小節コピー、通常は setEditBar。DUPはCOPYに統合し撤去。
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); if(typeof barTapHold==="function") barTapHold(+b.dataset.b); paintPerf(); }));   // ダブルタップ＝BAR ホールド（v0.3.161）
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
@@ -5768,8 +6056,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   }));
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
-  if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：いじった値はパッドに残る（ステップには記録しない）"; });
+  if($("perfMute")) $("perfMute").addEventListener("click",()=>fxBtnTap("mute"));
 })();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
@@ -5871,9 +6158,9 @@ function barTapHold(b){
 });
 function updatePatIndicator(p){
   [patSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
-  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{ const on=+b.dataset.p===p; b.classList.toggle("playing",on); if(on) b.classList.remove("queued"); });
+  document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>{ const on=+b.dataset.p===p; b.classList.toggle("playing",on); if(on) b.classList.remove("queued"); });
 }
-function clearPatIndicator(){ [patSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.classList.remove("playing","queued")); }
+function clearPatIndicator(){ [patSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>b.classList.remove("playing","queued")); }
 function updateBarIndicator(bar){ [barSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("playing",+b.dataset.b===bar)); }
 function clearBarIndicator(){ [barSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.remove("playing")); }
 // 編集状態・中身ドット・予約点滅・ループ外小節をまとめて反映
@@ -5966,12 +6253,56 @@ document.getElementById("kDrive").addEventListener("input",function(){
   saturator.curve=makeSatCurve(compDrive);
 });
 
+// @module ui/fx-pattern-page
+// @provides setFxPatternPage
+// @uses activeLock, paintPerf, perfLockApply, setActiveLock
+// @depends -
+// Both responsive rows use the same page. Pattern clicks/LEDs are wired by
+// layout and pattern-master to their existing setEditPat path, not a new clock.
+function setFxPatternPage(patterns){
+  if(patterns&&typeof activeLock!=='undefined'&&activeLock){setActiveLock(null);perfLockApply();} // Pattern page returns pads to playing.
+  document.querySelectorAll('.fx-swipe').forEach(row=>{
+    row.dataset.fxPage=patterns?'patterns':'effects';
+    row.setAttribute('aria-label',patterns?'パターン切替。右へスワイプでエフェクト':'エフェクト。左へスワイプでパターン切替');
+    row.querySelectorAll('.fx-pattern').forEach(b=>b.hidden=!patterns);
+  });
+  if(typeof paintPerf==='function')paintPerf();
+}
+(function(){
+  document.querySelectorAll('.fx-swipe').forEach(row=>{
+    let gesture=null,blockClick=false;
+    row.addEventListener('pointerdown',e=>{
+      if(e.button>0||gesture)return;
+      blockClick=false;gesture={id:e.pointerId,x:e.clientX,y:e.clientY,swipe:false};
+    },true);
+    row.addEventListener('pointermove',e=>{
+      const g=gesture;if(!g||g.id!==e.pointerId)return;
+      const dx=e.clientX-g.x,dy=e.clientY-g.y;
+      if(!g.swipe&&Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)){gesture=null;return;}
+      if(!g.swipe&&Math.abs(dx)>16&&Math.abs(dx)>Math.abs(dy)*1.4){g.swipe=true;row.classList.add('swiping');row.setPointerCapture(e.pointerId);}
+      if(g.swipe)e.preventDefault();
+    },{passive:false});
+    row.addEventListener('pointerup',e=>{
+      const g=gesture;if(!g||g.id!==e.pointerId)return;gesture=null;row.classList.remove('swiping');
+      const dx=e.clientX-g.x,dy=e.clientY-g.y;
+      // Check distance on pointerup as well (some touch systems coalesce moves).
+      if(g.swipe||Math.abs(dx)>=44&&Math.abs(dx)>Math.abs(dy)*1.4){
+        blockClick=true;e.preventDefault();e.stopPropagation();
+        if(Math.abs(dx)>=44&&Math.abs(dx)>Math.abs(dy)*1.4)setFxPatternPage(dx<0);
+      }
+    },true);
+    const cancel=()=>{if(gesture?.swipe)blockClick=true;gesture=null;row.classList.remove('swiping');};
+    row.addEventListener('pointercancel',cancel);row.addEventListener('lostpointercapture',cancel);
+    row.addEventListener('click',e=>{if(blockClick){blockClick=false;e.preventDefault();e.stopImmediatePropagation();}},true);
+    row.addEventListener('keydown',e=>{if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();setFxPatternPage(e.key==='ArrowLeft');}});
+  });
+})();
 // @module sampling
-// @provides _gtrFrame, _lastRecWasResample, _resampling, closeGtrFrame, extractOverlayEl, finalizeRec,
-//    openSampleOverlay, pcmChunks, pcmLen, pcmMute, pcmPeak, pcmSrc, pcmTap, pickCaptureTarget, recActiveEl,
-//    recChoose, recOverlay, recStartMs, recStream, recTakeN, recTargetEl, recTimerId, startRec, stopRec
-// @uses AC, APP_VERSION, PADS, finalClip, isSilent, makeLofi, openPadEdit, peTarget, playBtn, pushUndo,
-//    refreshOpenPadEdit, refreshPadDisplay, sampNameEl, selectPad, selected, syncEditor, tracks
+// @provides _lastRecWasResample, _resampling, extractOverlayEl, finalizeRec, openSampleOverlay, pcmChunks,
+//    pcmLen, pcmMute, pcmPeak, pcmSrc, pcmTap, pickCaptureTarget, recActiveEl, recChoose, recOverlay,
+//    recStartMs, recStream, recTakeN, recTargetEl, recTimerId, startRec, stopRec
+// @uses AC, PADS, finalClip, isSilent, makeLofi, openPadEdit, peTarget, pushUndo, refreshPadDisplay,
+//    sampNameEl, selectPad, selected, syncEditor, tracks
 // @depends -
 // ===== SAMPLING (Tab Audio / Mic) =====
 const recOverlay=document.getElementById("recOverlay");
@@ -6007,50 +6338,6 @@ document.getElementById("sampleBtn").addEventListener("click",()=>{ pickCaptureT
   if(ps) ps.addEventListener("click",()=>{ selectPad(peTarget); openSampleOverlay(); });
 })();
 document.getElementById("recResmp").addEventListener("click",()=>{ _resampling=true; startRec(); });
-// ===== Guitar（GTR）から録る：同一オリジンiframeで演奏→PCMをpostMessageで受領（画面遷移なし＝ビートを失わない） =====
-let _gtrFrame=null;
-function closeGtrFrame(){ if(_gtrFrame){ _gtrFrame.remove(); _gtrFrame=null; } }
-window.addEventListener("keydown",e=>{ if(e.key==="Escape" && _gtrFrame) closeGtrFrame(); });
-document.getElementById("recGtr").addEventListener("click",()=>{
-  recOverlay.classList.remove("show");
-  const wrap=document.createElement("div");
-  wrap.style.cssText="position:fixed;inset:0;z-index:10001;background:#121417;";
-  const f=document.createElement("iframe");
-  f.src="guitar-strum.html?embed=1&v="+APP_VERSION;
-  f.style.cssText="border:0;width:100%;height:100%;";
-  f.setAttribute("allow","autoplay");
-  const x=document.createElement("button");
-  x.textContent="✕";
-  x.style.cssText="position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));"+
-    "z-index:2;width:40px;height:40px;border-radius:8px;border:1px solid #32383f;background:rgba(13,16,19,.85);color:#8b919a;font-size:16px;cursor:pointer;";
-  x.addEventListener("click",closeGtrFrame);   // iframeが読めない/固まっても必ず脱出できる
-  wrap.appendChild(f); wrap.appendChild(x); document.body.appendChild(wrap);
-  _gtrFrame=wrap;
-});
-window.addEventListener("message", async(e)=>{
-  if(e.origin!==location.origin || !e.data) return;
-  if(e.data.type==="gtr-cancel"){ closeGtrFrame(); return; }
-  if(e.data.type==="gtr-beat"){ playBtn.click(); return; }   // GTR画面からビート再生/停止（オーバーダブ用モニター）
-  if(e.data.type!=="gtr-take") return;
-  closeGtrFrame();
-  try{
-    let pcm=new Float32Array(e.data.pcm);
-    if(e.data.sr && Math.abs(e.data.sr-AC.sampleRate)>1){   // AC間のSR差は線形リサンプルで吸収（通常は同一）
-      const ratio=AC.sampleRate/e.data.sr, m=Math.floor(pcm.length*ratio), out=new Float32Array(m);
-      for(let i=0;i<m;i++){ const x=i/ratio, k=Math.floor(x), fr=x-k; out[i]=(pcm[k]||0)*(1-fr)+(pcm[k+1]||0)*fr; }
-      pcm=out;
-    }
-    pcmChunks=[pcm]; pcmLen=pcm.length; _lastRecWasResample=true;   // 合成音＝聴こえたまま（正規化しない）
-    await finalizeRec();   // 共通経路：makeLofi→パッド→EDITモーダル（波形編集）へ
-    const t=tracks[selected];
-    if(t && t.buffer){
-      t.name=(e.data.label||"GTR").slice(0,10);
-      refreshPadDisplay(selected);
-      sampNameEl.textContent="Sampled! "+t.name+" → PAD "+String(selected+1).padStart(2,"0");
-      refreshOpenPadEdit(selected);
-    }
-  }catch(_){ sampNameEl.textContent="IMPORT ERROR — GTRから受け取れなかった"; }
-});
 document.getElementById("recCancel").addEventListener("click",()=>{ stopRec(true); });
 document.getElementById("recTab").addEventListener("click",async()=>{
   try{
@@ -6179,9 +6466,9 @@ async function finalizeRec(){
 // @module save-load
 // @provides SAVE_SCOPE_KEY, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop, curSetData,
 //    saveScope, setData, trackData, uint8ToB64, wavB64Cached
-// @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, sampNameEl, seqDataOf,
-//    setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
+// @uses PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold, editPat,
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, normalizeKeyPhrase, patSync, sampNameEl,
+//    seqDataOf, setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -6242,11 +6529,14 @@ function wavB64Cached(t, crop){
 // 1 トラックを .mics の形に（t は live の tracks[i] でも、セットの snapshot の 1 要素でもよい）
 // 音：触っていないプリセット（buffer がプリセットそのもの）は同梱しない＝起動時に再生成（ファイルが 16 セット分で膨れない）
 function trackData(t,i,type,voice){
+  const content=t;
+  if(t.padKind==="KEY"){t=Object.assign({},t,t.sampleState||{buffer:null,rawBuffer:null,start:0,end:1,loop:false,loopStart:0});type=t.type||"empty";voice=t.voice||null;}
   const preset=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
   const isPreset = type==="synth" && preset && t.buffer===preset.buf;
   const crop = (t.buffer && !isPreset) ? calcCrop(t) : null;
   return {
     name:t.name,
+    padKind:content.padKind||"SPL",keyPhrase:normalizeKeyPhrase(content.keyPhrase),
     type:type,
     voice:voice||null,
     vol:t.vol, tune:t.tune, scale:t.scale,
@@ -6260,7 +6550,7 @@ function trackData(t,i,type,voice){
     patFx:Array.isArray(t.patFx)&&t.patFx.length===4 ? t.patFx.map(o=>({delaySend:o.delaySend||0, reverbSend:o.reverbSend||0, filter:o.filter||"off", cutoff:o.cutoff??12000, reso:o.reso??0.7})) : null,   // エフェクトも A B C D ごと（v0.3.150）
     attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null, key:t.key??null,
     patterns:t.patterns,
-    locks:t.locks||{},
+    locks:{},
     audio: crop ? wavB64Cached(t, crop) : null,
   };
 }
@@ -6323,16 +6613,12 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
   const blob=new Blob([JSON.stringify(f.obj)],{type:"application/json"});
   shareOrDownload(blob, f.name);   // 共有シート（メンバーへ直接）→非対応はDL
 });
-
-// GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）
-document.getElementById("gtrBtn").addEventListener("click",()=>{ window.open("guitar-strum.html?v="+APP_VERSION,"_blank"); });
-document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj-scratch.html?v="+APP_VERSION,"_blank"); });   // 版番号でキャッシュバスト＝常に最新のGTRを開く
 // @module midi
 // @provides _ckTimes, _ckUiT, _midiNoteTimes, assignTo, clRetargetLearn, handleClock, handleMIDI, inBlink,
 //    midiBlink, midiEnabled, midiNoteName, midiSync
 // @uses AC, _ledT, applyBpm, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, playBtn,
-//    playVoice, playing, pushUndo, sampNameEl, selected, setMode, setPadDown, setPadUp, sideCount, tracks,
-//    trigger
+//    playVoice, playing, pushUndo, sampNameEl, scratchGateRelease, scratchPadInputDown, scratchPadInputUp,
+//    selected, setMode, setPadDown, setPadUp, sideCount, tracks, trigger
 // @depends -
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
@@ -6388,7 +6674,7 @@ function handleMIDI(data){
   // クロックはノート入力のON/OFFと独立（MIDI入力OFFでもSYNCは生きる＝トグルの点灯が嘘をつかない）
   if(data[0]>=0xF8){ if(midiSync) handleClock(data[0]); return; }
   const st=data[0]&0xF0, note=data[1], vel=data[2];
-  if(st===0x80 || (st===0x90 && !vel)){ if(typeof setPadUp==="function") setPadUp("midi:"+note); return; }   // Note Off：SET で押していたセットを放す（v0.3.159）。他では使わない
+  if(st===0x80 || (st===0x90 && !vel)){ if(typeof scratchPadInputUp==="function")scratchPadInputUp("midi:"+(data[0]&15)+":"+note); if(typeof setPadUp==="function") setPadUp("midi:"+note); return; }   // Note Off：SET で押していたセットを放す（v0.3.159）。他では使わない
   if(st!==0x90) return;   // Note On のみ
   midiBlink(note);   // 着信は入力OFFでも必ず光らせる＝繋がっているか目で分かる
   if(assignTarget>=0){ assignTo(assignTarget,"midiNote",note,midiNoteName(note)); return; }   // ASSIGN待機中＝鳴らさずに記憶
@@ -6406,6 +6692,8 @@ function handleMIDI(data){
   // SET モード（v0.3.159）：C4〜D#5（60〜75）＝16 セット。鍵盤を押す＝鳴る／離す＝止まる／1 拍押さえるとホールド（キーボードと同じ）
   if(typeof setMode!=="undefined" && setMode && note>=60 && note<=75 && typeof setPadDown==="function" && setPadDown(note-60,"midi:"+note)) return;
   const asg=tracks.findIndex(t=>t.midiNote===note);                // 割り当て済みが最優先
+  const pad=asg>=0?asg:(note>=60&&note<=75?note-60:-1);
+  if(pad>=0 && typeof scratchPadInputDown==="function" && scratchPadInputDown(pad,"midi:"+(data[0]&15)+":"+note))return;
   if(asg>=0) trigger(asg, null, vel>=100);
   else if(note>=60 && note<=75) trigger(note-60, null, vel>=100);   // 既定: C4(中央のド)=パッド1
   else { playVoice(selected, AC.currentTime, vel>=100, false, note-60); flashPad(selected); }
@@ -6416,6 +6704,7 @@ function handleMIDI(data){
     const hook=inp=>{ inp.onmidimessage=ev=>handleMIDI(ev.data); };
     ma.inputs.forEach(hook);
     ma.onstatechange=e=>{
+      if(e.port?.type==="input"&&e.port.state==="disconnected"&&typeof scratchGateRelease==="function")scratchGateRelease();
       if(e.port && e.port.type==="input" && e.port.state==="connected"){
         hook(e.port); sampNameEl.textContent="MIDI IN — "+((e.port.name||"DEVICE").toUpperCase())+(midiEnabled?"":"（メニューでONにすると鳴らせる）");
       }
@@ -6425,7 +6714,7 @@ function handleMIDI(data){
 })();
 
 // @module share-export
-// @provides _expBlob, _expBusy, _expName, applyProject, loadFileData, shareOrDownload
+// @provides _expBlob, _expBusy, _expName, applyProject, loadFileData, shareOrDownload, validateStageData
 // @uses AC, IS_IOS, STEPS, TICKS_PER_16TH, applyFx, applyGroupVol, applySeqData, applySetSnapshot,
 //    autosaveNow, bufToWav, compDrive, compOn, compThreshold, editPat, finalClip, fxDelayAmt, fxDelayOn,
 //    fxReverbAmt, fxReverbOn, groupVol, loadSetData, makeSatCurve, masterGain, multiOut, outBGain,
@@ -6498,7 +6787,32 @@ document.getElementById("exportWavBtn").addEventListener("click",async()=>{
 document.getElementById("loadProjBtn").addEventListener("click",()=>{
   document.getElementById("projFile").click();
 });
+function validateStageData(proj){
+  const number=(v,label,min,max)=>{if(v!=null&&(!Number.isFinite(v)||v<min||v>max))throw new Error(label+"の値が不正です");};
+  if(!proj||![2,3].includes(proj.version))throw new Error("未対応のSTAGE形式です");
+  if(proj.comp){number(proj.comp.threshold,"COMP",-100,0);number(proj.comp.drive,"DRIVE",0,100);}
+  number(proj.masterVol,"MASTER",-100,24);
+  const sets=Array.isArray(proj.sets)?proj.sets:[proj];
+  if(!sets.length||sets.length>16)throw new Error("SET数が不正です");
+  if(proj.sets){number(proj.cur,"SET位置",0,sets.length-1);if(proj.cur!=null&&!Number.isInteger(proj.cur))throw new Error("SET位置が不正です");if(!sets[proj.cur||0])throw new Error("現在のSETがありません");}
+  for(const sd of sets){if(sd==null)continue;
+    if(!Array.isArray(sd.tracks)||sd.tracks.length!==16)throw new Error("SETには16パッドが必要です");
+    number(sd.bpm,"BPM",40,250);number(sd.swing,"SWING",0,100);
+    for(const t of sd.tracks){
+      if(!t||typeof t!=="object")throw new Error("パッドの構造が不正です");
+      if(t.name!=null&&typeof t.name!=="string")throw new Error("パッド名が不正です");
+      for(const k of ["vol","tune","start","end","loopStart","cutoff","reso","attack","fade","delaySend","reverbSend","choke"])
+        if(t[k]!=null&&!Number.isFinite(t[k]))throw new Error(k+"の値が不正です");
+      if(t.audio!=null&&(typeof t.audio!=="string"||t.audio.length>140*1024*1024))throw new Error("音声データが不正です");
+      if(t.filter!=null&&!["off","lp","hp"].includes(t.filter))throw new Error("FILTERの種類が不正です");
+      if(t.patterns!=null){if(!Array.isArray(t.patterns)||t.patterns.length>4)throw new Error("パターンが不正です");for(const pat of t.patterns){if(!Array.isArray(pat))throw new Error("パターンが不正です");const rows=typeof pat[0]==="number"?[pat]:pat;if(rows.length>4)throw new Error("小節数が不正です");for(const row of rows)if(!Array.isArray(row)||row.length>16||row.some(v=>!Number.isFinite(v)||v<0||v>128))throw new Error("ノート列が不正です");}}
+      if(t.keyPhrase!=null&&(!Array.isArray(t.keyPhrase.notes)||t.keyPhrase.notes.length>512))throw new Error("KEY演奏データが不正です");
+    }
+  }
+}
 async function applyProject(proj, opts){
+    validateStageData(proj);
+    const r=await setsFromProject(proj); // 復号失敗時は現在の音・設定を変更しない
     // v0.3.144 §145：ファイル全体 = 16 セット。v3 は sets[16] と cur、v2 / 既定プロジェクトは丸ごと SET 1（他は既定のキット）。
     // opts：deferPaint=重い再描画を次フレームへ／stopAt=古い音を止める時刻／keepSel=選択パッドを保つ
     stopAllVoices((opts&&opts.stopAt)||AC.currentTime);
@@ -6524,7 +6838,6 @@ async function applyProject(proj, opts){
     if(proj.groupVol){ for(let g=0;g<4;g++) groupVol[g]=proj.groupVol[g]??0; applyGroupVol(); }
     if(proj.fx){ fxDelayAmt=proj.fx.delayAmt??0; fxReverbAmt=proj.fx.reverbAmt??0; fxDelayOn=!!proj.fx.delayOn; fxReverbOn=!!proj.fx.reverbOn; applyFx(); }
     // 16 セット（音を復号）→ いまのセットを live へ
-    const r=await setsFromProject(proj);
     setSlots=r.slots; setCur=r.cur; queuedSet=null;
     if(typeof setSetLevel==="function"){ const ss=Array.isArray(proj.sets)?proj.sets:[]; for(let k=0;k<16;k++) setSetLevel(k, (ss[k]&&+ss[k].level)||0); }   // ミックス音量（v0.3.151。v2 は 0）
     applySetSnapshot(setSlots[setCur], opts);
@@ -6811,6 +7124,469 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
   }
   cycle(0);
 })();
+// @module audio/scratch-pad
+// @provides _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFader, _scratchFrame,
+//    _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode, _scratchPos,
+//    _scratchToken, createScratchHead, scratchClose, scratchCue, scratchDrag, scratchFallbackNode,
+//    scratchHold, scratchMotor, scratchOpen, scratchSetFader, scratchState
+// @uses AC, GROUP_OF, dbToGain, groupBus, multiOut, outBGain, reverbPre, sampNameEl, scratchHide,
+//    scratchShow, setCur, setLevelLin, stopVoices, tapeEcho, tracks
+// @depends -
+// Audio unit: resampling, tape-head worklet, routing and scratch control state.
+// UI/platter gestures live in ui/scratch-view.js. Backing transport is untouched.
+let _scratchGraph=[],_scratchModule=null,_scratchNode=null,_scratchCut=null,_scratchToken=0;
+let _scratchPos=0,_scratchFrame=0,_scratchFrameAt=0,_scratchDuration=0,_scratchMotor=true,_scratchDragging=false,_scratchFader=0;
+// One tape-head calculation shared by the worklet and compatibility driver.
+function createScratchHead(data,rate){
+ return {data,pos:0,target:0,origin:0,drag:false,motor:true,stopped:false,dcIn:0,dcOut:0,speed:0,
+  message(m){if(m.type==='stop')this.stopped=true;if(m.type==='hold'){this.drag=!!m.on;this.origin=this.pos;this.target=this.pos;}if(m.type==='drag'&&this.drag&&Number.isFinite(m.delta))this.target=this.origin+m.delta;if(m.type==='motor')this.motor=!!m.on;if(m.type==='cue'){this.pos=0;this.target=0;this.origin=0;this.drag=false;}},
+  state(){const N=this.data.length;return {frame:this.pos,position:N?((this.pos%N)+N)%N/N:0,speed:this.speed};},
+  render(out){if(this.stopped||!this.data.length){out.fill(0);return false;}const d=this.data,N=d.length,follow=1-Math.exp(-1/(rate*.006));
+   for(let j=0;j<out.length;j++){const speed=this.drag?Math.max(-24,Math.min(24,(this.target-this.pos)*follow)):(this.motor?1:0);this.speed=speed;this.pos+=speed;
+    const p=((this.pos%N)+N)%N,k=Math.floor(p),f=p-k,value=(d[k]*(1-f)+d[(k+1)%N]*f)*.7,high=value-this.dcIn+.997*this.dcOut;this.dcIn=value;this.dcOut=high;out[j]=Math.abs(speed)<.00001?0:high;
+   }return true;
+  }
+ };
+}
+const _scratchCode=`const createScratchHead=${createScratchHead.toString()};
+class PadTapeHead extends AudioWorkletProcessor{
+ constructor(o){super();this.head=createScratchHead(o.processorOptions.data,sampleRate);this.count=0;this.port.onmessage=e=>this.head.message(e.data);}
+ process(i,o){if(!this.head.render(o[0][0]))return false;if(++this.count%8===0)this.port.postMessage(this.head.state());return true;}
+}registerProcessor('mics-pad-tape-head',PadTapeHead);`;
+function scratchFallbackNode(data){
+ const node=AC.createScriptProcessor(512,0,1),head=createScratchHead(data,AC.sampleRate);
+ node.port={onmessage:null,postMessage:m=>head.message(m),close:()=>{node.onaudioprocess=null;}};
+ node.onaudioprocess=e=>{head.render(e.outputBuffer.getChannelData(0));if(node.port.onmessage)node.port.onmessage({data:head.state()});};return node;
+}
+function scratchState(){return {position:_scratchPos,frame:_scratchFrame+(!_scratchDragging&&_scratchMotor&&_scratchNode?(AC.currentTime-_scratchFrameAt)*AC.sampleRate:0),duration:_scratchDuration,motor:_scratchMotor,dragging:_scratchDragging,fader:_scratchFader,rate:AC.sampleRate};}
+function scratchHold(on){if(!_scratchNode)return;_scratchDragging=!!on;_scratchNode.port.postMessage({type:'hold',on:!!on});}
+function scratchDrag(frames){if(_scratchNode&&Number.isFinite(frames))_scratchNode.port.postMessage({type:'drag',delta:frames});}
+function scratchMotor(on){_scratchMotor=!!on;if(_scratchNode)_scratchNode.port.postMessage({type:'motor',on:_scratchMotor});}
+function scratchCue(){_scratchDragging=false;_scratchFrame=0;_scratchPos=0;_scratchFrameAt=AC.currentTime;if(_scratchNode)_scratchNode.port.postMessage({type:'cue'});}
+function scratchSetFader(value){_scratchFader=Math.max(0,Math.min(1,+value||0));if(_scratchCut)_scratchCut.gain.setTargetAtTime(_scratchFader,AC.currentTime,.003);}
+function scratchClose(){
+ _scratchToken++;
+ if(_scratchNode){_scratchNode.port.postMessage({type:'stop'});_scratchNode.port.onmessage=null;_scratchNode.port.close();_scratchNode.disconnect();_scratchNode=null;}
+ _scratchGraph.forEach(n=>n.disconnect());_scratchGraph=[];_scratchCut=null;_scratchDragging=false;
+ if(typeof scratchHide==='function')scratchHide();
+}
+async function scratchOpen(i){
+ scratchClose();const t=tracks[i];if(!t?.buffer){sampNameEl.textContent='SCR：サンプルを読み込んでください';return;}
+ const token=++_scratchToken,epoch=t._contentEpoch||0;await AC.resume();
+ let useWorklet=!!AC.audioWorklet;
+ if(!useWorklet&&typeof AC.createScriptProcessor!=='function'){sampNameEl.textContent='このブラウザはスクラッチ音声に対応していません';return;}
+ if(useWorklet&&!_scratchModule){const url=URL.createObjectURL(new Blob([_scratchCode],{type:'text/javascript'}));_scratchModule=AC.audioWorklet.addModule(url).finally(()=>URL.revokeObjectURL(url)).catch(e=>{_scratchModule=null;throw e;});}
+ if(useWorklet)try{await _scratchModule;}catch(e){if(typeof AC.createScriptProcessor==='function')useWorklet=false;else{sampNameEl.textContent='SCRを開始できません：'+e.message;return;}}
+ if(token!==_scratchToken||tracks[i]!==t||(t._contentEpoch||0)!==epoch||t.padKind!=='SCR')return;
+ stopVoices(t,AC.currentTime);
+ const src=t.buffer,from=Math.max(0,Math.min(src.length-1,Math.floor((t.start||0)*src.length))),to=Math.min(src.length,Math.max(from+1,Math.ceil((t.end??1)*src.length)));
+ const raw=src.getChannelData(0),len=Math.max(1,Math.round((to-from)*AC.sampleRate/src.sampleRate)),data=new Float32Array(len);
+ for(let j=0;j<len;j++){const x=Math.min(to-1,from+j*src.sampleRate/AC.sampleRate),k=Math.floor(x),f=x-k;data[j]=raw[k]*(1-f)+(raw[Math.min(k+1,to-1)]||0)*f;}
+ const node=useWorklet?new AudioWorkletNode(AC,'mics-pad-tape-head',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[1],processorOptions:{data}}):scratchFallbackNode(data);
+ _scratchNode=node;_scratchPos=0;_scratchFrame=0;_scratchFrameAt=AC.currentTime;_scratchDuration=len/AC.sampleRate;_scratchMotor=true;_scratchDragging=false;_scratchFader=0;
+ node.port.onmessage=e=>{if(node!==_scratchNode||!Number.isFinite(e.data?.frame))return;_scratchFrame=e.data.frame;_scratchPos=e.data.position;_scratchFrameAt=AC.currentTime;};
+ const cut=AC.createGain(),gain=AC.createGain();cut.gain.value=0;_scratchCut=cut;gain.gain.value=dbToGain(t.vol||0)*setLevelLin(setCur);_scratchGraph.push(cut,gain);
+ let head=node;if(t.filter!=='off'){const filter=AC.createBiquadFilter();filter.type=t.filter==='lp'?'lowpass':'highpass';filter.frequency.value=t.cutoff;filter.Q.value=t.reso;node.connect(filter);head=filter;_scratchGraph.push(filter);}head.connect(cut);cut.connect(gain);
+ if(multiOut&&t.outBus==='B')gain.connect(outBGain);
+ else{gain.connect(groupBus[GROUP_OF[i]]);for(const [amount,target] of [[t.delaySend||0,tapeEcho],[Math.sqrt(t.reverbSend||0),reverbPre]])if(amount>0){const send=AC.createGain();send.gain.value=amount;gain.connect(send);send.connect(target);_scratchGraph.push(send);}}
+ scratchShow(i);
+ document.getElementById('scratchStatus').textContent=useWorklet?'PADキー／MIDI／HOLDを押している間だけ':'PADキー／MIDI／HOLDを押している間だけ（互換再生）';
+}
+// @module ui/scratch-view
+// @provides _scratchGateKey, _scratchGatePointers, _scratchGesture, _scratchPad, _scratchPadInputs,
+//    _scratchRAF, scratchAngleDelta, scratchDrawPlatter, scratchGatePaint, scratchGateRelease, scratchHide,
+//    scratchPadInputDown, scratchPadInputUp, scratchShow
+// @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSetFader,
+//    scratchState, tracks
+// @depends audio/scratch-pad
+// Flat platter and independent fader. Pointer capture permits a second finger
+// on the fader while the first finger holds/drags the record.
+let _scratchRAF=0,_scratchGesture=null,_scratchPad=-1;
+const _scratchPadInputs=new Map();
+const _scratchGatePointers=new Set();let _scratchGateKey=false;
+function scratchGatePaint(){const open=_scratchGatePointers.size>0||_scratchGateKey||[..._scratchPadInputs.values()].includes(_scratchPad);scratchSetFader(open?1:0);const button=document.getElementById('scratchFader');button.setAttribute('aria-pressed',String(open));button.textContent=open?'OPEN · SCR':'HOLD TO OPEN';document.getElementById('scratchFaderRead').textContent=open?'OPEN':'CLOSED';}
+function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();_scratchGatePointers.clear();_scratchGateKey=false;scratchGatePaint();}
+// Preserve held sources across asynchronous audio startup; Note Off/key up can
+// arrive before the worklet finishes loading and must keep the gate closed.
+function scratchPadInputDown(i,id){
+ if(tracks[i]?.padKind!=='SCR')return false;
+ if(_scratchPadInputs.has(id))return true;
+ const opening=(_scratchPad===i&&!document.getElementById('scratchEditor').hidden)||[..._scratchPadInputs.values()].includes(i)?null:scratchOpen(i);
+ _scratchPadInputs.set(id,i);scratchGatePaint();
+ if(opening)opening.then(()=>scratchGatePaint()).catch(e=>{_scratchPadInputs.delete(id);scratchGatePaint();document.getElementById('scratchStatus').textContent=e.message;});
+ return true;
+}
+function scratchPadInputUp(id){_scratchPadInputs.delete(id);scratchGatePaint();}
+function scratchAngleDelta(angle,previous){return Math.atan2(Math.sin(angle-previous),Math.cos(angle-previous));}
+function scratchHide(){_scratchPad=-1;scratchGateRelease();cancelAnimationFrame(_scratchRAF);_scratchRAF=0;_scratchGesture=null;const cv=document.getElementById('scratchDeck');cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=null;document.getElementById('scratchEditor').hidden=true;}
+function scratchDrawPlatter(canvas,state){
+ const dpr=window.devicePixelRatio||1,side=Math.max(1,canvas.clientWidth),pixels=Math.round(side*dpr);if(canvas.width!==pixels||canvas.height!==pixels){canvas.width=pixels;canvas.height=pixels;}
+ const c=canvas.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);const cx=side/2,cy=side/2,r=side*.435;
+ c.clearRect(0,0,side,side);c.fillStyle='#465052';c.fillRect(0,0,side,side);
+ c.fillStyle='#a8ad9e';c.beginPath();c.arc(cx,cy,r+7,0,Math.PI*2);c.fill();c.fillStyle='#171c1c';c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fill();
+ c.strokeStyle='#343e3c';c.lineWidth=1;for(const ratio of [.52,.64,.76,.88,.97]){c.beginPath();c.arc(cx,cy,r*ratio,0,Math.PI*2);c.stroke();}
+ c.save();c.translate(cx,cy);c.rotate(state.frame/(state.rate*1.8)*Math.PI*2);
+ c.fillStyle='#c0c875';c.beginPath();c.arc(0,0,r*.32,0,Math.PI*2);c.fill();c.fillStyle='#171c1c';c.font='bold '+Math.max(11,side*.042)+'px sans-serif';c.textAlign='center';c.fillText('SCR',0,-r*.08);c.font=Math.max(7,side*.022)+'px sans-serif';c.fillText('MICROTONE',0,r*.15);
+ c.strokeStyle='#f0904a';c.lineWidth=Math.max(3,side*.014);c.beginPath();c.moveTo(0,-r*.88);c.lineTo(0,-r*.67);c.stroke();c.restore();
+ c.fillStyle='#d6dbca';c.beginPath();c.arc(cx,cy,side*.012,0,Math.PI*2);c.fill();
+ // Tonearm is a quiet flat silhouette, outside the main touch region.
+ c.strokeStyle='#b8c1b6';c.lineWidth=Math.max(4,side*.018);c.beginPath();c.moveTo(side*.88,side*.11);c.lineTo(side*.88,side*.58);c.lineTo(side*.77,side*.72);c.stroke();c.fillStyle='#d6dbca';c.fillRect(side*.735,side*.695,side*.065,side*.05);
+}
+function scratchShow(i){
+ const editor=document.getElementById('scratchEditor'),cv=document.getElementById('scratchDeck');document.getElementById('scratchTitle').textContent='SCR · '+(tracks[i].name||'PAD '+(i+1));editor.hidden=false;
+ _scratchPad=i;scratchGateRelease(false);_scratchGesture=null;
+ const draw=()=>{if(editor.hidden)return;const state=scratchState();scratchDrawPlatter(cv,state);document.getElementById('scratchMotion').textContent=state.dragging?'HOLD':state.motor?'PLAY':'PAUSE';document.getElementById('scratchPosition').textContent=(state.position*state.duration).toFixed(2)+' / '+state.duration.toFixed(2)+' s';const button=document.getElementById('scratchPlay');button.textContent=state.motor?'Ⅱ PAUSE':'▶ PLAY';button.setAttribute('aria-pressed',String(state.motor));_scratchRAF=requestAnimationFrame(draw);};draw();
+ const angle=e=>{const r=cv.getBoundingClientRect();return Math.atan2(e.clientY-r.top-r.height/2,e.clientX-r.left-r.width/2);};
+ cv.onpointerdown=e=>{if(_scratchGesture)return;const r=cv.getBoundingClientRect(),distance=Math.hypot(e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2);if(distance<r.width*.07||distance>r.width*.46)return;e.preventDefault();_scratchGesture={id:e.pointerId,angle:angle(e),total:0};cv.setPointerCapture(e.pointerId);scratchHold(true);};
+ cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();const next=angle(e);g.total+=scratchAngleDelta(next,g.angle);g.angle=next;scratchDrag(g.total/(Math.PI*2)*scratchState().rate*1.8);};
+ cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;_scratchGesture=null;scratchHold(false);};
+}
+(function(){
+ document.getElementById('scratchClose').addEventListener('click',scratchClose);
+ document.getElementById('scratchPlay').addEventListener('click',()=>scratchMotor(!scratchState().motor));
+ document.getElementById('scratchCue').addEventListener('click',()=>{_scratchGesture=null;scratchCue();});
+ const gate=document.getElementById('scratchFader');
+ gate.addEventListener('pointerdown',e=>{e.preventDefault();_scratchGatePointers.add(e.pointerId);gate.setPointerCapture(e.pointerId);scratchGatePaint();});
+ const release=e=>{_scratchGatePointers.delete(e.pointerId);scratchGatePaint();};
+ gate.addEventListener('pointerup',release);gate.addEventListener('pointercancel',release);gate.addEventListener('lostpointercapture',release);
+ gate.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();if(!e.repeat){_scratchGateKey=true;scratchGatePaint();}}});
+ gate.addEventListener('keyup',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();_scratchGateKey=false;scratchGatePaint();}});
+ gate.addEventListener('blur',scratchGateRelease);window.addEventListener('blur',scratchGateRelease);
+ document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});
+})();
+// @module ui/pad-content
+// @provides KEY_SCALES, _keyAudition, _keyAuditionNode, _keyAuditionToken, _keyAutoFit, _keyDeleteSelection,
+//    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
+//    _keyInScale, _keyLow, _keyMidi, _keyMulti, _keyNavigate, _keyPaint, _keyPhrase, _keyPoint,
+//    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
+//    _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen, padKind, setPadKind,
+//    syncPadContentEditor
+// @uses AC, NOTE_NAMES, PADS, bpmVal, doUndo, masterGain, normalizeKeyPhrase, paintPerf, parseKeyMidi,
+//    peTarget, prepareKeyTrack, previewVoiceFrom, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
+//    scheduleAutosave, scratchClose, stopVoices, tracks
+// @depends plock-undo
+function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
+function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
+async function setPadKind(i,kind){
+  if(!['SPL','KEY','SCR'].includes(kind))return;
+  const t=tracks[i];if(padKind(t)===kind)return;
+  pushUndo();stopVoices(t,AC.currentTime);t.loopPlaying=false;t._contentEpoch=(t._contentEpoch||0)+1;
+  if(kind==='KEY'&&padKind(t)!=='KEY')t.sampleState=_sampleState(t,i);
+  if(padKind(t)==='KEY'&&kind!=='KEY'&&t.sampleState){Object.assign(t,t.sampleState);PADS[i].type=t.sampleState.type;PADS[i].voice=t.sampleState.voice;}
+  t._keySignature=null; // Restoring SPL replaces buffer: never retain a KEY readiness stamp.
+  t.padKind=kind;
+  if(kind==='KEY'){
+    t.keyPhrase=normalizeKeyPhrase(t.keyPhrase);PADS[i].type='sample';PADS[i].voice=null;
+    const epoch=t._contentEpoch;sampNameEl.textContent='KEYを生成中…';const ready=await prepareKeyTrack(t,bpmVal);
+    if(t._contentEpoch!==epoch||t.padKind!=='KEY')return;
+    if(ready)sampNameEl.textContent=t.keyPhrase.notes.length?'KEY · フレーズを演奏できます':'KEY · PIANO ROLLでノートを入力してください';
+  }else sampNameEl.textContent=kind==='SCR'?'SCR · パッドを押すとスクラッチ':'SPL · サンプルを再生';
+  refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
+}
+function syncPadContentEditor(i){
+  const kind=padKind(tracks[i]);
+  document.getElementById('padEditModal').dataset.padKind=kind;
+  document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
+  document.getElementById('peKeyOpen').hidden=kind!=='KEY';
+  document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
+}
+let _keyTarget=-1, _keySelected=-1, _keyLow=48, _keyMidi=null;
+let _keySelection=new Set(), _keyDraft=null, _keyGesture=null, _keyZoom=128, _keySound=false, _keyAutoFit=true, _keyNavigate=false, _keyMulti=false, _keyAuditionNode=null, _keyAuditionToken=0;
+const KEY_SCALES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixolydian:[0,2,4,5,7,9,10],pentatonic:[0,2,4,7,9],minorPentatonic:[0,3,5,7,10],chromatic:[0,1,2,3,4,5,6,7,8,9,10,11]};
+function _keyPhrase(){return _keyDraft||normalizeKeyPhrase(tracks[_keyTarget]?.keyPhrase);}
+function _keyInScale(pitch,e){return KEY_SCALES[e.scale].includes(((pitch-e.root)%12+12)%12);}
+function _keyScalePitch(pitch,e){pitch=Math.max(21,Math.min(108,Math.round(pitch)));if(!e.scaleEnabled)return pitch;for(let d=0;d<12;d++){if(pitch-d>=21&&_keyInScale(pitch-d,e))return pitch-d;if(pitch+d<=108&&_keyInScale(pitch+d,e))return pitch+d;}return pitch;}
+function _keySnapBeat(beat,e,bypass=false){return Math.round(beat*(e.snap&&!bypass?4:96))/(e.snap&&!bypass?4:96);}
+function _keySelect(i,extend=false){if(!extend)_keySelection.clear();if(extend&&_keySelection.has(i))_keySelection.delete(i);else _keySelection.add(i);_keySelected=_keySelection.has(i)?i:([..._keySelection].at(-1)??-1);}
+function _keyFit(){const box=document.getElementById('keyHorizontal'),bars=_keyPhrase().bars;_keyZoom=Math.max(32,Math.min(384,Math.floor((box.clientWidth-58)/(bars*4))));_keyPaint();}
+function keyEditorOpen(i){
+  _keyTarget=i;_keySound=false;_keyAutoFit=true;_keySelected=-1;_keySelection.clear();_keyDraft=null;_keyGesture=null;_keyNavigate=false;_keyMulti=false;
+  const notes=normalizeKeyPhrase(tracks[i].keyPhrase).notes;_keyLow=notes.length?Math.max(21,Math.min(73,Math.floor((Math.min(...notes.map(n=>n.pitch))-12)/12)*12)):48;
+  document.getElementById('keyEditor').hidden=false;document.getElementById('keyExtra').open=window.innerWidth>600;document.getElementById('keyDragMode').value='auto';_keyFit();
+  const scroll=document.querySelector('.key-scroll');scroll.scrollTop=Math.max(0,(_keyLow+35-(notes[0]?.pitch||60))*28-scroll.clientHeight/2);document.getElementById('keyHorizontal').scrollLeft=0;
+}
+function keyEditorClose(){_keyAuditionToken++;_keyGesture=null;_keyDraft=null;_keySelection.clear();document.getElementById('keyEditor').hidden=true;_keyTarget=-1;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}_keyAuditionNode=null;}}
+function _keyDragType(n,x,pointerType,tool,alt){
+  if(tool&&tool!=='auto')return tool;
+  const start=58+n.beat*_keyZoom,width=n.length*_keyZoom,edge=Math.min(pointerType==='touch'?14:8,width/3);
+  return x>=start+width-edge?'right':x<=start+edge?'left':alt?'velocity':'move';
+}
+function _keySetCursor(type){
+  const tool=document.getElementById('keyDragMode').value||'auto';
+  const mode=_keyNavigate?(_keyGesture?'grabbing':'grab'):type||_keyGesture?.type||tool;
+  const cursor={auto:'crosshair',draw:'crosshair',move:'move',left:'w-resize',right:'e-resize',velocity:'ns-resize',grab:'grab',grabbing:'grabbing'}[mode]||'crosshair';
+  document.getElementById('keyRoll').style.cursor=cursor;return cursor;
+}
+function _keyHover(e){
+  if(_keyTarget<0)return;const pt=_keyPoint(e,e.currentTarget),p=_keyPhrase();
+  if(pt.x<58&&!_keyNavigate){_keySetCursor();e.currentTarget.style.cursor='pointer';return;}
+  const pitch=_keyLow+35-Math.floor(pt.y/28),beat=(pt.x-58)/_keyZoom;
+  for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i];if(n.pitch===pitch&&beat>=n.beat-3/_keyZoom&&beat<=n.beat+n.length+3/_keyZoom){_keySetCursor(_keyDragType(n,pt.x,e.pointerType,document.getElementById('keyDragMode').value,e.altKey));return;}}
+  _keySetCursor();
+}
+function _keyFxLabel(id,value){const output=document.getElementById(id+'Read');output.textContent=id.endsWith('Depth')?Math.round(value*100)+'%':(+value).toFixed(id==='keyColorRate'?2:1)+' Hz';}
+function _keyPaint(){
+  if(_keyTarget<0)return;
+  const t=tracks[_keyTarget],p=_keyPhrase(),cv=document.getElementById('keyRoll'),c=cv.getContext('2d'),width=Math.round(58+p.bars*4*_keyZoom);
+  document.getElementById('keyNotePanel').hidden=_keySound;document.getElementById('keySoundPanel').hidden=!_keySound;
+  document.getElementById('keyTabNotes').setAttribute('aria-selected',String(!_keySound));document.getElementById('keyTabSound').setAttribute('aria-selected',String(_keySound));
+  for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
+  document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
+  document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1));document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
+  for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(v?' ON':' OFF');}
+  document.querySelector('.key-panel').classList.toggle('is-navigating',_keyNavigate);document.getElementById('keyScaleRoot').value=p.editor.root;document.getElementById('keyScaleType').value=p.editor.scale;
+  if(cv.width!==width)cv.width=width;if(cv.height!==36*28)cv.height=36*28;
+  c.font='11px sans-serif';c.textBaseline='middle';
+  for(let row=0;row<36;row++){
+    const pitch=_keyLow+35-row,y=row*28,black=[1,3,6,8,10].includes(pitch%12),allowed=_keyInScale(pitch,p.editor);
+    c.fillStyle=black?'#a4a9ad':'#bdc1c3';if(p.editor.scaleEnabled)c.fillStyle=allowed?'#b9cac5':'#999ea1';c.fillRect(58,y,width-58,28);
+    if(p.editor.scaleEnabled&&pitch%12===p.editor.root){c.fillStyle='#9eb9b2';c.fillRect(58,y,width-58,28);}
+    c.strokeStyle='#91989c';c.beginPath();c.moveTo(58,y+27.5);c.lineTo(width,y+27.5);c.stroke();
+    c.fillStyle=black?'#333b40':'#e9eae4';c.fillRect(0,y,57,27);c.fillStyle=black?'#f4f5f2':'#263037';c.fillText(NOTE_NAMES[pitch%12]+(Math.floor(pitch/12)-1),6,y+14);
+  }
+  for(let step=0;step<=p.bars*16;step++){const x=58+step*_keyZoom/4;c.strokeStyle=step%16===0?'#56636b':step%4===0?'#7a858b':'#9da4a8';c.beginPath();c.moveTo(x+.5,0);c.lineTo(x+.5,cv.height);c.stroke();}
+  p.notes.forEach((n,j)=>{
+    const y=(_keyLow+35-n.pitch)*28;if(y<0||y>=cv.height)return;const x=58+n.beat*_keyZoom,w=Math.max(4,n.length*_keyZoom),selected=_keySelection.has(j);
+    c.fillStyle=selected?'#ffb24a':'hsl(168 48% '+(74-n.velocity*.26)+'%)';c.fillRect(x+1,y+3,w-2,22);c.strokeStyle=selected?'#6b3c0f':'#246255';c.strokeRect(x+1.5,y+3.5,Math.max(1,w-3),21);
+    c.save();c.beginPath();c.rect(x+2,y+3,Math.max(1,w-4),22);c.clip();c.fillStyle='#122923';if(w>35)c.fillText(NOTE_NAMES[n.pitch%12]+(Math.floor(n.pitch/12)-1),x+7,y+14);c.restore();
+    if(selected&&w>14){c.fillStyle='#68451c';c.fillRect(x+4,y+8,2,12);c.fillRect(x+w-6,y+8,2,12);}
+  });
+  const ruler=document.getElementById('keyRuler');if(ruler.width!==width)ruler.width=width;if(ruler.height!==28)ruler.height=28;const rc=ruler.getContext('2d');rc.fillStyle='#67747b';rc.fillRect(0,0,width,28);rc.font='11px sans-serif';rc.fillStyle='#fff';rc.fillText('4/4',10,18);for(let b=0;b<p.bars*4;b++){const x=58+b*_keyZoom;rc.fillText((Math.floor(b/4)+1)+'.'+(b%4+1),x+5,18);}
+  const vel=document.getElementById('keyVelocityRoll');if(vel.width!==width)vel.width=width;if(vel.height!==100)vel.height=100;const vc=vel.getContext('2d');vc.fillStyle='#bdc1c3';vc.fillRect(0,0,width,100);vc.font='10px sans-serif';vc.fillStyle='#334049';vc.fillText('VEL',9,17);vc.fillText('127',9,31);vc.fillText('1',18,90);vc.strokeStyle='#929a9f';for(const y of [16,88]){vc.beginPath();vc.moveTo(58,y+.5);vc.lineTo(width,y+.5);vc.stroke();}
+  const drawVelocity=(n,j)=>{const x=58+n.beat*_keyZoom,y=88-(n.velocity-1)/126*72,sel=_keySelection.has(j);vc.strokeStyle=sel?'#9a5514':'#246d61';vc.lineWidth=sel?3:2;vc.beginPath();vc.moveTo(x,88);vc.lineTo(x,y);vc.stroke();vc.fillStyle=sel?'#ffb24a':'#318775';vc.beginPath();vc.arc(x,y,sel?5:4,0,Math.PI*2);vc.fill();if(sel){vc.fillStyle='#243138';vc.fillText(n.velocity,x+7,Math.max(12,y+3));}};
+  p.notes.forEach((n,j)=>{if(!_keySelection.has(j))drawVelocity(n,j);});p.notes.forEach((n,j)=>{if(_keySelection.has(j))drawVelocity(n,j);});
+  const n=p.notes[_keySelected],fields={keyPitch:n?.pitch??60,keyBeat:n?.beat??0,keyLength:n?.length??0.25,keyVelocity:n?.velocity??96};
+  for(const [id,v] of Object.entries(fields)){const el=document.getElementById(id);el.value=typeof v==='number'?+v.toFixed(4):v;el.disabled=!n;}
+  document.getElementById('keyDelete').disabled=!_keySelection.size;document.getElementById('keyDuplicate').disabled=!_keySelection.size;
+  document.getElementById('keySelectionInfo').textContent=n?(_keySelection.size>1?_keySelection.size+' NOTES · ':'')+NOTE_NAMES[n.pitch%12]+(Math.floor(n.pitch/12)-1)+' · '+n.length.toFixed(2)+' beats · VEL '+n.velocity:'ノートを追加';
+}
+async function _keyUpdate(change){
+  if(_keyTarget<0)return;const i=_keyTarget,t=tracks[i],epoch=t._contentEpoch||0;
+  const before=normalizeKeyPhrase(t.keyPhrase),p=normalizeKeyPhrase(t.keyPhrase);change(p);const next=normalizeKeyPhrase(p);
+  if(JSON.stringify(before)===JSON.stringify(next)){_keyPaint();return;}
+  pushUndo();t.keyPhrase=next;_keyPaint();scheduleAutosave();
+  const status=document.getElementById('keyStatus');status.textContent='音声を生成中…';
+  try{const result=await prepareKeyTrack(t,bpmVal);if(result&&(t._contentEpoch||0)===epoch){refreshPadDisplay(i);if(_keyTarget===i)status.textContent='TINE MODEL · 再生できます';}}
+  catch(e){if(_keyTarget===i)status.textContent='生成失敗：'+e.message;}
+}
+async function _keyAudition(pitch,velocity=96){
+  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch,beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
+}
+function _keyPoint(e,canvas){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
+function _keyEndGesture(cancel=false){
+  const g=_keyGesture;if(!g)return;_keyGesture=null;const next=_keyDraft;_keyDraft=null;
+  if(!cancel&&next&&g.target===_keyTarget&&tracks[_keyTarget]===g.track&&(g.track._contentEpoch||0)===g.epoch)_keyUpdate(p=>Object.assign(p,next));else _keyPaint();
+}
+function _keyDuplicate(){if(!_keySelection.size)return;_keyUpdate(p=>{const selected=[..._keySelection].sort((a,b)=>a-b).map(i=>p.notes[i]),offset=Math.max(...selected.map(n=>n.beat+n.length))-Math.min(...selected.map(n=>n.beat)),end=p.bars*4;if(p.notes.length+selected.length>512||selected.some(n=>n.beat+offset+n.length>end)){document.getElementById('keyStatus').textContent='複製先が小節の範囲外か、512ノートの上限です';return;}_keySelection.clear();for(const n of selected){_keySelection.add(p.notes.length);p.notes.push({...n,beat:n.beat+offset});}_keySelected=[..._keySelection][0];});}
+function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.notes=p.notes.filter((_,i)=>!_keySelection.has(i));_keySelection.clear();_keySelected=-1;});}
+(function(){
+  const root=document.getElementById('keyScaleRoot');NOTE_NAMES.forEach((name,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=name;root.appendChild(opt);});
+  document.getElementById('keyTabNotes').addEventListener('click',()=>{_keyEndGesture(true);_keySound=false;_keyPaint();if(_keyAutoFit)_keyFit();});
+  document.getElementById('keyTabSound').addEventListener('click',()=>{_keyEndGesture(true);_keySound=true;_keyPaint();});
+  document.querySelectorAll('[data-key-motion]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.motion=b.dataset.keyMotion)));
+  document.querySelectorAll('[data-key-color]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.color=b.dataset.keyColor)));
+  for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
+    const control=document.getElementById(id);control.addEventListener('input',e=>_keyFxLabel(id,+e.target.value));control.addEventListener('change',e=>_keyUpdate(p=>p.effects[prop]=+e.target.value));
+  }
+  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(b)setPadKind(peTarget,b.dataset.kind).catch(e=>sampNameEl.textContent=e.message);});
+  document.getElementById('peKeyOpen').addEventListener('click',()=>keyEditorOpen(peTarget));
+  document.getElementById('keyClose').addEventListener('click',keyEditorClose);
+  document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
+  document.getElementById('keyPreview').addEventListener('click',async()=>{if(_keyTarget<0)return;const i=_keyTarget;await AC.resume();await prepareKeyTrack(tracks[i],bpmVal);if(_keyTarget===i)previewVoiceFrom(i,null);});
+  document.getElementById('keyBars').addEventListener('change',e=>{const bars=Math.max(1,Math.min(4,+e.target.value||1));if(_keyTarget<0)return;const p=_keyPhrase();if(p.notes.some(n=>n.beat+n.length>bars*4)&&!confirm('小節数を減らすと範囲外の音が切り詰められます。続けますか？')){_keyPaint();return;}_keyUpdate(p=>{p.bars=bars;_keySelection.clear();_keySelected=-1;});});
+  document.getElementById('keyDelete').addEventListener('click',_keyDeleteSelection);document.getElementById('keyDuplicate').addEventListener('click',_keyDuplicate);
+  document.getElementById('keySelectAll').addEventListener('click',()=>{_keySelection=new Set(_keyPhrase().notes.map((_,i)=>i));_keySelected=[..._keySelection][0]??-1;_keyPaint();});
+  document.getElementById('keyNav').addEventListener('click',()=>{_keyEndGesture(true);_keyNavigate=!_keyNavigate;_keyPaint();});document.getElementById('keyMulti').addEventListener('click',()=>{_keyMulti=!_keyMulti;_keyPaint();});
+  document.getElementById('keySnap').addEventListener('click',()=>_keyUpdate(p=>p.editor.snap=!p.editor.snap));
+  document.getElementById('keyScaleOn').addEventListener('click',()=>_keyUpdate(p=>p.editor.scaleEnabled=!p.editor.scaleEnabled));
+  root.addEventListener('change',e=>_keyUpdate(p=>p.editor.root=+e.target.value));document.getElementById('keyScaleType').addEventListener('change',e=>_keyUpdate(p=>p.editor.scale=e.target.value));
+  for(const [id,prop] of [['keyPitch','pitch'],['keyBeat','beat'],['keyLength','length'],['keyVelocity','velocity']])document.getElementById(id).addEventListener('change',e=>_keyUpdate(p=>{const n=p.notes[_keySelected];if(!n)return;const value=+e.target.value;if(!Number.isFinite(value))return;n[prop]=prop==='pitch'?_keyScalePitch(value,p.editor):value;}));
+  document.getElementById('keyOctaveDown').addEventListener('click',()=>{_keyLow=Math.max(21,_keyLow-12);_keyPaint();});document.getElementById('keyOctaveUp').addEventListener('click',()=>{_keyLow=Math.min(73,_keyLow+12);_keyPaint();});
+  document.getElementById('keyDragMode').addEventListener('change',()=>{_keyEndGesture(true);_keySetCursor();document.getElementById('keyStatus').textContent='DRAG · '+document.getElementById('keyDragMode').value;});
+  document.getElementById('keyZoom').addEventListener('input',e=>{_keyAutoFit=false;_keyZoom=+e.target.value;_keyPaint();});document.getElementById('keyFit').addEventListener('click',()=>{_keyAutoFit=true;_keyFit();});
+  window.addEventListener('resize',()=>{if(_keyTarget>=0&&_keyAutoFit)_keyFit();});
+  const roll=document.getElementById('keyRoll'),velocity=document.getElementById('keyVelocityRoll');
+  function begin(e,isVelocity){
+    if(_keyTarget<0||_keyNavigate||e.button>0||_keyGesture)return;
+    const canvas=e.currentTarget,point=_keyPoint(e,canvas),p=_keyPhrase(),beat=(point.x-58)/_keyZoom,pitch=_keyLow+35-Math.floor(point.y/28);
+    if(point.x<58){if(!isVelocity)_keyAudition(pitch);return;}e.preventDefault();canvas.focus({preventScroll:true});
+    let index=-1,type='move';
+    if(isVelocity){let best=20;for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i],dx=Math.abs((n.beat-beat)*_keyZoom),dy=Math.abs(88-(n.velocity-1)/126*72-point.y),distance=Math.hypot(dx,dy*.2);if(dx<14&&distance<best){index=i;best=distance;}}type='velocity';if(index<0)return;}
+    else{for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i];if(n.pitch===pitch&&beat>=n.beat-3/_keyZoom&&beat<=n.beat+n.length+3/_keyZoom){index=i;break;}}}
+    if(index>=0){
+      if(e.shiftKey||_keyMulti){_keySelect(index,true);_keyPaint();if(!_keySelection.has(index))return;}
+      else if(!_keySelection.has(index))_keySelect(index);else _keySelected=index;
+      if(!isVelocity){const n=p.notes[index],x=58+n.beat*_keyZoom,w=n.length*_keyZoom,edge=Math.min(e.pointerType==='touch'?14:8,w/3);type=_keyDragType(n,point.x,e.pointerType,document.getElementById('keyDragMode').value,e.altKey);}
+    }else{
+      if(_keyMulti||e.shiftKey){_keySelection.clear();_keySelected=-1;_keyPaint();return;}
+      if(p.notes.length>=512||beat<0||beat>=p.bars*4)return;
+      const start=Math.max(0,Math.min(p.bars*4-1/96,_keySnapBeat(beat,p.editor,e.metaKey))),note={pitch:_keyScalePitch(pitch,p.editor),beat:start,length:Math.min(.25,p.bars*4-start),velocity:96};
+      index=p.notes.length;p.notes.push(note);_keySelect(index);type='draw';
+    }
+    _keyDraft=p;_keyGesture={id:e.pointerId,target:_keyTarget,track:tracks[_keyTarget],epoch:tracks[_keyTarget]._contentEpoch||0,canvas,index,type,x:e.clientX,y:e.clientY,point,before:normalizeKeyPhrase(p),moved:false};canvas.setPointerCapture(e.pointerId);_keyPaint();if(!isVelocity)_keyAudition(p.notes[index].pitch,p.notes[index].velocity);
+  }
+  function move(e){const g=_keyGesture;if(!g){if(e.currentTarget===roll)_keyHover(e);return;}if(g.id!==e.pointerId)return;e.preventDefault();const pt=_keyPoint(e,g.canvas),dx=pt.x-g.point.x,dy=pt.y-g.point.y;if(Math.hypot(e.clientX-g.x,e.clientY-g.y)<3&&!g.moved)return;g.moved=true;
+    const p=normalizeKeyPhrase(g.before),n=p.notes[g.index],end=p.bars*4,ids=[..._keySelection],bypass=e.metaKey;
+    if(g.type==='move'){
+      let delta=_keySnapBeat(n.beat+dx/_keyZoom,p.editor,bypass)-n.beat;delta=Math.max(-Math.min(...ids.map(i=>p.notes[i].beat)),Math.min(delta,end-Math.max(...ids.map(i=>p.notes[i].beat+p.notes[i].length))));
+      let transpose=_keyScalePitch(n.pitch-Math.round(dy/28),p.editor)-n.pitch;transpose=Math.max(21-Math.min(...ids.map(i=>p.notes[i].pitch)),Math.min(transpose,108-Math.max(...ids.map(i=>p.notes[i].pitch))));
+      ids.forEach(i=>{p.notes[i].beat+=delta;p.notes[i].pitch=_keyScalePitch(p.notes[i].pitch+transpose,p.editor);});
+    }else if(g.type==='right'||g.type==='draw'){
+      const desired=_keySnapBeat(n.beat+n.length+dx/_keyZoom,p.editor,bypass),delta=desired-n.beat-n.length,group=g.type==='draw'?[g.index]:ids;
+      const d=Math.max(Math.max(...group.map(i=>1/96-p.notes[i].length)),Math.min(delta,Math.min(...group.map(i=>end-p.notes[i].beat-p.notes[i].length))));group.forEach(i=>p.notes[i].length+=d);
+    }else if(g.type==='left'){
+      const desired=_keySnapBeat(n.beat+dx/_keyZoom,p.editor,bypass),delta=desired-n.beat,d=Math.max(-Math.min(...ids.map(i=>p.notes[i].beat)),Math.min(delta,Math.min(...ids.map(i=>p.notes[i].length-1/96))));ids.forEach(i=>{p.notes[i].beat+=d;p.notes[i].length-=d;});
+    }else if(g.type==='velocity'){
+      let delta=Math.round(-dy*127/(g.canvas===velocity?72:160));delta=Math.max(1-Math.min(...ids.map(i=>p.notes[i].velocity)),Math.min(delta,127-Math.max(...ids.map(i=>p.notes[i].velocity))));ids.forEach(i=>p.notes[i].velocity+=delta);
+    }
+    _keyDraft=normalizeKeyPhrase(p);_keyPaint();
+    const scroll=document.querySelector('.key-scroll'),r=scroll.getBoundingClientRect(),h=document.getElementById('keyHorizontal'),hr=h.getBoundingClientRect();if(g.canvas===roll){if(e.clientY<r.top+24)scroll.scrollTop-=14;else if(e.clientY>r.bottom-24)scroll.scrollTop+=14;}if(e.clientX>hr.right-24)h.scrollLeft+=12;else if(e.clientX<hr.left+80)h.scrollLeft-=12;
+  }
+  for(const canvas of [roll,velocity]){canvas.addEventListener('pointerdown',e=>begin(e,canvas===velocity));canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',e=>{if(_keyGesture?.id===e.pointerId)_keyEndGesture();});canvas.addEventListener('pointercancel',()=>_keyEndGesture(true));canvas.addEventListener('lostpointercapture',()=>_keyEndGesture(true));}
+  roll.addEventListener('dblclick',e=>{if(_keyNavigate||_keyTarget<0)return;const pt=_keyPoint(e,roll),pitch=_keyLow+35-Math.floor(pt.y/28),beat=(pt.x-58)/_keyZoom,p=_keyPhrase();const i=p.notes.findIndex(n=>n.pitch===pitch&&beat>=n.beat&&beat<n.beat+n.length);if(i>=0){_keySelect(i);_keyDeleteSelection();}});
+  document.getElementById('keyMidiFile').addEventListener('change',async e=>{
+    const f=e.target.files[0];e.target.value='';if(!f)return;const target=_keyTarget;
+    try{const midi=parseKeyMidi(await f.arrayBuffer());if(target!==_keyTarget)return;_keyMidi=midi;const list=document.getElementById('keyMidiTracks');list.replaceChildren();midi.tracks.forEach(t=>{const b=document.createElement('button');b.textContent=t.name;b.addEventListener('click',()=>_keyUpdate(p=>{const editor=p.editor;Object.assign(p,t.phrase);p.editor=editor;_keySelection.clear();_keySelected=-1;}));list.appendChild(b);});document.getElementById('keyStatus').textContent=midi.warnings.join(' / ')+' — 取り込むトラックを選択';}
+    catch(e){document.getElementById('keyStatus').textContent=e.message;}
+  });
+  window.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){_keyEndGesture(true);keyEditorClose();scratchClose();return;}
+    if(_keyTarget<0||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+    const command=e.ctrlKey||e.metaKey;
+    if(command&&e.key.toLowerCase()==='a'){e.preventDefault();e.stopImmediatePropagation();document.getElementById('keySelectAll').click();}
+    else if(command&&e.key.toLowerCase()==='d'){e.preventDefault();e.stopImmediatePropagation();_keyDuplicate();}
+    else if(command&&e.key.toLowerCase()==='z'){e.preventDefault();e.stopImmediatePropagation();document.getElementById('keyUndo').click();}
+    else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();_keyDeleteSelection();}
+    else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)&&_keySelection.size){e.preventDefault();e.stopImmediatePropagation();_keyUpdate(p=>{const ids=[..._keySelection],step=p.editor.snap?.25:1/96;if(e.key==='ArrowLeft'||e.key==='ArrowRight'){let d=e.key==='ArrowLeft'?-step:step;d=Math.max(-Math.min(...ids.map(i=>p.notes[i].beat)),Math.min(d,p.bars*4-Math.max(...ids.map(i=>p.notes[i].beat+p.notes[i].length))));ids.forEach(i=>p.notes[i].beat+=d);}else{const d=e.key==='ArrowUp'?1:-1;ids.forEach(i=>{const n=p.notes[i];if(command)n.velocity=Math.max(1,Math.min(127,n.velocity+d));else{let pitch=n.pitch+(e.shiftKey?12:d);if(e.shiftKey&&d<0)pitch=n.pitch-12;if(p.editor.scaleEnabled&&!e.shiftKey){while(pitch>21&&pitch<108&&!_keyInScale(pitch,p.editor))pitch+=d;}n.pitch=_keyScalePitch(pitch,p.editor);}});}});}
+    // Do not let the sampler's global keyboard bindings play pads while editing.
+    else if(!command)e.stopImmediatePropagation();
+  },true);
+})();
+// @module data/dropbox
+// @provides DB_CONFIG_KEY, DB_PENDING_KEY, DB_SESSION_KEY, _dbAsciiJSON, _dbB64, _dbBusy, _dbCallback,
+//    _dbConfig, _dbRun, _dbSaveConfig, _dbSession, _dbStatus, dropboxConnect, dropboxDisconnect,
+//    dropboxList, dropboxLoad, dropboxRequest, dropboxSave
+// @uses applyProject, autosaveNow, buildProject, buildSaveFile
+// @depends -
+// Public browser client: OAuth code + PKCE, short-lived token in sessionStorage only.
+// References: https://developers.dropbox.com/oauth-guide
+// https://www.dropbox.com/developers/documentation/http/documentation
+const DB_CONFIG_KEY='mics009.dropbox.config', DB_SESSION_KEY='mics009.dropbox.session', DB_PENDING_KEY='mics009.dropbox.pkce';
+let _dbBusy=false;
+function _dbConfig(){try{return JSON.parse(localStorage.getItem(DB_CONFIG_KEY)||'{}');}catch(_){return {};}}
+function _dbSession(){try{const s=JSON.parse(sessionStorage.getItem(DB_SESSION_KEY)||'null');return s&&s.expires>Date.now()?s:null;}catch(_){return null;}}
+function _dbStatus(s){document.getElementById('dbStatus').textContent=s;}
+function _dbB64(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function _dbAsciiJSON(obj){return JSON.stringify(obj).replace(/[\u007f-\uffff]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'));}
+function _dbSaveConfig(){
+  const appKey=document.getElementById('dbAppKey').value.trim(),folder=document.getElementById('dbFolder').value.trim().replace(/\/+$/,'');
+  if(folder&&(!folder.startsWith('/')||folder.split('/').some(x=>x==='.'||x==='..')))throw new Error('共有フォルダは /から始まるパスで指定してください');
+  localStorage.setItem(DB_CONFIG_KEY,JSON.stringify({appKey,folder}));return {appKey,folder};
+}
+async function dropboxConnect(){
+  const {appKey}=_dbSaveConfig();if(!appKey)throw new Error('DropboxのApp keyを設定してください');
+  const verifier=_dbB64(crypto.getRandomValues(new Uint8Array(48))),state=_dbB64(crypto.getRandomValues(new Uint8Array(24)));
+  const redirect=location.origin+location.pathname;
+  const challenge=_dbB64(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
+  sessionStorage.setItem(DB_PENDING_KEY,JSON.stringify({verifier,state,redirect,appKey,time:Date.now()}));
+  await autosaveNow(true);
+  const u=new URL('https://www.dropbox.com/oauth2/authorize');u.search=new URLSearchParams({client_id:appKey,response_type:'code',code_challenge:challenge,code_challenge_method:'S256',state,redirect_uri:redirect,token_access_type:'online',scope:'files.metadata.read files.content.read files.content.write'});
+  location.assign(u.href);
+}
+async function _dbCallback(){
+  const q=new URLSearchParams(location.search);if(!q.has('code')&&!q.has('error'))return;
+  let pending;try{pending=JSON.parse(sessionStorage.getItem(DB_PENDING_KEY)||'null');}catch(_){}
+  if(!pending)return;sessionStorage.removeItem(DB_PENDING_KEY);
+  try{
+    if(q.get('state')!==pending.state||Date.now()-pending.time>10*60*1000)throw new Error('認証要求が一致しないか期限切れです。再接続してください');
+    if(q.has('error'))throw new Error('接続がキャンセルされました');
+    const res=await fetch('https://api.dropboxapi.com/oauth2/token',{method:'POST',body:new URLSearchParams({code:q.get('code'),grant_type:'authorization_code',client_id:pending.appKey,code_verifier:pending.verifier,redirect_uri:pending.redirect})});
+    if(!res.ok)throw new Error('認証できませんでした（'+res.status+'）');const s=await res.json();if(!s.access_token||!s.expires_in)throw new Error('認証応答が不正です');
+    sessionStorage.setItem(DB_SESSION_KEY,JSON.stringify({token:s.access_token,expires:Date.now()+s.expires_in*1000-30000}));_dbStatus('接続しました。共有フォルダを確認してください');
+  }catch(e){_dbStatus(e.message);}
+  finally{const u=new URL(location.href);['code','state','error','error_description'].forEach(k=>u.searchParams.delete(k));history.replaceState(null,'',u.pathname+u.search+u.hash);}
+}
+async function dropboxRequest(endpoint,args,body){
+  const s=_dbSession();if(!s)throw new Error('Dropboxへ接続してください（認証には有効期限があります）');
+  const content=endpoint==='files/upload'||endpoint==='files/download';
+  const headers={Authorization:'Bearer '+s.token};let payload;
+  if(content){headers['Dropbox-API-Arg']=_dbAsciiJSON(args);if(body){headers['Content-Type']='application/octet-stream';payload=body;}}
+  else{headers['Content-Type']='application/json';payload=JSON.stringify(args);}
+  const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),60000);
+  try{
+    const res=await fetch('https://'+(content?'content':'api')+'.dropboxapi.com/2/'+endpoint,{method:'POST',headers,body:payload,signal:abort.signal});
+    if(res.status===401){sessionStorage.removeItem(DB_SESSION_KEY);throw new Error('認証期限切れです。再接続してください');}
+    if(res.status===409)throw new Error(endpoint==='files/upload'?'同じ名前が存在するか保存先を利用できません。別名で保存してください':'ファイル／フォルダへアクセスできません。共有への参加とパスを確認してください');
+    if(!res.ok)throw new Error('Dropbox通信エラー（'+res.status+'）');
+    return endpoint==='files/download'?res.text():res.json();
+  }finally{clearTimeout(timer);}
+}
+async function dropboxList(){
+  const {folder}=_dbSaveConfig(), entries=[];let page=await dropboxRequest('files/list_folder',{path:folder||'',recursive:false,limit:200});
+  entries.push(...page.entries);while(page.has_more){page=await dropboxRequest('files/list_folder/continue',{cursor:page.cursor});entries.push(...page.entries);if(entries.length>10000)throw new Error('フォルダ内の項目が多すぎます。専用フォルダを選んでください');}
+  const list=document.getElementById('dbFiles');list.replaceChildren();
+  for(const f of entries.filter(f=>f['.tag']==='file'&&/\.mics$/i.test(f.name)).sort((a,b)=>b.server_modified.localeCompare(a.server_modified))){
+    const row=document.createElement('div'),b=document.createElement('button');b.textContent=f.name+' · '+new Date(f.server_modified).toLocaleString();b.addEventListener('click',()=>_dbRun(()=>dropboxLoad(f)));row.appendChild(b);list.appendChild(row);
+  }
+  _dbStatus('ステージ '+list.children.length+'件');return entries;
+}
+async function dropboxSave(){
+  const {folder}=_dbSaveConfig();let name=document.getElementById('dbFilename').value.trim();if(!name)name=buildSaveFile('stage').name;
+  if(/[\/\\\x00-\x1f]/.test(name)||name==='.'||name==='..')throw new Error('ファイル名に / や制御文字は使えません');if(!/\.mics$/i.test(name))name+='.mics';
+  const blob=new Blob([JSON.stringify(buildProject())],{type:'application/json'});if(blob.size>100*1024*1024)throw new Error('ステージは100MB以内にしてください');
+  const result=await dropboxRequest('files/upload',{path:(folder||'')+'/'+name,mode:'add',autorename:false,strict_conflict:true,mute:false},blob);
+  _dbStatus('保存しました：'+result.name);return result;
+}
+async function dropboxLoad(file){
+  if(file.size>100*1024*1024)throw new Error('ステージは100MB以内にしてください');
+  const raw=await dropboxRequest('files/download',{path:file.id});const obj=JSON.parse(raw);
+  if(!obj||obj.kind||![2,3].includes(obj.version)||!(Array.isArray(obj.sets)||Array.isArray(obj.tracks)))throw new Error('有効なSTAGEファイルではありません');
+  if(!confirm('編集中のステージを「'+file.name+'」に置き換えます。先に必要なデータを保存してください。'))return;
+  // applyProjectは全音声の復号成功後にのみ現在のステージを変更する。
+  await applyProject(obj);await autosaveNow(true);_dbStatus('読み込みました：'+file.name);
+}
+function dropboxDisconnect(){sessionStorage.removeItem(DB_SESSION_KEY);sessionStorage.removeItem(DB_PENDING_KEY);document.getElementById('dbFiles').replaceChildren();_dbStatus('この端末の接続を解除しました');}
+async function _dbRun(fn){
+  if(_dbBusy)return;_dbBusy=true;document.querySelectorAll('#dropboxPanel button').forEach(b=>b.disabled=true);_dbStatus('通信中…');
+  try{await fn();}catch(e){_dbStatus(e.name==='AbortError'?'通信がタイムアウトしました。再試行してください':e.message);}finally{_dbBusy=false;document.querySelectorAll('#dropboxPanel button').forEach(b=>b.disabled=false);}
+}
+(function(){
+  const c=_dbConfig();document.getElementById('dbAppKey').value=c.appKey||'';document.getElementById('dbFolder').value=c.folder||'';
+  document.getElementById('dbConnect').addEventListener('click',()=>_dbRun(dropboxConnect));document.getElementById('dbList').addEventListener('click',()=>_dbRun(dropboxList));document.getElementById('dbSave').addEventListener('click',()=>_dbRun(dropboxSave));document.getElementById('dbDisconnect').addEventListener('click',dropboxDisconnect);
+  _dbStatus(_dbSession()?'接続中':'未接続：初回はDropboxアプリの設定が必要です');_dbCallback();
+})();
+// @module audio/lifecycle
+// @provides _audioNeedsRecovery, _audioRecovering, audioRecover, audioSuspendScheduling
+// @uses AC, pauseSideClock, pauseTransportClock, resumeSideClock, resumeTransportClock, sampNameEl,
+//    scratchClose, sidePlayers, sideTrs, stopAllVoices, stopVoices
+// @depends engine-core
+// アプリ復帰時に古い先読み予約を捨てる。AudioContextとサンプルは作り直さない。
+let _audioNeedsRecovery=false, _audioRecovering=null;
+function audioSuspendScheduling(){
+  _audioNeedsRecovery=true;
+  pauseTransportClock(); pauseSideClock();
+  stopAllVoices(AC.currentTime);
+  sidePlayers.forEach(p=>{ const ts=sideTrs(p.k); if(ts) ts.forEach(t=>stopVoices(t,AC.currentTime)); });
+  if(typeof scratchClose==='function') scratchClose();
+}
+async function audioRecover(){
+  if(document.hidden) return false;
+  if(_audioRecovering) return _audioRecovering;
+  _audioRecovering=(async()=>{
+    try{
+      if(AC.state!=='running') await AC.resume();
+      if(AC.state!=='running') throw new Error('音声を再開するにはパッドをタップしてください');
+      if(_audioNeedsRecovery){ resumeTransportClock(); resumeSideClock(); _audioNeedsRecovery=false; }
+      return true;
+    }catch(e){ sampNameEl.textContent='音声再開待ち：パッドをタップ'; return false; }
+
+  })().finally(()=>{_audioRecovering=null;});
+  return _audioRecovering;
+}
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) audioSuspendScheduling(); else audioRecover(); });
+window.addEventListener('pageshow',()=>audioRecover());
+AC.addEventListener('statechange',()=>{ if(AC.state==='interrupted'||AC.state==='suspended'){ audioSuspendScheduling(); } else if(AC.state==='running'&&!document.hidden) audioRecover(); });
+document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=='running') audioRecover(); },{capture:true});
 // @module skin-version-splash
 // @provides APP_VERSION
 // @uses AC, buildAllTrackWaves, drawAllPadWaves, previewName
@@ -6832,7 +7608,7 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.170";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.178";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

@@ -1,58 +1,40 @@
 // @module ui/performance-view
-// @provides FX_OFF, _fxTapL, _fxTapT, _fxmLog, _fxmUndo, fxBtnTap, fxClearPad, fxIsSet, fxModalClose,
-//    fxModalOpen, fxPadSet, fxResetAll, fxmPaint, fxmParam, paintFxDots, perfFillPad, perfLockApply,
-//    perfPadDown, perfPadEnd, perfPadMove, plockFillsOn, renderPerfFills
-// @uses PADS, PERF_BASE, PLOCKS, activeLock, armMode, editPat, padsEl, paintPerf, perfDrag, perfRecArm,
-//    perfResetPad, perfTapT, pushUndo, sampNameEl, setActiveLock, syncEditor, tracks
+// @provides FX_OFF, _fxPadGesture, _fxTapL, _fxTapT, _fxmLog, _fxmUndo, fxBtnTap, fxClearPad, fxIsSet,
+//    fxModalClose, fxModalOpen, fxPadSet, fxResetAll, fxmPaint, fxmParam, paintFxDots, perfFillPad,
+//    perfLockApply, perfPadDown, perfPadEnd, perfPadMove, plockFillsOn, renderPerfFills
+// @uses PADS, PERF_BASE, PLOCKS, activeLock, arm, armMode, editPat, padsEl, paintPerf, pushUndo, sampNameEl,
+//    scheduleAutosave, setActiveLock, syncEditor, tracks
 // @depends -
 // ---------- Performance：P-LOCK 選択中のパッド操作（ライブ・モジュレート） ----------
 // 30-ui-pads.js のパッド生成ループに埋まっていた処理を関数に切り出した（v0.3.130 Phase 2）。呼び出し順・中身は同じ。
 // 表示側（perfFillPad／renderPerfFills／perfLockApply）も 61-layout.js からここへ寄せた（v0.3.131 Phase 2 第2段）
 // パッドを押した：P-LOCK 選択中だけ受け持つ（true を返したらパッド側はそこで終わる）
+// Live pad parameter editing only. Never writes step locks or records automation.
+let _fxPadGesture=null;
 function perfPadDown(e,i,d){
-  // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート。STEP(GRID)とは無関係＝最優先（記録可否は perf ● REC で決まる）
-  if(!(activeLock && PERF_BASE[activeLock])) return false;   // P-LOCK選択中はドラッグ＝そのパッドの値（perf でもスマホの DELAY/REVERB でも）
-  e.preventDefault();
-  const now=Date.now();
-  if(now-(perfTapT[i]||0) < 320){      // ダブルタップ＝そのパッドを基準値へ戻す
-    perfTapT[i]=0; perfResetPad(i, activeLock); return true;
-  }
-  perfTapT[i]=now;
-  perfDrag={pad:i, x0:e.clientX, param:activeLock, moved:false, orig:null, origFilter:null, undone:false};
-  try{ d.setPointerCapture(e.pointerId); }catch(_){}
+  if(!FX_OFF[activeLock]||armMode)return false;
+  e.preventDefault();const t=tracks[i],param=activeLock;
+  _fxPadGesture={pad:i,id:e.pointerId,track:t,epoch:t._contentEpoch||0,param,x:e.clientX,y:e.clientY,axis:null,orig:param==='filter'?t.cutoff:t[PERF_BASE[param]],changed:false};
+  try{d.setPointerCapture(e.pointerId);}catch(_){}
   return true;
 }
-// パッド上の横ドラッグ＝そのパッドの P-LOCK 値を生いじり（ステップ列と向きを統一：右で増加）
 function perfPadMove(e,i){
-  if(!perfDrag || perfDrag.pad!==i) return;
-  const dx=e.clientX-perfDrag.x0;                       // 右で増加
-  if(!perfDrag.moved && Math.abs(dx)>6){ perfDrag.moved=true; perfTapT[i]=0; }   // ドラッグはダブルタップ計測に含めない
-  if(!perfDrag.moved) return;
-  const t=tracks[i], spec=PLOCKS[perfDrag.param];
-  const prop=PERF_BASE[perfDrag.param];
-  if(perfDrag.orig===null){                             // 初回：相対ドラッグの基点＝現在値
-    if(!perfDrag.undone){ pushUndo(); perfDrag.undone=true; }   // ドラッグ1回で1手。値は残るので UNDO で戻す（v0.3.168）
-    perfDrag.orig = perfDrag.param==="filter"?t.cutoff : t[prop];
-    if(perfDrag.param==="filter" && t.filter==="off") t.filter="lp";   // 音が出るようLPに（ダブルタップ／RESET で OFF へ）
-  }
-  let v;
-  if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let lv=Math.log(perfDrag.orig)+(dx/200)*(lmax-lmin); lv=Math.max(lmin,Math.min(lmax,lv)); v=Math.exp(lv); }
-  else { v=perfDrag.orig+(dx/200)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); }
-  if(perfDrag.param==="pitch") t[prop]=Math.round(v);
-  else t[prop]=v;                                       // filter(cutoff) / delay / reverb は連続値
-  perfFillPad(i, perfDrag.param);                       // このパッドのフィルを更新（発音なし）
-  const ps=document.getElementById("perfSel");          // 画面にライブ表示
-  if(ps){ ps.textContent=String(i+1).padStart(2,"0")+" "+perfDrag.param.toUpperCase()+" ▸ "+spec.fmt(t[prop])+(perfRecArm?" ●REC":""); }
+  const g=_fxPadGesture;if(!g||g.pad!==i||g.id!==e.pointerId)return;
+  if(tracks[i]!==g.track||(g.track._contentEpoch||0)!==g.epoch){_fxPadGesture=null;return;}
+  const dx=e.clientX-g.x,dy=e.clientY-g.y;
+  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<6)return;g.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';}
+  e.preventDefault();const delta=g.axis==='x'?dx:-dy,spec=PLOCKS[g.param],t=g.track,prop=PERF_BASE[g.param];
+  let value=spec.log?Math.exp(Math.log(Math.max(spec.min,g.orig))+(delta/200)*(Math.log(spec.max)-Math.log(spec.min))):g.orig+(delta/200)*(spec.max-spec.min);
+  value=Math.max(spec.min,Math.min(spec.max,value));
+  if(value===t[prop]&&!(g.param==='filter'&&t.filter==='off'))return;
+  if(!g.changed){pushUndo();g.changed=true;}
+  if(g.param==='filter'&&t.filter==='off')t.filter='lp';t[prop]=value;perfFillPad(i,g.param);
 }
-// 離した：値はそのまま残る（ボタンを解除しても残る v0.3.168）。ボタンのポッチ（設定あり）を更新
 function perfPadEnd(e,i){
-  if(!perfDrag || perfDrag.pad!==i) return;
-  perfDrag=null;
-  if(typeof syncEditor==="function") syncEditor();
-  if(typeof paintPerf==="function") paintPerf();
-  paintFxDots();
+  const g=_fxPadGesture;if(!g||g.pad!==i||g.id!==e.pointerId)return;_fxPadGesture=null;
+  if(g.changed)scheduleAutosave();
+  if(typeof syncEditor==='function')syncEditor();if(typeof paintPerf==='function')paintPerf();paintFxDots();
 }
-
 // ---------- P-LOCK の塗り（.lockfill/.lockv）と、掛ける前の値の控え／復帰（61-layout.js から移動） ----------
 // P-LOCKパラメータ・ページ：選択中は16パッドを「効果量のフィル」表示（発音せず）、キー解放で元値へ復帰
 function perfFillPad(i, param){
@@ -67,10 +49,7 @@ function perfFillPad(i, param){
 // P-LOCK の塗り（.lockfill/.lockv）を出す条件。PC は演奏(body.perf)のとき、スマホは msbar の DELAY/REVERB が見えているとき。
 // v0.3.121 までは body.perf だけを見ていたので、スマホで送り量をドラッグしても塗りも数字も出なかった（§133）。
 function plockFillsOn(){
-  if(!(activeLock && PERF_BASE[activeLock])) return false;
-  if(document.body.classList.contains("perf")) return true;
-  const b=document.querySelector(".msbar .msbtn.fx[data-lock]");
-  return !!b && getComputedStyle(b).display!=="none";
+  return !!FX_OFF[activeLock]&&!armMode; // Live pad values, never step locks
 }
 function renderPerfFills(){
   const param=plockFillsOn()?activeLock:null;
@@ -81,8 +60,8 @@ function renderPerfFills(){
   paintFxDots();
 }
 // エフェクトのボタン（PITCH / FILTER / DELAY / REVERB）の動き（v0.3.168 §162）：
-// **押す＝パッドを左右にドラッグして掛ける／もう一度押す＝ボタンを解除するだけ（値は残る）**。
-// 一度掛けたエフェクトはボタンにポッチ（設定あり）が残る。ダブルタップ＝そのエフェクトを全パッドから外す。EDIT 中に押す＝詳しい設定のモーダル。
+// 押す＝パッドを左右／上下に動かして現在値を調整。再押下＝選択解除（値は保持）。
+// 設定ありはボタンにポッチ。EDIT中だけ詳細設定。全リセットは詳細設定のRESETから。
 // v0.3.121〜168 は「押した時の値を控え、解除でそこへ戻す」形だったので、解除すると消え、SET を替えて解除すると
 // 前のセットの値を新しいセットへ書き込んでいた（控えはセットを知らない）。値をそのまま tracks に置くので、セット / パターンの退避にもそのまま乗る
 function perfLockApply(){
@@ -112,20 +91,15 @@ function fxResetAll(param){
   if(typeof paintPerf==="function") paintPerf();
   if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=param.toUpperCase()+" をリセット（全パッド・UNDO で戻せる）";
 }
-// エフェクトのボタンを押した（PC の #perfPlk とスマホの .msbar から）。350ms 以内にもう一度＝ダブルタップ（iOS は dblclick が当てにならない）
+// Normal tap selects live pad values; EDIT+tap opens parameter settings. No step recording.
 let _fxTapT=-1e9, _fxTapL=null;
-function fxBtnTap(lock){
-  if(FX_OFF[lock] && typeof armMode!=="undefined" && armMode==="edit"){ fxModalOpen(lock); return; }
-  const now=performance.now();
-  if(FX_OFF[lock] && lock===_fxTapL && now-_fxTapT<350){
-    _fxTapT=-1e9;
-    if(activeLock===lock) setActiveLock(lock);    // 1 回目で点いた分を戻す＝ダブルタップの後は解除
-    perfLockApply(); fxResetAll(lock);
-    return;
-  }
-  _fxTapT=now; _fxTapL=lock;
-  setActiveLock(lock);
-  perfLockApply();
+function fxBtnTap(effect){
+  if(effect==="mute"){setActiveLock(null);perfLockApply();arm("mute",armMode!=="mute");return;}
+  if(!FX_OFF[effect]) return;
+  if(armMode==='edit'){setActiveLock(null);perfLockApply();fxModalOpen(effect);return;}
+  if(armMode)arm(armMode,false);
+  setActiveLock(effect);perfLockApply();
+  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整':effect.toUpperCase()+' · 選択解除（設定値は保持）';
 }
 // ---------- EDIT → エフェクトのボタン＝詳しい設定のモーダル（v0.3.168）：パッドごとの量、FILTER は種類も、RESET ----------
 let fxmParam=null, _fxmUndo=false;

@@ -4,6 +4,7 @@
 //   環境変数: SHOT=出力先ディレクトリ（既定 ./tools/_shots）
 // 環境ごとに違うのは chromium の場所だけ。PW_EXE で上書きできる。
 import { chromium, unlock } from './pw.mjs';
+import { checkPadContents } from './pad-content-check.mjs';
 const PORT=process.argv[2]||8137;
 const SHOT=process.env.SHOT||'./tools/_shots';
 await (await import('node:fs/promises')).mkdir(SHOT,{recursive:true});
@@ -202,11 +203,11 @@ async function run(w,h,mobile){
     if(stacked){ ok_(`${V} 16枚のパッドが下段の上に収まる（スクロール無し）`, g.n===16 && g.lastBot<=g.msTop, JSON.stringify(g)); ok_(`${V} パッド高さ ≥44px`, g.minH>=44, g.minH); }
     ok_(`${V} ロゴが画面に残る（${stacked?'PADS/SEQ行':'ヘッダ'}）`, g.logoVis && g.logoIn===(stacked?'dots':'top'), JSON.stringify(g));
   }
-  // 6d) スマホの下段は [MUTE][PITCH][FILTER][DELAY][REVERB]（SOLO/EDIT は出さない）。押してパッド左右ドラッグで値（v0.3.106→v0.3.123 §134、LEVEL 廃止 v0.3.124 §135）
+  // 6d) スマホの下段は MUTE/FILTER/DELAY/REVERB/EDIT。SOLOはヘッダに残す。
   if(mobile){
-    const vis=await p.evaluate(()=>{const g=id=>{const e=document.getElementById(id); const r=e.getBoundingClientRect(); return r.height>0&&getComputedStyle(e).display!=='none'?Math.round(r.height):0;};
+    const vis=await p.evaluate(()=>{const g=id=>{const e=document.getElementById(id); if(!e)return 0; const r=e.getBoundingClientRect(); return r.height>0&&getComputedStyle(e).display!=='none'?Math.round(r.height):0;};
       return {mute:g('holdMute'), solo:g('holdSolo'), edit:g('holdEdit'), pitch:g('fxPitch'), filter:g('fxFilter'), delay:g('fxDelay'), reverb:g('fxReverb'), levelBtns:document.querySelectorAll('[data-lock="level"]').length};});
-    ok_(`${V} 下段は MUTE/PITCH/FILTER/DELAY/REVERB`, vis.mute>=44 && vis.pitch>=44 && vis.filter>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo===0 && vis.edit===0, JSON.stringify(vis));
+    ok_(`${V} 下段は MUTE/FILTER/DELAY/REVERB/EDIT`, vis.mute>=44 && vis.pitch===0 && vis.filter>=44 && vis.delay>=44 && vis.reverb>=44 && vis.solo>=44 && vis.edit>=44, JSON.stringify(vis));
     // スマホは strip（‹名前› LOAD SMPL）を出さない。LOAD/SMPL は EDIT モーダルにある（v0.3.125 §136）
     { const st=await p.evaluate(()=>{ const s=document.querySelector('#viewPads>.strip'); const pad=document.querySelector('#pads .pad').getBoundingClientRect();
         return {strip:getComputedStyle(s).display, padH:Math.round(pad.height), samp:!!document.getElementById('samp')}; });
@@ -221,34 +222,24 @@ async function run(w,h,mobile){
       const pe=await p.evaluate(()=>{ const g=id=>{ const e=document.getElementById(id); const r=e.getBoundingClientRect(); return getComputedStyle(e).display!=='none' && r.height>0 && r.width>0; }; return {load:g('peLoadBtn'), smpl:g('peSmplBtn')}; });
       ok_(`${V} EDIT モーダルに LOAD と SMPL が出る`, pe.load && pe.smpl, JSON.stringify(pe));
       await p.click('#peClose'); await p.waitForTimeout(300); }
-    eq(`${V} 古い level ロックは読み込みで捨てる`, await p.evaluate(()=>stripLegacyLocks({a:{level:-10},b:{level:-10,pitch:2},c:null})), {b:{pitch:2}});
+    eq(`${V} 古いステップロックはすべて読み込みで捨てる`, await p.evaluate(()=>stripLegacyLocks({a:{level:-10},b:{level:-10,pitch:2},c:null})), {});
     ok_(`${V} LEVEL の P-LOCK はどこにも無い（v0.3.124 §135）`, vis.levelBtns===0 && !(await p.evaluate(()=>('level' in PERF_BASE)||('level' in PLOCKS))), JSON.stringify(vis));
     // 6つが1行に収まり、幅44px以上・文字が溢れない（幅を2/3以下に詰めた分の検査）
     const row=await p.evaluate(()=>{ const bs=[...document.querySelectorAll('#viewPads>.msbar button')].filter(b=>getComputedStyle(b).display!=='none');
       return {n:bs.length, rows:new Set(bs.map(b=>Math.round(b.getBoundingClientRect().top))).size, minW:Math.min(...bs.map(b=>b.getBoundingClientRect().width)), over:bs.filter(b=>b.scrollWidth>b.clientWidth).map(b=>b.textContent.trim())}; });
     ok_(`${V} 下段5つが1行・幅44px以上・溢れなし`, row.n===5 && row.rows===1 && row.minW>=44 && row.over.length===0, JSON.stringify(row));
-    // FILTER：押してパッドを左右ドラッグ＝cutoff。filter=off のパッドは LP に切り替わって音が通る
-    await p.evaluate(()=>{ tracks[4].filter="off"; tracks[4].cutoff=12000; });
-    await p.click('#fxFilter'); await p.waitForTimeout(80);
-    eq(`${V} FILTERボタンで activeLock`, await p.evaluate(()=>activeLock), 'filter');
-    { const pb=await box('#pads .pad:nth-child(5)');
-      await p.mouse.move(pb.x,pb.y); await p.mouse.down(); await p.mouse.move(pb.x-60,pb.y,{steps:8}); await p.mouse.up(); await p.waitForTimeout(120);
-      const f=await p.evaluate(()=>({cut:tracks[4].cutoff, type:tracks[4].filter, fill:getComputedStyle(document.querySelector('#pads .pad:nth-child(5) .lockfill')).display}));
-      ok_(`${V} FILTER中にパッド左右ドラッグで cutoff（LPに切替・塗りが出る）`, f.cut<12000 && f.type==='lp' && f.fill==='block', JSON.stringify(f)); }
-    await p.click('#fxFilter'); await p.waitForTimeout(80);
-    eq(`${V} FILTER もう一度で解除`, await p.evaluate(()=>activeLock), null);
-    await p.evaluate(()=>{ selectPad(4); selectPadHeavy(); tracks[4].delaySend=0; });
-    await p.click('#fxDelay'); await p.waitForTimeout(80);
-    eq(`${V} DELAYボタンで activeLock`, await p.evaluate(()=>activeLock), 'delay');
-    const pb=await box('#pads .pad:nth-child(5)');
-    await p.mouse.move(pb.x,pb.y); await p.mouse.down(); await p.mouse.move(pb.x+60,pb.y,{steps:8}); await p.mouse.up(); await p.waitForTimeout(120);
-    const ds=await p.evaluate(()=>tracks[4].delaySend);
-    ok_(`${V} DELAY中にパッド左右ドラッグで送り量`, ds>0, `delaySend=${ds}`);
-    await p.waitForTimeout(400);
-    ok_(`${V} 離しても戻らない`, (await p.evaluate(()=>tracks[4].delaySend))===ds, '戻った');
-    await p.click('#fxDelay'); await p.waitForTimeout(80);
-    eq(`${V} もう一度で解除`, await p.evaluate(()=>activeLock), null);
-    await p.evaluate(()=>{ tracks[4].delaySend=0; });
+    // Normal FX is a live value selection; only EDIT+FX opens parameters.
+    for(const fx of ['filter','delay','reverb']){
+      const button='#fx'+fx[0].toUpperCase()+fx.slice(1);
+      await p.click(button);
+      eq(`${V} ${fx}通常タップは選択・モーダルなし`,await p.evaluate(()=>[activeLock,fxmParam]),[fx,null]);
+      await p.click(button);eq(`${V} 再タップは選択解除`,await p.evaluate(()=>activeLock),null);
+      await p.click('#holdEdit');await p.click(button);
+      eq(`${V} EDITと${fx}で詳細設定`,await p.$eval('#fxModal',e=>e.style.display),'flex');
+      eq(`${V} EDIT中はライブFX選択なし`,await p.evaluate(()=>activeLock),null);
+      await p.click('#fxmClose');await p.click('#holdEdit');
+    }
+
   }
 
   // 7) モーダルは「入り組んだ設定」だけ
@@ -307,12 +298,7 @@ async function run(w,h,mobile){
     const c=document.querySelectorAll('#pads .pad .k')[4].textContent; return [a,b,c]; }), ['12345678QWERTYUI','Z','5']);
   eq(`${V} 奪った割当がUndoで戻る`, await p.evaluate(()=>{ tracks.forEach(t=>{t.key=null;t.midiNote=null;}); tracks[2].key='q';
     assignTo(7,'key','q','Q'); const a=[tracks[7].key,tracks[2].key]; doUndo(); return [...a,tracks[7].key,tracks[2].key]; }), ['q',null,null,'q']);
-  // 7d) ★perf の ●REC が存在してトグルできる（W5 NG-B・v0.3.98）
-  if(await p.evaluate(()=>document.body.classList.contains('perf'))){
-    await p.click('#perfRec'); await p.waitForTimeout(80);
-    eq(`${V} ●REC でP-LOCK記録を有効化できる`, await p.evaluate(()=>perfRecArm), true);
-    await p.click('#perfRec'); await p.waitForTimeout(80);
-  }
+  eq(`${V} 演奏用PITCH・ロックRECが存在しない`, await p.evaluate(()=>document.querySelectorAll('[data-lock="pitch"],#perfRec').length), 0);
   // 7e) ★手叩きの記録先は「表示中の小節」（W5 NG-C・v0.3.98）
   eq(`${V} 小節末の手叩きが次小節に入らない`, await p.evaluate(()=>{
     const sv=tracks[0].patterns[0].map(b=>b.slice());
@@ -540,35 +526,23 @@ async function previewIsolated(){
 }
 // §16 P-LOCK（v0.3.121）：解除＝掛ける前の値へ戻る（効果オフ）／もう一度押す＝最後にいじった値が復活。PC(perf) とスマホで同じ
 async function plockKeeps(){
-  for(const [w,h,mobile,sel,label] of [[1280,800,false,'#perfPlk .perf-plkbtn[data-lock="delay"]','perf'],
-                                        [390,844,true,'.msbar .msbtn.fx[data-lock="delay"]','mobile']]){
-    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
-    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
-    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
-    await ready(p);
-    const send=()=>p.evaluate(()=>+tracks[0].delaySend.toFixed(3));
-    await p.evaluate(()=>{ tracks[0].delaySend=0; });
-    await p.click(sel);                                     // 選択（掛ける前＝0 を控える）
-    await p.evaluate(()=>{ tracks[0].delaySend=0.70; perfFillPad(0,'delay'); });    // パッドを左右ドラッグして 70% にしたのと同じ
-    // 送り量が見える（v0.3.122：スマホでは body.perf が無く塗りが出なかった）
-    const vis=await p.evaluate(()=>{ const el=document.querySelector('#pads .pad'); const f=el.querySelector('.lockfill'), v=el.querySelector('.lockv');
-      return {cls:document.body.classList.contains('perf-plock'), fill:getComputedStyle(f).display, w:parseFloat(f.style.width), num:v.textContent.trim(), numd:getComputedStyle(v).display}; });
-    ok_(`P-LOCK(${label}) 送り量の塗りが見える`, vis.cls && vis.fill==='block' && vis.w>60, JSON.stringify(vis));
-    ok_(`P-LOCK(${label}) 送り量の数字が見える`, vis.numd==='flex' && vis.num.length>0, JSON.stringify(vis));
-    await p.waitForTimeout(450); await p.click(sel);       // 解除（ダブルタップにならない間をあける）
-    const off=await send();
-    ok_(`P-LOCK(${label}) 解除で塗りが消える`, !(await p.evaluate(()=>document.body.classList.contains('perf-plock'))), 'perf-plock が残る');
-    const dot=await p.evaluate(s=>{ const b=document.querySelector(s); return {cls:b.classList.contains('fxset'), on:b.classList.contains('on')}; }, sel);
-    // v0.3.168：解除しても値は残る（v0.3.121〜168 は掛ける前へ戻していた）。ボタンにポッチ＝設定あり
-    ok_(`P-LOCK(${label}) 解除しても値は残る（v0.3.168）`, off===0.7, `${off}（0.7のはず）`);
-    ok_(`P-LOCK(${label}) 解除してもボタンにポッチ（設定あり）`, dot.cls && !dot.on, JSON.stringify(dot));
-    await p.waitForTimeout(450); await p.click(sel); await p.waitForTimeout(80); await p.click(sel);   // ダブルタップ＝リセット
-    const rs=await p.evaluate(s=>{ const b=document.querySelector(s); return {v:tracks[0].delaySend, any:tracks.some(t=>t.delaySend>0), cls:b.classList.contains('fxset'), lock:activeLock}; }, sel);
-    ok_(`P-LOCK(${label}) ダブルタップ＝全パッドから外す・ポッチが消える・ボタンは解除`, rs.v===0 && !rs.any && !rs.cls && rs.lock===null, JSON.stringify(rs));
-    const un=await p.evaluate(()=>{ doUndo(); return +tracks[0].delaySend.toFixed(3); });
-    ok_(`P-LOCK(${label}) リセットは UNDO で戻る`, un===0.7, String(un));
-    eq(`P-LOCK(${label}) 0 errors`, errs, []);
-    await ctx.close();
+  // v0.3.175: 通常はライブ現在値、EDIT時だけ詳細設定。ステップ記録は廃止のまま。
+  for(const [w,h,mobile,sel] of [[1280,800,false,'#perfPlk [data-lock="delay"]'],[390,844,true,'.msbar [data-lock="delay"]']]){
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile});await unlock(ctx);
+    const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(String(e)));await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`);await ready(p);
+    await p.click(sel);
+    eq(`FX ${w} 通常タップは選択`,await p.evaluate(()=>[activeLock,fxmParam]),['delay',null]);
+    await p.click(sel);
+    await p.click(mobile?'#holdEdit':'#perfEdit');await p.click(sel);
+    eq(`FX ${w} EDIT時だけ直接編集`,await p.$eval('#fxModal',e=>e.style.display),'flex');
+    await p.evaluate(()=>{const el=document.querySelector('#fxmList input[data-i="0"]');el.value=0.7;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));});
+    await p.click('#fxmClose');
+    eq(`FX ${w} 閉じても現在値を維持`,await p.evaluate(()=>[tracks[0].delaySend,activeLock,Object.keys(tracks[0].locks||{}).length]),[0.7,null,0]);
+    await p.click(sel);await p.click('#fxmReset');
+    eq(`FX ${w} RESET`,await p.evaluate(()=>tracks.some(t=>t.delaySend>0)),false);
+    await p.click('#fxmClose');await p.evaluate(()=>doUndo());
+    eq(`FX ${w} RESETをUNDO`,await p.evaluate(()=>tracks[0].delaySend),0.7);
+    eq(`FX ${w} errors`,errs,[]);await ctx.close();
   }
 }
 // §17 サンプル名の変更（v0.3.120）：EDITモーダルの名前行が唯一の入口。パッド・SEQ行ラベル・窓が追従する
@@ -657,9 +631,9 @@ async function copyPaint(){
     const a=hitVoice(0), s1=t.loopPlaying, b=hitVoice(0), s2=t.loopPlaying;      // 1回目＝鳴る（true）、2回目＝止まる（false）
     hitVoice(0); stopAllVoices(AC.currentTime); const s3=t.loopPlaying; t.loop=was; return {a,s1,b,s2,s3}; });
   ok_(`hitVoice ループ系は手叩きでトグル／stopAllVoices で全部戻る`, lp.a===true && lp.s1===true && lp.b===false && lp.s2===false && lp.s3===false, JSON.stringify(lp));
-  const ss=await p.evaluate(()=>{ setStep(1, 5, 2); setLockEdit(1, 5, 'pitch', 3); const v1=getPattern(1)[5], l1=!!getLockEdit(1,5);
+  const ss=await p.evaluate(()=>{ setStep(1, 5, 2); tracks[1].locks={'0_0_5':{pitch:3}}; const v1=getPattern(1)[5], l1=!!getLockEdit(1,5);
     setStep(1, 5, 0); const v0=getPattern(1)[5], l0=!!getLockEdit(1,5); return {v1,l1,v0,l0}; });
-  ok_(`setStep ON=値が入る／OFF=p-lock も消える`, ss.v1===2 && ss.l1===true && ss.v0===0 && ss.l0===false, JSON.stringify(ss));
+  ok_(`setStep ON/OFF・旧ロックは参照しない`, ss.v1===2 && ss.l1===false && ss.v0===0 && ss.l0===false, JSON.stringify(ss));
   eq(`COPY/MOVE 0 errors`, errs, []);
   await ctx.close();
 }
@@ -918,14 +892,14 @@ async function barHoldTest(){
   await p.click(bar(1)); await p.waitForTimeout(400);                          // 編集は BAR 2（ホールド中）
   await p.click('#grid .row[data-i="9"] .step[data-s="6"]'); await p.waitForTimeout(80);
   const g1=await p.evaluate(()=>tracks[9].patterns[0].map(b=>b[6]).join());
-  await p.evaluate(()=>{ setLockEdit(9,6,'pitch',5); });
+  eq(`${V} ロック操作APIは廃止`,await p.evaluate(()=>typeof setLockEdit),'undefined');
   const lk=await p.evaluate(()=>Object.keys(tracks[9].locks||{}).filter(k=>/_6$/.test(k)).sort().join());
   await p.click('#grid .row[data-i="9"] .step[data-s="6"]'); await p.waitForTimeout(80);
   const g2=await p.evaluate(()=>({steps:tracks[9].patterns[0].map(b=>b[6]).join(), locks:Object.keys(tracks[9].locks||{}).filter(k=>/_6$/.test(k)).join()}));
   await p.click(bar(0)); await p.waitForTimeout(400);                          // 編集は BAR 1（ホールドしていない）
   await p.click('#grid .row[data-i="9"] .step[data-s="6"]'); await p.waitForTimeout(80);
   const g3=await p.evaluate(()=>tracks[9].patterns[0].map(b=>b[6]).join());
-  ok_(`${V} ホールドした小節で打つ＝ホールドした小節すべての同じ所に入る・消すのも・P-LOCK も／ホールドしていない小節はそこだけ`, g1==='0,1,0,1' && lk==='0_1_6,0_3_6' && g2.steps==='0,0,0,0' && g2.locks==='' && g3==='1,0,0,0', JSON.stringify({g1,lk,g2,g3}));
+  ok_(`${V} ホールドした小節で打つ＝ホールドした小節すべての同じ所に入る・消すのも・P-LOCK も／ホールドしていない小節はそこだけ`, g1==='0,1,0,1' && lk==='' && g2.steps==='0,0,0,0' && g2.locks==='' && g3==='1,0,0,0', JSON.stringify({g1,lk,g2,g3}));
   await p.evaluate(()=>{ tracks[9].patterns[0][0][6]=0; });
   await p.click(bar(3)); await p.click(bar(3)); await p.waitForTimeout(400);   // 元に戻す（BAR 4 を外す＝BAR 2 だけホールド）
   const watch=ms=>p.evaluate(async ms=>{ const seen=new Set(); const t0=performance.now(); while(performance.now()-t0<ms){ seen.add(playBar); await new Promise(r=>setTimeout(r,40)); } return [...seen].sort().join(); }, ms);
@@ -970,6 +944,38 @@ async function patSwitchEnd(){
   };
   await mode('bar', /^0:1 1:0/, 'BAR：2 小節目で B を押す＝2 小節目の終わりで B の頭へ');
   await mode('beat', /^0:1 1:1/, 'BEAT：次の拍で B へ（小節の位置はそのまま＝B の 2 小節目）');
+  // BAR 2・4 HOLD × 3 モード。時計を止め、実 scheduler/scheduleStep を1ステップずつ進める。
+  // playBar は先読みで進むので、実際に発音予約された drawQueue を検査する（小節番号は0始まり）。
+  const held=await p.evaluate(async()=>{
+    await AC.suspend(); applyBpm(100); toggleBarHold(1); toggleBarHold(3);
+    const out={};
+    try{
+      for(const u of ['end','bar','beat']){
+        document.querySelector(`#patSwitch button[data-u="${u}"]`).click();
+        setEditPat(0); playing=true; playPat=0; playBar=firstPlayBar(); displayPat=0;
+        stepIdx=0; queuedPat=null; if(patSlot!==0) patLoad(0);
+        const seq=[];
+        for(let n=0;n<49;n++){
+          // 今のステップだけを先読み窓へ入れる（100 BPM の次ステップは窓の外）。
+          barStartTime=AC.currentTime+LOOKAHEAD-0.001-(stepTimeClean(stepIdx)-barStartTime);
+          drawQueue.length=0; scheduler();
+          seq.push(...drawQueue.map(q=>[q.pat,q.bar,q.step]));
+          if(n===0) setEditPat(1);   // A の BAR 2・step 0 を予約した直後に B を選ぶ
+        }
+        out[u]={seq, hold:heldBars(), queued:queuedPat}; stopTransport();
+      }
+    }finally{ stopTransport(); clearBarHold(); await AC.resume(); }
+    return out;
+  });
+  for(const [u,cut,bar,step] of [['end',32,1,0],['bar',16,1,0],['beat',4,1,4]]){
+    const r=held[u], before=Array.from({length:cut},(_,n)=>[0,n<16?1:3,n%16]);
+    eq(`${V} HOLD 2・4 ${u}：切替前の全ステップ（PATTERN は BAR 4 を最後まで）`, r.seq.slice(0,cut), before);
+    eq(`${V} HOLD 2・4 ${u}：切替位置`, r.seq[cut], [1,bar,step]);
+    eq(`${V} HOLD 2・4 ${u}：B でも HOLD 維持`, r.seq.slice(cut), Array.from({length:49-cut},(_,n)=>{
+      const pos=step+n; return [1,Math.floor(pos/16)%2?3:1,pos%16];
+    }));
+    eq(`${V} HOLD 2・4 ${u}：HOLD 対象・予約消化`, [r.hold,r.queued], [[1,3],null]);
+  }
   await p.evaluate(()=>{ document.querySelector('#patSwitch button[data-u="end"]').click(); });
   await p.evaluate(async()=>{ await clearAutosave(); });
   eq(`${V} 0 errors`, errs, []);
@@ -991,6 +997,7 @@ async function fxKeep(){
     document.querySelector('#perfPlk .perf-plkbtn[data-lock="reverb"]').click();
     const s2=tracks[3].reverbSend; switchSetNow(0); const s1=tracks[3].reverbSend; return {s1, s2, lock:activeLock}; });
   ok_(`${V} SET 1 で掛けて SET 2 へ移って解除：SET 2 は SET 2 の値・SET 1 は掛けた値のまま`, r.s1===0.8 && r.s2===0.25 && r.lock===null, JSON.stringify(r));
+  await p.evaluate(()=>fxModalClose());
   const dot=await p.evaluate(b=>getComputedStyle(document.querySelector(b),'::before').content, btn);
   ok_(`${V} 掛けたボタンにポッチ`, dot!=='none' && dot!=='normal', dot);
   // EDIT 中にエフェクトのボタン＝モーダル（パッドごとの量・RESET）。ボタンは点かない
@@ -1051,11 +1058,11 @@ async function editTools(){
   await ready(p);
   await p.evaluate(async()=>{ await clearAutosave(); });
   const ctr=k=>p.evaluate(k=>{ const b=document.querySelectorAll('#pads .pad')[k].getBoundingClientRect(); return [b.left+b.width/2,b.top+b.height/2]; },k);
-  const before=await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',true); return {a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend, lock:activeLock}; });
+  const before=await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',true); tracks[8].delaySend=0.23;tracks[12].delaySend=0.71;return {a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend,d12:tracks[12].delaySend, lock:activeLock}; });
   const a=await ctr(8), b=await ctr(12);
   await p.mouse.move(a[0],a[1]); await p.mouse.down(); await p.mouse.move(b[0],b[1],{steps:8}); await p.mouse.up(); await p.waitForTimeout(150);
-  const after=await p.evaluate(()=>({a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend, msg:sampNameEl.textContent}));
-  ok_(`${V} P-LOCK（DELAY）を選んだまま EDIT でドラッグ＝パッドの入れ替え（送り量は動かない）`, before.lock==='delay' && after.a===before.b && after.b===before.a && /MOVE 09/.test(after.msg), JSON.stringify({before,after}));
+  const after=await p.evaluate(()=>({a:tracks[8].name, b:tracks[12].name, d8:tracks[8].delaySend,d12:tracks[12].delaySend, msg:sampNameEl.textContent}));
+  ok_(`${V} P-LOCK（DELAY）を選んだまま EDIT でドラッグ＝パッドの入れ替え（送り量は動かない）`, before.lock==='delay' && after.a===before.b && after.b===before.a && after.d8===before.d12 && after.d12===before.d8 && /MOVE 09/.test(after.msg), JSON.stringify({before,after}));
   await p.evaluate(()=>{ setActiveLock('delay'); arm('edit',false); doUndo(); });
   // DELETE：1 回目は「もう一度」、2 回目で空のパッドに。↩ で戻る
   const nm0=await p.evaluate(()=>{ selectPad(0); openPadEdit(0); return tracks[0].name; });
@@ -1197,12 +1204,8 @@ async function patFx(){
   ok_(`${V} エフェクトを A B C D で持たない古いファイルは、全パターンに同じ値`, old.join()==='0.4,0.4,0.4,0.4', JSON.stringify(old));
   const un=await p.evaluate(()=>{ setEditPat(0); pushUndo(); tracks[10].reverbSend=0.9; setEditPat(1); setEditPat(0); const before=tracks[10].reverbSend; doUndo(); return {before, after:tracks[10].reverbSend}; });
   ok_(`${V} undo でエフェクトも戻る`, un.before===0.9 && un.after===0.4, JSON.stringify(un));
-  // v0.3.164：P-LOCK（DELAY）を選んだまま A B C D を替えると、パッドの塗り（値）が追従する／解放しても別のパターンの値を書き込まない
-  const pl=await p.evaluate(()=>{ setEditPat(0); tracks[8].delaySend=0.6; setEditPat(1); tracks[8].delaySend=0.1; setEditPat(0);
-    const btn=document.querySelector('.msbar .msbtn.fx[data-lock="delay"]')||document.querySelector('#perfPlk .perf-plkbtn[data-lock="delay"]'); btn.click();
-    const fill=()=>padsEl.children[8]._lockv.textContent; const a=fill(); setEditPat(1); const b=fill();
-    _fxTapT=-1e9; btn.click(); const afterRelease={lock:activeLock, b:tracks[8].delaySend}; setEditPat(0); return {a, b, afterRelease, backA:tracks[8].delaySend}; });
-  ok_(`${V} P-LOCK を選んだまま A→B：パッドの値の表示が B に追従・解放しても B は B の値・A は A の値`, pl.a==='60' && pl.b==='10' && pl.afterRelease.lock===null && pl.afterRelease.b===0.1 && pl.backA===0.6, JSON.stringify(pl));
+  const pl=await p.evaluate(()=>{setEditPat(0);tracks[8].delaySend=0.6;setEditPat(1);tracks[8].delaySend=0.1;setEditPat(0);fxModalOpen('delay');const a=tracks[8].delaySend;setEditPat(1);fxmPaint();const b=tracks[8].delaySend;fxModalClose();setEditPat(0);return [a,b,tracks[8].delaySend,activeLock];});
+  eq(`${V} FX編集とA/Bの現在値は独立・ロック選択なし`,pl,[0.6,0.1,0.6,null]);
   await p.evaluate(async()=>{ await clearAutosave(); });
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
@@ -1243,6 +1246,7 @@ async function patMute(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+await checkPadContents({br,PORT,ready,unlock,eq,ok_});
 await passGate();
 await copyPaint();
 await devShell();

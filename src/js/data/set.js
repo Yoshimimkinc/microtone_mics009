@@ -4,9 +4,10 @@
 //    setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
-//    paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad, playing, queuedPat,
-//    queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo, setLevels, setSetLevel,
-//    setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct, tracks
+//    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
+//    playing, prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur,
+//    setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
+//    stripLegacyLocks, swingPct, tracks, warmKeyTracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -33,13 +34,14 @@ function _defaultTrackSnap(i){
 function defaultSetSnapshot(k){ return {name:"SET "+(k+1), bpm:100, swing:67, tracks:PADS.map((_,i)=>_defaultTrackSnap(i))}; }
 // いまのセット（live）を snapshot に
 function snapshotSet(){ return {name:(setSlots[setCur]&&setSlots[setCur].name)||("SET "+(setCur+1)), bpm:bpmVal, swing:swingPct, tracks:snapshotState().tracks}; }
-function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {mutes:(x.mutes||[]).slice(), solos:(x.solos||[]).slice(), patFx:Array.isArray(x.patFx)?x.patFx.map(o=>Object.assign({},o)):null, activeVoices:[], loopPlaying:false, patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:JSON.parse(JSON.stringify(x.locks||{}))}))}; }
+function _cloneSnap(s){ return {name:s.name, bpm:s.bpm, swing:s.swing, tracks:s.tracks.map(x=>Object.assign({}, x, {mutes:(x.mutes||[]).slice(), solos:(x.solos||[]).slice(), patFx:Array.isArray(x.patFx)?x.patFx.map(o=>Object.assign({},o)):null, activeVoices:[], loopPlaying:false, patterns:x.patterns.map(p=>p.map(b=>b.slice())), locks:{},keyPhrase:normalizeKeyPhrase(x.keyPhrase),sampleState:x.sampleState?Object.assign({},x.sampleState):null}))}; }
 // .mics のセット（v3 の sets[k]、または v2 のファイル丸ごと）を snapshot に（音を復号。audio の無い synth はプリセット）
 async function decodeSetData(sd,k){
   const snap=defaultSetSnapshot(k);
   if(!sd||!Array.isArray(sd.tracks)) return snap;
   snap.name=String(sd.name||("SET "+(k+1))).slice(0,24); snap.bpm=+sd.bpm||100; snap.swing=+sd.swing||50;
   for(let i=0;i<Math.min(sd.tracks.length,16);i++){ const pt=sd.tracks[i]; if(!pt) continue; const x=snap.tracks[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
+    x.padKind=["SPL","KEY","SCR"].includes(pt.padKind)?pt.padKind:"SPL";x.keyPhrase=normalizeKeyPhrase(pt.keyPhrase);
     x.name=pt.name||x.name; x.type=pt.type||"empty"; x.voice=pt.voice||null;
     x.vol=pt.vol??-4; x.tune=pt.tune??0; x.scale=pt.scale??"off";
     x.filter=pt.filter??"off"; x.cutoff=pt.cutoff??12000; x.reso=pt.reso??0.7;
@@ -65,6 +67,7 @@ async function decodeSetData(sd,k){
       x.start=pt.start??pr.start; x.end=pt.end??pr.end; x.loop=pt.loop??pr.loop; x.loopStart=pt.loopStart??pr.loopStart; }
     else { x.buffer=null; x.rawBuffer=null; x.start=pt.start??0; x.end=pt.end??1; x.loop=pt.loop??false; x.loopStart=pt.loopStart??0; }   // 空パッド（幽霊サンプル防止）
   }
+  for(let i=0;i<snap.tracks.length;i++){const x=snap.tracks[i];if(x.padKind==="KEY"){x.sampleState={buffer:x.buffer,rawBuffer:x.rawBuffer,start:x.start,end:x.end,loop:x.loop,loopStart:x.loopStart,type:x.type,voice:x.voice};await prepareKeyTrack(x,snap.bpm);x.type="sample";x.voice=null;}}
   return snap;
 }
 // ファイル → 16 の snapshot と cur（v3 は sets、v2 / 既定プロジェクトは丸ごと SET 1）。cur から復号する
@@ -87,6 +90,7 @@ function applySetSnapshot(s, opts){
   if($("swing")) $("swing").value=swingPct;
   if(typeof setDelayTempo==="function") setDelayTempo();
   if(!keepSel){ editPat=0; editBar=0; patLoad(0, true); }   // セットの頭は A＝ミュートも A のもの
+  if(typeof warmKeyTracks==="function") warmKeyTracks();
   for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
   if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();

@@ -1,9 +1,9 @@
 // @module sampling
-// @provides _gtrFrame, _lastRecWasResample, _resampling, closeGtrFrame, extractOverlayEl, finalizeRec,
-//    openSampleOverlay, pcmChunks, pcmLen, pcmMute, pcmPeak, pcmSrc, pcmTap, pickCaptureTarget, recActiveEl,
-//    recChoose, recOverlay, recStartMs, recStream, recTakeN, recTargetEl, recTimerId, startRec, stopRec
-// @uses AC, APP_VERSION, PADS, finalClip, isSilent, makeLofi, openPadEdit, peTarget, playBtn, pushUndo,
-//    refreshOpenPadEdit, refreshPadDisplay, sampNameEl, selectPad, selected, syncEditor, tracks
+// @provides _lastRecWasResample, _resampling, extractOverlayEl, finalizeRec, openSampleOverlay, pcmChunks,
+//    pcmLen, pcmMute, pcmPeak, pcmSrc, pcmTap, pickCaptureTarget, recActiveEl, recChoose, recOverlay,
+//    recStartMs, recStream, recTakeN, recTargetEl, recTimerId, startRec, stopRec
+// @uses AC, PADS, finalClip, isSilent, makeLofi, openPadEdit, peTarget, pushUndo, refreshPadDisplay,
+//    sampNameEl, selectPad, selected, syncEditor, tracks
 // @depends -
 // ===== SAMPLING (Tab Audio / Mic) =====
 const recOverlay=document.getElementById("recOverlay");
@@ -39,50 +39,6 @@ document.getElementById("sampleBtn").addEventListener("click",()=>{ pickCaptureT
   if(ps) ps.addEventListener("click",()=>{ selectPad(peTarget); openSampleOverlay(); });
 })();
 document.getElementById("recResmp").addEventListener("click",()=>{ _resampling=true; startRec(); });
-// ===== Guitar（GTR）から録る：同一オリジンiframeで演奏→PCMをpostMessageで受領（画面遷移なし＝ビートを失わない） =====
-let _gtrFrame=null;
-function closeGtrFrame(){ if(_gtrFrame){ _gtrFrame.remove(); _gtrFrame=null; } }
-window.addEventListener("keydown",e=>{ if(e.key==="Escape" && _gtrFrame) closeGtrFrame(); });
-document.getElementById("recGtr").addEventListener("click",()=>{
-  recOverlay.classList.remove("show");
-  const wrap=document.createElement("div");
-  wrap.style.cssText="position:fixed;inset:0;z-index:10001;background:#121417;";
-  const f=document.createElement("iframe");
-  f.src="guitar-strum.html?embed=1&v="+APP_VERSION;
-  f.style.cssText="border:0;width:100%;height:100%;";
-  f.setAttribute("allow","autoplay");
-  const x=document.createElement("button");
-  x.textContent="✕";
-  x.style.cssText="position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));"+
-    "z-index:2;width:40px;height:40px;border-radius:8px;border:1px solid #32383f;background:rgba(13,16,19,.85);color:#8b919a;font-size:16px;cursor:pointer;";
-  x.addEventListener("click",closeGtrFrame);   // iframeが読めない/固まっても必ず脱出できる
-  wrap.appendChild(f); wrap.appendChild(x); document.body.appendChild(wrap);
-  _gtrFrame=wrap;
-});
-window.addEventListener("message", async(e)=>{
-  if(e.origin!==location.origin || !e.data) return;
-  if(e.data.type==="gtr-cancel"){ closeGtrFrame(); return; }
-  if(e.data.type==="gtr-beat"){ playBtn.click(); return; }   // GTR画面からビート再生/停止（オーバーダブ用モニター）
-  if(e.data.type!=="gtr-take") return;
-  closeGtrFrame();
-  try{
-    let pcm=new Float32Array(e.data.pcm);
-    if(e.data.sr && Math.abs(e.data.sr-AC.sampleRate)>1){   // AC間のSR差は線形リサンプルで吸収（通常は同一）
-      const ratio=AC.sampleRate/e.data.sr, m=Math.floor(pcm.length*ratio), out=new Float32Array(m);
-      for(let i=0;i<m;i++){ const x=i/ratio, k=Math.floor(x), fr=x-k; out[i]=(pcm[k]||0)*(1-fr)+(pcm[k+1]||0)*fr; }
-      pcm=out;
-    }
-    pcmChunks=[pcm]; pcmLen=pcm.length; _lastRecWasResample=true;   // 合成音＝聴こえたまま（正規化しない）
-    await finalizeRec();   // 共通経路：makeLofi→パッド→EDITモーダル（波形編集）へ
-    const t=tracks[selected];
-    if(t && t.buffer){
-      t.name=(e.data.label||"GTR").slice(0,10);
-      refreshPadDisplay(selected);
-      sampNameEl.textContent="Sampled! "+t.name+" → PAD "+String(selected+1).padStart(2,"0");
-      refreshOpenPadEdit(selected);
-    }
-  }catch(_){ sampNameEl.textContent="IMPORT ERROR — GTRから受け取れなかった"; }
-});
 document.getElementById("recCancel").addEventListener("click",()=>{ stopRec(true); });
 document.getElementById("recTab").addEventListener("click",async()=>{
   try{

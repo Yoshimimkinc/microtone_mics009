@@ -5,7 +5,7 @@
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
 //    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
 //    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
-//    scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, tracks, trigger
+//    scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, syncPadContentEditor, tracks, trigger
 // @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
@@ -220,6 +220,7 @@ function openPadEdit(i){
   if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
   const t=tracks[i];
+  if(typeof syncPadContentEditor==="function") syncPadContentEditor(i);
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
   document.getElementById("peTitle").textContent="EDIT";   // ボタンと同じ名前（v0.3.128）
   if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む

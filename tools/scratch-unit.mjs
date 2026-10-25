@@ -1,0 +1,90 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+const audioText=fs.readFileSync(new URL('../src/js/audio/scratch-pad.js',import.meta.url),'utf8');let registered,passed=0;
+const sourceContext={};vm.createContext(sourceContext);vm.runInContext(audioText,sourceContext);
+const dspContext={Float32Array,Math,Number,sampleRate:26000,AudioWorkletProcessor:class{constructor(){this.port={postMessage(){}};}},registerProcessor:(name,ctor)=>registered=ctor};vm.createContext(dspContext);vm.runInContext(vm.runInContext('_scratchCode',sourceContext),dspContext);
+const check=(label,fn)=>{fn();console.log('PASS '+label);passed++;};const data=Float32Array.from({length:2600},(_,i)=>Math.sin(i*.1));
+const head=new registered({processorOptions:{data}}),out=()=>{const o=[[new Float32Array(128)]];const alive=head.process([],o);return {samples:o[0][0],alive};},message=m=>head.port.onmessage({data:m});
+let block=out();check('motor advances sample head at normal speed',()=>{assert.equal(head.head.pos,128);assert.ok(block.samples.some(x=>x!==0));});
+message({type:'hold',on:true});const held=head.head.pos;block=out();check('holding record stops at the current position without a jump',()=>{assert.equal(head.head.pos,held);assert.ok(block.samples.every(x=>x===0));});
+message({type:'drag',delta:1000});out();check('forward platter motion reads forward',()=>assert.ok(head.head.pos>held));
+message({type:'drag',delta:-1000});for(let i=0;i<25;i++)block=out();check('backward motion crosses sample start without wrap-target jumps',()=>{assert.ok(head.head.pos<0);assert.ok(block.samples.every(Number.isFinite));});
+const before=head.head.pos;message({type:'hold',on:false});out();check('release resumes playback from the scratched position',()=>assert.ok(Math.abs(head.head.pos-before-128)<.001));
+message({type:'motor',on:false});const paused=head.head.pos;block=out();check('paused motor emits silence without DC',()=>{assert.equal(head.head.pos,paused);assert.ok(block.samples.every(x=>x===0));});
+message({type:'hold',on:true});message({type:'drag',delta:200});block=out();check('manual scratching works while motor is paused',()=>assert.ok(block.samples.some(x=>Math.abs(x)>.001)));
+message({type:'hold',on:false});out();check('release respects paused motor state',()=>assert.equal(head.head.motor,false));
+message({type:'cue'});check('CUE seeks to sample start and releases hold',()=>{assert.equal(head.head.pos,0);assert.equal(head.head.drag,false);});
+message({type:'stop'});check('closing the scratch processor releases its audio thread',()=>assert.equal(out().alive,false));
+
+// Integration: real audio-unit open, gain routing, controls, stale-work guard.
+const gains=[],nodes=[];let shown=0,hidden=0;
+function gain(){const n={gain:{value:1,setTargetAtTime(v){this.value=v;}},connections:[],connect(to){this.connections.push(to);},disconnect(){this.disconnected=true;}};gains.push(n);return n;}
+const ctx={console,Math,Number,Float32Array,Promise,URL:{createObjectURL:()=> 'blob:qa',revokeObjectURL(){}},Blob,
+ AC:{sampleRate:48000,currentTime:10,resume:async()=>{},audioWorklet:{addModule:async()=>{}},createGain:gain},
+ AudioWorkletNode:class{constructor(ac,name,options){this.options=options;this.connections=[];this.messages=[];this.port={postMessage:m=>this.messages.push(m),close:()=>this.closed=true,onmessage:null};nodes.push(this);}connect(n){this.connections.push(n);}disconnect(){this.disconnected=true;}},
+ tracks:[{padKind:'SCR',buffer:{length:data.length,sampleRate:26000,getChannelData:()=>data},start:0,end:1,vol:-4,filter:'off',delaySend:.2,reverbSend:.3,_contentEpoch:0}],GROUP_OF:[0],groupBus:[{}],multiOut:false,outBGain:{},tapeEcho:{},reverbPre:{},setCur:0,setLevelLin:()=>1,dbToGain:db=>10**(db/20),stopVoices(){},sampNameEl:{},scratchShow:()=>shown++,scratchHide:()=>hidden++,document:{getElementById:()=>({textContent:''})},stopTransport(){throw Error('scratch must not stop backing');}};
+vm.createContext(ctx);vm.runInContext(audioText,ctx);await ctx.scratchOpen(0);
+check('SCR opens the platter and resamples into the shared context rate',()=>{assert.equal(shown,1);assert.equal(nodes[0].options.processorOptions.data.length,4800);assert.equal(ctx.scratchState().duration,.1);});
+const cut=gains[0],volume=gains[1];check('crossfader sits before dry and FX sends, outside the backing bus',()=>{assert.equal(cut.gain.value,0);assert.equal(nodes[0].connections[0],cut);assert.equal(cut.connections[0],volume);assert.ok(volume.connections.includes(ctx.groupBus[0]));assert.equal(volume.connections.length,3);});
+const volumeBefore=volume.gain.value;ctx.scratchSetFader(0);check('fader cuts only scratch audio',()=>{assert.equal(cut.gain.value,0);assert.equal(volume.gain.value,volumeBefore);});
+ctx.scratchSetFader(2);check('fader clamps to its valid range',()=>assert.equal(ctx.scratchState().fader,1));
+ctx.scratchHold(true);ctx.scratchDrag(-2400);ctx.scratchMotor(false);check('audio controls send independent hold, drag and motor commands',()=>assert.deepEqual(nodes[0].messages.slice(-3).map(m=>m.type),['hold','drag','motor']));
+ctx.scratchClose();check('close disconnects source, sends and fader',()=>{assert.ok(nodes[0].closed&&nodes[0].disconnected);assert.ok(gains.every(n=>n.disconnected));assert.ok(hidden>=1);});
+vm.runInContext('_scratchModule=null',ctx);let release,started;const moduleStarted=new Promise(r=>started=r);ctx.AC.audioWorklet.addModule=()=>{started();return new Promise(r=>release=r);};const pending=ctx.scratchOpen(0);await moduleStarted;ctx.tracks[0]._contentEpoch++;release();await pending;
+check('late worklet load cannot open a replaced pad',()=>assert.equal(nodes.length,1));
+
+// The compatibility driver runs exactly the same core and control protocol.
+const fallbackNodes=[];ctx.AC.audioWorklet=null;ctx.AC.createScriptProcessor=()=>{const n={connections:[],connect(to){this.connections.push(to);},disconnect(){this.disconnected=true;}};fallbackNodes.push(n);return n;};
+await ctx.scratchOpen(0);const fallback=fallbackNodes[0],fbOut=new Float32Array(512);fallback.onaudioprocess({outputBuffer:{getChannelData:()=>fbOut}});
+check('compatibility path opens and produces scratch audio',()=>{assert.equal(fallbackNodes.length,1);assert.ok(fbOut.some(x=>Math.abs(x)>.001));});
+ctx.scratchHold(true);fallback.onaudioprocess({outputBuffer:{getChannelData:()=>fbOut}});check('compatibility record hold uses the same silent-stop core',()=>assert.ok(fbOut.every(x=>x===0)));
+ctx.scratchClose();check('compatibility close releases callback and graph',()=>{assert.equal(fallback.onaudioprocess,null);assert.equal(fallback.disconnected,true);});
+// UI: angular wrap and a second pointer's fader do not disturb platter capture.
+const els=new Map(),noop=()=>{},drawing=new Proxy({},{get:()=>noop,set:()=>true});
+function el(id){if(!els.has(id))els.set(id,{id,hidden:false,clientWidth:300,width:0,height:0,value:1,listeners:{},setAttribute(k,v){this[k]=v;},addEventListener(k,f){this.listeners[k]=f;},getContext:()=>drawing,getBoundingClientRect:()=>({left:0,top:0,width:300,height:300}),setPointerCapture:noop});return els.get(id);}
+const state={position:.2,frame:520,duration:.1,motor:true,dragging:false,fader:1,rate:26000},moves=[];let cancels=0;
+const ui={console,Math,Number,window:{devicePixelRatio:2,addEventListener:()=>{}},document:{getElementById:el},requestAnimationFrame:()=>1,cancelAnimationFrame:()=>cancels++,tracks:[{name:'SCR TEST'}],scratchState:()=>state,scratchHold:on=>state.dragging=on,scratchDrag:d=>moves.push(d),scratchMotor:on=>state.motor=on,scratchSetFader:v=>state.fader=Math.max(0,Math.min(1,v)),scratchCue:()=>{state.frame=0;state.dragging=false;},scratchClose:()=>ui.scratchHide()};
+vm.createContext(ui);vm.runInContext(fs.readFileSync(new URL('../src/js/ui/scratch-view.js',import.meta.url),'utf8'),ui);
+check('angle unwrap is continuous across +π / −π',()=>assert.ok(Math.abs(ui.scratchAngleDelta(-Math.PI+.1,Math.PI-.1)-.2)<1e-9));
+ui.scratchShow(0);const cv=el('scratchDeck'),e=(x,y,id=1)=>({clientX:x,clientY:y,pointerId:id,preventDefault:noop});cv.onpointerdown(e(240,150));cv.onpointermove(e(150,240));
+check('quarter-turn platter motion is a relative audio displacement',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(moves[0]-11700)<1e-6);});
+cv.onpointerdown(e(240,150,2));cv.onpointermove(e(150,60,2));check('second platter pointer cannot steal the held record',()=>assert.equal(moves.length,1));
+const gate=el('scratchFader');gate.listeners.pointerdown(e(0,0,2));check('gate opens while a different pointer holds the record',()=>{assert.equal(state.dragging,true);assert.equal(state.fader,1);assert.equal(el('scratchFaderRead').textContent,'OPEN');});
+gate.listeners.pointerup(e(0,0,2));check('releasing gate closes sound without releasing the platter',()=>{assert.equal(state.dragging,true);assert.equal(state.fader,0);assert.equal(el('scratchFaderRead').textContent,'CLOSED');});
+gate.listeners.pointerdown(e(0,0,2));gate.listeners.pointercancel(e(0,0,2));check('cancelled touch cannot leave the gate open',()=>assert.equal(state.fader,0));
+const key={code:'Space',repeat:false,preventDefault:noop,stopPropagation:noop};gate.listeners.keydown(key);check('keyboard hold opens the gate',()=>assert.equal(state.fader,1));gate.listeners.keyup(key);check('keyboard release closes the gate',()=>assert.equal(state.fader,0));
+gate.listeners.pointerdown(e(0,0,2));gate.listeners.blur();check('focus loss closes a held gate',()=>assert.equal(state.fader,0));
+cv.onpointerup(e(150,240));check('record release ends hold without resetting the fader',()=>{assert.equal(state.dragging,false);assert.equal(state.fader,0);});
+el('scratchPlay').listeners.click();check('UI motor button pauses independently',()=>assert.equal(state.motor,false));ui.scratchHide();check('UI close clears capture handlers and animation',()=>{assert.equal(el('scratchEditor').hidden,true);assert.equal(cv.onpointerdown,null);assert.ok(cancels>0);});
+const app=fs.readFileSync(new URL('../mics-609bc14b.html',import.meta.url),'utf8');check('retired guitar entry and message receiver are absent from the app',()=>{assert.ok(!app.includes('id="gtrBtn"')&&!app.includes('id="recGtr"'));assert.ok(!app.includes('gtr-take'));});
+// External pad controls: real UI unit, startup races, independent MIDI channels.
+ui.tracks[0].padKind='SCR';let resolveOpen,openCount=0;
+ui.scratchOpen=i=>{openCount++;ui.scratchHide();return new Promise(resolve=>{resolveOpen=()=>{ui.scratchShow(i);resolve();};});};
+check('SPL pads remain on the normal trigger path',()=>{ui.tracks.push({padKind:'SPL'});assert.equal(ui.scratchPadInputDown(1,'key:Digit2'),false);});
+ui.scratchPadInputDown(0,'key:Digit1');ui.scratchPadInputUp('key:Digit1');resolveOpen();await Promise.resolve();
+check('release before worklet startup cannot leave sound open',()=>assert.equal(state.fader,0));
+ui.scratchPadInputDown(0,'key:Digit1');check('assigned PC pad key opens the current platter without restarting',()=>{assert.equal(state.fader,1);assert.equal(openCount,1);});
+ui.scratchPadInputDown(0,'key:Digit1');check('repeated Note On/key down does not restart the platter',()=>assert.equal(openCount,1));
+ui.scratchPadInputDown(0,'midi:0:60');ui.scratchPadInputUp('key:Digit1');check('one released source does not cut another held source',()=>assert.equal(state.fader,1));
+ui.scratchPadInputDown(0,'midi:1:60');ui.scratchPadInputUp('midi:0:60');check('identical notes on different MIDI channels are independent',()=>assert.equal(state.fader,1));
+ui.scratchPadInputUp('midi:1:60');check('last external release closes the gate and leaves the record open',()=>{assert.equal(state.fader,0);assert.equal(el('scratchEditor').hidden,false);});
+ui.scratchHide();ui.scratchPadInputDown(0,'key:Digit1');ui.scratchPadInputDown(0,'midi:0:60');resolveOpen();await Promise.resolve();
+check('simultaneous sources share one pending platter startup',()=>{assert.equal(openCount,2);assert.equal(state.fader,1);});
+ui.scratchGateRelease();check('blur/close releases all external gate sources',()=>assert.equal(state.fader,0));
+// Exercise the actual PC/MIDI entry points, rather than only the UI helper.
+const inputs=[],releases=[],triggered=[],selectedPads=[],keyEvents={};
+const inputCtx={console,performance:{now:()=>0},document:{activeElement:null,getElementById:()=>({classList:{remove:noop}})},window:{addEventListener:(type,fn)=>keyEvents[type]=fn},navigator:{},
+ tracks:Array.from({length:16},()=>({})),KEYMAP:['1','2','3','4','5','6','7','8','q','w','e','r','t','y','u','i'],CODEMAP:[],STEP_KEYS:[],MELO_KEYS:[],assignTarget:-1,setMode:false,selected:0,
+ AC:{state:'running',currentTime:0,resume:async()=>{}},scratchPadInputDown:(i,id)=>{inputs.push([i,id]);return i===0;},scratchPadInputUp:id=>releases.push(id),
+ trigger:i=>triggered.push(i),selectPad:i=>selectedPads.push(i),inBlink:noop,isMelodic:()=>false,midiBlink:noop,setPadUp:noop,_ledT:0,setTimeout:()=>0,clearTimeout:noop};
+vm.createContext(inputCtx);
+const chop=fs.readFileSync(new URL('../src/js/52-chop.js',import.meta.url),'utf8');vm.runInContext(chop.slice(chop.indexOf('// keyboard'),chop.indexOf('// 全スライダー')),inputCtx);
+const ke={key:'1',code:'Digit1',repeat:false,preventDefault:noop};await keyEvents.keydown(ke);keyEvents.keyup(ke);
+check('default PC pad key routes press/release to SCR without sample trigger',()=>{assert.deepEqual(inputs.pop(),[0,'key:Digit1']);assert.equal(releases.pop(),'key:Digit1');assert.equal(triggered.length,0);});
+inputCtx.tracks[0].key='x';await keyEvents.keydown({...ke,key:'x',code:'KeyX'});check('custom PC assignment routes to SCR before default step keys',()=>assert.deepEqual(inputs.pop(),[0,'key:KeyX']));
+await keyEvents.keydown({...ke,key:'2',code:'Digit2'});check('ordinary sample pad keyboard playback is preserved',()=>assert.equal(triggered.pop(),1));
+inputCtx.document.getElementById=()=>null;
+vm.runInContext(fs.readFileSync(new URL('../src/js/72-midi.js',import.meta.url),'utf8'),inputCtx);vm.runInContext('midiEnabled=true',inputCtx);
+inputCtx.handleMIDI([0x92,60,100]);inputCtx.handleMIDI([0x82,60,64]);check('MIDI default pad Note On/Off uses matching channel-aware gate source',()=>{assert.deepEqual(inputs.pop(),[0,'midi:2:60']);assert.equal(releases.pop(),'midi:2:60');assert.equal(triggered.length,0);});
+inputCtx.tracks[0].midiNote=48;inputCtx.handleMIDI([0x90,48,100]);inputCtx.handleMIDI([0x90,48,0]);check('custom MIDI assignment and velocity-zero Note On close correctly',()=>{assert.deepEqual(inputs.pop(),[0,'midi:0:48']);assert.equal(releases.pop(),'midi:0:48');});
+vm.runInContext('midiEnabled=false',inputCtx);inputCtx.handleMIDI([0x80,48,0]);check('MIDI Note Off is honored after input is disabled',()=>assert.equal(releases.pop(),'midi:0:48'));
+console.log('All '+passed+' SCR checks passed.');

@@ -1,13 +1,26 @@
 // @module ui-wave
 // @provides _rsT, applyWaveSEQ, applyWaveStrip, buildAllTrackWaves, buildTrackWave, drawAllPadWaves,
-//    drawPadWave, padWaveInk, setCellWave, snapStartToOnset, syncEditor, trackWaveURL
-// @uses PADS, STEPS, getPattern, padsEl, paintSteps, rowEls, selected, stepBtns, tracks, viewPadsEl,
-//    viewSeqEl
+//    drawKeyPadNotes, drawPadWave, keyPadGeometry, padWaveInk, setCellWave, snapStartToOnset, syncEditor,
+//    trackWaveURL
+// @uses PADS, STEPS, getPattern, normalizeKeyPhrase, padsEl, paintSteps, rowEls, selected, stepBtns, tracks,
+//    viewPadsEl, viewSeqEl
 // @depends -
 // ---------- sample editor ---------- （窓波形は撤去：drawWave/ハンドル/カーソル機構は廃止）
 
 // Koala風：各パッドに小さな波形を描く
 function padWaveInk(){ return (getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8"); }
+// Pad thumbnails show phrase geometry, never the rendered KEY audio waveform.
+function keyPadGeometry(src,w,h){
+  const p=normalizeKeyPhrase(src),left=8,top=Math.min(25,h*.24),width=Math.max(1,w-16),height=Math.max(8,h-top-Math.min(20,h*.2));
+  const pitches=p.notes.map(n=>n.pitch),low=pitches.length?Math.min(...pitches)-2:48,high=pitches.length?Math.max(...pitches)+2:72,span=Math.max(12,high-low),base=(low+high-span)/2;
+  return {left,top,width,height,bars:p.bars,notes:p.notes.map(n=>({x:left+n.beat/(p.bars*4)*width,y:top+(1-(n.pitch-base)/span)*height,width:Math.max(2,n.length/(p.bars*4)*width-1),height:Math.max(2,Math.min(5,height/span*.72)),velocity:n.velocity}))};
+}
+function drawKeyPadNotes(ctx,src,w,h,ink){
+  const g=keyPadGeometry(src,w,h);ctx.save();ctx.fillStyle='#14262d';ctx.fillRect(g.left,g.top,g.width,g.height);
+  ctx.beginPath();ctx.rect(g.left,g.top,g.width,g.height);ctx.clip();
+  for(let b=0;b<=g.bars*4;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+b/(g.bars*4)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
+  ctx.fillStyle=ink||'#48d9de';for(const n of g.notes){ctx.globalAlpha=.4+.6*n.velocity/127;ctx.fillRect(n.x,n.y-n.height/2,n.width,n.height);}ctx.restore();
+}
 function drawPadWave(i, ink){
   const pad=padsEl.children[i]; if(!pad) return;
   const cv=pad.querySelector(".pad-wave"); if(!cv) return;
@@ -18,6 +31,7 @@ function drawPadWave(i, ink){
   if(cv.width!==cw || cv.height!==ch){ cv.width=cw; cv.height=ch; }   // サイズ不変なら再確保しない（毎ヒットのコスト削減）
   const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);   // 絶対変換でscale二重掛けを回避
   ctx.clearRect(0,0,w,h);
+  if(tracks[i].padKind==="KEY"){drawKeyPadNotes(ctx,tracks[i].keyPhrase,w,h);return;}
   const buf=tracks[i].buffer; if(!buf) return;
   const data=buf.getChannelData(0);
   const s=Math.floor((tracks[i].start||0)*data.length);

@@ -3,9 +3,9 @@
 //    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, perfRecArm, playStep, playing, plockFillsOn,
-//    queuedPat, renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName,
-//    swingPct, tracks, viewPadsEl
+//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, queuedPat,
+//    renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName, swingPct,
+//    tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
@@ -108,15 +108,10 @@ setTimeout(lockViewHeight, 400);
 //   同一DOMノードを親替えするだけ＝armed状態/配線(ID参照)はそのまま。
 //   スマホ(<600px)はperf非該当なのでperf(ヘッダtransport依存)に影響なし。
 function relocateMuteSolo(){
-  const mute=document.getElementById("holdMute"), solo=document.getElementById("holdSolo");
-  const tr=document.querySelector(".transport"), msbar=document.querySelector(".msbar"), edit=document.getElementById("holdEdit"), menu=document.getElementById("menuBtn");
-  if(!mute||!solo||!tr||!msbar) return;
-  const mobile=window.innerWidth<=600;
-  if(mobile){
-    if(mute.parentNode!==msbar && edit){ msbar.insertBefore(mute,edit); msbar.insertBefore(solo,edit); mute.classList.add("ms-in-edit"); solo.classList.add("ms-in-edit"); }
-  } else {
-    if(mute.parentNode!==tr && menu){ tr.insertBefore(mute,menu); tr.insertBefore(solo,menu); mute.classList.remove("ms-in-edit"); solo.classList.remove("ms-in-edit"); }
-  }
+  const solo=document.getElementById("holdSolo"), tr=document.querySelector(".transport");
+  if(!solo||!tr) return;
+  // MUTEはエフェクト列に常設。SOLOは既存のヘッダを維持。
+
 }
 window.addEventListener("load", relocateMuteSolo);
 window.addEventListener("resize", relocateMuteSolo);
@@ -166,14 +161,15 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     else if(am==="solo") h="SOLO中：パッド=ソロトグル";
     else if(am==="edit") h="EDIT中：パッド=中身編集 / ドラッグ=入替 / 長押し=コピー";
     else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
-    else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右=基本値 / 下段ステップ左右=そのステップだけ(P-LOCK)";
+    else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右／上下で現在値を調整";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
     $("clHint").textContent = _msg ? "" : h;   // メッセージが出ている間はヒントを引っ込める（1行を共用）
   }
   // パターン：現在=on、再生中の予約=queued
-  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{
+  document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>{
     const p=+b.dataset.p;
     b.classList.toggle("on", p===ep);
+    if(b.classList.contains("fx-pattern"))b.setAttribute("aria-pressed",String(p===ep));
     b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
     b.classList.toggle("has", patHasContent(p));   // 中身あり＝ドット表示
   });
@@ -186,14 +182,14 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
   // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
-  if($("perfRec")) $("perfRec").classList.toggle("on", perfRecArm);
+  if($("perfMute")) $("perfMute").classList.toggle("on",armMode==="mute");
   if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
 }
 // P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
 (function(){
   const $=id=>document.getElementById(id);
-  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
+  document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
   // 小節(1-4)：COPY中は元→先で小節コピー、通常は setEditBar。DUPはCOPYに統合し撤去。
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); if(typeof barTapHold==="function") barTapHold(+b.dataset.b); paintPerf(); }));   // ダブルタップ＝BAR ホールド（v0.3.161）
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
@@ -203,8 +199,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   }));
   // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
   if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
-  if($("perfRec")) $("perfRec").addEventListener("click",()=>{ perfRecArm=!perfRecArm; paintPerf();
-    sampNameEl.textContent = perfRecArm ? "REC ON：再生中いじりをステップに記録" : "REC OFF：いじった値はパッドに残る（ステップには記録しない）"; });
+  if($("perfMute")) $("perfMute").addEventListener("click",()=>fxBtnTap("mute"));
 })();
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();

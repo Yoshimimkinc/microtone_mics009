@@ -6,9 +6,9 @@
 //    barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, effectiveSwing, extractViaPlayback, flashPad,
 //    getPattern, inBlink, isMelodic, isSilent, makeLofi, nextChokeGroup, openPadEdit, paintMixer,
 //    paintPadStates, paintPerf, pickCaptureTarget, playBtn, playVoice, playing, pushUndo, refreshPadDisplay,
-//    sampNameEl, scaleSemi, selectPad, selected, setDelayTempo, setMode, setPadDown, setPadNudge, setPadUp,
-//    setPadUpAll, stepIdx, stepTimeClean, stepTrackName, swingPct, switchView, toggleStepAt, tracks,
-//    trigger, vuHit
+//    sampNameEl, scaleSemi, scratchPadInputDown, scratchPadInputUp, selectPad, selected, setDelayTempo,
+//    setMode, setPadDown, setPadNudge, setPadUp, setPadUpAll, stepIdx, stepTimeClean, stepTrackName,
+//    swingPct, switchView, toggleStepAt, tracks, trigger, vuHit, warmKeyTracks
 // @depends engine-bus, engine-fx, ui/pads-view
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
@@ -94,6 +94,7 @@ function applyBpm(v){
   if(wasPlaying) barStartTime += anchor - stepTimeClean(stepIdx);   // 次ステップの時刻を据え置く＝位相維持
   bpm.value=bpmVal; bpmRead.textContent=bpmVal.toFixed(1);
   if(typeof setDelayTempo==="function") setDelayTempo();
+  if(typeof warmKeyTracks==="function") warmKeyTracks();
   if(typeof paintPerf==="function") paintPerf();
 }
 bpm.addEventListener("input",()=>applyBpm(+bpm.value));
@@ -223,6 +224,7 @@ window.addEventListener("keydown",async(e)=>{
   if(custom>=0 && !e.altKey && !e.shiftKey){
     e.preventDefault();
     if(typeof inBlink==="function") inBlink(e.key.toUpperCase());
+    if(typeof scratchPadInputDown==="function" && scratchPadInputDown(custom,"key:"+e.code)){selectPad(custom,true);return;}
     if(AC.state!=="running")await AC.resume();
     trigger(custom); selectPad(custom,true);
     return;
@@ -261,10 +263,10 @@ window.addEventListener("keydown",async(e)=>{
     }
   }
   const i=KEYMAP.indexOf(k);
-  if(i>=0){if(AC.state!=="running")await AC.resume();trigger(i);selectPad(i,true);}
+  if(i>=0){if(typeof scratchPadInputDown==="function" && scratchPadInputDown(i,"key:"+e.code)){e.preventDefault();selectPad(i,true);return;}if(AC.state!=="running")await AC.resume();trigger(i);selectPad(i,true);}
 });
 // SET のキーを離した＝そのセットを止める（ホールドしていなければ）。窓を離れたら押しっぱなしのキーを放す（v0.3.159）
-window.addEventListener("keyup",e=>{ if(typeof setPadUp==="function") setPadUp("key:"+e.code); });
+window.addEventListener("keyup",e=>{ if(typeof scratchPadInputUp==="function")scratchPadInputUp("key:"+e.code); if(typeof setPadUp==="function") setPadUp("key:"+e.code); });
 window.addEventListener("blur",()=>{ if(typeof setPadUpAll==="function") setPadUpAll(); });
 
 // 全スライダー：タップ/クリックで確実にフォーカスし、↑↓←→キーで操作可能にする

@@ -1,11 +1,11 @@
 // @module audio/set-players
 // @provides SET_LV_MAX, SET_LV_MIN, _lvlSrc, _sideArm, _sidePatLen, _sideStep, _sideStepTime, fmtSetLevel,
-//    isSetHeld, setHeldSet, setHold, setHoldClear, setIndexOfTrs, setIsPlaying, setLevelLin, setLevelNode,
-//    setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop, sideStopAll, sideTakeCurrent, sideTick,
-//    sideTimer, sideTrs
+//    isSetHeld, pauseSideClock, resumeSideClock, setHeldSet, setHold, setHoldClear, setIndexOfTrs,
+//    setIsPlaying, setLevelLin, setLevelNode, setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop,
+//    sideStopAll, sideTakeCurrent, sideTick, sideTimer, sideTrs
 // @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec,
-//    laidbackSec, lockKey, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels,
-//    setSlots, staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
+//    laidbackSec, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels, setSlots,
+//    staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
 // @depends -
 // ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
 // 「SET ポン出しはトグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」。
@@ -41,7 +41,7 @@ function _sideStep(p,trs,n,when){
     if(t.loop && t.loopPlaying && !aud){ stopVoices(t,when); t.loopPlaying=false; }
     const row=t.patterns && t.patterns[p.pat] && t.patterns[p.pat][p.bar]; const v=row ? row[n] : 0;
     if(!(v>0 && aud)) continue;
-    const lk=t.locks && t.locks[lockKey(p.pat,p.bar,n)];
+    const lk=null;
     const nudge=(lk && typeof lk.nudge==="number") ? lk.nudge/1000 : 0;
     const wn=Math.max(when + c*stg + nudge, AC.currentTime);
     const mel=!!(t.scale && t.scale!=="off");
@@ -104,3 +104,9 @@ function fmtSetLevel(db){ return db<=SET_LV_MIN ? "-∞" : ((db>0?"+":"")+db.toF
 // トラック列 → どのセットのものか（いまのセット＝tracks、他は setSlots[k].tracks）
 function setIndexOfTrs(trs){ if(trs===tracks) return setCur; for(let k=0;k<16;k++) if(setSlots[k] && setSlots[k].tracks===trs) return k; return setCur; }
 
+
+function pauseSideClock(){ clearInterval(sideTimer); sideTimer=null; }
+function resumeSideClock(){
+  sidePlayers.forEach(p=>{ const delta=_sideStepTime(p,p.idx)-p.t0; p.t0=AC.currentTime+0.005-delta; const ts=sideTrs(p.k); if(ts) ts.forEach(t=>t.loopPlaying=false); });
+  if(sidePlayers.size) _sideArm();
+}

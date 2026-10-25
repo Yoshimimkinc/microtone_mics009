@@ -80,8 +80,16 @@
         <div class="modal-sec">
           <div class="modal-label">Source</div>
           <div class="modal-btns">
-            <button class="t" id="gtrBtn" title="ギターを開く">GTR</button>
-            <button class="t" id="scrBtn" title="スクラッチを開く">SCR</button>
+            <details id="dropboxPanel"><summary>Dropbox · ステージ共有</summary>
+              <p>共有フォルダをメンバーそれぞれのDropboxへ追加して使用します。</p>
+              <label>App key <input id="dbAppKey" type="text" autocomplete="off" placeholder="Dropboxの公開App key"></label>
+              <label>共有フォルダ <input id="dbFolder" type="text" placeholder="/microtone"></label>
+              <div><button class="t" id="dbConnect">接続</button><button class="t" id="dbDisconnect">接続解除</button><button class="t" id="dbList">一覧・更新</button></div>
+              <label>保存する名前 <input id="dbFilename" type="text" placeholder="空欄なら日時名.mics"></label><button class="t" id="dbSave">STAGEを別名保存</button>
+              <p id="dbStatus" role="status"></p><div id="dbFiles"></div>
+            </details>
+
+
           </div>
         </div>
         <div class="modal-sec">
@@ -107,7 +115,6 @@
           <button class="t" id="recTab">Tab Audio</button>
           <button class="t" id="recMic">Mic</button>
           <button class="t" id="recResmp" title="鳴っている音をそのまま録る">Resample</button>
-          <button class="t" id="recGtr" title="ギターを演奏して録る">Guitar</button>
           <button class="t" id="recCancel">✕</button>
         </div>
         <div class="rec-active" id="recActive" style="display:none;">

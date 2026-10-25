@@ -1,11 +1,12 @@
 // @module audio/transport
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
-//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, schedTimer, scheduleClick, scheduleStep,
-//    scheduler, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
-// @uses AC, PADS, PERF_BASE, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar,
-//    getLockPlay, getPlayPattern, isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot,
-//    patSwitchMode, perfDrag, perfRecArm, playBar, playPat, playStep, playVoice, playing, queuedPat,
-//    queuedSet, scaleSemi, setLockPlay, stepIdx, stopAllVoices, stopVoices, swingPct, switchSetNow, tracks
+//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock,
+//    resumeTransportClock, schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec, startTransport,
+//    stepTimeClean, stopTransport, swingDelayTicks, tickDur
+// @uses AC, PADS, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar, getPlayPattern,
+//    isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot, patSwitchMode, playBar, playPat,
+//    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, stepIdx, stopAllVoices, stopVoices,
+//    swingPct, switchSetNow, tracks
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -55,14 +56,7 @@ function scheduleStep(stepNo, when){
     if(t.loop && t.loopPlaying && !aud){ stopVoices(t, when); t.loopPlaying=false; }
     const v=getPlayPattern(i)[stepNo];
     if(v>0 && aud){
-      // 演奏ライブ記録：REC ON中、ドラッグ中のパッドのこのトリガにp-lockを焼く（GRIDと同一データ）
-      if(perfRecArm && perfDrag && perfDrag.moved && perfDrag.pad===i && perfDrag.param){
-        const pp=perfDrag.param, pv=(pp==="filter")?t.cutoff:t[PERF_BASE[pp]];
-        setLockPlay(i, playPat, playBar, stepNo, pp, pv);
-      }
-      const lk=getLockPlay(i, playPat, playBar, stepNo);   // そのステップのp-lock
-      // NUDGE p-lock：このトリガだけ前後にずらす（ms→sec）。LOOKAHEAD(100ms)内なので前ノリも予約可。過去には出さない
-      const nudgeSec=(lk && typeof lk.nudge==="number") ? lk.nudge/1000 : 0;
+      const lk=null, nudgeSec=0; // 発音は常に現在の設定
       const wn=Math.max(when + n*stg + nudgeSec, AC.currentTime);
       if(t.loop){
         // ループ系はシーケンス上でトグル：トリガが来るたびに ON→OFF→ON…（負荷もかからない）
@@ -150,4 +144,14 @@ function scheduler(){
     }
     if(++guard > STEPS) break;   // 1tickで最大1小節分まで（暴走防止）
   }
+}
+
+// アプリが非表示の間にタイマーを回さず、次のステップを復帰時刻へ付け直す。
+function pauseTransportClock(){ clearInterval(schedTimer); schedTimer=null; drawQueue.length=0; }
+function resumeTransportClock(){
+  if(!playing) return;
+  const delta=stepTimeClean(stepIdx)-barStartTime;
+  barStartTime=AC.currentTime+0.005-delta;
+  drawQueue.length=0; tracks.forEach(t=>t.loopPlaying=false);
+  clearInterval(schedTimer); schedTimer=setInterval(scheduler,INTERVAL); scheduler();
 }

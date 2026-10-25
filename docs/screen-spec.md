@@ -2137,3 +2137,42 @@ PC のファイル選択は 3 つとも選べる（`#projFile` の accept）。i
 - そのまま残すもの：音量・フィルター・チョーク・送り（パッドの「場所」の設定）。CHOP で各パッドへ配るときは元のパッドの設定を写す（今までどおり）。プロジェクトの読込は保存された値。
 - UNDO で読み込む前（音も PITCH も）に戻る。
 検査：`copyPaint` の LOAD：PITCH +2 のパッドに読み込む＝0 になる。
+
+## 164. SPL / KEY / SCR・モバイル操作の簡素化（v0.3.171候補）
+ユーザー要望：パッドをSPL（音声）／KEY（最長4小節の演奏＋ローズ風音源）／SCR（そのサンプルを擦る）に分ける。
+演奏用PITCHをMUTEへ置換し、FX列をMUTE／FILTER／DELAY／REVERBへ統一する。
+スマホで難しいパラメーターロックを廃止し、現在のパッド／パターン値を使って発音する。
+数値欄は上下・左右のどちらでも操作し、CUTOFFは整数Hz表示。REVERBは小～中の送りで違いが出るカーブへ。
+KEYは編集データを保持しOfflineAudioContextで音声化、再生時の音源計算を避ける。MIDI format 0/1 PPQを取り込む。
+SCRは既存のテープヘッド計算を同じAudioContextのAudioWorkletへ移し、別タブ起動の入口を撤去する。
+非表示／音声中断時は古い予約を止め、復帰時に次ステップを音声時計へ付け直す。iPhone実機の出力遅延は別途確認待ち。
+DropboxはブラウザPKCE認証と共有フォルダのSTAGE一覧・別名保存・読込。App設定と実アカウント確認は別途必要。
+作業基準・Claude Codeとの衝突回避・未確認事項は`docs/codex-pad-content-handoff.md`に記録する。
+
+
+### Local candidate v0.3.172: KEY editor / FX row
+KEY draws/resizes/moves notes directly and has an independent velocity lane. Scale and 1/16 snap are independent, non-destructive settings; scale constraints apply only to subsequent edits. SCROLL toggles native touch navigation; DRAG chooses Auto/Move/Length/Start/Velocity for small targets. 1 gesture = 1 undo; cancelled gestures discard drafts. Modal tine/pickup model replaces FM.
+Main PAD FX row: left swipe opens equal-width A/B/C/D; right swipe restores FX. Both responsive rows share page state; swipes suppress button clicks. Existing pattern switch timing, copy, indicators and BAR HOLD remain on their existing paths.
+
+
+### Local candidate v0.3.173: phone KEY density
+Primary note editing/scale/snap controls remain visible. Secondary selection/duplicate/display tools collapse into MORE TOOLS on phones. On 390×844, note grid and velocity lane fit together without scrolling the panel. Native details keeps secondary controls reachable without duplicate state.
+
+
+### v0.3.174 local candidate: performance instrument direction
+User direction (2026-10-25): MICS009 centres on pressing pads to perform phrases, responding to other performers and rapping; microtone uses it as its rehearsal instrument. MIDI editing prepares playable material. Prioritise response, easy-to-read pad contents and reachable live controls. Adopting Live-like note manipulation does not imply adding an arranger-first workflow or changing established trigger/loop behaviour.
+
+KEY editor: playback actions and NOTES/SOUND tabs in the top bar, edit/grid and pitch/scale grouped separately. Tool cursors are move, start/end resize, velocity and navigation; Auto changes cursor at note edges/body. SOUND has independent TREMOLO/OFF/WAH and CHORUS/OFF/PHASER sections with Depth and Rate. KEY pad faces draw note bars with pitch/time/duration/velocity rather than reading their audio waveform. SPL/SCR retain waveforms.
+
+KEY/SPL regression: returning through SPL or SCR restored the original sample but left an old KEY signature. Clear readiness on kind change and require generated-KEY-buffer provenance before cache reuse/playback; keep the source sample for explicit SPL restoration. Preview within the editor follows the audition path so it cannot record accidental pattern steps.
+
+
+### Local v0.3.176: live FX / EDIT and SCR
+Normal FX tap selects current pad-value editing; EDIT+FX opens parameter settings. No step automation. Phone FX row includes EDIT; left swipe still replaces the entire row with equal-width A–D, releasing the live edit selection. Guitar entry/integration retired by user instruction.
+SCR pad opens flat record and independent crossfader. Hold/rotate/release uses relative angular motion with continuous wrap. Play/pause and CUE control only that record; fader cuts only SCR, backing continues. Large platter chosen for phone touch area and two-hand access, with no second hidden scratch mode on the tiny PAD.
+
+SCR fader final specification: large HOLD TO OPEN momentary button. Initial state CLOSED; press opens, release closes. Pointer cancellation, lost capture, blur and closing the surface also close it. There is no persisted fader position or touch-toggle latch.
+
+
+### v0.3.177 SCR PC/MIDI gate
+SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、押している間だけ音を出す。離すと閉音し、画面は残す。既定／カスタム割当の両方に対応。複数ソースのどれかが押されていれば開き、最後のリリースで閉じる。MIDIチャンネルを区別し、Note Off／velocity 0、フォーカス喪失、閉じる、機器切断時に解除。タッチのHOLDボタンは併存。
