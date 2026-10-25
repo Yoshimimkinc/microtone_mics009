@@ -44,7 +44,7 @@ function scratchShow(i){
  const draw=()=>{if(editor.hidden)return;const state=scratchState();scratchDrawPlatter(cv,state);document.getElementById('scratchMotion').textContent=state.dragging?'HOLD':state.motor?'PLAY':'PAUSE';document.getElementById('scratchPosition').textContent=(state.position*state.duration).toFixed(2)+' / '+state.duration.toFixed(2)+' s';const button=document.getElementById('scratchPlay');button.textContent=state.motor?'Ⅱ PAUSE':'▶ PLAY';button.setAttribute('aria-pressed',String(state.motor));_scratchRAF=requestAnimationFrame(draw);};draw();
  const angle=e=>{const r=cv.getBoundingClientRect();return Math.atan2(e.clientY-r.top-r.height/2,e.clientX-r.left-r.width/2);};
  cv.onpointerdown=e=>{if(_scratchGesture)return;const r=cv.getBoundingClientRect(),distance=Math.hypot(e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2);if(distance<r.width*.07||distance>r.width*.46)return;e.preventDefault();_scratchGesture={id:e.pointerId,angle:angle(e),total:0};cv.setPointerCapture(e.pointerId);scratchHold(true);};
- cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();const next=angle(e);g.total+=scratchAngleDelta(next,g.angle);g.angle=next;scratchDrag(g.total/(Math.PI*2)*scratchState().rate*1.8);};
+ cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();const next=angle(e);g.total+=scratchAngleDelta(next,g.angle);g.angle=next;scratchDrag(g.total/(Math.PI*2)*scratchState().rate*1.8,e.timeStamp);};
  cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;_scratchGesture=null;scratchHold(false);};
 }
 (function(){

@@ -227,7 +227,10 @@ async function run(w,h,mobile){
     // 6つが1行に収まり、幅44px以上・文字が溢れない（幅を2/3以下に詰めた分の検査）
     const row=await p.evaluate(()=>{ const bs=[...document.querySelectorAll('#viewPads>.msbar button')].filter(b=>getComputedStyle(b).display!=='none');
       return {n:bs.length, rows:new Set(bs.map(b=>Math.round(b.getBoundingClientRect().top))).size, minW:Math.min(...bs.map(b=>b.getBoundingClientRect().width)), over:bs.filter(b=>b.scrollWidth>b.clientWidth).map(b=>b.textContent.trim())}; });
-    ok_(`${V} 下段5つが1行・幅44px以上・溢れなし`, row.n===5 && row.rows===1 && row.minW>=44 && row.over.length===0, JSON.stringify(row));
+    ok_(`${V} 下段6つ（MUTE FILTER DELAY REVERB ABCD EDIT）が1行・幅44px以上・溢れなし`, row.n===6 && row.rows===1 && row.minW>=44 && row.over.length===0, JSON.stringify(row));
+    // v0.3.179：FX 列の A B C D 送り。止まっていれば押すたびに A→B→C→D→A
+    const cyc=await p.evaluate(()=>{ setEditPat(0); const b=document.getElementById('patCycle'), seen=[b.textContent]; for(let k=0;k<4;k++){ b.click(); seen.push(b.textContent+':'+editPat); } return seen.join(' '); });
+    ok_(`${V} A B C D 送り（止まっているとき）`, cyc==='A B:1 C:2 D:3 A:0', cyc);
     // Normal FX is a live value selection; only EDIT+FX opens parameters.
     for(const fx of ['filter','delay','reverb']){
       const button='#fx'+fx[0].toUpperCase()+fx.slice(1);
@@ -1049,6 +1052,59 @@ async function longPitch(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function patCycleTest(){
+  // v0.3.179：スマホの FX 列の A B C D 送り。再生中は予約（A▸B）、続けて押すと予約先が進む、一周で取消、小節頭で切り替わる
+  const V='PATCYCLE 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(async()=>{ await clearAutosave(); setEditPat(0); for(const q of [0,1,2]) tracks[8].patterns[q][0][0]=1; applyBpm(240); document.getElementById('play').click(); });
+  await p.waitForTimeout(150);
+  const b='#patCycle', txt=()=>p.evaluate(()=>{ const e=document.getElementById('patCycle'); return e.textContent+(e.classList.contains('queued')?'*':''); });
+  await p.tap(b); await p.waitForTimeout(60); const t1=await txt();
+  await p.tap(b); await p.waitForTimeout(60); const t2=await txt();
+  await p.tap(b); await p.tap(b); await p.waitForTimeout(60); const t3=await txt();   // D → A（鳴っている A に戻る＝取消）
+  ok_(`${V} 再生中：A▸B（予約・点滅）→ A▸C → 一周で取消`, t1==='A▸B*' && t2==='A▸C*' && t3==='A', JSON.stringify({t1,t2,t3}));
+  await p.tap(b);
+  await p.waitForFunction(()=>playPat===1, null, {timeout:4000}); await p.waitForTimeout(300);
+  const t4=await txt();
+  ok_(`${V} 予約した B に切り替わると表示も B`, t4==='B', t4);
+  await p.evaluate(()=>document.getElementById('play').click());
+  await p.evaluate(async()=>{ await clearAutosave(); });
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
+async function fxSwipeTouch(){
+  // v0.3.180：「スワイプが効かない」。実際の指（CDP のタッチ）で FX 列を横にスワイプ＝A B C D、もう一度＝FX。画面は PADS のまま（全体スワイプ廃止）
+  const V='FXSWIPE touch 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const cdp=await ctx.newCDPSession(p);
+  const swipe=async(dx,ms,steps=8)=>{ const r=await p.locator('#viewPads>.msbar').boundingBox(); const x0=r.x+r.width/2-dx/2, y=r.y+r.height/2;
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x0,y}]});
+    for(let k=1;k<=steps;k++){ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x0+dx*k/steps,y:y+k*0.4}]}); await p.waitForTimeout(ms/steps); }
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await p.waitForTimeout(250); };
+  const st=()=>p.evaluate(()=>({page:document.querySelector('#viewPads>.msbar').dataset.fxPage, pads:document.getElementById('viewPads').classList.contains('active'), seq:document.getElementById('viewSeq').classList.contains('active'), lock:activeLock, mute:armMode, pat:editPat, tf:document.querySelector('#viewPads>.msbar').style.transform}));
+  await swipe(-160,200); const a=await st();
+  ok_(`${V} 左スワイプ＝A B C D・画面は PADS のまま（SEQ へ飛ばない）・FX / MUTE は誤作動しない`, a.page==='patterns' && a.pads && !a.seq && a.lock===null && a.mute!=='mute' && a.tf==='', JSON.stringify(a));
+  await swipe(-160,200); const b=await st();
+  ok_(`${V} 同じ向きでももう一度＝FX に戻る（2 ページの切替）`, b.page==='effects' && b.pads && !b.seq, JSON.stringify(b));
+  await swipe(28,40,3); const c=await st();
+  ok_(`${V} 短いはじき（28px）でも切り替わる`, c.page==='patterns' && c.pads, JSON.stringify(c));
+  await swipe(150,200); const d=await st();
+  ok_(`${V} 右スワイプで FX に戻る`, d.page==='effects' && d.pads && !d.seq && d.pat===0, JSON.stringify(d));
+  // 縦の動きはスワイプにしない
+  { const r=await p.locator('#viewPads>.msbar').boundingBox(); const x=r.x+r.width/2, y=r.y+r.height/2;
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]}); for(let k=1;k<=6;k++) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+k*2,y:y-k*8}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await p.waitForTimeout(200); }
+  const e=await st();
+  ok_(`${V} 縦の動きでは切り替わらない`, e.page==='effects', JSON.stringify(e));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function editTools(){
   // v0.3.160：EDIT 中のドラッグ＝パッド入れ替え（P-LOCK を選んだままでも EDIT が先）／EDIT 画面の DELETE（2 回押す・↩ で戻せる）
   const V='EDITTOOLS 390x844';
@@ -1261,6 +1317,8 @@ await barHoldTest();
 await patSwitchEnd();
 await fxKeep();
 await longPitch();
+await patCycleTest();
+await fxSwipeTouch();
 await saveScopeTest();
 await wireSkin();
 await setNameTest();

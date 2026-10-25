@@ -4,8 +4,8 @@
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, queuedPat,
-//    renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName, swingPct,
-//    tracks, viewPadsEl
+//    renderPerfFills, sampNameEl, setEditBar, setEditPat, setModeEnter, stepTrackName, swingPct, tracks,
+//    viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
@@ -26,26 +26,8 @@ function switchView(viewId){
 modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
 document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("click",()=>switchView(d.dataset.view)));
 
-// スマホ：左右スワイプで PADS/SEQ/MIX を切替（p-lock記録中やスライダー上は無効）
-(function(){
-  const order=["viewPads","viewSeq","viewSet"];
-  let sx=0,sy=0,st=0,sEl=null,tracking=false;
-  const curView=()=>(typeof setMode!=="undefined"&&setMode)?"viewSet":(order.find(id=>{const el=document.getElementById(id);return el&&el.classList.contains("active");})||"viewPads");
-  addEventListener("touchstart",(e)=>{
-    if(innerWidth>600||e.touches.length!==1){ tracking=false; return; }
-    const t=e.touches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); sEl=e.target; tracking=true;
-  },{passive:true});
-  addEventListener("touchend",(e)=>{
-    if(!tracking){ return; } tracking=false;
-    if(innerWidth>600||activeLock) return;                    // p-lock記録中は横ドラッグ＝値入力なので無効
-    if(sEl&&sEl.closest&&sEl.closest("input,select")) return; // スライダー類は除外
-    const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy, dt=Date.now()-st;
-    if(dt>700||Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.5) return; // 明確な横スワイプのみ
-    let idx=order.indexOf(curView())+(dx<0?1:-1);
-    if(idx<0||idx>=order.length) return;                      // 端では何もしない
-    switchView(order[idx]);
-  },{passive:true});
-})();
+// スマホの「画面全体の左右スワイプで PADS / SEQ / SET を切替」は v0.3.180 で廃止（§167）。
+// window 全体で横スワイプを拾っていたので、FX 列を横にスワイプして A B C D を出すと画面まで SEQ へ切り替わっていた。切替は上段の PADS / SEQ / SET だけ
 
 // iOS：長押しで拡大鏡（ルーペ）や長押しメニューが立ち上がらないように（v0.3.156 §149）。
 // パッドの格子（#pads / #setGrid）は pointer イベントだけで動く（長押し＝SET のホールド・EDIT のコピー）ので、touch の既定動作を止めてよい。
@@ -184,12 +166,18 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfMute")) $("perfMute").classList.toggle("on",armMode==="mute");
   if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
+  { const pc=$("patCycle"); if(pc){ const L="ABCD", cur=playing?displayPat:ep, q=(playing && queuedPat!==null)?queuedPat:null;   // A B C D 送り：いま（予約があれば ▸ 予約先）
+    const txt=q!==null ? L[cur]+"▸"+L[q] : L[cur]; if(pc.textContent!==txt) pc.textContent=txt; pc.classList.toggle("queued", q!==null);
+    pc.setAttribute("aria-label","パターン "+L[cur]+(q!==null?"、次は "+L[q]:"")+"。押すと次のパターン"); } }
 }
 // P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
 (function(){
   const $=id=>document.getElementById(id);
   document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
+  // スマホの FX 列の A B C D 送り（v0.3.179 §165）：押すたびに次のパターン。再生中は予約で、続けて押せば予約先が進む（D の次は A＝いま鳴っているのに戻れば予約取消）
+  if($("patCycle")) $("patCycle").addEventListener("click",()=>{ const base=(playing && queuedPat!==null) ? queuedPat : (playing ? displayPat : editPat);
+    if(typeof setEditPat==="function") setEditPat((base+1)%4); paintPerf(); });
   // 小節(1-4)：COPY中は元→先で小節コピー、通常は setEditBar。DUPはCOPYに統合し撤去。
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); if(typeof barTapHold==="function") barTapHold(+b.dataset.b); paintPerf(); }));   // ダブルタップ＝BAR ホールド（v0.3.161）
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
