@@ -696,7 +696,9 @@
   body.seqmode #pads,body.seqmode #setGrid{display:none!important;}
   body.seqmode #seqMain{display:flex;flex-direction:column;min-height:0;}
   body.seqmode #viewPads>.msbar{display:none!important;}    /* FX 列はパッドに掛けるもの＝SET と同じく SEQ では出さない */
-  body.perf.seqmode #perfPlk{visibility:hidden;}   /* FX 列はパッドに掛けるもの。場所は残す＝3 モードで主面と A B C D の位置が同じ */
+  /* 「SEQ には情報ウィンドウ要らない」（v0.3.184 §172）：窓と FX 列は出さず、その分をグリッドに。A B C D・BAR と 16 ステップの段は 3 モードで同じ位置（下に揃う） */
+  body.seqmode #perfScreen{display:none!important;}
+  body.perf.seqmode #perfPlk{display:none;}
   body.perf.seqmode #seqMain{grid-area:pads;overflow:hidden;}
   #seqHead{margin:8px 0 0;}
   body:not(.perf).seqmode #seqHead,body:not(.perf).setmode #seqHead{display:flex;}   /* スマホの SET も：窓の A B C D を撤去したので同じ段 */
@@ -1354,7 +1356,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.183</div>
+  <div class="s-ver" id="splashVer">v0.3.184</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -7685,7 +7687,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.183";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.184";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
