@@ -404,7 +404,8 @@
   }
   /* 画面いっぱいフィット（タブレット/PC横）：PADS/SEQ どちらでも縦が変わらないよう
      body.perf ではなく「サイズ＋横向き」で適用＝ビュー切替で高さがジャンプしない */
-  @media (min-width:768px) and (orientation:landscape){
+  /* PC（マウス）は縦長ウインドウでも演奏画面（v0.3.182 §170）＝同じく画面いっぱいフィット */
+  @media (min-width:768px) and (orientation:landscape), (min-width:768px) and (pointer:fine){
     html{height:100%;overflow:hidden;}                              /* htmlのスクロールも止める（iOSは html が動く） */
     body{height:100dvh;overflow:hidden;overscroll-behavior:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}   /* ラバーバンド抑止＋セーフエリア回避 */
     .unit{height:100%;max-height:100%;display:flex;flex-direction:column;}
@@ -478,6 +479,9 @@
   .perf-plkbtn[data-lock="filter"].on{background:#b07cff;color:#1a0b2e;border-color:#b07cff;}
   .perf-plkbtn[data-lock="delay"].on{background:#5fd35f;color:#06280a;border-color:#5fd35f;}
   .perf-plkbtn[data-lock="reverb"].on{background:#5aa9ff;color:#04203f;border-color:#5aa9ff;}
+  /* MUTE（v0.3.178 で FX 列へ）：色が無く既定の黒文字＝WIRE（黒地）で見えなかった。スマホの MUTE と同じ色（v0.3.182 §169） */
+  .perf-plkbtn[data-lock="mute"]{color:#3dd6c4;}
+  .perf-plkbtn[data-lock="mute"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;}
   /* ● REC：P-LOCK操作をステップへ記録するトグル。v0.3.84までDOMに無く、記録機能が丸ごと到達不能だった */
   .perf-plkbtn.perf-rec{color:var(--red);}
   .perf-plkbtn.perf-rec.on{background:var(--red);color:#2a0808;border-color:var(--red);box-shadow:0 0 14px rgba(255,77,77,.45);}
@@ -561,6 +565,7 @@
   body.perf .perf-plkbtn[data-lock="filter"]::after{background:#b07cff;}
   body.perf .perf-plkbtn[data-lock="delay"]::after{background:#5fd35f;}
   body.perf .perf-plkbtn[data-lock="reverb"]::after{background:#5aa9ff;}
+  body.perf .perf-plkbtn[data-lock="mute"]::after{background:#3dd6c4;}
   body.perf .perf-plkbtn[data-lock="pitch"].on{box-shadow:0 0 16px -2px rgba(61,214,196,.6);}
   body.perf .perf-plkbtn[data-lock="filter"].on{box-shadow:0 0 16px -2px rgba(176,124,255,.6);}
   body.perf .perf-plkbtn[data-lock="delay"].on{box-shadow:0 0 16px -2px rgba(95,211,95,.6);}
@@ -768,6 +773,13 @@
 .fx-swipe::after{content:"● ○";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;line-height:7px;letter-spacing:3px;color:var(--ink);pointer-events:none;opacity:.55}
 .fx-swipe[data-fx-page=patterns]::after{content:"○ ●"}
 .fx-swipe.swiping{cursor:grabbing}
+/* 場所がある画面（768px 以上＝PC / iPad 横の演奏画面）は A B C D をスワイプの裏に隠さない（v0.3.182 §169）。
+   下の段の A B C D を横長に大きく。FX 列の中の A B C D とページの点（● ○）は出さない */
+@media(min-width:768px){
+  .fx-swipe::after{display:none}
+  #perfPlk>.fx-pattern{display:none!important}
+  body.perf .perf-pats .perf-pat{flex:1 1 0;min-width:72px;max-width:160px;font-size:22px;font-weight:800;letter-spacing:.08em}
+}
 
 /* EDIT is also reachable on phone; the pattern page still shows only A–D. */
 @media(max-width:600px){#viewPads>.msbar[data-fx-page=effects] #holdEdit{display:flex}}
@@ -1321,7 +1333,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.181</div>
+  <div class="s-ver" id="splashVer">v0.3.182</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -6043,12 +6055,14 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
   const wasPerf=document.body.classList.contains("perf");
-  // 「横にしてください」はタッチ端末（iPad縦）だけ。PCの縦長ウィンドウ（縦モニタ／ハーフスクリーン）は
-  // 回転できないので、perfを諦めて通常の split で動かす（v0.3.98：960×1040 等で全面覆われて操作不能だった）
+  // 「横にしてください」はタッチ端末（iPad縦）だけ。PCの縦長ウィンドウ（縦モニタ／ハーフスクリーン）は回転できない。
+  // v0.3.98〜181 はそこで perf を諦めて split（パッド左・操作右）で動かしていたが、split は没にした画面（v0.3.182 §170）。
+  // PC（タッチでない）は縦長でも演奏画面にする
   const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
-  document.body.classList.toggle("perf", four && land);
+  const perfOn = four && (land || !coarse);
+  document.body.classList.toggle("perf", perfOn);
   document.body.classList.toggle("perf-rotate", four && !land && coarse);
-  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCK の塗りを消す（値は残る v0.3.168）
+  if(wasPerf && !perfOn){   // 演奏を抜ける＝P-LOCK の塗りを消す（値は残る v0.3.168）
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
@@ -6057,7 +6071,7 @@ function updatePerf(){
     // ベストエフォートで横向きロック（Android系のみ有効。iPad Safariは非対応＝回転オーバーレイが実質ガード）
     try{ if(screen.orientation && screen.orientation.lock){ const p=screen.orientation.lock("landscape"); if(p&&p.catch) p.catch(()=>{}); } }catch(_){}
   }
-  if(four && land) paintPerf();
+  if(perfOn) paintPerf();
 }
 ["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, updatePerf));
 window.addEventListener("load", updatePerf);
@@ -6236,7 +6250,7 @@ document.getElementById("kDrive").addEventListener("input",function(){
 });
 
 // @module ui/fx-pattern-page
-// @provides setFxPatternPage
+// @provides fxSwipeWide, setFxPatternPage
 // @uses activeLock, paintPerf, perfLockApply, setActiveLock
 // @depends -
 // Both responsive rows use the same page. Pattern clicks/LEDs are wired by
@@ -6255,7 +6269,11 @@ function setFxPatternPage(patterns){
 // ・短いはじき（横に 24px 以上）でも切り替える（v0.3.178 は離した時に 44px 以上が必要だった）
 // ・指に合わせて列が少し動く（スワイプを受け付けたのが見える）。iOS が途中で pointercancel を出しても、横に十分動いていれば切り替える
 // ・画面全体の横スワイプ（PADS / SEQ / SET の切替）は廃止した（61-layout）。あれが同じ指で画面ごと SEQ へ飛ばしていた
+// 場所がある画面（768px 以上）は A B C D が常に出ているのでスワイプしない（v0.3.182 §169）。狭い画面で A B C D のページのまま広げたら FX に戻す
+const fxSwipeWide=()=>typeof matchMedia==='function'&&matchMedia('(min-width:768px)').matches;
 (function(){
+  if(typeof matchMedia==='function'){const mq=matchMedia('(min-width:768px)');const back=()=>{if(mq.matches&&[...document.querySelectorAll('.fx-swipe')].some(r=>r.dataset.fxPage==='patterns'))setFxPatternPage(false);};
+    if(mq.addEventListener)mq.addEventListener('change',back);back();}
   document.querySelectorAll('.fx-swipe').forEach(row=>{
     let gesture=null,blockClick=false;
     const shift=dx=>{row.style.transform=dx?'translateX('+Math.max(-40,Math.min(40,dx*.35)).toFixed(1)+'px)':'';};
@@ -6263,7 +6281,7 @@ function setFxPatternPage(patterns){
       if(ax>=24&&ax>Math.abs(dy)*1.2){setFxPatternPage(row.dataset.fxPage!=='patterns');return true;}return false;};
     const end=()=>{gesture=null;row.classList.remove('swiping');shift(0);};
     row.addEventListener('pointerdown',e=>{
-      if(e.button>0||gesture)return;
+      if(e.button>0||gesture||fxSwipeWide())return;
       blockClick=false;gesture={id:e.pointerId,x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,swipe:false};
     },true);
     row.addEventListener('pointermove',e=>{
@@ -6284,7 +6302,7 @@ function setFxPatternPage(patterns){
     // 列まで上がってくる。v0.3.179 まではそれを取消と見て、スワイプがその場で終わっていた（＝実機で効かなかった本当の原因）
     row.addEventListener('pointercancel',cancel);row.addEventListener('lostpointercapture',e=>{if(e.target===row&&gesture?.swipe)cancel(e);});
     row.addEventListener('click',e=>{if(blockClick){blockClick=false;e.preventDefault();e.stopImmediatePropagation();}},true);
-    row.addEventListener('keydown',e=>{if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();setFxPatternPage(e.key==='ArrowLeft');}});
+    row.addEventListener('keydown',e=>{if(!fxSwipeWide()&&e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();setFxPatternPage(e.key==='ArrowLeft');}});
   });
 })();
 // @module sampling
@@ -7646,7 +7664,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.181";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.182";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

@@ -9,6 +9,11 @@ Ships as a single HTML file (`mics-609bc14b.html`), zero external dependencies. 
 （関門 `build.mjs --check` が止める）。バージョンは `version.json` だけが正で、ビルドが差し込む。
 流れの全体は **`docs/dev-flow.md`**。
 
+## 思想（v0.3.182 で明記）
+**梯郁太郎氏の思想＝ハードウェア・ソフトウェア・アートウェア。その思想を引き継ぐステージ楽器。**
+機材（音の芯・手触り・遅れの無さ）、仕組み（シーケンス・セット・保存）、アートウェア（演奏者が感じる世界観・色・名前・気持ちよさ）の三つを同じ重さで作る。
+チームの「アートウェア」ロールはここから来ている。判断に迷ったら「ステージで演奏者が気持ちよく弾けるか」で決める。
+
 ## Architecture
 
 ### Audio Engine
@@ -46,7 +51,7 @@ tapeHiss ───────────────────────�
 - Accessor functions: `getPattern(i)` for edit, `getPlayPattern(i)` for playback
 
 ### UI Modes (2 screens since v0.2.8)
-- **PADS**: Koala-style layout. Waveform strip on top, pads below. MUTE/SOLO/EDIT toggles. **Pad grid is fixed 4×4** (8×2 layout removed v0.2.30 — maintaining two layouts wasn't worth it). Desktop uses the S2400 split (pads left, waveform/controls right) via `#viewPads.split`, always on; landscape ≥768 promotes to Performance Mode. Mobile forces 4×4 via media query.
+- **PADS**: Koala-style layout. Waveform strip on top, pads below. MUTE/SOLO/EDIT toggles. **Pad grid is fixed 4×4** (8×2 layout removed v0.2.30 — maintaining two layouts wasn't worth it). Desktop uses `#viewPads.split` as the base class; at ≥768px it is always shown as Performance Mode (`body.perf`) — PC (mouse) even in a tall/portrait window (v0.3.182 §170: the pads-left/controls-right split screen was dropped), touch devices in landscape (portrait iPad gets the rotate prompt). Mobile forces 4×4 via media query.
 - **SEQ**: 16×16 step grid with pattern A/B/C/D selector and chain length.
 - **MIX screen removed**: per-pad volume = EDIT Level only (P-LOCK level removed v0.3.124, §135); mute/solo = PADS MUTE/SOLO modes. Rationale: same state was editable from 3 places (DRY violation → sync bugs). Audio routing (groupBus/GROUP_OF/FX nodes) unchanged — only UI moved. See `docs/screen-spec.md`.
 - **MENU (⋮) mixer UI removed (v0.2.27)**: the Group-volume (4) and FX (delay/reverb) pads were dropped from the menu too. Group/FX **values still load from `.mics` and apply** via `applyGroupVol`/`applyFx` — only the editing UI is gone. Master volume + COMP remain in the menu. `paintMixer()` kept as a no-op shim for existing callers.
@@ -54,7 +59,7 @@ tapeHiss ───────────────────────�
 - **SET モード（v0.3.144, §145）**: 上段スイッチ PADS / SEQ / SET。SET は PADS 画面の状態（`body.setmode`）で、情報窓が SET 演奏モード、
   パッドが **16 セットのポン出し**（v0.3.147：押す＝そのセットを頭から鳴らす＋ PADS / SEQ の対象もそのセットに／離す＝止まる／
   1 拍（4 ステップ）押し続ける＝ホールド（押して離すと止まる）／**同時鳴らし可**＝ミックス／押しながら上下スワイプ＝そのセットの音量 `setLevels`。■ は全部止める）。キーボード（1-8 / Q-I、↑↓ で音量）と MIDI（C4〜D#5）からも同じ操作（§152）。SET の切替ボタンに 16 セットの地図と番号（§147）。セットの名前は情報窓の NOW の横の ✎（§160）。データは `data/set`、表示は `ui/set-view`。
-  スマホの A B C D は FX 列の横スワイプ（どちら向きでも 24px）で FX ⇄ A B C D（`ui/fx-pattern-page`、§167）。v0.3.179 の A B C D 送りボタンはスワイプが直ったので v0.3.181 で撤去（§168）。
+  スマホ（767px まで）の A B C D は FX 列の横スワイプ（どちら向きでも 24px）で FX ⇄ A B C D（`ui/fx-pattern-page`、§167）。場所がある画面（768px 以上）はスワイプせず、A B C D を常に横長で大きく出す（split＝FX の下の段、演奏画面＝下の段 §169）。
   画面全体の横スワイプでのモード切替は v0.3.180 で廃止（§167）。PADS / SEQ / SET は上段のボタンだけ。
   いまのセットは `audio/transport`、他に鳴っているセットは `audio/set-players`（snapshot のトラック列を `playVoice(..., trs)` で鳴らす。時計はセットごと）。
 
@@ -144,7 +149,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.181
+MICS009 beta v0.3.182
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
