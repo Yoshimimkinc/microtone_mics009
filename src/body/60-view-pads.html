@@ -43,6 +43,33 @@
       <div class="pads" id="pads"></div>
       <!-- SET モード（v0.3.143 §144）：同じ格子で 1 マス = 1 つの枠（16 パッドの状態）。body.setmode で #pads と入れ替わる -->
       <div class="pads setgrid" id="setGrid" aria-label="SET の枠（叩いて切り替え）"></div>
+      <!-- SEQ（v0.3.183 §171）：別の画面ではなく PADS 画面の状態（body.seqmode）。3 モードとも「窓 → 主面 → A B C D・BAR → ステップ」。
+           主面＝16×16 のグリッド。A B C D・BAR は主面の下（PC / iPad 横は #perfPats、スマホは #seqHead） -->
+      <div class="seqmain" id="seqMain">
+        <div class="melo-banner" id="meloBanner" style="display:none;">
+          <button class="t" id="meloExit">← DRUMS</button>
+        </div>
+        <div class="colnums" id="colnums"></div>
+        <div class="grid playcol" id="grid"></div>
+      </div>
+      <div class="seq-head" id="seqHead">
+        <div class="pat-bar">
+          <span class="patlabel">PAT</span>
+          <div class="seg" id="patSeg">
+            <button class="patbtn on" data-p="0">A</button>
+            <button class="patbtn" data-p="1">B</button>
+            <button class="patbtn" data-p="2">C</button>
+            <button class="patbtn" data-p="3">D</button>
+          </div>
+          <span class="patlabel">BAR</span>
+          <div class="seg" id="barSeg">
+            <button class="patbtn on" data-b="0">1</button>
+            <button class="patbtn" data-b="1">2</button>
+            <button class="patbtn" data-b="2">3</button>
+            <button class="patbtn" data-b="3">4</button>
+          </div>
+        </div>
+      </div>
 
       <!-- 右下START/STOPは廃止（v0.3.28）。再生/停止はヘッダ ▶PLAY ＋スペースキー -->
 
@@ -72,13 +99,8 @@
           <button class="cl-key" data-pg="tone">TONE</button>
           <button class="cl-key" data-pg="asgn">ASSIGN</button>
         </div>
-        <!-- SET モードのキー列：枠の中のシーケンス A B C D（setEditPat を呼ぶ＝SEQ の A-D と同じ入口） -->
-        <div class="cl-keys cl-keys-set" id="clKeysSet">
-          <button class="cl-key" data-pat="0">A</button>
-          <button class="cl-key" data-pat="1">B</button>
-          <button class="cl-key" data-pat="2">C</button>
-          <button class="cl-key" data-pat="3">D</button>
-        </div>
+        <!-- SET モードのキー列：A B C D は窓の外（主面の下の A B C D）と重複するので v0.3.183 で撤去（§171）。窓の高さを変えないよう、行の高さだけ残す -->
+        <div class="cl-keys cl-keys-set" id="clKeysSet" aria-hidden="true"></div>
         <!-- メッセージとヒントは1行に統合し、空でも高さを確保する。
              出入りで畳んでいた頃は、トーストが出るたびに窓が伸び縮みしてパッドがずれていた -->
         <div class="cl-row cl-note"><b id="clMsg"></b><span id="clHint"></span></div>

@@ -67,3 +67,24 @@
   .file input{display:none;}
   select.t{appearance:none;}
   select.t:focus{box-shadow:0 0 0 2px var(--amber);outline:none;}
+  /* SEQ は PADS 画面の状態（v0.3.183 §171）。3 モードとも「窓 → 主面 → A B C D・BAR → ステップ」。
+     主面＝グリッド（#seqMain）。PC / iPad 横は下の段の #perfPats、スマホは主面の下の #seqHead が A B C D・BAR */
+  .seqmain,#seqHead{display:none;}
+  body.seqmode #pads,body.seqmode #setGrid{display:none!important;}
+  body.seqmode #seqMain{display:flex;flex-direction:column;min-height:0;}
+  body.seqmode #viewPads>.msbar{display:none!important;}    /* FX 列はパッドに掛けるもの＝SET と同じく SEQ では出さない */
+  body.perf.seqmode #perfPlk{visibility:hidden;}   /* FX 列はパッドに掛けるもの。場所は残す＝3 モードで主面と A B C D の位置が同じ */
+  body.perf.seqmode #seqMain{grid-area:pads;overflow:hidden;}
+  #seqHead{margin:8px 0 0;}
+  body:not(.perf).seqmode #seqHead,body:not(.perf).setmode #seqHead{display:flex;}   /* スマホの SET も：窓の A B C D を撤去したので同じ段 */
+  /* スマホ（積み上げ）：窓(order 0) → 主面(order 2) → A B C D・BAR(order 3)。グリッドは主面の中でスクロール */
+  @media(max-width:767px){
+    #viewPads>#seqMain{order:2;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;}
+    #viewPads>#seqHead{order:3;flex:0 0 auto;}
+    #seqHead .pat-bar{width:100%;flex-wrap:nowrap;}                     /* A B C D・BAR は幅いっぱい＝押しやすく */
+    #seqHead{margin:0;}                                                  /* 高さは FX 列（46px）と同じ＝PADS / SEQ / SET で主面の高さが変わらない */
+    #seqHead .seg{flex:1 1 0;display:flex;padding:1px;}
+    #seqHead .seg .patbtn{flex:1 1 0;min-height:42px;font-size:15px;}
+  }
+  /* 演奏画面の小節ボタン：選択中（.on）の影より、ホールドの枠を優先（v0.3.183：SEQ も演奏画面の BAR を使うので見えるように） */
+  body.perf .perf-bar.hold,body.perf .perf-bar.on.hold{box-shadow:0 0 0 2px var(--amber) inset,0 0 10px rgba(var(--hit-glow-a),.5);}

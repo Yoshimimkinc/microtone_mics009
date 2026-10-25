@@ -106,3 +106,6 @@ window [touchstart]
 window [touchend]
 # v0.3.181 §168 FX 列の A B C D 送りボタン（v0.3.179）を撤去。FX 列のスワイプで A B C D が出せるようになったので不要（ユーザー判断）
 $("patCycle") [click]
+# v0.3.183 §171 SEQ は別の画面（#viewSeq）ではなく PADS 画面の状態（body.seqmode / seqMode）。表示判定は seqMode で行うので要素参照は不要。
+# 同じ版で SET の窓の A B C D（#clKeysSet の 4 ボタンと click 配線）も撤去（主面の下の A B C D と重複＝ユーザー判断）
+viewSeqEl

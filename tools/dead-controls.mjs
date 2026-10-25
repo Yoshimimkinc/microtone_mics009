@@ -66,7 +66,9 @@ const targets=async()=>p.evaluate(()=>{
 
 const dead=[];
 for(const view of ['viewPads','viewSeq']){
-  await p.evaluate(v=>{ document.getElementById(v==='viewSeq'?'modeSeq':'modePads').click(); }, view);
+  // v0.3.183：SEQ も情報窓が出る（PADS 画面の状態）。前の周回で窓が ASSIGN ページのままだと、MIDI / KEY の学習待ち・CLEAR（割り当て無し）など
+  // 「画面が変わらないのが正しい」ものを拾うので、各周回は窓を MAIN から始める（v0.3.182 までと同じ範囲）
+  await p.evaluate(v=>{ document.getElementById(v==='viewSeq'?'modeSeq':'modePads').click(); const k=document.querySelector('#clKeys .cl-key[data-pg="main"]'); if(k) k.click(); }, view);
   await p.waitForTimeout(350);
   const list=await targets();
   for(const t of list){

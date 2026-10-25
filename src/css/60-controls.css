@@ -14,7 +14,6 @@
   .modebtn.on .led{background:var(--amber);box-shadow:0 0 8px var(--amber);}
   .view{display:none;}
   .view.active{display:block;}
-  #viewSeq.active{overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:column;}
   /* mute / solo hold bar */
   .msbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .msbtn{

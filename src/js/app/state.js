@@ -1,8 +1,8 @@
 // @module app/state
 // @provides activeLock, armMode, assignTarget, barHold, bpmVal, copyArm, displayBar, displayPat, editBar,
 //    editDrag, editPat, melodicMode, patSlot, peOpenedAt, peTarget, peV0, peV1, perfDrag, perfRecArm,
-//    perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected, setCur,
-//    setLevels, setMode, setSlots, stepIdx, swingPct
+//    perfTapT, playBar, playPat, playStep, playing, queuedPat, queuedSet, recording, selected, seqMode,
+//    setCur, setLevels, setMode, setSlots, stepIdx, swingPct
 // @uses -
 // @depends -
 // ---------- アプリ状態（UI・再生・編集・演奏）。散らばっていた最上位の let をここに集めた（v0.3.133 Phase 3） ----------
@@ -48,6 +48,7 @@ let setSlots = new Array(16).fill(null);   // 16 のセット（常に 16 ある
 let setCur = 0;         // いまのセット（0..15。PADS / SEQ が見せるのはこのセット）  @writers data/set, share-export
 let queuedSet = null;   // 予約中のセット（次の小節頭で切替。null=なし）  @writers data/set, share-export
 let setLevels = new Array(16).fill(0);     // 各セットのミックス音量（dB。0＝そのまま）。SET でパッドを押しながら上下スワイプ（v0.3.151）。中身を書くのは audio/set-players の setSetLevel だけ（配列そのものは差し替えない）  @writers -
+let seqMode = false;    // SEQ 画面（v0.3.183 §171：PADS 画面の状態。主面がグリッドになる）  @writers ui/seq-view
 let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格子が枠）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
