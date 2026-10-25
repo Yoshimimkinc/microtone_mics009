@@ -166,18 +166,12 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfMute")) $("perfMute").classList.toggle("on",armMode==="mute");
   if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
-  { const pc=$("patCycle"); if(pc){ const L="ABCD", cur=playing?displayPat:ep, q=(playing && queuedPat!==null)?queuedPat:null;   // A B C D 送り：いま（予約があれば ▸ 予約先）
-    const txt=q!==null ? L[cur]+"▸"+L[q] : L[cur]; if(pc.textContent!==txt) pc.textContent=txt; pc.classList.toggle("queued", q!==null);
-    pc.setAttribute("aria-label","パターン "+L[cur]+(q!==null?"、次は "+L[q]:"")+"。押すと次のパターン"); } }
 }
 // P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
 (function(){
   const $=id=>document.getElementById(id);
   document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
-  // スマホの FX 列の A B C D 送り（v0.3.179 §165）：押すたびに次のパターン。再生中は予約で、続けて押せば予約先が進む（D の次は A＝いま鳴っているのに戻れば予約取消）
-  if($("patCycle")) $("patCycle").addEventListener("click",()=>{ const base=(playing && queuedPat!==null) ? queuedPat : (playing ? displayPat : editPat);
-    if(typeof setEditPat==="function") setEditPat((base+1)%4); paintPerf(); });
   // 小節(1-4)：COPY中は元→先で小節コピー、通常は setEditBar。DUPはCOPYに統合し撤去。
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); if(typeof barTapHold==="function") barTapHold(+b.dataset.b); paintPerf(); }));   // ダブルタップ＝BAR ホールド（v0.3.161）
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
