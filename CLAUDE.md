@@ -54,7 +54,8 @@ tapeHiss ───────────────────────�
 - **SET モード（v0.3.144, §145）**: 上段スイッチ PADS / SEQ / SET。SET は PADS 画面の状態（`body.setmode`）で、情報窓が SET 演奏モード、
   パッドが **16 セットのポン出し**（v0.3.147：押す＝そのセットを頭から鳴らす＋ PADS / SEQ の対象もそのセットに／離す＝止まる／
   1 拍（4 ステップ）押し続ける＝ホールド（押して離すと止まる）／**同時鳴らし可**＝ミックス／押しながら上下スワイプ＝そのセットの音量 `setLevels`。■ は全部止める）。キーボード（1-8 / Q-I、↑↓ で音量）と MIDI（C4〜D#5）からも同じ操作（§152）。SET の切替ボタンに 16 セットの地図と番号（§147）。セットの名前は情報窓の NOW の横の ✎（§160）。データは `data/set`、表示は `ui/set-view`。
-  スマホの FX 列には A B C D 送り（`#patCycle`、押すたびに次のパターン・再生中は予約、v0.3.179 §165）。
+  スマホの FX 列には A B C D 送り（`#patCycle`、押すたびに次のパターン・再生中は予約、v0.3.179 §165）。FX 列は横スワイプ（どちら向きでも 24px）で FX ⇄ A B C D（`ui/fx-pattern-page`、§167）。
+  画面全体の横スワイプでのモード切替は v0.3.180 で廃止（§167）。PADS / SEQ / SET は上段のボタンだけ。
   いまのセットは `audio/transport`、他に鳴っているセットは `audio/set-players`（snapshot のトラック列を `playVoice(..., trs)` で鳴らす。時計はセットごと）。
 
 ### Key Design Rules
@@ -143,7 +144,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.179
+MICS009 beta v0.3.180
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

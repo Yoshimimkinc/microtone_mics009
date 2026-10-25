@@ -1,5 +1,5 @@
 import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
-const row=()=>({dataset:{fxPage:'effects'},classList:{add(){},remove(){}},patterns:Array.from({length:4},()=>({hidden:true})),listeners:{},querySelectorAll(){return this.patterns;},setAttribute(k,v){this[k]=v;},setPointerCapture(){},addEventListener(k,fn){(this.listeners[k]??=[]).push(fn);}});
+const row=()=>({dataset:{fxPage:'effects'},style:{},classList:{add(){},remove(){}},patterns:Array.from({length:4},()=>({hidden:true})),listeners:{},querySelectorAll(){return this.patterns;},setAttribute(k,v){this[k]=v;},setPointerCapture(){},addEventListener(k,fn){(this.listeners[k]??=[]).push(fn);}});
 const rows=[row(),row()];let paints=0;const ctx={document:{querySelectorAll:()=>rows},paintPerf:()=>paints++,activeLock:'filter',setActiveLock:()=>ctx.activeLock=null,perfLockApply:()=>{}};vm.createContext(ctx);vm.runInContext(fs.readFileSync(new URL('../src/js/ui/fx-pattern-page.js',import.meta.url),'utf8'),ctx);
 const send=(r,type,x,y,extra={})=>{const e={button:0,pointerId:1,clientX:x,clientY:y,preventDefault(){this.prevented=true;},stopPropagation(){},stopImmediatePropagation(){this.stopped=true;},...extra};for(const f of r.listeners[type]||[])f(e);return e;};
 let pass=0;const check=(s,fn)=>{fn();console.log('PASS '+s);pass++;};
@@ -15,8 +15,17 @@ send(r,'pointerdown',100,20);send(r,'pointermove',200,20);send(r,'pointerup',220
 check('right swipe restores effects without changing pattern',()=>assert.ok(rows.every(row=>row.dataset.fxPage==='effects'&&row.patterns.every(b=>b.hidden))));
 send(r,'pointerdown',250,20);send(r,'pointermove',220,100);send(r,'pointerup',100,100);
 check('vertical scrolling cannot change page',()=>assert.equal(r.dataset.fxPage,'effects'));
+send(r,'pointerdown',250,20);send(r,'pointermove',238,20);send(r,'pointercancel',238,20);
+check('cancelled short swipe preserves page',()=>assert.equal(r.dataset.fxPage,'effects'));
+// v0.3.180：iOS が途中で pointercancel を出しても、横に十分（24px 以上）動いていれば切り替える
 send(r,'pointerdown',250,20);send(r,'pointermove',180,20);send(r,'pointercancel',180,20);
-check('cancelled swipe preserves page',()=>assert.equal(r.dataset.fxPage,'effects'));
+check('cancelled long swipe still switches page',()=>assert.equal(r.dataset.fxPage,'patterns'));
+send(r,'pointerdown',100,20);send(r,'pointermove',200,20);send(r,'pointerup',200,20);
+check('either direction toggles back (two pages)',()=>assert.equal(r.dataset.fxPage,'effects'));
+// スワイプ開始で列が指を捕まえると、ボタンの lostpointercapture が列まで上がる。それで取消にしない（v0.3.179 まで実機で効かなかった原因）
+send(r,'pointerdown',250,20);send(r,'pointermove',220,20);send(r,'lostpointercapture',220,20,{target:{}});send(r,'pointerup',150,20);
+check('bubbled lostpointercapture from the touched button does not cancel the swipe',()=>assert.equal(r.dataset.fxPage,'patterns'));
+send(r,'pointerdown',100,20);send(r,'pointerup',200,20);
 send(r,'pointerdown',250,20);send(r,'pointerup',150,20);
 check('coalesced touch events still recognize a full swipe',()=>assert.equal(r.dataset.fxPage,'patterns'));
 send(r,'keydown',0,0,{altKey:true,key:'ArrowRight'});

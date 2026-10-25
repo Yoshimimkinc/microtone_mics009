@@ -4,8 +4,8 @@
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, queuedPat,
-//    renderPerfFills, sampNameEl, setEditBar, setEditPat, setMode, setModeEnter, stepTrackName, swingPct,
-//    tracks, viewPadsEl
+//    renderPerfFills, sampNameEl, setEditBar, setEditPat, setModeEnter, stepTrackName, swingPct, tracks,
+//    viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
@@ -26,26 +26,8 @@ function switchView(viewId){
 modeBtns.forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
 document.querySelectorAll("#viewDots .vdot").forEach(d=>d.addEventListener("click",()=>switchView(d.dataset.view)));
 
-// スマホ：左右スワイプで PADS/SEQ/MIX を切替（p-lock記録中やスライダー上は無効）
-(function(){
-  const order=["viewPads","viewSeq","viewSet"];
-  let sx=0,sy=0,st=0,sEl=null,tracking=false;
-  const curView=()=>(typeof setMode!=="undefined"&&setMode)?"viewSet":(order.find(id=>{const el=document.getElementById(id);return el&&el.classList.contains("active");})||"viewPads");
-  addEventListener("touchstart",(e)=>{
-    if(innerWidth>600||e.touches.length!==1){ tracking=false; return; }
-    const t=e.touches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); sEl=e.target; tracking=true;
-  },{passive:true});
-  addEventListener("touchend",(e)=>{
-    if(!tracking){ return; } tracking=false;
-    if(innerWidth>600||activeLock) return;                    // p-lock記録中は横ドラッグ＝値入力なので無効
-    if(sEl&&sEl.closest&&sEl.closest("input,select")) return; // スライダー類は除外
-    const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy, dt=Date.now()-st;
-    if(dt>700||Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.5) return; // 明確な横スワイプのみ
-    let idx=order.indexOf(curView())+(dx<0?1:-1);
-    if(idx<0||idx>=order.length) return;                      // 端では何もしない
-    switchView(order[idx]);
-  },{passive:true});
-})();
+// スマホの「画面全体の左右スワイプで PADS / SEQ / SET を切替」は v0.3.180 で廃止（§167）。
+// window 全体で横スワイプを拾っていたので、FX 列を横にスワイプして A B C D を出すと画面まで SEQ へ切り替わっていた。切替は上段の PADS / SEQ / SET だけ
 
 // iOS：長押しで拡大鏡（ルーペ）や長押しメニューが立ち上がらないように（v0.3.156 §149）。
 // パッドの格子（#pads / #setGrid）は pointer イベントだけで動く（長押し＝SET のホールド・EDIT のコピー）ので、touch の既定動作を止めてよい。
