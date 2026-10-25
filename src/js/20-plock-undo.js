@@ -1,51 +1,28 @@
 // @module plock-undo
 // @provides NOTE_NAMES, PLOCKS, SCALES, applyTrackSnapshot, clearLockEdit, clearUndo, dbToGain, doUndo,
-//    getLockEdit, getLockPlay, isMelodic, lockKey, noteLabel, paintMelodic, patLength, pushUndo,
-//    refreshSeqMode, restoreState, scaleSemi, setDrumRowLabels, setLockEdit, setLockPlay, snapshotState,
-//    stripLegacyLocks, undoStack
+//    getLockEdit, isMelodic, lockKey, noteLabel, paintMelodic, patLength, pushUndo, refreshSeqMode,
+//    restoreState, scaleSemi, setDrumRowLabels, snapshotState, stripLegacyLocks, undoStack
 // @uses PADS, applyFx, applyGroupVol, applyPadCategory, barHasContent, bpmVal, buildAllTrackWaves,
 //    compDrive, compMakeup, compOn, compThreshold, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editBars, editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol,
-//    makeSatCurve, masterGain, melodicMode, nextChokeGroup, paintMixer, paintPadName, paintPadStates,
+//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, grid, groupVol, makeSatCurve,
+//    masterGain, melodicMode, nextChokeGroup, normalizeKeyPhrase, paintMixer, paintPadName, paintPadStates,
 //    paintPatBar, paintSteps, patLoad, patRead, patSlot, patSync, playPat, playStep, playing, rowEls,
-//    saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks
+//    saturator, scheduleAutosave, selectPad, selected, setCompBypass, swingPct, tracks, warmKeyTracks
 // @depends -
 // ===== パラメーターロック（p-lock） =====
 // 各パラメーターの範囲・既定（ドラッグ初期値）と表示フォーマット。LEVEL は v0.3.124 で廃止（音量は EDIT の Level だけ＝単一の真 §135）
 const PLOCKS = {
   pitch:  {min:-12, max:12,   def:0,     color:"61,214,196",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 半音
-  filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}, // Hz(LPカットオフ)
+  filter: {min:200, max:18000,def:12000, log:true, color:"176,124,255", fmt:v=>Math.round(v)}, // Hz(LPカットオフ)
   delay:  {min:0,   max:1,    def:0.3,   color:"95,211,95",   fmt:v=>Math.round(v*100)},                          // 送り%
   reverb: {min:0,   max:1,    def:0.3,   color:"90,169,255",  fmt:v=>Math.round(v*100)},                          // 送り%
   nudge:  {min:-50, max:50,   def:0,     color:"255,150,90",  fmt:v=>(v>0?"+":"")+Math.round(v)},                 // 前後タイミング(ms)。-=前ノリ/+=後ノリ
 };
 // 古い .mics に残る廃止済みの P-LOCK（level: v0.3.124）を読み込み時に捨てる。空になったステップは丸ごと消す
-function stripLegacyLocks(locks){
-  if(!locks) return {};
-  for(const k of Object.keys(locks)){ const lk=locks[k]; if(!lk) { delete locks[k]; continue; }
-    delete lk.level;
-    if(Object.keys(lk).length===0) delete locks[k]; }
-  return locks;
-}
+function stripLegacyLocks(){ return {}; } // v0.3.171: 古いステップの自動化は再生しない
 function lockKey(pat,bar,step){ return pat+"_"+bar+"_"+step; }
-function getLockEdit(trackIdx, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(editPat,editBar,step)]; }
-function getLockPlay(trackIdx, pat, bar, step){ const m=tracks[trackIdx].locks; return m && m[lockKey(pat,bar,step)]; }
-// P-LOCK もステップと同じく、編集中の小節がホールドされていればホールドした小節すべてへ（v0.3.166 §159）
-function setLockEdit(trackIdx, step, param, value){
-  const t=tracks[trackIdx]; if(!t.locks) t.locks={};
-  ((typeof editBars==="function") ? editBars() : [editBar]).forEach(b=>{
-    const k=lockKey(editPat,b,step);
-    if(!t.locks[k]) t.locks[k]={};
-    t.locks[k][param]=value; });
-}
-function clearLockEdit(trackIdx, step){ const t=tracks[trackIdx]; if(t.locks) ((typeof editBars==="function") ? editBars() : [editBar]).forEach(b=>{ delete t.locks[lockKey(editPat,b,step)]; }); }
-// 再生座標へp-lockを書く（演奏ライブ記録：再生中のプレイヘッドのステップにオートメーションを焼く）
-function setLockPlay(trackIdx, pat, bar, step, param, value){
-  const t=tracks[trackIdx]; if(!t.locks) t.locks={};
-  const k=lockKey(pat,bar,step);
-  if(!t.locks[k]) t.locks[k]={};
-  t.locks[k][param]=value;
-}
+function getLockEdit(){ return undefined; } // 旧コピー経路の読込互換。新規ロックは作らない
+function clearLockEdit(){ } // ステップ削除との旧契約（保存されるロックは常に空）
 // 小節に音があるか／パターンの長さ（書いた分・最低1小節）
 function patLength(p){ let last=0; for(let b=0;b<4;b++) if(barHasContent(p,b)) last=b; return last+1; }
 
@@ -74,14 +51,17 @@ function snapshotState(){
       mute:t.mute,solo:t.solo,mutes:(t.mutes||[t.mute,t.mute,t.mute,t.mute]).slice(),solos:(t.solos||[t.solo,t.solo,t.solo,t.solo]).slice(),
       patFx:Array.isArray(t.patFx)?t.patFx.map(o=>Object.assign({},o)):null,name:t.name,buffer:t.buffer,rawBuffer:t.rawBuffer,
       type:PADS[i].type,voice:PADS[i].voice,
+      _keySignature:t._keySignature||null,padKind:t.padKind||"SPL",keyPhrase:normalizeKeyPhrase(t.keyPhrase),sampleState:t.sampleState?Object.assign({},t.sampleState):null,
       patterns:t.patterns.map(p=>p.map(b=>b.slice())),
-      locks:JSON.parse(JSON.stringify(t.locks||{})),
+      locks:{},
     })),
   };
 }
 // 1 トラックを snapshotState の形から戻す（undo の復元と、セット切替（data/set）で共用。v0.3.144）
 function applyTrackSnapshot(i,x){
   const t=tracks[i];
+  t._contentEpoch=(t._contentEpoch||0)+1;t._keySignature=x._keySignature||null;
+  t.padKind=x.padKind||"SPL";t.keyPhrase=normalizeKeyPhrase(x.keyPhrase);t.sampleState=x.sampleState?Object.assign({},x.sampleState):null;
   t.vol=x.vol;t.tune=x.tune;t.start=x.start;t.end=x.end;t.loop=x.loop;t.loopStart=x.loopStart;
   t.filter=x.filter;t.cutoff=x.cutoff;t.reso=x.reso;t.choke=x.choke;t.scale=x.scale;t.attack=x.attack;t.fade=x.fade;t.delaySend=x.delaySend;t.reverbSend=x.reverbSend;t.outBus=x.outBus||"A";t.midiNote=x.midiNote??null;t.key=x.key??null;
   t.mutes=Array.isArray(x.mutes)?x.mutes.map(Boolean):[!!x.mute,!!x.mute,!!x.mute,!!x.mute];   // ミュートは A B C D ごと（v0.3.149）。古い snapshot は全パターン同じ
@@ -90,7 +70,7 @@ function applyTrackSnapshot(i,x){
   t.mute=t.mutes[patSlot];t.solo=t.solos[patSlot];t.name=x.name;t.buffer=x.buffer;t.rawBuffer=x.rawBuffer;
   PADS[i].type=x.type;PADS[i].voice=x.voice;PADS[i].name=x.name||PADS[i].name;
   t.patterns=x.patterns.map(p=>p.map(b=>b.slice()));
-  t.locks=x.locks?JSON.parse(JSON.stringify(x.locks)):{};
+  t.locks={};
   t.loopPlaying=false;
   if(typeof patRead==="function") patRead(t, patSlot);   // いまのパターンの値を live へ（ミュート / ソロ / エフェクト）
   paintPadName(i);   // パッド名と SEQ 行名（ui/pads-view）
@@ -125,7 +105,8 @@ function restoreState(s){
   if(typeof paintPatBar==="function") paintPatBar();
   if(typeof applyPadCategory==="function") for(let i=0;i<PADS.length;i++) applyPadCategory(i);
   if(typeof drawAllPadWaves==="function") drawAllPadWaves();
-  if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // ステップ波形を再キャッシュ（読込/復元時）
+  if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();
+  if(typeof warmKeyTracks==="function") warmKeyTracks();   // ステップ波形を再キャッシュ（読込/復元時）
 }
 function pushUndo(){ undoStack.push(snapshotState()); if(undoStack.length>40) undoStack.shift();
   if(typeof scheduleAutosave==="function") scheduleAutosave(); }   // 変更があったら自動保存を予約

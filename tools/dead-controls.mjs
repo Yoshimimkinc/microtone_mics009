@@ -82,6 +82,7 @@ for(const view of ['viewPads','viewSeq']){
     const after=await fingerprint();
     if(before===after) dead.push(`${view}  ${t.name}  "${t.txt}"`);
     const key=t.name.split('[')[0]; if(REVERT[key]) await p.evaluate(REVERT[key]);
+    await p.evaluate(()=>{if(typeof fxModalClose==='function')fxModalClose();});
   }
 }
 console.log(`=== 押しても何も起きないコントロール ${dead.length}件 ===`);

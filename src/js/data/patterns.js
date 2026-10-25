@@ -74,7 +74,7 @@ function applySeqData(p, trs){
     for(let b=0;b<4;b++){ const src=x&&x.patterns&&Array.isArray(x.patterns[b]) ? x.patterns[b].slice(0,STEPS) : []; while(src.length<STEPS) src.push(0); t.patterns[p][b]=src; }
     if(!t.locks) t.locks={};
     Object.keys(t.locks).forEach(k=>{ if(k.indexOf(p+"_")===0) delete t.locks[k]; });
-    if(x) Object.keys(x.locks||{}).forEach(k=>{ t.locks[p+"_"+k]=JSON.parse(JSON.stringify(x.locks[k])); });
+    t.locks={};
     t.mutes[p]=!!(x&&x.mute); t.solos[p]=!!(x&&x.solo);
     if(x&&x.fx) t.patFx[p]=Object.assign({}, t.patFx[p], x.fx);
   });

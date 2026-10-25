@@ -51,7 +51,7 @@ let setLevels = new Array(16).fill(0);     // 各セットのミックス音量�
 let setMode = false;    // SET 画面（情報窓が SET 演奏モード、格子が枠）  @writers ui/set-view
 
 // --- P-LOCK・演奏（一時） ---
-let activeLock = null;  // 選択中のp-lockパラメータ（null=ON/OFFトグル）。入口は setActiveLock（step-strip）  @writers step-strip
-let perfDrag = null;    // Performance中のパッドドラッグ＝ライブ・モジュレート  @writers ui/performance-view
-let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録 / OFF=パッドの値だけ（どちらも解除しても値は残る v0.3.168）  @writers layout
+let activeLock = null;  // 選択中のライブFX（ステップ記録なし）。入口は setActiveLock（step-strip）  @writers step-strip
+let perfDrag = null;    // 旧データとの互換。新規のパラメータロック操作は持たない @writers -
+let perfRecArm = false; // Performance: REC ON=再生中いじりをステップへ記録 / OFF=パッドの値だけ（廃止、常にfalse）  @writers -
 let perfTapT = [];      // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）  @writers -

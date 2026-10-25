@@ -21,6 +21,11 @@ if(run('build.mjs --check（src と公開HTMLの一致）',['tools/build.mjs','-
 if(run('static-check.mjs（静的：暗黙グローバル・不在id・版一致）',['tools/static-check.mjs'])!==0) fails.push('static-check.mjs');
 // 0.6) ファイル間の契約（1秒）：@module/@provides/@uses/@depends と実装の一致・連結順・二重宣言（Phase 1）
 if(run('module-check.mjs（ファイル間の依存：ヘッダと実装の一致・連結順・二重宣言）',['tools/module-check.mjs'])!==0) fails.push('module-check.mjs');
+// KEY gestures and tine DSP use a DOM double, without a browser dependency.
+if(run('key-editor-unit.mjs（ノート操作・物理音源）',['tools/key-editor-unit.mjs'])!==0) fails.push('key-editor-unit.mjs');
+if(run('fx-pattern-page-unit.mjs（FX列のスワイプ）',['tools/fx-pattern-page-unit.mjs'])!==0) fails.push('fx-pattern-page-unit.mjs');
+if(run('fx-performance-unit.mjs（通常FXとEDIT設定）',['tools/fx-performance-unit.mjs'])!==0) fails.push('fx-performance-unit.mjs');
+if(run('scratch-unit.mjs（盤・フェーダー・音声処理）',['tools/scratch-unit.mjs'])!==0) fails.push('scratch-unit.mjs');
 // 1) 回帰（合否）
 if(run('check.mjs（回帰・合否）',['tools/check.mjs',PORT])!==0) fails.push('check.mjs');
 // 2) 押しても何も起きないコントロール（消したハンドラの検出）

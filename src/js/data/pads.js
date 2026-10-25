@@ -1,6 +1,6 @@
 // @module data/pads
 // @provides chopBaseName, clearPadSound, copyPadSound, nextChokeGroup, swapPads
-// @uses AC, PADS, patSync, pushUndo, stopVoices, tracks
+// @uses AC, PADS, normalizeKeyPhrase, patSync, pushUndo, stopVoices, tracks
 // @depends -
 // ---------- パッドのデータ更新：コピー・スライス名・チョークグループの発行 ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。UI の描画とデータ更新を分ける入口。
@@ -14,6 +14,7 @@ function copyPadSound(src,dst){
   const s=tracks[src],d=tracks[dst];
   // バッファは参照共有（AudioBufferは再生で変化しないため安全）
   d.buffer=s.buffer; d.rawBuffer=s.rawBuffer;
+  d._contentEpoch=(d._contentEpoch||0)+1;d._keySignature=s._keySignature||null;d.padKind=s.padKind||"SPL";d.keyPhrase=normalizeKeyPhrase(s.keyPhrase);d.sampleState=s.sampleState?Object.assign({},s.sampleState):null;
   d.tune=s.tune; d.start=s.start; d.end=s.end;
   d.loop=s.loop; d.loopStart=s.loopStart;
   d.filter=s.filter; d.cutoff=s.cutoff; d.reso=s.reso;
@@ -28,6 +29,7 @@ function clearPadSound(i){
   const t=tracks[i]; if(!t) return;
   pushUndo();
   stopVoices(t, AC.currentTime); t.loopPlaying=false;
+  t._contentEpoch=(t._contentEpoch||0)+1;t.padKind="SPL";t.keyPhrase=null;t.sampleState=null;t._keySignature=null;
   t.buffer=null; t.rawBuffer=null; t.start=0; t.end=1; t.loop=false; t.loopStart=0; t.tune=0;
   t.name="PAD "+(i+1);
   PADS[i].type="empty"; PADS[i].voice=null; PADS[i].name="PAD "+(i+1);
@@ -38,7 +40,8 @@ function swapPads(a,b){
   pushUndo();
   if(typeof patSync==="function") patSync();   // 入れ替える前に live を今のパターンへ書き戻す
   const ta=tracks[a], tb=tracks[b];
-  for(const k of ["buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
+  ta._contentEpoch=(ta._contentEpoch||0)+1;tb._contentEpoch=(tb._contentEpoch||0)+1;
+  for(const k of ["_keySignature","padKind","keyPhrase","sampleState","buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   { const f=ta.patFx; ta.patFx=tb.patFx; tb.patFx=f; }   // A B C D ごとのエフェクトも一緒に（v0.3.150。live は入替前に patSync 済み）

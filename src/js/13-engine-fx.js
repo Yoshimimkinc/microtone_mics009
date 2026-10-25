@@ -35,7 +35,7 @@ const reverbSend = AC.createGain(); reverbSend.gain.value = 0;
 const reverb = AC.createConvolver();
 (function(){
   // モノ＆短め(1.5s)のIR：コンボルバは常時稼働するためCPU負荷を大きく削減（音色はほぼ同等）
-  const dur=1.5, rate=AC.sampleRate, len=Math.floor(dur*rate);
+  const dur=1.8, rate=AC.sampleRate, len=Math.floor(dur*rate);
   const ir=AC.createBuffer(1,len,rate);
   const d=ir.getChannelData(0);
   for(let i=0;i<len;i++){ const t=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.2); }  // 指数減衰ノイズ=ホール

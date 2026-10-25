@@ -1,9 +1,9 @@
 // @module step-strip
 // @provides paintStepStrip, setActiveLock, stepBtns, stepShift, stepStripEl, stepTrackName, stripDrag,
 //    toggleStepAt
-// @uses PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo, fxBtnTap,
-//    getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, pushUndo, rowEls, sampNameEl, selectPad,
-//    selected, setCellWave, setLockEdit, setStep, trackWaveURL, tracks, updateRecBtnLabel
+// @uses FX_OFF, PADS, PLOCKS, STEPS, _stripCurStep, activeLock, armMode, copyTap, curStepFor, doUndo,
+//    fxBtnTap, getLockEdit, getPattern, paintPatBar, paintPerf, paintSteps, pushUndo, rowEls, selectPad,
+//    selected, setCellWave, setStep, trackWaveURL, tracks, updateRecBtnLabel
 // @depends boot, plock-undo, ui/transport-view
 // ===== GRID（Digitakt式）ステップ入力 =====
 function stepTrackName(){ const t=tracks[selected]; return String(selected+1).padStart(2,"0")+" "+((PADS[selected].type==="sample"&&t.name)?t.name:PADS[selected].name); }
@@ -41,33 +41,8 @@ if(stepStripEl){
     e.preventDefault();
     const s=+b.dataset.s;
     if(armMode==="chop"){ copyTap("note",{t:selected,s}); return; }   // COPY中＝ノート(値+P-LOCK)の元→先
-    if(activeLock && PLOCKS[activeLock]){
-      const spec=PLOCKS[activeLock], lk=getLockEdit(selected,s);
-      const startVal=(lk&&lk[activeLock]!=null)?lk[activeLock]:spec.def;
-      stripDrag={s, x0:e.clientX, moved:false, startVal, undone:false};
-      try{ stepStripEl.setPointerCapture(e.pointerId); }catch(_){}
-    } else {
-      toggleStepAt(s, e.shiftKey);
-    }
+    toggleStepAt(s, e.shiftKey);
   });
-  stepStripEl.addEventListener("pointermove",e=>{
-    if(!stripDrag || !activeLock || !PLOCKS[activeLock]) return;
-    const dx=e.clientX-stripDrag.x0;
-    if(!stripDrag.moved && Math.abs(dx)>5) stripDrag.moved=true;
-    if(stripDrag.moved){
-      if(!stripDrag.undone){ pushUndo(); stripDrag.undone=true; }
-      const spec=PLOCKS[activeLock]; let v;
-      if(spec.log){ const lmin=Math.log(spec.min),lmax=Math.log(spec.max); let l=Math.log(stripDrag.startVal)+(dx/180)*(lmax-lmin); l=Math.max(lmin,Math.min(lmax,l)); v=Math.exp(l); }
-      else { v=stripDrag.startVal+(dx/180)*(spec.max-spec.min); v=Math.max(spec.min,Math.min(spec.max,v)); if(activeLock==="pitch"||activeLock==="nudge") v=Math.round(v); }
-      if(!(getPattern(selected)[stripDrag.s]>0)) setStep(selected, stripDrag.s, 1);   // 値を入れたら自動ON（data/patterns）
-      setLockEdit(selected, stripDrag.s, activeLock, v);
-      paintStepStrip();
-      sampNameEl.textContent="STEP "+String(stripDrag.s+1).padStart(2,"0")+" "+activeLock.toUpperCase()+" "+spec.fmt(v)+"  · "+stepTrackName();
-    }
-  });
-  const stripEnd=e=>{ if(!stripDrag) return; if(!stripDrag.moved) toggleStepAt(stripDrag.s, e&&e.shiftKey); stripDrag=null; };
-  stepStripEl.addEventListener("pointerup",stripEnd);
-  stepStripEl.addEventListener("pointercancel",()=>{ stripDrag=null; });
 }
 function paintStepStrip(){
   if(!stepStripEl) return;
@@ -99,14 +74,14 @@ paintStepStrip();   // ボタン生成直後の初期描画（起動時の最初
 // p-lock ツールバー（1つだけ点灯／再押しで解除）
 // P-LOCK の選択（perf の #perfPlk から）。以前は隠れた #plockRow のボタンを click() で代理していた
 function setActiveLock(p){
-  activeLock=(activeLock===p)?null:p;
+  activeLock=FX_OFF[p]&&activeLock!==p?p:null; // Live FX selection only; step automation remains disabled.
   document.querySelectorAll('#perfPlk .perf-plkbtn[data-lock], .msbar .msbtn.fx[data-lock]').forEach(x=>x.classList.toggle("on",x.dataset.lock===activeLock));
 }
 // スマホの PITCH / FILTER / DELAY / REVERB：押す→パッドを左右にドラッグでそのパッドの量。
 // PC の perf と同じく fxBtnTap を通す＝解除しても値は残る（ポッチ）／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
 document.querySelectorAll(".msbar .msbtn.fx").forEach(b=>b.addEventListener("click",()=>{
   fxBtnTap(b.dataset.lock);
-  if(typeof sampNameEl!=="undefined"&&sampNameEl && activeLock===b.dataset.lock) sampNameEl.textContent = b.textContent.trim()+"：パッドを左右にドラッグ＝量 / もう一度で解除（値は残る）・ダブルタップでリセット";
+
   if(typeof paintPerf==="function") paintPerf();
 }));
 function stepShift(d){ selectPad((selected+d+PADS.length)%PADS.length); }

@@ -24,15 +24,16 @@
 
       <!-- MUTE/SOLO/COPY はトランスポート行へ移設（v0.3.5）。EDITは非perf用にここへ残置。
            スマホ(<600px)のみ relocateMuteSolo() が MUTE/SOLO をこの行に親替え＝[MUTE SOLO EDIT]（v0.3.31） -->
-      <div class="msbar">
-        <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
+      <div class="msbar fx-swipe" data-fx-page="effects" aria-label="エフェクト。左へスワイプでパターン切替" title="← パターン A B C D / エフェクト →">
+        <button class="perf-pat fx-pattern" data-p="0" aria-label="パターン A" hidden>A</button><button class="perf-pat fx-pattern" data-p="1" aria-label="パターン B" hidden>B</button><button class="perf-pat fx-pattern" data-p="2" aria-label="パターン C" hidden>C</button><button class="perf-pat fx-pattern" data-p="3" aria-label="パターン D" hidden>D</button>
         <!-- スマホだけ：エフェクトの P-LOCK 選択子（押してからパッドを左右にドラッグ＝そのパッドの送り量。
              下段ステップ列を左右にドラッグ＝そのステップだけ）。SOLO/EDIT はスマホでは出さない（v0.3.106） -->
         <!-- v0.3.123：PC の演奏ページと同じ並び（PITCH/FILTER/DELAY/REVERB）。1行に収めるため幅は2/3以下（§134）。LEVEL は v0.3.124 で廃止（§135） -->
-        <button class="msbtn fx" id="fxPitch"  data-lock="pitch"><span class="d"></span>PITCH</button>
+        <button class="msbtn fx mute" id="holdMute" data-lock="mute"><span class="d"></span>MUTE</button>
         <button class="msbtn fx" id="fxFilter" data-lock="filter"><span class="d"></span>FILTER</button>
         <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
+        <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
       </div>
 
       <!-- 音源ファイル入力：strip の外に置く（スマホは strip を出さない v0.3.125 §136。EDIT モーダルの ⤓ LOAD もこれを叩く） -->
@@ -94,13 +95,12 @@
       <!-- 左：BPM / Swing -->
       <!-- 左下のBPM±/SWINGはヘッダ/メニューと重複のため撤去（単一状態） -->
       <!-- 下：P-LOCK 4つ均等（LEVEL は v0.3.124 で P-LOCK から廃止＝音量は EDIT の Level だけ §135）。選択中=パラメータ・ページ（発音せずフィル）/ 解放で復帰 -->
-      <div class="perf-plk" id="perfPlk">
-        <button class="perf-plkbtn" data-lock="pitch">PITCH</button>
+      <div class="perf-plk fx-swipe" id="perfPlk" data-fx-page="effects" aria-label="エフェクト。左へスワイプでパターン切替" title="← パターン A B C D / エフェクト →">
+        <button class="perf-pat fx-pattern" data-p="0" aria-label="パターン A" hidden>A</button><button class="perf-pat fx-pattern" data-p="1" aria-label="パターン B" hidden>B</button><button class="perf-pat fx-pattern" data-p="2" aria-label="パターン C" hidden>C</button><button class="perf-pat fx-pattern" data-p="3" aria-label="パターン D" hidden>D</button>
+        <button class="perf-plkbtn perf-mode" id="perfMute" data-lock="mute">MUTE</button>
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-rec" id="perfRec" title="ON: 再生中のP-LOCK操作をステップに記録 / OFF: 離すと掛ける前へ戻る（次に押すと前回の値が復活）">REC</button>
-        <button class="perf-plkbtn" data-lock="nudge">NUDGE</button>
         <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
 

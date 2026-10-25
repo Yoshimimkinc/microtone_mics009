@@ -142,10 +142,14 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.170
+MICS009 beta v0.3.177
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
 `src/` の `__APP_VERSION__` にビルドが差し込むので自動で一致する（v0.3.116〜）。
 
 The splash shows `v<APP_VERSION>` and an update button. On boot it fetches `version.json`; if its version is strictly newer (semver) than the loaded build, the button highlights "新バージョン … 更新" (tap = cache-busting reload). Keeping the two equal per commit means a stale cached client correctly detects the newer deploy.
+
+
+## Local v0.3.176 integration notes
+Normal FX is live pad-value selection, EDIT+FX is parameter configuration; step automation remains retired. SCR opens a platter/fader surface: DSP/routing in `src/js/audio/scratch-pad.js`, drawing/input in `src/js/ui/scratch-view.js`, shared tape-head core for worklet/fallback. Guitar entry/integration is retired. See latest sections of docs/codex-pad-content-handoff.md; do not follow earlier direct-FX-modal notes. Source is local only; do not push without user approval or overwrite Claude's unpublished work. Run the full gate in a browser-capable environment before merging.

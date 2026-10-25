@@ -1,10 +1,11 @@
 // @module voice
 // @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
 //    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
-// @uses AC, GROUP_OF, LOFI, PADS, dbToGain, displayBar, displayPat, flashPad, groupBus, liveCompDuck,
-//    loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps, pePlayheadRun, peTarget, peWaveVisible,
-//    playStep, playing, recording, reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode,
-//    setStepAt, spDynOpen, tapeEcho, tracks, vuHit
+// @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
+//    liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, normalizeKeyPhrase, outBGain, paintSteps,
+//    pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording, reverbPre,
+//    sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen, tapeEcho, tracks,
+//    vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -131,7 +132,9 @@ function warmPitch(i){
 // fromN：ここから鳴らす（0..1、バッファ全体に対する位置）。EDIT の試聴カーソル（v0.3.160）。null＝START から
 function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=null){
   const t = trs[i];
-  if(!t || !t.buffer) return;
+  if(!t) return;
+  if(t.padKind==="KEY"){const k=JSON.stringify([normalizeKeyPhrase(t.keyPhrase),(trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal))]);if(t._keySignature!==k||!_keyBuffers.has(t.buffer)){prepareKeyTrack(t,trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal)).catch(()=>{});if(!fromSeq)sampNameEl.textContent="KEY生成中 — もう一度タップ";return;}}
+  if(!t.buffer) return;
   if(!t.activeVoices) t.activeVoices=[];
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
   if(fromSeq && !audible(i, trs)) return;
@@ -141,7 +144,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   chokeGroup(t.choke, i, when, trs);
 
   // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
-  const lkPitch = (plock && plock.pitch!=null) ? plock.pitch : 0;
+  const lkPitch = 0; // 旧ファイル／呼出元のステップ値では上書きしない
   const semi = t.tune + (noteSemi||0) + lkPitch;
   const sN = Math.min(0.999, Math.max(0, fromN!=null ? fromN : t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
@@ -159,7 +162,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   let head = src;
   let filt = null;
   let fType = t.filter, fCut = t.cutoff;
-  if(plock && plock.filter!=null){ fCut = plock.filter; if(fType==="off") fType="lp"; }
+
   if(fType!=="off"){
     filt = AC.createBiquadFilter();
     filt.type = fType==="lp" ? "lowpass" : "highpass";
@@ -184,10 +187,10 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
 
   // DELAY/REVERBセンド：p-lock(そのステップ)が優先、無ければ per-pad ベース送り(t.delaySend/reverbSend)
   let dSend=null, rSend=null;
-  const dAmt = (plock && plock.delay!=null) ? plock.delay : (t.delaySend||0);
-  const rAmt = (plock && plock.reverb!=null) ? plock.reverb : (t.reverbSend||0);
+  const dAmt = (t.delaySend||0);
+  const rAmt = (t.reverbSend||0);
   if(!toB && dAmt>0){ dSend=AC.createGain(); dSend.gain.value=dAmt; vg.connect(dSend); dSend.connect(tapeEcho); }
-  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=rAmt; vg.connect(rSend); rSend.connect(reverbPre); }
+  if(!toB && rAmt>0){ rSend=AC.createGain(); rSend.gain.value=Math.sqrt(Math.max(0,Math.min(1,rAmt))); vg.connect(rSend); rSend.connect(reverbPre); }
 
   // 頭=アタック(フェードイン)、終端=フェード(フェードアウト)。未設定はプツ音回避の既定値。
   const ATT  = Math.max(0.001, (t.attack||0)/1000);

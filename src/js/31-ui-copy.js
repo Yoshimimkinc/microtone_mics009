@@ -30,7 +30,7 @@ function paintCopyHL(){
   paintPadStates();
   const hit=(sel,ty,key)=>document.querySelectorAll(sel).forEach(b=>
     b.classList.toggle("copysrc", !!copyArm && copyArm.type===ty && copyArm.idx===+b.dataset[key]));
-  hit("#perfPats .perf-pat","pat","p"); hit("#perfPats .perf-bar","bar","b");
+  hit("#perfPats .perf-pat, .fx-pattern","pat","p"); hit("#perfPats .perf-bar","bar","b");
   hit("#patSeg button","pat","p");
   hit("#barSeg button","bar","b");
   const isNote=!!copyArm && copyArm.type==="note";
@@ -64,7 +64,7 @@ function padAtPoint(x,y){
 }
 
 function assignMS(i){
-  if(armMode==="mute"){ tracks[i].mute=!tracks[i].mute; }
+  if(armMode==="mute"){ pushUndo(); tracks[i].mute=!tracks[i].mute; }
   else if(armMode==="solo"){ tracks[i].solo=!tracks[i].solo; }
   paintPadStates();
   if(typeof scheduleAutosave==="function") scheduleAutosave();   // .mics に入る状態なので自動保存にも乗せる
@@ -72,7 +72,7 @@ function assignMS(i){
 function arm(mode,on){
   armMode = on?mode:null;
   if(armMode!=="chop"){ copyArm=null; if(typeof paintCopyHL==="function") paintCopyHL(); }   // COPYから離れたら必ず元をリセット（他モードへ切替でも）
-  document.getElementById("holdMute").classList.toggle("armed",armMode==="mute");
+  document.querySelectorAll('[data-lock="mute"]').forEach(b=>{ b.classList.toggle("armed",armMode==="mute"); b.classList.toggle("on",armMode==="mute"); });
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
   const _cpBtn=document.getElementById("holdCopy"); if(_cpBtn) _cpBtn.classList.toggle("armed",armMode==="chop");
@@ -93,7 +93,7 @@ function bindHold(btnId,mode){
     arm(mode, armMode!==mode);
   });
 }
-bindHold("holdMute","mute");
+// MUTEはエフェクト列の共通fxBtnTapからarmへ。二重登録しない。
 bindHold("holdSolo","solo");
 bindHold("holdEdit","edit");
 bindHold("holdSelect","select");

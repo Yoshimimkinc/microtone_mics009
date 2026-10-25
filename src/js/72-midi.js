@@ -2,8 +2,8 @@
 // @provides _ckTimes, _ckUiT, _midiNoteTimes, assignTo, clRetargetLearn, handleClock, handleMIDI, inBlink,
 //    midiBlink, midiEnabled, midiNoteName, midiSync
 // @uses AC, _ledT, applyBpm, assignTarget, bpmVal, flashPad, paintClPage, paintPadStates, playBtn,
-//    playVoice, playing, pushUndo, sampNameEl, selected, setMode, setPadDown, setPadUp, sideCount, tracks,
-//    trigger
+//    playVoice, playing, pushUndo, sampNameEl, scratchGateRelease, scratchPadInputDown, scratchPadInputUp,
+//    selected, setMode, setPadDown, setPadUp, sideCount, tracks, trigger
 // @depends -
 // ===== Web MIDI入力：USB鍵盤/パッドコントローラーで演奏 =====
 // ノート60-75(C4=中央のド=パッド1)→パッド1-16(vel>=100でアクセント) / それ以外→選択パッドを半音演奏(60=原音)
@@ -59,7 +59,7 @@ function handleMIDI(data){
   // クロックはノート入力のON/OFFと独立（MIDI入力OFFでもSYNCは生きる＝トグルの点灯が嘘をつかない）
   if(data[0]>=0xF8){ if(midiSync) handleClock(data[0]); return; }
   const st=data[0]&0xF0, note=data[1], vel=data[2];
-  if(st===0x80 || (st===0x90 && !vel)){ if(typeof setPadUp==="function") setPadUp("midi:"+note); return; }   // Note Off：SET で押していたセットを放す（v0.3.159）。他では使わない
+  if(st===0x80 || (st===0x90 && !vel)){ if(typeof scratchPadInputUp==="function")scratchPadInputUp("midi:"+(data[0]&15)+":"+note); if(typeof setPadUp==="function") setPadUp("midi:"+note); return; }   // Note Off：SET で押していたセットを放す（v0.3.159）。他では使わない
   if(st!==0x90) return;   // Note On のみ
   midiBlink(note);   // 着信は入力OFFでも必ず光らせる＝繋がっているか目で分かる
   if(assignTarget>=0){ assignTo(assignTarget,"midiNote",note,midiNoteName(note)); return; }   // ASSIGN待機中＝鳴らさずに記憶
@@ -77,6 +77,8 @@ function handleMIDI(data){
   // SET モード（v0.3.159）：C4〜D#5（60〜75）＝16 セット。鍵盤を押す＝鳴る／離す＝止まる／1 拍押さえるとホールド（キーボードと同じ）
   if(typeof setMode!=="undefined" && setMode && note>=60 && note<=75 && typeof setPadDown==="function" && setPadDown(note-60,"midi:"+note)) return;
   const asg=tracks.findIndex(t=>t.midiNote===note);                // 割り当て済みが最優先
+  const pad=asg>=0?asg:(note>=60&&note<=75?note-60:-1);
+  if(pad>=0 && typeof scratchPadInputDown==="function" && scratchPadInputDown(pad,"midi:"+(data[0]&15)+":"+note))return;
   if(asg>=0) trigger(asg, null, vel>=100);
   else if(note>=60 && note<=75) trigger(note-60, null, vel>=100);   // 既定: C4(中央のド)=パッド1
   else { playVoice(selected, AC.currentTime, vel>=100, false, note-60); flashPad(selected); }
@@ -87,6 +89,7 @@ function handleMIDI(data){
     const hook=inp=>{ inp.onmidimessage=ev=>handleMIDI(ev.data); };
     ma.inputs.forEach(hook);
     ma.onstatechange=e=>{
+      if(e.port?.type==="input"&&e.port.state==="disconnected"&&typeof scratchGateRelease==="function")scratchGateRelease();
       if(e.port && e.port.type==="input" && e.port.state==="connected"){
         hook(e.port); sampNameEl.textContent="MIDI IN — "+((e.port.name||"DEVICE").toUpperCase())+(midiEnabled?"":"（メニューでONにすると鳴らせる）");
       }

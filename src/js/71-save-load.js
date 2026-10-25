@@ -1,9 +1,9 @@
 // @module save-load
 // @provides SAVE_SCOPE_KEY, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop, curSetData,
 //    saveScope, setData, trackData, uint8ToB64, wavB64Cached
-// @uses APP_VERSION, PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold,
-//    editPat, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, patSync, sampNameEl, seqDataOf,
-//    setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
+// @uses PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold, editPat,
+//    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, normalizeKeyPhrase, patSync, sampNameEl,
+//    seqDataOf, setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
 // @depends -
 // ===== SAVE / LOAD =====
 // AudioBuffer → WAV (Uint8Array)
@@ -64,11 +64,14 @@ function wavB64Cached(t, crop){
 // 1 トラックを .mics の形に（t は live の tracks[i] でも、セットの snapshot の 1 要素でもよい）
 // 音：触っていないプリセット（buffer がプリセットそのもの）は同梱しない＝起動時に再生成（ファイルが 16 セット分で膨れない）
 function trackData(t,i,type,voice){
+  const content=t;
+  if(t.padKind==="KEY"){t=Object.assign({},t,t.sampleState||{buffer:null,rawBuffer:null,start:0,end:1,loop:false,loopStart:0});type=t.type||"empty";voice=t.voice||null;}
   const preset=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
   const isPreset = type==="synth" && preset && t.buffer===preset.buf;
   const crop = (t.buffer && !isPreset) ? calcCrop(t) : null;
   return {
     name:t.name,
+    padKind:content.padKind||"SPL",keyPhrase:normalizeKeyPhrase(content.keyPhrase),
     type:type,
     voice:voice||null,
     vol:t.vol, tune:t.tune, scale:t.scale,
@@ -82,7 +85,7 @@ function trackData(t,i,type,voice){
     patFx:Array.isArray(t.patFx)&&t.patFx.length===4 ? t.patFx.map(o=>({delaySend:o.delaySend||0, reverbSend:o.reverbSend||0, filter:o.filter||"off", cutoff:o.cutoff??12000, reso:o.reso??0.7})) : null,   // エフェクトも A B C D ごと（v0.3.150）
     attack:t.attack||0, fade:t.fade??3, delaySend:t.delaySend||0, reverbSend:t.reverbSend||0, outBus:t.outBus||"A", midiNote:t.midiNote??null, key:t.key??null,
     patterns:t.patterns,
-    locks:t.locks||{},
+    locks:{},
     audio: crop ? wavB64Cached(t, crop) : null,
   };
 }
@@ -145,7 +148,3 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
   const blob=new Blob([JSON.stringify(f.obj)],{type:"application/json"});
   shareOrDownload(blob, f.name);   // 共有シート（メンバーへ直接）→非対応はDL
 });
-
-// GTR（ギターストロークシミュレーター）＝別タブで開く（作業中のビートを失わない）
-document.getElementById("gtrBtn").addEventListener("click",()=>{ window.open("guitar-strum.html?v="+APP_VERSION,"_blank"); });
-document.getElementById("scrBtn").addEventListener("click",()=>{ window.open("dj-scratch.html?v="+APP_VERSION,"_blank"); });   // 版番号でキャッシュバスト＝常に最新のGTRを開く

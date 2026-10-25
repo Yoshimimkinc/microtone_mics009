@@ -25,7 +25,7 @@ const CL_SPEC={
           set:(t,v)=>{ t.filter=v; if(v==="lp"&&t.cutoff>=10000) t.cutoff=3000; if(v==="hp"&&t.cutoff>=10000) t.cutoff=700; },
           fmt:v=>v.toUpperCase(), w:3},
   cutoff:{lbl:"CUTOFF",u:"Hz", get:t=>t.cutoff,set:(t,v)=>t.cutoff=v,min:200,max:18000,st:100,px:2,
-          fmt:v=>v>=1000?(v/1000).toFixed(1)+"k":String(v), w:5},
+          fmt:v=>String(Math.round(v)), w:5},
   reso:  {lbl:"RESO",  get:t=>t.reso, set:(t,v)=>t.reso=v, min:0.1,max:14,st:0.1,px:6, fmt:v=>v.toFixed(1), w:4},
   attack:{lbl:"ATTACK",u:"ms", get:t=>t.attack||0, set:(t,v)=>t.attack=v, min:0,max:200,st:1,px:4, fmt:v=>String(v), w:3},
   fade:  {lbl:"FADE",  u:"ms", get:t=>t.fade??3,  set:(t,v)=>t.fade=v,   min:0,max:500,st:5,px:4, fmt:v=>String(v), w:3},
@@ -148,17 +148,20 @@ function paintClPage(){
     }
     scr.querySelectorAll(".cl-par.sel").forEach(x=>x.classList.remove("sel"));   // カーソルは窓に1つ（上段のBPM/SWGも含む）
     el.classList.add("sel","tweak");   // MPC1000のカーソル＝いまデータホイールが効く欄
-    drag={el,sp,k,id:e.pointerId,x0:e.clientX,start:GET(sp),pad:selected,undone:false,moved:false};
+    drag={el,sp,k,id:e.pointerId,x0:e.clientX,y0:e.clientY,axis:null,start:GET(sp),pad:selected,undone:false,moved:false};
     try{ el.setPointerCapture(e.pointerId); }catch(_){}
   });
   scr.addEventListener("pointermove",e=>{
     if(!drag) return;
     if(e.pointerId!==undefined && e.pointerId!==drag.id) return;   // 2本指で別の欄を触っても、先の指の移動が後の欄に効かない
     const sp=drag.sp;
+    const dx=e.clientX-drag.x0, dy=drag.y0-e.clientY;
+    if(!drag.axis){ if(Math.max(Math.abs(dx),Math.abs(dy))<5) return; drag.axis=Math.abs(dx)>=Math.abs(dy)?"x":"y"; }
+    const delta=drag.axis==="x"?dx:dy;
     let v;
-    if(sp.en){ const d=Math.round((e.clientX-drag.x0)/26);   // d=0 は「元の値」＝往復して離せば戻る
+    if(sp.en){ const d=Math.round(delta/26);   // d=0 は「元の値」＝往復して離せば戻る
       v=sp.en[((sp.en.indexOf(drag.start)+d)%sp.en.length+sp.en.length)%sp.en.length]; }
-    else { v=quant(sp, drag.start + Math.round((e.clientX-drag.x0)/sp.px)*sp.st); }
+    else { v=quant(sp, drag.start + Math.round(delta/sp.px)*sp.st); }
     if(v===GET(sp)) return;
     drag.moved=true;
     if(!drag.undone){ pushUndo(); drag.undone=true; }   // ドラッグ1回で1手（連続でUndoを埋めない）

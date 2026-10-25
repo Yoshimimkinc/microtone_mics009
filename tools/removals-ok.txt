@@ -81,3 +81,23 @@ perfReadVals
 perfRevertSnap
 # v0.3.169 §163 ピッチは鳴らす範囲だけを焼く getPitchedRegion に置き換えた（全体を焼いて 12 秒で打ち切り、START をその長さに掛けていたのでロングサンプルで START がずれた）
 getPitchedBuffer
+# v0.3.171 ユーザー指示：ステップ別ロックを廃止、現在値で発音。ステップはタップ入力のみ、専用REC／パッドドラッグは撤去。
+$("perfRec") [click]
+stepStripEl [pointercancel]
+stepStripEl [pointermove]
+stepStripEl [pointerup]
+getLockPlay
+setLockEdit
+setLockPlay
+ps
+# v0.3.171 SCRは対象パッドからアプリ内のworklet画面へ。別タブを開く旧入口を撤去。
+document.getElementById("scrBtn") [click]
+# v0.3.171 MUTEはPITCHの代わりにFX列へ。旧MUTEノードのヘッダ／モバイル間移動は廃止。
+mute
+
+# v0.3.176: user explicitly retired the guitar entry and its iframe/postMessage recording integration.
+document.getElementById("gtrBtn") [click]
+document.getElementById("recGtr") [click]
+window [message]
+x [click]
+closeGtrFrame

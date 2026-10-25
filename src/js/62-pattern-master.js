@@ -74,9 +74,9 @@ function barTapHold(b){
 });
 function updatePatIndicator(p){
   [patSeg].forEach(seg=>[...seg.children].forEach((b,j)=>{ b.classList.toggle("playing", j===p); if(j===p) b.classList.remove("queued"); }));
-  document.querySelectorAll("#perfPats .perf-pat").forEach(b=>{ const on=+b.dataset.p===p; b.classList.toggle("playing",on); if(on) b.classList.remove("queued"); });
+  document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>{ const on=+b.dataset.p===p; b.classList.toggle("playing",on); if(on) b.classList.remove("queued"); });
 }
-function clearPatIndicator(){ [patSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); document.querySelectorAll("#perfPats .perf-pat").forEach(b=>b.classList.remove("playing","queued")); }
+function clearPatIndicator(){ [patSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing","queued"))); document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>b.classList.remove("playing","queued")); }
 function updateBarIndicator(bar){ [barSeg].forEach(seg=>[...seg.children].forEach((b,j)=>b.classList.toggle("playing", j===bar))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.toggle("playing",+b.dataset.b===bar)); }
 function clearBarIndicator(){ [barSeg].forEach(seg=>[...seg.children].forEach(b=>b.classList.remove("playing"))); document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.classList.remove("playing")); }
 // 編集状態・中身ドット・予約点滅・ループ外小節をまとめて反映

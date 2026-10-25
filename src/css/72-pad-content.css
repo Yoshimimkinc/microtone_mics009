@@ -1,0 +1,96 @@
+.content-overlay[hidden]{display:none!important}.content-overlay{position:fixed;inset:0;z-index:10050;background:#090c10d9;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));color:var(--ink,#eee)}
+.content-panel{background:var(--bg,#14181d);border:1px solid var(--line,#444);border-radius:12px;padding:14px;width:min(900px,100%);max-height:100%;overflow:auto;font-size:13px;touch-action:pan-y}
+.content-panel header{display:flex;justify-content:space-between;align-items:center;gap:12px}.content-panel button,.content-panel input{min-height:44px;background:var(--panel,#242a30);color:inherit;border:1px solid var(--line,#555);border-radius:5px;padding:6px 10px}.content-panel input[type=number]{width:90px}.content-panel p{line-height:1.5;margin:10px 0}.content-tools{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin:10px 0}.content-tools label{display:flex;flex-direction:column;gap:4px}.content-import{display:block;margin:12px 0}.key-scroll{overflow:auto;max-height:42vh;touch-action:pan-x pan-y;border:1px solid #555}.key-scroll canvas{display:block;max-width:none;touch-action:pan-x pan-y}#scratchDeck{display:block;width:100%;height:45vh;min-height:150px;background:#101318;touch-action:none;border-radius:8px}.pad .pad-kind{position:absolute;right:5px;top:4px;font-size:9px;pointer-events:none;opacity:.65}#peKinds{display:flex;gap:6px;margin:8px 0}#peKinds button,#peKeyOpen{min-height:44px;padding:4px 12px}#peKinds .on{color:var(--teal,#3dd6c4);border-color:currentColor}
+
+#dropboxPanel{width:100%;padding:8px;border:1px solid var(--line);text-align:left}#dropboxPanel summary{cursor:pointer;min-height:36px}#dropboxPanel label{display:block;margin:8px 0}#dropboxPanel input{display:block;max-width:100%;min-height:40px}#dropboxPanel button{min-height:40px;margin:4px;white-space:normal}#dbFiles{max-height:240px;overflow:auto}#dbStatus{overflow-wrap:anywhere}
+
+#padEditModal[data-pad-kind=KEY] .pe-sample,#padEditModal[data-pad-kind=KEY] #peWaveHome,#padEditModal[data-pad-kind=KEY] .pe-transport,#padEditModal[data-pad-kind=KEY] .pe-chop{display:none}#peKeyOpen[hidden]{display:none}
+
+/* KEY: shared time axis for note, ruler and velocity lanes. Touch editing never pans. */
+#keyEditor .key-panel{width:min(1320px,100%);padding:14px;overscroll-behavior:contain;touch-action:pan-x pan-y}
+.key-voice{display:block;font-size:10px;letter-spacing:.12em;opacity:.7;margin-top:5px}
+.content-panel select{min-height:44px;background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:5px;padding:6px 8px;max-width:180px}
+.key-panel button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#101719;border-color:#24786f}
+.key-panel .content-tools{gap:6px;margin:8px 0}.key-panel .key-help{font-size:11px;margin:8px 0;line-height:1.6}
+.key-panel .key-zoom{flex:1;min-width:100px;max-width:180px}.key-zoom input{width:100%;padding:0}
+#keySelectionInfo{margin-left:auto;font-variant-numeric:tabular-nums;font-size:12px;min-height:20px}
+.key-horizontal{overflow-x:auto;overscroll-behavior:contain;border:1px solid #5b6366;background:#b7bbbc;touch-action:pan-x pan-y}
+.key-inner{width:max-content;min-width:100%}.key-panel .key-scroll{height:clamp(210px,40vh,450px);max-height:none;overflow-x:hidden;overflow-y:auto;border:0;touch-action:pan-x pan-y}
+.key-panel canvas{display:block;max-width:none;touch-action:none}.key-panel #keyRoll{cursor:crosshair;outline:none}.key-panel #keyRoll:focus-visible{outline:2px solid #0a8478;outline-offset:-2px}
+.key-panel.is-navigating #keyRoll{touch-action:pan-x pan-y;cursor:grab}.key-panel.is-navigating #keyVelocityRoll{touch-action:pan-x}
+#keyRuler{height:28px}#keyVelocityRoll{height:100px;border-top:1px solid #5c6469;cursor:ns-resize}
+.key-fields input{font-variant-numeric:tabular-nums}.key-panel .key-fields label{flex:1;min-width:90px;max-width:150px}.key-panel .key-fields input{width:100%}
+.key-panel .content-import input{max-width:100%;width:280px}.key-panel #keyStatus{font-size:11px;min-height:18px}
+@media(max-width:600px){#keyEditor{padding:6px}#keyEditor .key-panel{padding:10px;border-radius:8px}.key-panel button{font-size:11px;padding:6px 8px}.key-panel .key-transport{align-items:end}.key-panel input#keyBars{width:50px}.key-panel .key-zoom{max-width:none}.key-panel .key-scroll{height:32vh;min-height:200px}.key-panel .key-help{font-size:10px}.key-panel select{max-width:154px}#keySelectionInfo{margin-left:0;width:100%}}
+
+/* Keep notes and velocity together in a phone viewport; tools stay reachable. */
+.key-extra{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:6px 0}
+.key-extra summary{cursor:pointer;padding:8px 2px;min-height:34px;font-size:11px}
+.key-edit-tools #keyDragMode{width:125px}
+@media(max-width:600px){
+ .key-panel .key-transport{align-items:center}.key-panel .key-transport label{flex-direction:row;align-items:center;gap:6px}
+ .key-panel .key-edit-tools{align-items:center;flex-wrap:nowrap}.key-panel .key-edit-tools label{flex-direction:row;align-items:center;font-size:9px;gap:4px}
+ .key-panel .key-edit-tools button{padding:6px}.key-panel .key-edit-tools #keyDragMode{width:100px;padding:6px;font-size:11px}
+ .key-panel .key-scale-tools{align-items:center;flex-wrap:nowrap}.key-panel .key-scale-tools label{font-size:9px;gap:2px}
+ .key-panel .key-scale-tools #keyScaleType{max-width:124px;width:124px;font-size:11px;padding:6px}
+ .key-panel #keySelectionInfo{display:none}.key-panel .key-help{font-size:10px;line-height:1.4;margin:6px 0}
+ .key-panel .key-extra summary{min-height:32px;padding:8px 0}
+ .key-panel .key-scroll{height:clamp(180px,28vh,260px);min-height:180px}
+}
+
+/* Group actions by task: playback, edit/grid, scale, then secondary tools. */
+.key-mainbar{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:6px;flex-wrap:wrap}
+.key-tabs{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:44px}
+.key-panel .key-tabs button{border:0;border-radius:0;min-width:94px;font-weight:700;letter-spacing:.07em}
+.key-tabs [aria-selected=true]{background:var(--teal,#3dd6c4);color:#10221d}
+.key-toolbar-grid{display:grid;grid-template-columns:minmax(320px,1fr) minmax(340px,1fr);gap:14px;align-items:center}
+.key-toolbar-grid>.content-tools{border:1px solid var(--line);border-radius:6px;padding:8px;margin:2px 0;align-items:center}
+.key-toolbar-grid .key-edit-tools label{flex-direction:row;align-items:center;gap:8px}
+.key-toolbar-grid #keySelectionInfo{margin:0;font-size:10px;flex-basis:100%}
+#keyNotePanel[hidden],#keySoundPanel[hidden]{display:none!important}
+.key-panel #keyRoll{transition:none}
+.key-sound-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:16px 2px;font-size:12px;letter-spacing:.04em}
+.key-sound-heading span{font-size:11px;opacity:.7}
+.key-fx-rack{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.key-fx-unit{padding:16px;border:1px solid var(--line);border-radius:9px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.key-fx-unit h3{grid-column:1/-1;margin:0;font-size:12px;letter-spacing:.12em}
+.key-fx-switch{grid-column:1/-1;display:flex;gap:4px}.key-fx-switch button{flex:1;min-width:0;font-size:12px;padding:6px}
+.key-fx-unit label{display:grid;grid-template-columns:1fr auto;gap:6px;font-size:11px;letter-spacing:.05em}
+.key-fx-unit input{grid-column:1/-1;width:100%;min-width:0;padding:0;accent-color:var(--teal)}
+.key-fx-unit output{font-variant-numeric:tabular-nums;letter-spacing:0;min-width:50px;text-align:right}
+.key-panel .key-sound-help{font-size:12px;line-height:1.8;max-width:65ch}
+.pad[data-kind=KEY] .pad-wave{opacity:.92!important}
+@media(max-width:760px){.key-toolbar-grid{grid-template-columns:1fr;gap:5px}.key-toolbar-grid>.content-tools{padding:6px}.key-toolbar-grid .key-edit-tools label{gap:3px}.key-toolbar-grid .key-scale-tools{flex-wrap:nowrap}.key-fx-rack{gap:10px}.key-fx-unit{padding:12px;gap:12px}}
+@media(max-width:600px){
+ .key-mainbar{gap:5px;align-items:center}.key-panel .key-mainbar .key-transport{margin:3px 0;gap:5px}
+ .key-panel .key-mainbar .key-transport button{font-size:11px;padding:6px 8px}
+ .key-tabs{margin:0;flex:1;max-width:160px}.key-panel .key-tabs button{min-width:0;flex:1;padding:6px 10px;font-size:11px}
+ .key-toolbar-grid>.content-tools{padding:5px}.key-panel .key-edit-tools #keyDragMode{width:90px}
+ .key-panel .key-toolbar-grid .key-edit-tools{gap:4px}.key-panel .key-edit-tools button{font-size:10px;padding:6px 5px}
+ .key-panel .key-toolbar-grid .key-scale-tools #keyScaleType{width:118px;max-width:118px}
+ .key-fx-rack{grid-template-columns:1fr}.key-sound-heading{padding:12px 0}.key-fx-unit h3{font-size:11px}.key-fx-switch button{font-size:11px}
+}
+
+@media(max-width:600px){.key-mainbar .key-tabs{flex:0 0 100%;width:100%;max-width:none}.key-panel .key-mainbar .key-tabs button{flex:1;min-width:0}}
+
+/* SCR: flat record, dedicated hand area and a separate scratch-voice fader. */
+#scratchEditor .scratch-panel{width:min(900px,100%);background:#252e30;color:#eef1e5;padding:16px;touch-action:pan-y}
+.scratch-surface{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:20px;align-items:center;margin-top:14px}
+.scratch-platter-wrap{width:100%;max-width:550px;justify-self:center}
+#scratchDeck{display:block;width:100%;height:auto;aspect-ratio:1;min-height:0;background:#465052;border:0;border-radius:12px;cursor:grab;touch-action:none}
+#scratchDeck:active{cursor:grabbing}
+.scratch-controls{min-width:0}.scratch-buttons{display:flex;gap:8px}.scratch-buttons button{flex:1;min-width:0;font-size:11px;background:#465052;color:#fff}
+.scratch-readout{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;padding:20px 0;font-variant-numeric:tabular-nums;font-size:11px}.scratch-readout b{color:#c0c875}
+.scratch-fader-label{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em}.scratch-fader-label output{font-variant-numeric:tabular-nums}
+#scratchFader{width:100%;min-height:56px;padding:0;accent-color:#c0c875;touch-action:none;background:#171e20}
+.scratch-fader-scale{display:flex;justify-content:space-between;font-size:10px;color:#bbc4b5}
+.scratch-controls .scratch-help{font-size:11px;line-height:1.7;color:#d8dfd1}
+#scratchStatus{font-size:11px;color:#bbc4b5}
+@media(max-width:650px){#scratchEditor .scratch-panel{padding:12px;width:min(450px,100%)}.scratch-surface{grid-template-columns:1fr;gap:12px;margin-top:10px}.scratch-platter-wrap{width:min(100%,44vh)}.scratch-controls{width:100%}.scratch-readout{padding:10px 0}.scratch-controls .scratch-help{display:none}.scratch-buttons button{min-height:44px}#scratchFader{min-height:48px}#scratchStatus{margin:8px 0 0}}
+#scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
+.scratch-platter-wrap{max-width:min(550px,62vh)}
+@media(max-width:650px){.scratch-platter-wrap{max-width:44vh}}
+
+#scratchEditor .scratch-panel #scratchFader{width:100%;min-height:76px;margin:10px 0 4px;padding:12px;background:#141c1c;color:#d9dfc7;border:2px solid #83926e;border-radius:7px;font-size:16px;font-weight:800;letter-spacing:.06em;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+#scratchEditor .scratch-panel #scratchFader[aria-pressed=true]{background:#c0c875;color:#18201b;border-color:#e8edc1}
+#scratchEditor .scratch-panel #scratchFader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
