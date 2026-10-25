@@ -761,8 +761,6 @@
   .pad.sel>.pad-wave{opacity:.85;}
 
 /* One row, two pages: four full-width pattern targets replace the FX buttons. */
-.msbtn.patcyc{display:none;font-size:15px!important;font-weight:800;letter-spacing:.04em!important;white-space:nowrap;}   /* A B C D 送り（スマホの FX 列。v0.3.179） */
-.msbtn.patcyc.queued{border-color:var(--amber);color:var(--amber);animation:spblink 1s ease-in-out infinite;}   /* 予約中＝点滅（他の予約表示と同じ） */
 .fx-swipe{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .fx-swipe .fx-pattern[hidden]{display:none!important}
 .fx-swipe[data-fx-page=patterns]>button:not(.fx-pattern){display:none!important}
@@ -1079,7 +1077,7 @@
       position:sticky;bottom:0;z-index:5;background:var(--bg);padding-top:4px;}
     /* スマホの下段は [MUTE] [DELAY] [REVERB]。SOLO と EDIT は出さない（TRIM/CHOPは窓の✂、空パッドは＋から） */
     #viewPads>.msbar #holdSolo,#viewPads>.msbar #holdEdit{display:none;}
-    #viewPads>.msbar .msbtn.fx,#viewPads>.msbar .msbtn.patcyc{display:flex;}
+    #viewPads>.msbar .msbtn.fx{display:flex;}
     /* スマホ：下段 [MUTE][PITCH][FILTER][DELAY][REVERB] を1行に均等分割（v0.3.123 §134、LEVEL は v0.3.124 で廃止 §135）。
        5つで 390px なら1つ約71px＝以前の3つ時代の 2/3。高さ44pxは守る（演奏系タップの規則値 §2）。
        幅を稼ぐため：点(.d)は出さない・字間を詰める・左右の余白は4px */
@@ -1323,7 +1321,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.180</div>
+  <div class="s-ver" id="splashVer">v0.3.181</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1625,8 +1623,6 @@
         <button class="msbtn fx" id="fxFilter" data-lock="filter"><span class="d"></span>FILTER</button>
         <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
-        <!-- A B C D：押すたびに次のパターン（再生中は予約。A▸C のように予約先も見せる。v0.3.179 §165） -->
-        <button class="msbtn patcyc" id="patCycle" aria-label="パターン A。押すと次のパターン">A</button>
         <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
       </div>
 
@@ -6027,18 +6023,12 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
   if($("perfMute")) $("perfMute").classList.toggle("on",armMode==="mute");
   if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
-  { const pc=$("patCycle"); if(pc){ const L="ABCD", cur=playing?displayPat:ep, q=(playing && queuedPat!==null)?queuedPat:null;   // A B C D 送り：いま（予約があれば ▸ 予約先）
-    const txt=q!==null ? L[cur]+"▸"+L[q] : L[cur]; if(pc.textContent!==txt) pc.textContent=txt; pc.classList.toggle("queued", q!==null);
-    pc.setAttribute("aria-label","パターン "+L[cur]+(q!==null?"、次は "+L[q]:"")+"。押すと次のパターン"); } }
 }
 // P-LOCK の塗り・スナップ/復帰（perfFillPad / renderPerfFills / perfLockApply …）は ui/performance-view.js へ移した（v0.3.131）
 // 演奏コントロール配線（既存ハンドラ/単一の真を再利用＝状態の二重管理なし）
 (function(){
   const $=id=>document.getElementById(id);
   document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("pat",+b.dataset.p)) return; if(typeof setEditPat==="function") setEditPat(+b.dataset.p); paintPerf(); }));
-  // スマホの FX 列の A B C D 送り（v0.3.179 §165）：押すたびに次のパターン。再生中は予約で、続けて押せば予約先が進む（D の次は A＝いま鳴っているのに戻れば予約取消）
-  if($("patCycle")) $("patCycle").addEventListener("click",()=>{ const base=(playing && queuedPat!==null) ? queuedPat : (playing ? displayPat : editPat);
-    if(typeof setEditPat==="function") setEditPat((base+1)%4); paintPerf(); });
   // 小節(1-4)：COPY中は元→先で小節コピー、通常は setEditBar。DUPはCOPYに統合し撤去。
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>b.addEventListener("click",()=>{ if(copyTap("bar",+b.dataset.b)) return; if(typeof setEditBar==="function") setEditBar(+b.dataset.b); if(typeof barTapHold==="function") barTapHold(+b.dataset.b); paintPerf(); }));   // ダブルタップ＝BAR ホールド（v0.3.161）
   // P-LOCK選択：setActiveLock（activeLock共有）＋パラメータ・ページのスナップ/復帰。
@@ -7656,7 +7646,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.180";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.181";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
