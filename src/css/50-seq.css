@@ -73,7 +73,9 @@
   body.seqmode #pads,body.seqmode #setGrid{display:none!important;}
   body.seqmode #seqMain{display:flex;flex-direction:column;min-height:0;}
   body.seqmode #viewPads>.msbar{display:none!important;}    /* FX 列はパッドに掛けるもの＝SET と同じく SEQ では出さない */
-  body.perf.seqmode #perfPlk{visibility:hidden;}   /* FX 列はパッドに掛けるもの。場所は残す＝3 モードで主面と A B C D の位置が同じ */
+  /* 「SEQ には情報ウィンドウ要らない」（v0.3.184 §172）：窓と FX 列は出さず、その分をグリッドに。A B C D・BAR と 16 ステップの段は 3 モードで同じ位置（下に揃う） */
+  body.seqmode #perfScreen{display:none!important;}
+  body.perf.seqmode #perfPlk{display:none;}
   body.perf.seqmode #seqMain{grid-area:pads;overflow:hidden;}
   #seqHead{margin:8px 0 0;}
   body:not(.perf).seqmode #seqHead,body:not(.perf).setmode #seqHead{display:flex;}   /* スマホの SET も：窓の A B C D を撤去したので同じ段 */

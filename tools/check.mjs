@@ -1096,7 +1096,7 @@ async function pcPortraitPerf(){
   await ctx.close();
 }
 async function modeOrder(){
-  // v0.3.183 §171：「PAD と SEQ の位置関係は 3 モードとも共通に」＝窓 → 主面 → A B C D・BAR（→ ステップ）。SET の窓の A B C D は撤去
+  // v0.3.183 §171：「PAD と SEQ の位置関係は 3 モードとも共通に」＝窓 → 主面 → A B C D・BAR（→ ステップ）。SET の窓の A B C D は撤去。v0.3.184 §172：SEQ は窓なし
   for(const [w,h,m] of [[390,844,true],[1280,800,false]]){
     const V=`MODEORDER ${w}x${h}`;
     const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:m,hasTouch:m}); await unlock(ctx);
@@ -1110,11 +1110,14 @@ async function modeOrder(){
         const main=['#pads','#seqMain','#setGrid'].map(q=>document.querySelector(q)).find(vis);
         const abcd=m ? (document.body.classList.contains('setmode')||document.body.classList.contains('seqmode') ? document.getElementById('seqHead') : document.querySelector('#viewPads>.msbar')) : document.getElementById('perfPats');
         const r=e=>e?Math.round(e.getBoundingClientRect().top):null;
-        return {win:r(document.getElementById('perfScreen')), main:r(main), abcd:r(abcd), abcdVis:vis(abcd), keysSet:document.querySelectorAll('#clKeysSet button').length}; }, m);
+        return {win:r(document.getElementById('perfScreen')), winVis:vis(document.getElementById('perfScreen')), main:r(main), abcd:r(abcd), abcdVis:vis(abcd), keysSet:document.querySelectorAll('#clKeysSet button').length}; }, m);
     }
-    for(const v of Object.keys(rows)){ const r=rows[v];
+    for(const v of ['viewPads','viewSet']){ const r=rows[v];
       ok_(`${V} ${v}：窓 → 主面 → A B C D・BAR の順`, r.win<r.main && r.main<r.abcd && r.abcdVis, JSON.stringify(r)); }
-    ok_(`${V} 3 モードとも窓と主面の位置が同じ`, new Set(Object.values(rows).map(r=>r.win)).size===1 && new Set(Object.values(rows).map(r=>r.main)).size===1, JSON.stringify(rows));
+    ok_(`${V} PADS と SET は窓と主面の位置が同じ`, rows.viewPads.win===rows.viewSet.win && rows.viewPads.main===rows.viewSet.main, JSON.stringify(rows));
+    // v0.3.184：「SEQ には情報ウィンドウ要らない」＝窓を出さずグリッドが広い。A B C D・BAR の段は 3 モードで同じ位置
+    ok_(`${V} SEQ は窓なし・主面 → A B C D・BAR・主面は PADS より上から`, !rows.viewSeq.winVis && rows.viewSeq.main<rows.viewSeq.abcd && rows.viewSeq.abcdVis && rows.viewSeq.main<rows.viewPads.main, JSON.stringify(rows.viewSeq));
+    ok_(`${V} A B C D・BAR の段は 3 モードで同じ位置`, new Set(Object.values(rows).map(r=>r.abcd)).size===1, JSON.stringify(rows));
     eq(`${V} SET の窓に A B C D は無い（主面の下と重複）`, rows.viewSet.keysSet, 0);
     await p.evaluate(()=>switchView('viewPads'));
     eq(`${V} 0 errors`, errs, []);
