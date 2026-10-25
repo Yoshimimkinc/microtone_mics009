@@ -81,6 +81,13 @@
 .fx-swipe::after{content:"● ○";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;line-height:7px;letter-spacing:3px;color:var(--ink);pointer-events:none;opacity:.55}
 .fx-swipe[data-fx-page=patterns]::after{content:"○ ●"}
 .fx-swipe.swiping{cursor:grabbing}
+/* 場所がある画面（768px 以上＝PC / iPad 横の演奏画面）は A B C D をスワイプの裏に隠さない（v0.3.182 §169）。
+   下の段の A B C D を横長に大きく。FX 列の中の A B C D とページの点（● ○）は出さない */
+@media(min-width:768px){
+  .fx-swipe::after{display:none}
+  #perfPlk>.fx-pattern{display:none!important}
+  body.perf .perf-pats .perf-pat{flex:1 1 0;min-width:72px;max-width:160px;font-size:22px;font-weight:800;letter-spacing:.08em}
+}
 
 /* EDIT is also reachable on phone; the pattern page still shows only A–D. */
 @media(max-width:600px){#viewPads>.msbar[data-fx-page=effects] #holdEdit{display:flex}}

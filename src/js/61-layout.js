@@ -186,12 +186,14 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
 function updatePerf(){
   const four=perfFourUp(), land=landscapeMode();
   const wasPerf=document.body.classList.contains("perf");
-  // 「横にしてください」はタッチ端末（iPad縦）だけ。PCの縦長ウィンドウ（縦モニタ／ハーフスクリーン）は
-  // 回転できないので、perfを諦めて通常の split で動かす（v0.3.98：960×1040 等で全面覆われて操作不能だった）
+  // 「横にしてください」はタッチ端末（iPad縦）だけ。PCの縦長ウィンドウ（縦モニタ／ハーフスクリーン）は回転できない。
+  // v0.3.98〜181 はそこで perf を諦めて split（パッド左・操作右）で動かしていたが、split は没にした画面（v0.3.182 §170）。
+  // PC（タッチでない）は縦長でも演奏画面にする
   const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
-  document.body.classList.toggle("perf", four && land);
+  const perfOn = four && (land || !coarse);
+  document.body.classList.toggle("perf", perfOn);
   document.body.classList.toggle("perf-rotate", four && !land && coarse);
-  if(wasPerf && !(four && land)){   // 演奏を抜ける＝P-LOCK の塗りを消す（値は残る v0.3.168）
+  if(wasPerf && !perfOn){   // 演奏を抜ける＝P-LOCK の塗りを消す（値は残る v0.3.168）
     document.body.classList.remove("perf-plock");
     if(typeof renderPerfFills==="function") renderPerfFills();
   }
@@ -200,7 +202,7 @@ function updatePerf(){
     // ベストエフォートで横向きロック（Android系のみ有効。iPad Safariは非対応＝回転オーバーレイが実質ガード）
     try{ if(screen.orientation && screen.orientation.lock){ const p=screen.orientation.lock("landscape"); if(p&&p.catch) p.catch(()=>{}); } }catch(_){}
   }
-  if(four && land) paintPerf();
+  if(perfOn) paintPerf();
 }
 ["resize","orientationchange"].forEach(ev=>window.addEventListener(ev, updatePerf));
 window.addEventListener("load", updatePerf);

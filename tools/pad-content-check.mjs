@@ -12,13 +12,26 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   const fxRow=mobile?'.msbar':'#perfPlk';
   let strip=await p.locator(fxRow).boundingBox();
   const swipe=async(left)=>{const x=strip.x+strip.width*(left?.8:.2),to=strip.x+strip.width*(left?.2:.8),y=strip.y+strip.height/2;await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(to,y,{steps:8});await p.mouse.up();};
-  const patternBefore=await p.evaluate(()=>editPat);await swipe(true);
-  eq(`${label} 左スワイプでABCD・元のFXは誤作動しない`,await p.evaluate(sel=>({page:document.querySelector(sel).dataset.fxPage,count:[...document.querySelectorAll(sel+' .fx-pattern')].filter(b=>b.getBoundingClientRect().width>0).length,modal:fxmParam,pat:editPat}),fxRow),{page:'patterns',count:4,modal:null,pat:patternBefore});
-  const targets=await p.locator(fxRow+' .fx-pattern').evaluateAll(bs=>bs.map(b=>({w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height})));
-  ok_(`${label} ABCDは均等幅・44px以上`,targets.every(b=>b.h>=44&&b.w>=44)&&Math.max(...targets.map(b=>b.w))-Math.min(...targets.map(b=>b.w))<2,JSON.stringify(targets));
-  await p.click(fxRow+' .fx-pattern[data-p="1"]');eq(`${label} 大きいBは既存の切替経路`,await p.evaluate(()=>editPat),1);
-  await p.click(fxRow+' .fx-pattern[data-p="0"]');strip=await p.locator(fxRow).boundingBox();await swipe(false);
-  eq(`${label} 右スワイプでFXに復帰`,await p.evaluate(sel=>[document.querySelector(sel).dataset.fxPage,editPat,fxmParam],fxRow),['effects',0,null]);
+  if(mobile){
+    const patternBefore=await p.evaluate(()=>editPat);await swipe(true);
+    eq(`${label} 左スワイプでABCD・元のFXは誤作動しない`,await p.evaluate(sel=>({page:document.querySelector(sel).dataset.fxPage,count:[...document.querySelectorAll(sel+' .fx-pattern')].filter(b=>b.getBoundingClientRect().width>0).length,modal:fxmParam,pat:editPat}),fxRow),{page:'patterns',count:4,modal:null,pat:patternBefore});
+    const targets=await p.locator(fxRow+' .fx-pattern').evaluateAll(bs=>bs.map(b=>({w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height})));
+    ok_(`${label} ABCDは均等幅・44px以上`,targets.every(b=>b.h>=44&&b.w>=44)&&Math.max(...targets.map(b=>b.w))-Math.min(...targets.map(b=>b.w))<2,JSON.stringify(targets));
+    await p.click(fxRow+' .fx-pattern[data-p="1"]');eq(`${label} 大きいBは既存の切替経路`,await p.evaluate(()=>editPat),1);
+    await p.click(fxRow+' .fx-pattern[data-p="0"]');strip=await p.locator(fxRow).boundingBox();await swipe(false);
+    eq(`${label} 右スワイプでFXに復帰`,await p.evaluate(sel=>[document.querySelector(sel).dataset.fxPage,editPat,fxmParam],fxRow),['effects',0,null]);
+  } else {
+    // v0.3.182：場所がある画面（768px 以上）は A B C D が常に出ている＝FX 列はスワイプしない。下の段の A B C D は横長に大きく
+    await swipe(true);
+    eq(`${label} 広い画面は FX 列をスワイプしても FX のまま・誤作動しない`,await p.evaluate(sel=>({page:document.querySelector(sel).dataset.fxPage,modal:fxmParam,dots:getComputedStyle(document.querySelector(sel),'::after').display}),fxRow),{page:'effects',modal:null,dots:'none'});
+    const big=await p.locator('#perfPats .perf-pat').evaluateAll(bs=>bs.map(b=>({w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height})));
+    ok_(`${label} 下の段の A B C D は横長に大きい（72px 以上・均等）`,big.length===4&&big.every(b=>b.w>=72&&b.h>=44)&&Math.max(...big.map(b=>b.w))-Math.min(...big.map(b=>b.w))<2,JSON.stringify(big));
+    await p.click('#perfPats .perf-pat[data-p="1"]');eq(`${label} 大きい B で切替`,await p.evaluate(()=>editPat),1);
+    await p.click('#perfPats .perf-pat[data-p="0"]');
+    // MUTE は色つき（v0.3.178–181 は既定の黒文字で WIRE の黒地に見えなかった）
+    const mc=await p.evaluate(()=>{document.body.classList.add('t-wf');const c=getComputedStyle(document.getElementById('perfMute')).color;document.body.classList.remove('t-wf');return c;});
+    ok_(`${label} MUTE の文字は黒ではない（WIRE でも見える）`,mc!=='rgb(0, 0, 0)'&&mc!=='rgb(16, 16, 16)',mc);
+  }
   const mute=mobile?'#holdMute':'#perfMute';await p.click(mute);
   const before=await p.evaluate(()=>tracks[8].mute);await p.click('#pads .pad[data-i="8"]');
   eq(`${label} MUTEはパッドを発音せずミュートを切替`,await p.evaluate(()=>tracks[8].mute),!before);

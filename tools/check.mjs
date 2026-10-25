@@ -1079,6 +1079,20 @@ async function fxSwipeTouch(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function pcPortraitPerf(){
+  // v0.3.182 §170：「この画面はもう没にしたはず」。PC の縦長ウインドウでも split（パッド左・操作右）ではなく演奏画面、画面いっぱい
+  const V='PC portrait 960x1040';
+  const ctx=await br.newContext({viewport:{width:960,height:1040}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p); await p.waitForTimeout(400);
+  const r=await p.evaluate(()=>{ const pad=document.querySelector('#pads .pad').getBoundingClientRect(), pats=document.getElementById('perfPats').getBoundingClientRect();
+    return {perf:document.body.classList.contains('perf'), rotate:document.body.classList.contains('perf-rotate'), msbar:getComputedStyle(document.querySelector('#viewPads>.msbar')).display, padH:Math.round(pad.height), patsBottom:Math.round(pats.bottom), vh:innerHeight, scroll:document.documentElement.scrollHeight>innerHeight+2}; });
+  ok_(`${V} 演奏画面（split を出さない・回転の案内も出さない）`, r.perf && !r.rotate && r.msbar==='none', JSON.stringify(r));
+  ok_(`${V} 画面いっぱい：パッドは高さを使う・スクロール無し`, r.padH>=120 && !r.scroll && r.patsBottom<=r.vh, JSON.stringify(r));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function editTools(){
   // v0.3.160：EDIT 中のドラッグ＝パッド入れ替え（P-LOCK を選んだままでも EDIT が先）／EDIT 画面の DELETE（2 回押す・↩ で戻せる）
   const V='EDITTOOLS 390x844';
@@ -1292,6 +1306,7 @@ await patSwitchEnd();
 await fxKeep();
 await longPitch();
 await fxSwipeTouch();
+await pcPortraitPerf();
 await saveScopeTest();
 await wireSkin();
 await setNameTest();
