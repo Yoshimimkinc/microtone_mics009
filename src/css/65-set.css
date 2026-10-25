@@ -80,4 +80,6 @@
   body.setmode #clKeysSet{display:grid;}   /* .cl-keys と同じ 4 等分のグリッド（flex だと幅が中身なりに縮む） */
   /* 下段：SET モードでは MUTE 列（スマホ）/ P-LOCK 列（perf）を出さない＝格子がその分を使う（◀ / NEXT / LIVE は v0.3.145 で撤去：セットのパッド自体が切替）*/
   body.setmode #viewPads>.msbar{display:none!important;}
-  body.perf.setmode #perfPlk{display:none;}
+  body.perf.setmode #perfPlk{visibility:hidden;}   /* 場所は残す＝PADS / SEQ / SET で主面の位置が同じ（v0.3.183 §171） */
+  /* 窓の A B C D は v0.3.183 で撤去（主面の下と重複 §171）。窓の高さを PADS と同じに保つため、キー列の高さだけ残す */
+  #clKeysSet{min-height:50px;}

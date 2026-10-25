@@ -259,9 +259,11 @@ async function run(w,h,mobile){
   await p.evaluate(()=>{ document.getElementById('modeSeq').click(); });
   await p.waitForTimeout(250);
   await p.evaluate(()=>{ setEditPat(0); setEditBar(0); });
-  await p.click('#barSeg button[data-b="1"]'); await p.waitForTimeout(120);
+  // v0.3.183：SEQ も主面の下に A B C D・BAR（PC / iPad 横は #perfPats、スマホは #seqHead）
+  const perfNow=await p.evaluate(()=>document.body.classList.contains('perf'));
+  await p.click(perfNow?'#perfPats .perf-bar[data-b="1"]':'#barSeg button[data-b="1"]'); await p.waitForTimeout(120);
   eq(`${V} SEQでBAR2を選べる`, await p.evaluate(()=>editBar), 1);
-  await p.click('#patSeg button[data-p="2"]'); await p.waitForTimeout(120);
+  await p.click(perfNow?'#perfPats .perf-pat[data-p="2"]':'#patSeg button[data-p="2"]'); await p.waitForTimeout(120);
   eq(`${V} SEQでPAT Cを選べる`, await p.evaluate(()=>editPat), 2);
   await p.evaluate(()=>{ setEditPat(0); setEditBar(0); document.getElementById('modePads').click(); });
   await p.waitForTimeout(200);
@@ -370,7 +372,7 @@ async function run(w,h,mobile){
   // 11) ★ウィンドウの高さを変えたらSEQも追従する
   //     （PADSへ往復するまで古い高さのままだったバグの再発防止。v0.3.97）
   await p.evaluate(()=>document.getElementById('modeSeq').click()); await p.waitForTimeout(300);
-  const seqBox=()=>p.evaluate(()=>{const b=document.getElementById('viewSeq').getBoundingClientRect();
+  const seqBox=()=>p.evaluate(()=>{const b=document.getElementById('seqMain').getBoundingClientRect();
     return [Math.round(b.width),Math.round(b.height)];});
   await unFull(p);   // 起動タップで全画面に入っているとウィンドウを変えられない（CIのChromium 153で発覚 v0.3.117）
   await p.setViewportSize({width:Math.max(360,w-160), height:Math.max(460,h-220)});
@@ -877,15 +879,15 @@ async function barHoldTest(){
   await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
   await ready(p);
   await p.evaluate(async()=>{ await clearAutosave(); switchView('viewSeq'); setEditPat(0); for(let b=0;b<4;b++) tracks[8].patterns[0][b][0]=1; applyBpm(240); paintPatBar(); });
-  const bar=k=>`#barSeg button[data-b="${k}"]`;
+  const bar=k=>`#perfPats .perf-bar[data-b="${k}"]`;   // v0.3.183：PC の SEQ の BAR は主面の下の段
   await p.click(bar(2)); await p.waitForTimeout(400);
   const s1=await p.evaluate(()=>({editBar, hold:barHold.join()}));
   ok_(`${V} シングルタップ＝選択だけ（ホールドしない）`, s1.editBar===2 && s1.hold==='false,false,false,false', JSON.stringify(s1));
   await p.click(bar(1)); await p.click(bar(1)); await p.waitForTimeout(100);
-  const s2=await p.evaluate(()=>({editBar, hold:barHold.join(), cls:document.querySelector('#barSeg button[data-b="1"]').classList.contains('hold')}));
+  const s2=await p.evaluate(()=>({editBar, hold:barHold.join(), cls:document.querySelector('#perfPats .perf-bar[data-b="1"]').classList.contains('hold')}));
   ok_(`${V} ダブルタップ＝ホールド（印が付く）`, s2.editBar===1 && s2.hold==='false,true,false,false' && s2.cls, JSON.stringify(s2));
-  const look=await p.evaluate(()=>{ const b=k=>document.querySelector(`#barSeg button[data-b="${k}"]`); const cs=getComputedStyle;
-    return {loop:cs(b(1),'::before').content, held:+cs(b(1)).opacity, other:+cs(b(3)).opacity, frame:/inset/.test(cs(b(1)).boxShadow), segCls:document.getElementById('barSeg').classList.contains('has-hold')}; });
+  const look=await p.evaluate(()=>{ const b=k=>document.querySelector(`#perfPats .perf-bar[data-b="${k}"]`); const cs=getComputedStyle;
+    return {loop:cs(b(1),'::before').content, held:+cs(b(1)).opacity, other:+cs(b(3)).opacity, frame:/inset/.test(cs(b(1)).boxShadow), segCls:document.getElementById('perfPats').classList.contains('has-hold')}; });
   ok_(`${V} 見た目：ホールドした小節は太い枠＋⟳、していない小節は薄く（v0.3.164）`, /⟳/.test(look.loop) && look.held===1 && look.other<0.5 && look.frame && look.segCls, JSON.stringify(look));
   // v0.3.166：ホールドした小節で打ち込む＝ホールドした小節すべての同じステップへ（Excel の複数シート選択のように）
   await p.click(bar(3)); await p.click(bar(3)); await p.waitForTimeout(50);   // BAR 2 と 4 をホールド
@@ -1061,7 +1063,7 @@ async function fxSwipeTouch(){
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x0,y}]});
     for(let k=1;k<=steps;k++){ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x0+dx*k/steps,y:y+k*0.4}]}); await p.waitForTimeout(ms/steps); }
     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await p.waitForTimeout(250); };
-  const st=()=>p.evaluate(()=>({page:document.querySelector('#viewPads>.msbar').dataset.fxPage, pads:document.getElementById('viewPads').classList.contains('active'), seq:document.getElementById('viewSeq').classList.contains('active'), lock:activeLock, mute:armMode, pat:editPat, tf:document.querySelector('#viewPads>.msbar').style.transform}));
+  const st=()=>p.evaluate(()=>({page:document.querySelector('#viewPads>.msbar').dataset.fxPage, pads:document.getElementById('viewPads').classList.contains('active'), seq:document.body.classList.contains('seqmode'), lock:activeLock, mute:armMode, pat:editPat, tf:document.querySelector('#viewPads>.msbar').style.transform}));
   await swipe(-160,200); const a=await st();
   ok_(`${V} 左スワイプ＝A B C D・画面は PADS のまま（SEQ へ飛ばない）・FX / MUTE は誤作動しない`, a.page==='patterns' && a.pads && !a.seq && a.lock===null && a.mute!=='mute' && a.tf==='', JSON.stringify(a));
   await swipe(-160,200); const b=await st();
@@ -1092,6 +1094,35 @@ async function pcPortraitPerf(){
   ok_(`${V} 画面いっぱい：パッドは高さを使う・スクロール無し`, r.padH>=120 && !r.scroll && r.patsBottom<=r.vh, JSON.stringify(r));
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
+}
+async function modeOrder(){
+  // v0.3.183 §171：「PAD と SEQ の位置関係は 3 モードとも共通に」＝窓 → 主面 → A B C D・BAR（→ ステップ）。SET の窓の A B C D は撤去。v0.3.184 §172：SEQ は窓なし
+  for(const [w,h,m] of [[390,844,true],[1280,800,false]]){
+    const V=`MODEORDER ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:m,hasTouch:m}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    const rows={};
+    for(const v of ['viewPads','viewSeq','viewSet']){
+      await p.evaluate(v=>switchView(v), v); await p.waitForTimeout(250);
+      rows[v]=await p.evaluate(m=>{ const vis=e=>e&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().height>0;
+        const main=['#pads','#seqMain','#setGrid'].map(q=>document.querySelector(q)).find(vis);
+        const abcd=m ? (document.body.classList.contains('setmode')||document.body.classList.contains('seqmode') ? document.getElementById('seqHead') : document.querySelector('#viewPads>.msbar')) : document.getElementById('perfPats');
+        const r=e=>e?Math.round(e.getBoundingClientRect().top):null;
+        return {win:r(document.getElementById('perfScreen')), winVis:vis(document.getElementById('perfScreen')), main:r(main), abcd:r(abcd), abcdVis:vis(abcd), keysSet:document.querySelectorAll('#clKeysSet button').length}; }, m);
+    }
+    for(const v of ['viewPads','viewSet']){ const r=rows[v];
+      ok_(`${V} ${v}：窓 → 主面 → A B C D・BAR の順`, r.win<r.main && r.main<r.abcd && r.abcdVis, JSON.stringify(r)); }
+    ok_(`${V} PADS と SET は窓と主面の位置が同じ`, rows.viewPads.win===rows.viewSet.win && rows.viewPads.main===rows.viewSet.main, JSON.stringify(rows));
+    // v0.3.184：「SEQ には情報ウィンドウ要らない」＝窓を出さずグリッドが広い。A B C D・BAR の段は 3 モードで同じ位置
+    ok_(`${V} SEQ は窓なし・主面 → A B C D・BAR・主面は PADS より上から`, !rows.viewSeq.winVis && rows.viewSeq.main<rows.viewSeq.abcd && rows.viewSeq.abcdVis && rows.viewSeq.main<rows.viewPads.main, JSON.stringify(rows.viewSeq));
+    ok_(`${V} A B C D・BAR の段は 3 モードで同じ位置`, new Set(Object.values(rows).map(r=>r.abcd)).size===1, JSON.stringify(rows));
+    eq(`${V} SET の窓に A B C D は無い（主面の下と重複）`, rows.viewSet.keysSet, 0);
+    await p.evaluate(()=>switchView('viewPads'));
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
 }
 async function editTools(){
   // v0.3.160：EDIT 中のドラッグ＝パッド入れ替え（P-LOCK を選んだままでも EDIT が先）／EDIT 画面の DELETE（2 回押す・↩ で戻せる）
@@ -1307,6 +1338,7 @@ await fxKeep();
 await longPitch();
 await fxSwipeTouch();
 await pcPortraitPerf();
+await modeOrder();
 await saveScopeTest();
 await wireSkin();
 await setNameTest();

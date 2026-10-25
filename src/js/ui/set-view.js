@@ -1,10 +1,10 @@
 // @module ui/set-view
 // @provides _clPagePrev, _setIn, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, paintSetMap,
 //    setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp, setPadUpAll
-// @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, editPat, fmtSetLevel, focusSet,
-//    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setEditPat,
-//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
-//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+// @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel, focusSet,
+//    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setElapsed,
+//    setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots, sideStop,
+//    sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -69,7 +69,6 @@ function paintSet(){
   if($("clSetNext")){   // MIX：いま鳴っているセット（ホールド中は H）。v0.3.147 で NEXT から置き換え（予約は使わない＝押した瞬間に鳴る）
     const mix=[]; for(let k=0;k<16;k++) if(setIsPlaying(k)) mix.push(String(k+1).padStart(2,"0")+(isSetHeld(k)?"H":""));
     $("clSetNext").textContent = mix.length ? mix.join(" · ") : "—"; }
-  document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.classList.toggle("on", +b.dataset.pat===editPat));
   paintSetMap();
 }
 // モードの出入り（switchView から）：情報窓のページを SET ページ⇄元のページに
@@ -150,7 +149,7 @@ function setModeEnter(on){
   _setIn.nudge=(dDb)=>{ const ids=[...holds.keys()].filter(id=>typeof id==="string"); if(!ids.length) return false;
     const h=holds.get(ids[ids.length-1]); h.moved=true; h.d.classList.add("adj"); setSetLevel(h.k,(setLevels[h.k]||0)+dDb); showLv(h); return true; };
   if(setGridEl){ setGridEl.addEventListener("pointerdown",pressStart); setGridEl.addEventListener("pointermove",pressMove); setGridEl.addEventListener("pointerup",pressEnd); setGridEl.addEventListener("pointercancel",pressEnd); }
-  document.querySelectorAll("#clKeysSet .cl-key").forEach(b=>b.addEventListener("click",()=>{ if(typeof setEditPat==="function") setEditPat(+b.dataset.pat); paintSet(); if(typeof paintPerf==="function") paintPerf(); }));
+  // 窓の中の A B C D（#clKeysSet）は v0.3.183 で撤去：主面の下の A B C D と重複（§171）
   // セットの名前を変える（v0.3.167 §160）：「鉛筆にして」＝情報窓の SET ページの NOW の横の ✎。パッドの名前（EDIT の ✎）と同じ作法：
   // ✎＝入力欄 / Enter・外をタップ＝確定 / Escape＝取消。窓は innerHTML で描き直すので、ボタンは document で受ける
   const nameOpen=()=>{ const inp=$("clSetNameIn"), txt=$("clSetName"), btn=$("clSetRename"); if(!inp) return;

@@ -2,8 +2,8 @@
 // @provides _rsT, applyWaveSEQ, applyWaveStrip, buildAllTrackWaves, buildTrackWave, drawAllPadWaves,
 //    drawKeyPadNotes, drawPadWave, keyPadGeometry, padWaveInk, setCellWave, snapStartToOnset, syncEditor,
 //    trackWaveURL
-// @uses PADS, STEPS, getPattern, normalizeKeyPhrase, padsEl, paintSteps, rowEls, selected, stepBtns, tracks,
-//    viewPadsEl, viewSeqEl
+// @uses PADS, STEPS, getPattern, normalizeKeyPhrase, padsEl, paintSteps, rowEls, selected, seqMode,
+//    stepBtns, tracks, viewPadsEl
 // @depends -
 // ---------- sample editor ---------- （窓波形は撤去：drawWave/ハンドル/カーソル機構は廃止）
 
@@ -130,7 +130,7 @@ let _rsT=null;
   clearTimeout(_rsT);
   _rsT=setTimeout(()=>{   // 連続リサイズで重い再描画を繰り返さない
     if(viewPadsEl.classList.contains("active")) drawAllPadWaves();
-    if(typeof viewSeqEl!=="undefined" && viewSeqEl.classList.contains("active")){
+    if(typeof seqMode!=="undefined" && seqMode){
       paintSteps();                                   // 往復した時と同じ経路を通す
       if(typeof applyWaveSEQ==="function") applyWaveSEQ();
     }

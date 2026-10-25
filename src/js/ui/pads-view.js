@@ -1,6 +1,6 @@
 // @module ui/pads-view
 // @provides _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl, paintPadName,
-//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl, viewSeqEl
+//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
@@ -17,7 +17,6 @@
 // ---------- UI build ----------
 const padsEl = document.getElementById("pads");
 const viewPadsEl = document.getElementById("viewPads");
-const viewSeqEl  = document.getElementById("viewSeq");     // 毎ステップ描画の可視判定に使う
 // パッドの種別カテゴリ（色分け用）：ドラム/ベース/サンプル/空
 function padCategory(i){
   const p=PADS[i];

@@ -1,13 +1,16 @@
 // @module ui/seq-view
 // @provides _padCurStep, _seqCurStep, _stripCurStep, colnums, curStepFor, grid, moveCursors, paintSteps,
-//    rowEls
+//    rowEls, seqModeEnter
 // @uses AC, PADS, STEPS, applyWaveSEQ, applyWaveStrip, armMode, copyTap, displayBar, displayPat, editBar,
 //    editPat, getPattern, hitVoice, melodicMode, paintMelodic, paintPatBar, paintStepStrip, playStep,
-//    playing, pushUndo, scaleSemi, selectPad, selected, setStep, stepBtns, tracks, trigger, viewSeqEl, vuHit
+//    playing, pushUndo, scaleSemi, selectPad, selected, seqMode, setStep, stepBtns, tracks, trigger, vuHit
 // @depends boot, app/state
 // ---------- SEQ 画面：16×16 グリッドの生成・ステップ表示・再生カーソル ----------
 // 30-ui-pads.js から分離（v0.3.130 Phase 2）。paintSteps/moveCursors は表示更新だけ（データは触らない）
 // column numbers (1..16)
+// SEQ は別の画面ではなく PADS 画面の状態（v0.3.183 §171、SET と同じ作り）。3 モードとも「窓 → 主面 → A B C D・BAR → ステップ」。
+// body.seqmode で主面が #pads から #seqMain（16×16 のグリッド）に替わる。入口は switchView（61-layout）
+function seqModeEnter(on){ on=!!on; if(on===seqMode) return; seqMode=on; document.body.classList.toggle("seqmode", seqMode); }
 const colnums=document.getElementById("colnums");
 colnums.appendChild(Object.assign(document.createElement("div"),{className:"cn"}));
 for(let s=0;s<STEPS;s++){
@@ -71,7 +74,7 @@ function paintSteps(){
     const _cs=document.getElementById("clStep"); if(_cs) _cs.textContent=playing?(String(playStep+1).padStart(2,"0")+"/16"):"--";
     const _sc=document.querySelector(".perf-screen"); if(_sc) _sc.classList.toggle("playing",playing);
   }
-  if(!viewSeqEl.classList.contains("active")) return;   // SEQ非表示なら重い16×16グリッド更新は不要（毎ステップの負荷を削減）
+  if(!seqMode) return;   // SEQ非表示なら重い16×16グリッド更新は不要（毎ステップの負荷を削減）
   if(melodicMode){ paintMelodic(); return; }
   const cs=curStepFor();
   for(let i=0;i<PADS.length;i++){
@@ -96,7 +99,7 @@ function moveCursors(){
       _stripCurStep=ns;
     }
   }
-  if(viewSeqEl.classList.contains("active")){
+  if(seqMode){
     if(melodicMode){ paintMelodic(); return; }
     const ns=curStepFor();
     if(ns!==_seqCurStep){

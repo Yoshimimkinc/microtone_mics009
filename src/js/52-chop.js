@@ -6,9 +6,9 @@
 //    barStartTime, bpmVal, chopBaseName, decodeAudio, doUndo, effectiveSwing, extractViaPlayback, flashPad,
 //    getPattern, inBlink, isMelodic, isSilent, makeLofi, nextChokeGroup, openPadEdit, paintMixer,
 //    paintPadStates, paintPerf, pickCaptureTarget, playBtn, playVoice, playing, pushUndo, refreshPadDisplay,
-//    sampNameEl, scaleSemi, scratchPadInputDown, scratchPadInputUp, selectPad, selected, setDelayTempo,
-//    setMode, setPadDown, setPadNudge, setPadUp, setPadUpAll, stepIdx, stepTimeClean, stepTrackName,
-//    swingPct, switchView, toggleStepAt, tracks, trigger, vuHit, warmKeyTracks
+//    sampNameEl, scaleSemi, scratchPadInputDown, scratchPadInputUp, selectPad, selected, seqMode,
+//    setDelayTempo, setMode, setPadDown, setPadNudge, setPadUp, setPadUpAll, stepIdx, stepTimeClean,
+//    stepTrackName, swingPct, switchView, toggleStepAt, tracks, trigger, vuHit, warmKeyTracks
 // @depends engine-bus, engine-fx, ui/pads-view
 // ===== CHOP（EDITモーダル内のスライス展開）：状態とヘルパー =====
 let chopTarget=-1, chopMode="time", chopDivN=8, chopSens="mid", chopBounds=[];
@@ -193,7 +193,7 @@ window.addEventListener("keydown",async(e)=>{
   if(e.key==="Tab"){
     e.preventDefault();
     const order=["viewPads","viewSeq","viewSet"];
-    let cur=(typeof setMode!=="undefined"&&setMode) ? 2 : order.findIndex(v=>document.getElementById(v).classList.contains("active")); if(cur<0)cur=0;
+    let cur=(typeof setMode!=="undefined"&&setMode) ? 2 : (typeof seqMode!=="undefined"&&seqMode) ? 1 : 0;   // SEQ / SET は PADS 画面の状態（v0.3.183）
     switchView(order[(cur+(e.shiftKey?-1:1)+order.length)%order.length]);
     return;
   }

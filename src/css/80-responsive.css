@@ -118,8 +118,7 @@
     /* パッド数字はスマホで控えめに（重なり防止） */
     .pads .pad .stepn{font-size:15px;}
     .pads .pad .lockv{font-size:14px;}
-    /* SEQは固定高さの中で内部縦スクロール（PADSは収める方針と両立） */
-    #viewSeq.active{overflow-x:hidden;overflow-y:auto;display:block;height:100%;}
+    /* SEQ は v0.3.183 から PADS 画面の状態：グリッドは主面（#seqMain）の中で縦スクロール（50-seq.css） */
     /* SEQヘッダの行数削減：ヒント省略・ラベル省略でPATTERN/BAR/DUPを1行に */
     .seq-head{gap:6px;margin-bottom:8px;}
     .pat-bar{gap:6px;}

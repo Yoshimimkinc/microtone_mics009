@@ -4,19 +4,21 @@
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, queuedPat,
-//    renderPerfFills, sampNameEl, setEditBar, setEditPat, setModeEnter, stepTrackName, swingPct, tracks,
-//    viewPadsEl
+//    renderPerfFills, sampNameEl, seqModeEnter, setEditBar, setEditPat, setModeEnter, stepTrackName,
+//    swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
 function switchView(viewId){
   // SET（v0.3.143 §144）：独立した view ではなく PADS 画面の「状態」。情報窓が SET 演奏モード、格子が 16 の枠になる（寸法は同じ）
-  const modeId=viewId; const inSet=(viewId==="viewSet"); if(inSet) viewId="viewPads";
+  // SEQ も v0.3.183 から PADS 画面の状態（§171）。3 モードとも同じ並び（窓 → 主面 → A B C D・BAR → ステップ）
+  const modeId=viewId; const inSet=(viewId==="viewSet"), inSeq=(viewId==="viewSeq"); if(inSet||inSeq) viewId="viewPads";
   if(typeof setModeEnter==="function") setModeEnter(inSet);
+  if(typeof seqModeEnter==="function") seqModeEnter(inSeq);
   modeBtns.forEach(b=>{ const on=b.dataset.view===modeId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
-  if(viewId==="viewPads"){ drawAllPadWaves(); }
-  if(viewId==="viewSeq") paintSteps();
+  if(viewId==="viewPads" && !inSeq){ drawAllPadWaves(); }
+  if(inSeq) paintSteps();
   // スマホのモードドット同期（●PADS 〇SEQ）
   const dots=document.getElementById("viewDots");
   if(dots){ dots.querySelectorAll(".vdot").forEach(d=>d.classList.toggle("on",d.dataset.view===modeId)); }
