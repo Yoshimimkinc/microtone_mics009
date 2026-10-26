@@ -78,6 +78,16 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   await p.evaluate(async()=>{await setPadKind(8,'SCR');await scratchOpen(8);});
   eq(`${label} SCRは対象パッドから起動`,await p.evaluate(()=>[document.getElementById('scratchEditor').hidden,!!_scratchNode]),[false,true]);
   await p.screenshot({path:`tools/_shots/content-scr-${w}.png`});
+  // v0.3.185 §173：横一直線の波形面。面の中ならどこでも掴める・横に擦ると音が動く・⇄ で左右入替（覚える）
+  {const deck=await p.locator('#scratchDeck').boundingBox(),gate=await p.locator('#scratchFader').boundingBox();
+   ok_(`${label} SCR 面とフェーダーが画面内・既定はフェーダー右`,deck.width>=200&&deck.height>=150&&gate.x>deck.x&&deck.y+deck.height<=h,JSON.stringify({deck,gate}));
+   await p.mouse.move(deck.x+20,deck.y+deck.height-20);await p.mouse.down();await p.waitForTimeout(80);const f0=await p.evaluate(()=>scratchState().frame);
+   for(let k=1;k<=8;k++){await p.mouse.move(deck.x+20+k*12,deck.y+deck.height-20);await p.waitForTimeout(16);}await p.waitForTimeout(120);
+   const f1=await p.evaluate(()=>[scratchState().frame,scratchState().dragging]);await p.mouse.up();
+   ok_(`${label} SCR 面の端でも掴める・右へ擦ると戻る`,f1[1]===true&&f1[0]<f0-500,JSON.stringify({f0,f1}));
+   await p.click('#scratchHand');const g2=await p.locator('#scratchFader').boundingBox(),d2=await p.locator('#scratchDeck').boundingBox();
+   ok_(`${label} ⇄ でフェーダーが左へ`,g2.x<d2.x,JSON.stringify({g2,d2}));
+   eq(`${label} 左右入替を端末に覚える`,await p.evaluate(()=>localStorage.getItem('mics.scrHand')),'R');await p.click('#scratchHand');}
   await p.evaluate(()=>scratchClose());
   eq(`${label} SCR終了でノード解放`,await p.evaluate(()=>_scratchNode),null);
   const recovery=await p.evaluate(async()=>{startTransport();audioSuspendScheduling();const paused=schedTimer===null;await audioRecover();const timer=schedTimer;await audioRecover();const single=timer===schedTimer,near=stepTimeClean(stepIdx)-AC.currentTime;stopTransport();return {paused,single,near,state:AC.state};});

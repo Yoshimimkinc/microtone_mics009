@@ -1,15 +1,16 @@
 // @module audio/scratch-pad
 // @provides _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFader, _scratchFrame,
 //    _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode, _scratchPos,
-//    _scratchToken, createScratchHead, scratchClose, scratchCue, scratchDrag, scratchFallbackNode,
-//    scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSetFader, scratchState
+//    _scratchSpeed, _scratchToken, _scratchWave, createScratchHead, scratchClose, scratchCue, scratchDrag,
+//    scratchFallbackNode, scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek,
+//    scratchSetFader, scratchState
 // @uses AC, GROUP_OF, dbToGain, groupBus, multiOut, outBGain, reverbPre, sampNameEl, scratchHide,
 //    scratchShow, setCur, setLevelLin, stopVoices, tapeEcho, tracks
 // @depends -
 // Audio unit: resampling, tape-head worklet, routing and scratch control state.
 // UI/platter gestures live in ui/scratch-view.js. Backing transport is untouched.
 let _scratchGraph=[],_scratchModule=null,_scratchNode=null,_scratchCut=null,_scratchToken=0;
-let _scratchPos=0,_scratchFrame=0,_scratchFrameAt=0,_scratchDuration=0,_scratchMotor=true,_scratchDragging=false,_scratchFader=0;
+let _scratchPos=0,_scratchFrame=0,_scratchFrameAt=0,_scratchDuration=0,_scratchMotor=true,_scratchDragging=false,_scratchFader=0,_scratchSpeed=0,_scratchWave=null;
 // One tape-head calculation shared by the worklet and compatibility driver.
 // v0.3.179 §166 で音を作り直した（「スクラッチモードの音質悪すぎ」）。v0.3.178 までの弱点と対策：
 //  1. 指の動き（60Hz 前後の pointer イベント）を一次遅れで追っていた＝イベントのたびに速度が跳ね、1 倍で動かしても 0.2〜1.9 倍を
@@ -36,7 +37,8 @@ function createScratchHead(data,rate){
     else{this.est=tgt;this.hv=0;this.hand=0;this.span=0;}
     this.lastT=Number.isFinite(m.t)?m.t:null;this.target=tgt;this.since=0;}
    if(m.type==='motor')this.motor=!!m.on;
-   if(m.type==='cue'){this.pos=0;this.target=0;this.origin=0;this.smooth=0;this.drag=false;}},
+   if(m.type==='cue'){this.pos=0;this.target=0;this.origin=0;this.smooth=0;this.drag=false;}
+   if(m.type==='seek'&&!this.drag&&Number.isFinite(m.frame)){this.pos=m.frame;this.target=this.origin=this.smooth=this.est=m.frame;}},   // 全体波形のタップ＝その位置へ（掴んでいる間は動かさない）
   state(){return {frame:this.pos,position:N?((this.pos%N)+N)%N/N:0,speed:this.speed};},
   sample(c,x,s){const L=this.levels[c];if(s<=1.0001||L.length<2)return read(L[0],x);   // 速さに応じた段（帯域を落としたもの）を読む
    const g=Math.min(L.length-1.0001,Math.log2(s)),k=Math.floor(g),f=g-k,a=read(L[k],x/2**k);return f>0&&k+1<L.length?a+(read(L[k+1],x/2**(k+1))-a)*f:a;},
@@ -73,23 +75,25 @@ function scratchLevels(src,from,to,rate,levels=5){
 const _scratchCode=`const createScratchHead=${createScratchHead.toString()};
 class PadTapeHead extends AudioWorkletProcessor{
  constructor(o){super();this.head=createScratchHead(o.processorOptions.levels||o.processorOptions.data,sampleRate);this.count=0;this.port.onmessage=e=>this.head.message(e.data);}
- process(i,o){if(!this.head.render(o[0]))return false;if(++this.count%8===0)this.port.postMessage(this.head.state());return true;}
+ process(i,o){if(!this.head.render(o[0]))return false;if(++this.count%2===0)this.port.postMessage(this.head.state());return true;}
 }registerProcessor('mics-pad-tape-head',PadTapeHead);`;
 function scratchFallbackNode(data){
  const node=AC.createScriptProcessor(512,0,2),head=createScratchHead(data,AC.sampleRate);
  node.port={onmessage:null,postMessage:m=>head.message(m),close:()=>{node.onaudioprocess=null;}};
  node.onaudioprocess=e=>{const b=e.outputBuffer;head.render(Array.from({length:b.numberOfChannels||1},(_,c)=>b.getChannelData(c)));if(node.port.onmessage)node.port.onmessage({data:head.state()});};return node;
 }
-function scratchState(){return {position:_scratchPos,frame:_scratchFrame+(!_scratchDragging&&_scratchMotor&&_scratchNode?(AC.currentTime-_scratchFrameAt)*AC.sampleRate:0),duration:_scratchDuration,motor:_scratchMotor,dragging:_scratchDragging,fader:_scratchFader,rate:AC.sampleRate};}
+// 表示の位置＝音声スレッドの最後の位置＋その時の速さ×経過（最大 0.1 秒。波形が指と音にぴったり付いて動く）
+function scratchState(){return {position:_scratchPos,frame:_scratchFrame+(_scratchNode?_scratchSpeed*Math.min(.1,Math.max(0,AC.currentTime-_scratchFrameAt))*AC.sampleRate:0),duration:_scratchDuration,motor:_scratchMotor,dragging:_scratchDragging,fader:_scratchFader,rate:AC.sampleRate,speed:_scratchSpeed,wave:_scratchWave};}
 function scratchHold(on){if(!_scratchNode)return;_scratchDragging=!!on;_scratchNode.port.postMessage({type:'hold',on:!!on});}
 function scratchDrag(frames,t){if(_scratchNode&&Number.isFinite(frames))_scratchNode.port.postMessage({type:'drag',delta:frames,t});}   // t：指のイベントの時刻（ms）＝手の速さを出す
 function scratchMotor(on){_scratchMotor=!!on;if(_scratchNode)_scratchNode.port.postMessage({type:'motor',on:_scratchMotor});}
 function scratchCue(){_scratchDragging=false;_scratchFrame=0;_scratchPos=0;_scratchFrameAt=AC.currentTime;if(_scratchNode)_scratchNode.port.postMessage({type:'cue'});}
+function scratchSeek(frame){if(!_scratchNode||_scratchDragging||!Number.isFinite(frame))return;_scratchFrame=frame;_scratchFrameAt=AC.currentTime;_scratchNode.port.postMessage({type:'seek',frame});}
 function scratchSetFader(value){_scratchFader=Math.max(0,Math.min(1,+value||0));if(_scratchCut)_scratchCut.gain.setTargetAtTime(_scratchFader,AC.currentTime,.003);}
 function scratchClose(){
  _scratchToken++;
  if(_scratchNode){_scratchNode.port.postMessage({type:'stop'});_scratchNode.port.onmessage=null;_scratchNode.port.close();_scratchNode.disconnect();_scratchNode=null;}
- _scratchGraph.forEach(n=>n.disconnect());_scratchGraph=[];_scratchCut=null;_scratchDragging=false;
+ _scratchGraph.forEach(n=>n.disconnect());_scratchGraph=[];_scratchCut=null;_scratchDragging=false;_scratchWave=null;
  if(typeof scratchHide==='function')scratchHide();
 }
 async function scratchOpen(i){
@@ -105,8 +109,8 @@ async function scratchOpen(i){
  const src=(t.rawBuffer&&t.rawBuffer.length)?t.rawBuffer:t.buffer,from=Math.max(0,Math.min(src.length-1,Math.floor((t.start||0)*src.length))),to=Math.min(src.length,Math.max(from+1,Math.ceil((t.end??1)*src.length)));
  const levels=scratchLevels(src,from,to,AC.sampleRate),len=levels[0][0].length;
  const node=useWorklet?new AudioWorkletNode(AC,'mics-pad-tape-head',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[2],processorOptions:{levels}}):scratchFallbackNode(levels);
- _scratchNode=node;_scratchPos=0;_scratchFrame=0;_scratchFrameAt=AC.currentTime;_scratchDuration=len/AC.sampleRate;_scratchMotor=true;_scratchDragging=false;_scratchFader=0;
- node.port.onmessage=e=>{if(node!==_scratchNode||!Number.isFinite(e.data?.frame))return;_scratchFrame=e.data.frame;_scratchPos=e.data.position;_scratchFrameAt=AC.currentTime;};
+ _scratchNode=node;_scratchPos=0;_scratchFrame=0;_scratchFrameAt=AC.currentTime;_scratchDuration=len/AC.sampleRate;_scratchMotor=true;_scratchDragging=false;_scratchFader=0;_scratchSpeed=1;_scratchWave=levels[0][0];
+ node.port.onmessage=e=>{if(node!==_scratchNode||!Number.isFinite(e.data?.frame))return;_scratchFrame=e.data.frame;_scratchPos=e.data.position;_scratchSpeed=Number.isFinite(e.data.speed)?e.data.speed:0;_scratchFrameAt=AC.currentTime;};
  const cut=AC.createGain(),gain=AC.createGain();cut.gain.value=0;_scratchCut=cut;gain.gain.value=dbToGain(t.vol||0)*setLevelLin(setCur);_scratchGraph.push(cut,gain);
  let head=node;if(t.filter!=='off'){const filter=AC.createBiquadFilter();filter.type=t.filter==='lp'?'lowpass':'highpass';filter.frequency.value=t.cutoff;filter.Q.value=t.reso;node.connect(filter);head=filter;_scratchGraph.push(filter);}head.connect(cut);cut.connect(gain);
  if(multiOut&&t.outBus==='B')gain.connect(outBGain);

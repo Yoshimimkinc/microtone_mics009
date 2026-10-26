@@ -20,9 +20,10 @@
  </section>
 </div>
 <div id="scratchEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="scratchTitle" hidden>
- <section class="content-panel scratch-panel"><header><div><b id="scratchTitle">SCR</b><span class="key-voice">TURNTABLE</span></div><button id="scratchClose">CLOSE</button></header>
- <div class="scratch-surface"><div class="scratch-platter-wrap"><canvas id="scratchDeck" tabindex="0" aria-label="レコード盤。円周方向に前後へ擦ってスクラッチ"></canvas></div>
- <div class="scratch-controls"><div class="scratch-buttons"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button></div><div class="scratch-readout"><b id="scratchMotion">PLAY</b><span id="scratchPosition">0.00 s</span></div>
- <div class="scratch-fader-label">FADER <output id="scratchFaderRead">CLOSED</output></div><button id="scratchFader" class="scratch-gate" aria-label="押している間だけSCR音を開く。離すと閉じる" aria-pressed="false">HOLD TO OPEN</button><div class="scratch-fader-scale"><span>押すと開く</span><span>離すと閉じる</span></div><p class="scratch-help">盤を前後に擦る。<br>押している間だけSCR音が出ます。</p></div></div>
- <p id="scratchStatus" role="status">盤から指を離すと通常再生</p></section>
+ <section class="content-panel scratch-panel"><header><div><b id="scratchTitle">SCR</b><span class="key-voice">WAVE</span></div><div class="scratch-head-btns"><button id="scratchHand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄ 左右</button><button id="scratchClose">CLOSE</button></div></header>
+ <canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas>
+ <div class="scratch-surface" id="scratchSurface"><div class="scratch-strip"><canvas id="scratchDeck" tabindex="0" aria-label="スクラッチ面。波形を左右に擦る"></canvas><span class="scratch-strip-label" aria-hidden="true">◀ SCRATCH ▶</span></div>
+ <div class="scratch-gate-col"><span class="scratch-fader-label">FADER <output id="scratchFaderRead">CLOSED</output></span><button id="scratchFader" class="scratch-gate" aria-label="押している間だけSCR音を開く。離すと閉じる" aria-pressed="false">HOLD TO OPEN</button></div></div>
+ <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><div class="scratch-readout"><b id="scratchMotion">PLAY</b><span id="scratchPosition">0.00 s</span></div></div>
+ <p id="scratchStatus" role="status">波形から指を離すと通常再生</p></section>
 </div>
