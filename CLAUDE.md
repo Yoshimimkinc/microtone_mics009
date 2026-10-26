@@ -57,8 +57,9 @@ tapeHiss ───────────────────────�
 - **MENU (⋮) mixer UI removed (v0.2.27)**: the Group-volume (4) and FX (delay/reverb) pads were dropped from the menu too. Group/FX **values still load from `.mics` and apply** via `applyGroupVol`/`applyFx` — only the editing UI is gone. Master volume + COMP remain in the menu. `paintMixer()` kept as a no-op shim for existing callers.
 
 - **SET モード（v0.3.144, §145）**: 上段スイッチ PADS / SEQ / SET。SET は PADS 画面の状態（`body.setmode`）で、情報窓が SET 演奏モード、
-  パッドが **16 セットのポン出し**（v0.3.147：押す＝そのセットを頭から鳴らす＋ PADS / SEQ の対象もそのセットに／離す＝止まる／
-  1 拍（4 ステップ）押し続ける＝ホールド（押して離すと止まる）／**同時鳴らし可**＝ミックス／押しながら上下スワイプ＝そのセットの音量 `setLevels`。■ は全部止める）。キーボード（1-8 / Q-I、↑↓ で音量）と MIDI（C4〜D#5）からも同じ操作（§152）。SET の切替ボタンに 16 セットの地図と番号（§147）。セットの名前は情報窓の NOW の横の ✎（§160）。データは `data/set`、表示は `ui/set-view`。
+  パッドが **16 セットのポン出し**（v0.3.187 §175：**押して離した瞬間に**そのセットを頭から鳴らす＋ PADS / SEQ の対象もそのセットに・離しても鳴り続ける（ホールド）／
+  鳴っているセットを押して離す＝止まる／**同時鳴らし可**＝ミックス／押しながら上下スワイプ＝そのセットの音量 `setLevels` だけ（鳴らさない・止めない）。■ は全部止める。
+  v0.3.147–186 の「押した瞬間に鳴る・離すと止まる・1 拍でホールド」は、音量のスワイプで鳴ってしまうので置き換えた）。キーボード（1-8 / Q-I、↑↓ で音量）と MIDI（C4〜D#5）からも同じ操作（§152）。SET の切替ボタンに 16 セットの地図と番号（§147）。セットの名前は情報窓の NOW の横の ✎（§160）。データは `data/set`、表示は `ui/set-view`。
   スマホ（767px まで）の A B C D は FX 列の横スワイプ（どちら向きでも 24px）で FX ⇄ A B C D（`ui/fx-pattern-page`、§167）。場所がある画面（768px 以上）はスワイプせず、A B C D を常に横長で大きく出す（split＝FX の下の段、演奏画面＝下の段 §169）。
   画面全体の横スワイプでのモード切替は v0.3.180 で廃止（§167）。PADS / SEQ / SET は上段のボタンだけ。
   いまのセットは `audio/transport`、他に鳴っているセットは `audio/set-players`（snapshot のトラック列を `playVoice(..., trs)` で鳴らす。時計はセットごと）。
@@ -149,7 +150,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.186
+MICS009 beta v0.3.187
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

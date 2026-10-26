@@ -690,72 +690,70 @@ async function setMode(){
     const sp=k=>p.evaluate(k=>{ const b=document.querySelector(`#setGrid .setpad[data-k="${k}"]`).getBoundingClientRect(); return [b.left+b.width/2, b.top+b.height/2]; }, k);
     const down=async k=>{ const c=await sp(k); await p.mouse.move(c[0],c[1]); await p.mouse.down(); };
     const ui=()=>p.evaluate(()=>({cur:setCur, playing, sides:[...sidePlayers.keys()], held:[0,1,2,3].filter(k=>isSetHeld(k)), lit:[...document.querySelectorAll('#setGrid .setpad.playing')].map(d=>+d.dataset.k), btn:document.getElementById('play').textContent, mix:document.getElementById('clSetNext').textContent}));
-    // SET 1 に印（名前・BPM・ステップ）→ SET 2 を押す（pointerdown）＝ポン出し
-    await p.evaluate(()=>{ tracks[0].name='S1'; paintPadName(0); applyBpm(60); setStep(8,0,1); setSlots[1].bpm=60; });   // 1 拍＝1 秒（v0.3.153 でホールドが 1 拍に。押して離す確認が間に合うように）
-    await down(1);
-    const s2dn=await p.evaluate(()=>({playingAtDown:playing, lead:barStartTime-AC.currentTime, firstStep:stepIdx}));
+    // v0.3.187 §175：押して離した瞬間に鳴る（押しただけでは鳴らない）。押しながら上下＝音量だけ（鳴らさない・止めない）。鳴っているセットを押して離す＝止まる
+    await p.evaluate(()=>{ tracks[0].name='S1'; paintPadName(0); applyBpm(60); setStep(8,0,1); setSlots[1].bpm=60; });
+    await down(1); await p.waitForTimeout(150);
+    const s2dn=await p.evaluate(()=>({cur:setCur, playing, sides:sidePlayers.size, pressing:document.querySelector('#setGrid .setpad[data-k="1"]').classList.contains('pressing')}));
+    ok_(`${V} 押しただけでは鳴らない（SET 1 のまま・下端のバーで「離すと鳴る」）`, s2dn.cur===0 && !s2dn.playing && s2dn.sides===0 && s2dn.pressing, JSON.stringify(s2dn));
+    await p.mouse.up();
+    const s2up=await p.evaluate(()=>({playingAtUp:playing, lead:barStartTime-AC.currentTime, firstStep:stepIdx}));
+    ok_(`${V} 離した瞬間に鳴る（小節頭は先置きしない・最初のステップは timer を待たず予約）`, s2up.playingAtUp && s2up.lead<=0.02 && s2up.lead>-0.5 && s2up.firstStep>=1 && s2up.firstStep<=2, JSON.stringify(s2up));
     await p.waitForTimeout(300);
     const s2=await p.evaluate(()=>({cur:setCur, playing, name:tracks[0].name, type0:PADS[0].type, buf0:!!tracks[0].buffer, kick:!!tracks[8].buffer && tracks[8].buffer===PRESET_BUFS[8].buf, bpm:bpmVal, steps:tracks.reduce((a,t)=>a+t.patterns.flat(2).filter(Boolean).length,0),
-      saved:setSlots[0].tracks[0].name, savedBpm:setSlots[0].bpm, savedStep:setSlots[0].tracks[8].patterns[0][0][0], tag:document.querySelector('#setGrid .setpad[data-k="1"] .tag').textContent, undo:undoStack.length}));
+      saved:setSlots[0].tracks[0].name, savedBpm:setSlots[0].bpm, savedStep:setSlots[0].tracks[8].patterns[0][0][0], tag:document.querySelector('#setGrid .setpad[data-k="1"] .tag').textContent, held:isSetHeld(1), undo:undoStack.length}));
     const lit=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="1"]'); const cs=getComputedStyle(d); return {cls:d.className, bg:cs.backgroundImage||cs.backgroundColor, glow:cs.boxShadow}; });
-    ok_(`${V} ポン出しは pointerdown（指を離す前に鳴り始め、小節頭は先置きしない・最初のステップは timer を待たず予約）`, s2dn.playingAtDown && s2dn.lead<=0.02 && s2dn.lead>-0.5 && s2dn.firstStep>=1 && s2dn.firstStep<=2, JSON.stringify(s2dn));
-    ok_(`${V} 押している間（ホールド前）は薄い色（playing・held でない・外光 12px で 26px は無し）`, /\bplaying\b/.test(lit.cls) && !/\bheld\b/.test(lit.cls) && /linear-gradient/.test(lit.bg) && /12px/.test(lit.glow) && !/26px/.test(lit.glow), JSON.stringify(lit));
+    ok_(`${V} 離した後も鳴り続ける＝ホールド（HOLD の印・面塗り・外光 26px）`, s2.held && s2.tag==='HOLD' && /\bheld\b/.test(lit.cls) && /linear-gradient/.test(lit.bg) && /26px/.test(lit.glow), JSON.stringify({s2,lit}));
     ok_(`${V} 地図と番号はいまのセットに追従（02）`, await p.evaluate(()=>[...document.querySelectorAll('.setno')].every(b=>b.textContent==='02') && document.querySelector('#viewDots .setmap').children[1].classList.contains('cur')), 'map not following');
-    ok_(`${V} 押す＝ポン出し（SET 2 へ切替・鳴る・既定のキット）／SET 1 の変更は退避される／undo は空`, s2.cur===1 && s2.playing===true && s2.name==='PAD 1' && s2.type0==='empty' && !s2.buf0 && s2.kick && s2.bpm===60 && s2.steps===0 && s2.saved==='S1' && s2.savedBpm===60 && s2.savedStep===1 && s2.tag==='NOW' && s2.undo===0, JSON.stringify(s2));
+    ok_(`${V} 押して離す＝ポン出し（SET 2 へ切替・鳴る・既定のキット）／SET 1 の変更は退避される／undo は空`, s2.cur===1 && s2.playing===true && s2.name==='PAD 1' && s2.type0==='empty' && !s2.buf0 && s2.kick && s2.bpm===60 && s2.steps===0 && s2.saved==='S1' && s2.savedBpm===60 && s2.savedStep===1 && s2.undo===0, JSON.stringify(s2));
     await p.evaluate(()=>{ setStep(9,4,1); });   // SET 2 に 1 ステップ（退避されるか）
-    await p.mouse.up(); await p.waitForTimeout(150);
+    // 鳴っている SET 2 を押す（押した瞬間には止まらない）→ 離す＝止まる
+    await down(1); await p.waitForTimeout(120); const u0=await ui(); await p.mouse.up(); await p.waitForTimeout(150);
     const u1=await ui();
-    ok_(`${V} 離す＝止まる（1 拍に届かない）／SET 2 は選ばれたまま・オレンジは消える・▶`, u1.cur===1 && !u1.playing && u1.sides.length===0 && u1.lit.length===0 && u1.held.length===0 && u1.btn==='▶' && await p.evaluate(()=>document.querySelector('#setGrid .setpad.on .tag').textContent==='SEL'), JSON.stringify(u1));
-    // ホールド：SET 3 を 1 拍押し続ける（BPM 240 ＝ 250ms）→ 離しても鳴り続ける
+    ok_(`${V} 鳴っているセットは押した瞬間には止まらず、離すと止まる／SET 2 は選ばれたまま・オレンジは消える・▶`, u0.playing && u1.cur===1 && !u1.playing && u1.sides.length===0 && u1.lit.length===0 && u1.held.length===0 && u1.btn==='▶' && await p.evaluate(()=>document.querySelector('#setGrid .setpad.on .tag').textContent==='SEL'), JSON.stringify({u0,u1}));
+    // SET 3 を鳴らす（BPM 240）
     await p.evaluate(()=>{ setSlots[2].bpm=240; });
-    await down(2); await p.waitForTimeout(600);   // BPM 240 の 1 拍＝250ms
-    const h1=await ui();
-    const litH=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="2"]'); const cs=getComputedStyle(d); return {cls:d.className, bg:cs.backgroundImage, glow:cs.boxShadow}; });
-    ok_(`${V} ホールドになると今の色で光る（held・面塗り・外光 26px）`, /\bheld\b/.test(litH.cls) && /linear-gradient/.test(litH.bg) && /26px/.test(litH.glow), JSON.stringify(litH));
+    { const c=await sp(2); await p.mouse.click(c[0],c[1]); } await p.waitForTimeout(200);
     await p.evaluate(()=>{ for(let s=0;s<16;s++) setStep(8,s,1); });   // SET 3 の 9 番を 16 分で（ミックスで鳴っているか見る）
-    await p.mouse.up(); await p.waitForTimeout(200);
     const h2=await ui();
-    ok_(`${V} 1 拍押し続ける＝ホールド（HOLD の印・離しても鳴り続ける・窓の MIX に H）`, h1.cur===2 && h1.playing && h1.held.includes(2) && h2.playing && h2.held.includes(2) && h2.lit.join()==='2' && /^03H$/.test(h2.mix) && await p.evaluate(()=>document.querySelector('#setGrid .setpad[data-k="2"] .tag').textContent==='HOLD'), JSON.stringify({h1,h2}));
-    // ミックス：ホールド中に SET 1 を押す → SET 1 がいまのセットになって鳴り、SET 3 は止まらずに鳴り続ける
-    await down(0); await p.waitForTimeout(400);
-    const m1=await ui();
-    // v0.3.151：押しながら下へスワイプ＝そのセットの音量を下げる（8px の遊び＋5px で 1 dB → 58px で -10 dB）。鳴りは続く
+    ok_(`${V} 押して離す＝鳴り続ける（窓の MIX に H）`, h2.cur===2 && h2.playing && h2.held.includes(2) && h2.lit.join()==='2' && /^03H$/.test(h2.mix) && await p.evaluate(()=>document.querySelector('#setGrid .setpad[data-k="2"] .tag').textContent==='HOLD'), JSON.stringify(h2));
+    // 止まっている SET 1 を押しながら下へスワイプ＝音量だけ下がる（8px の遊び＋5px で 1 dB → 58px で -10 dB）。離しても鳴らさない
+    await down(0);
     { const c0=await sp(0); await p.mouse.move(c0[0], c0[1]+58, {steps:6}); await p.waitForTimeout(80); }
     const vol=await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad[data-k="0"]'), f=d.querySelector('.lvfill');
-      return {db:setLevels[0], lin:setLevelLin(0), node:!!setLevelNode(0), lv:d.querySelector('.lv').textContent, lvShown:getComputedStyle(d.querySelector('.lv')).display!=='none', playing, other:setLevels[2],
+      return {db:setLevels[0], lin:setLevelLin(0), node:!!setLevelNode(0), lv:d.querySelector('.lv').textContent, lvShown:getComputedStyle(d.querySelector('.lv')).display!=='none', cur:setCur, started:setIsPlaying(0), other:setLevels[2],
         fill:getComputedStyle(f).display!=='none' ? f.getBoundingClientRect().height/d.getBoundingClientRect().height : -1, otherFill:getComputedStyle(document.querySelector('#setGrid .setpad[data-k="5"] .lvfill')).display}; });
-    ok_(`${V} 押しながら下へスワイプ＝そのセットの音量だけ下がる（約 -10 dB・パッドに表示・鳴りは続く）`, Math.abs(vol.db+10)<=0.5 && Math.abs(vol.lin-Math.pow(10,vol.db/20))<0.001 && vol.lin<0.34 && vol.node && vol.lv===vol.db.toFixed(1)+'dB' && vol.lvShown && vol.playing && vol.other===0, JSON.stringify(vol));
-    ok_(`${V} 音量は下からの塗り潰しで見える（高さ＝(dB+40)/46・0 dB のセットには出ない）`, Math.abs(vol.fill-(vol.db+40)/46)<0.04 && vol.otherFill==='none', JSON.stringify(vol));
-    const m1d=await p.evaluate(()=>({name:tracks[0].name, bpm:bpmVal, step:tracks[8].patterns[0][0][0], side3:sidePlayers.get(2)&&sidePlayers.get(2).bpm, v3:setSlots[2].tracks[8].activeVoices.length, s3step:setSlots[2].tracks[8].patterns[0][0][5], s2step:setSlots[1].tracks[9].patterns[0][0][4]}));
-    ok_(`${V} 同時鳴らし：SET 1 を押すと SET 1 がいまのセット、SET 3 は自分の BPM で鳴り続ける（両方オレンジ・MIX に 2 つ）`, m1.cur===0 && m1.playing && m1.sides.join()==='2' && m1.lit.join()==='0,2' && /01/.test(m1.mix) && /03H/.test(m1.mix) && m1d.name==='S1' && m1d.bpm===60 && m1d.step===1 && m1d.side3===240 && m1d.v3>0 && m1d.s3step===1 && m1d.s2step===1, JSON.stringify({m1,m1d}));
-    const mp1=await map();
-    ok_(`${V} 地図：いまのセット（01）・鳴っているセット（01 と 03）・ホールド（03）が分かる`, Object.values(mp1.maps).every(m=>m.cur===0 && m.play==='0,2' && m.held==='2') && mp1.no==='01,01', JSON.stringify(mp1));
     await p.mouse.up(); await p.waitForTimeout(150);
+    const v1=await ui();
+    ok_(`${V} 押しながら下へスワイプ＝そのセットの音量だけ下がる（約 -10 dB・パッドに表示）・鳴らさない（離しても）`, Math.abs(vol.db+10)<=0.5 && Math.abs(vol.lin-Math.pow(10,vol.db/20))<0.001 && vol.lin<0.34 && vol.node && vol.lv===vol.db.toFixed(1)+'dB' && vol.lvShown && !vol.started && vol.cur===2 && vol.other===0 && v1.cur===2 && v1.lit.join()==='2' && v1.sides.length===0, JSON.stringify({vol,v1}));
+    ok_(`${V} 音量は下からの塗り潰しで見える（高さ＝(dB+40)/46・0 dB のセットには出ない）`, Math.abs(vol.fill-(vol.db+40)/46)<0.04 && vol.otherFill==='none', JSON.stringify(vol));
+    // ミックス：SET 3 が鳴っている間に SET 1 を押して離す → SET 1 がいまのセットになって鳴り、SET 3 は止まらずに鳴り続ける
+    { const c=await sp(0); await p.mouse.click(c[0],c[1]); } await p.waitForTimeout(300);
+    const m1=await ui();
+    const m1d=await p.evaluate(()=>({name:tracks[0].name, bpm:bpmVal, step:tracks[8].patterns[0][0][0], side3:sidePlayers.get(2)&&sidePlayers.get(2).bpm, v3:setSlots[2].tracks[8].activeVoices.length, s3step:setSlots[2].tracks[8].patterns[0][0][5], s2step:setSlots[1].tracks[9].patterns[0][0][4]}));
+    ok_(`${V} 同時鳴らし：SET 1 を押して離すと SET 1 がいまのセット、SET 3 は自分の BPM で鳴り続ける（両方オレンジ・MIX に 2 つ）`, m1.cur===0 && m1.playing && m1.sides.join()==='2' && m1.lit.join()==='0,2' && /01/.test(m1.mix) && /03H/.test(m1.mix) && m1d.name==='S1' && m1d.bpm===60 && m1d.step===1 && m1d.side3===240 && m1d.v3>0 && m1d.s3step===1 && m1d.s2step===1, JSON.stringify({m1,m1d}));
+    const mp1=await map();
+    ok_(`${V} 地図：いまのセット（01）・鳴っているセット（01 と 03）・ホールド（03）が分かる`, Object.values(mp1.maps).every(m=>m.cur===0 && m.play==='0,2' && m.held.split(',').includes('2')) && mp1.no==='01,01', JSON.stringify(mp1));
+    { const c=await sp(0); await p.mouse.click(c[0],c[1]); } await p.waitForTimeout(150);
     const m2=await ui();
-    ok_(`${V} SET 1 を離す＝SET 1 だけ止まる（SET 3 は鳴り続ける・■ のまま）`, m2.cur===0 && !m2.playing && m2.sides.join()==='2' && m2.lit.join()==='2' && m2.btn==='■', JSON.stringify(m2));
-    // ホールド中の SET 3 を押して上へスワイプ＝音量だけ上がる（離しても止まらない）
+    ok_(`${V} SET 1 を押して離す＝SET 1 だけ止まる（SET 3 は鳴り続ける・■ のまま）`, m2.cur===0 && !m2.playing && m2.sides.join()==='2' && m2.lit.join()==='2' && m2.btn==='■', JSON.stringify(m2));
+    // 鳴っている SET 3 を押して上へスワイプ＝音量だけ上がる（離しても止まらない）
     const c3=await sp(2); await p.mouse.move(c3[0],c3[1]); await p.mouse.down(); await p.mouse.move(c3[0], c3[1]-30, {steps:5}); await p.mouse.up(); await p.waitForTimeout(150);
     const hv=await p.evaluate(()=>({db:setLevels[2], playing:sidePlaying(2), held:isSetHeld(2)}));
-    ok_(`${V} ホールド中を押して上へスワイプ＝音量だけ上がる（+4.5 dB・離しても止まらない）`, hv.db===4.5 && hv.playing && hv.held, JSON.stringify(hv));
-    // ホールド中の SET 3 は「押して離す」で止まる（押した瞬間には止まらない）
-    await p.mouse.move(c3[0],c3[1]); await p.mouse.down(); await p.waitForTimeout(120);
-    const t0=await p.evaluate(()=>sidePlaying(2));
-    await p.mouse.up(); await p.waitForTimeout(150);
+    ok_(`${V} 鳴っているセットを押して上へスワイプ＝音量だけ上がる（+4.5 dB・離しても止まらない）`, hv.db===4.5 && hv.playing && hv.held, JSON.stringify(hv));
+    await p.mouse.click(c3[0],c3[1]); await p.waitForTimeout(150);
     const t1=await ui();
-    ok_(`${V} ホールド中のセットは押した瞬間には止まらない`, t0===true, String(t0));
-    ok_(`${V} ホールド中のセットを押して離す＝止まる（トグル）／いまのセットは SET 1 のまま`, t1.cur===0 && !t1.playing && t1.sides.length===0 && t1.lit.length===0 && t1.held.length===0 && t1.btn==='▶' && t1.mix==='—', JSON.stringify(t1));
+    ok_(`${V} 鳴っているセットを押して離す＝止まる（トグル）／いまのセットは SET 1 のまま`, t1.cur===0 && !t1.playing && t1.sides.length===0 && t1.lit.length===0 && t1.held.length===0 && t1.btn==='▶' && t1.mix==='—', JSON.stringify(t1));
     // ▶ で鳴らしたセットはホールド扱い。打ち込みは止めても残る。■ は鳴っているセットを全部止める
     await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
     await p.evaluate(()=>{ setStep(3,7,1); });
     const pl=await ui();
-    await down(1); await p.waitForTimeout(250);
+    { const c=await sp(1); await p.mouse.click(c[0],c[1]); } await p.waitForTimeout(250);
     const pl2=await ui();
     await p.evaluate(()=>document.getElementById('play').click()); await p.waitForTimeout(150);
-    await p.mouse.up(); await p.waitForTimeout(100);
     const st1=await ui();
-    ok_(`${V} ▶＝ホールド扱い／もう 1 つ押すと 2 つ鳴る／■ で全部止まる`, pl.playing && pl.held.includes(0) && pl2.cur===1 && pl2.sides.join()==='0' && pl2.lit.join()==='0,1' && !st1.playing && st1.sides.length===0 && st1.lit.length===0 && st1.held.length===0 && st1.btn==='▶', JSON.stringify({pl,pl2,st1}));
-    // SET 1 に戻す（押して離す）：鳴らしている間の打ち込みは残る
-    const c1=await sp(0); await p.mouse.click(c1[0],c1[1]); await p.waitForTimeout(250);
+    ok_(`${V} ▶＝ホールド扱い／もう 1 つ押して離すと 2 つ鳴る／■ で全部止まる`, pl.playing && pl.held.includes(0) && pl2.cur===1 && pl2.sides.join()==='0' && pl2.lit.join()==='0,1' && !st1.playing && st1.sides.length===0 && st1.lit.length===0 && st1.held.length===0 && st1.btn==='▶', JSON.stringify({pl,pl2,st1}));
+    // SET 1 に戻す（押して離す＝鳴る → もう一度で止める）：鳴らしている間の打ち込みは残る
+    { const c1=await sp(0); await p.mouse.click(c1[0],c1[1]); await p.waitForTimeout(200); await p.mouse.click(c1[0],c1[1]); await p.waitForTimeout(200); }
     ok_(`${V} 打ち込みは止めても残る（他のセットへ移って戻っても）`, await p.evaluate(()=>setCur===0 && getPattern(3)[7]===1 && !playing), 'reverted');
     ok_(`${V} 止まるとオレンジは消える（SEL のティール枠に戻る）`, await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad.on'); return !d.classList.contains('playing') && d.querySelector('.tag').textContent==='SEL' && !document.querySelector('#setGrid .setpad.playing'); }), 'still lit');
     // COPY：COPY を押してセットを叩く＝いまのセットを写す
@@ -1190,7 +1188,7 @@ async function peCueTest(){
   await ctx.close();
 }
 async function setKeys(){
-  // v0.3.159：SET のパッドをキーボード（1-8 / Q-I）と MIDI（C4〜D#5）から。押す＝鳴る／離す＝止まる／1 拍でホールド／押しながら ↑ ↓ ＝音量
+  // v0.3.159：SET のパッドをキーボード（1-8 / Q-I）と MIDI（C4〜D#5）から。v0.3.187 から押して離す＝鳴る／鳴っていれば止まる／押しながら ↑ ↓ ＝音量
   const V='SETKEYS 1280x800';
   const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
@@ -1201,24 +1199,30 @@ async function setKeys(){
   await p.keyboard.press('Tab'); await p.keyboard.press('Tab'); await p.waitForTimeout(150);
   const t0=await st();
   ok_(`${V} TAB で PADS → SEQ → SET`, t0.mode===true, JSON.stringify(t0));
+  // v0.3.187 §175：指と同じく「押して離した瞬間に鳴る／鳴っていれば止まる」。押しながら ↑ ↓ ＝音量だけ
   await p.keyboard.down('2'); await p.waitForTimeout(150); const a1=await st();
   await p.keyboard.up('2'); await p.waitForTimeout(120); const a2=await st();
-  ok_(`${V} キー 2 を押す＝SET 02 が鳴る／離す＝止まる`, a1.cur===1 && a1.playing && a2.cur===1 && !a2.playing, JSON.stringify({a1,a2}));
-  await p.keyboard.down('3'); await p.waitForTimeout(500); await p.keyboard.up('3'); await p.waitForTimeout(120); const b1=await st();
-  ok_(`${V} キー 3 を 1 拍押し続ける＝ホールド（離しても鳴る）`, b1.cur===2 && b1.playing && b1.held==='2', JSON.stringify(b1));
+  ok_(`${V} キー 2 を押しただけでは鳴らない／離す＝SET 02 が鳴り続ける（ホールド）`, a1.cur===0 && !a1.playing && a2.cur===1 && a2.playing && a2.held==='1', JSON.stringify({a1,a2}));
+  await p.keyboard.down('2'); await p.waitForTimeout(100); const a3=await st(); await p.keyboard.up('2'); await p.waitForTimeout(120); const a4=await st();
+  ok_(`${V} 鳴っているキー 2 は押した瞬間には止まらず、離すと止まる`, a3.playing && !a4.playing && a4.held==='', JSON.stringify({a3,a4}));
+  await p.keyboard.press('3'); await p.waitForTimeout(150); const b1=await st();
+  ok_(`${V} キー 3 を押して離す＝SET 03 が鳴る`, b1.cur===2 && b1.playing && b1.held==='2', JSON.stringify(b1));
   await p.keyboard.down('1'); await p.waitForTimeout(100);
   for(let n=0;n<3;n++){ await p.keyboard.press('ArrowDown'); }
   await p.waitForTimeout(60); const c1=await st();
   await p.keyboard.up('1'); await p.waitForTimeout(120); const c2=await st();
-  ok_(`${V} ホールド中にキー 1 ＝ 2 つ鳴る／押しながら ↓ 3 回で -3 dB／離すと SET 01 だけ止まる`, c1.cur===0 && c1.playing && c1.sides==='2' && c1.lv0===-3 && !c2.playing && c2.sides==='2' && c2.lv0===-3, JSON.stringify({c1,c2}));
-  await p.keyboard.down('3'); await p.waitForTimeout(100); const d0=await st(); await p.keyboard.up('3'); await p.waitForTimeout(120); const d1=await st();
-  ok_(`${V} ホールド中のキー 3 は押した瞬間には止まらず、離すと止まる`, d0.sides==='2' && d1.sides==='' && d1.held==='', JSON.stringify({d0,d1}));
-  await p.keyboard.down('2'); await p.waitForTimeout(100); await p.evaluate(()=>window.dispatchEvent(new Event('blur'))); await p.waitForTimeout(100); const e1=await st(); await p.keyboard.up('2');
-  ok_(`${V} キーを押したまま窓を離れたら放す（鳴りっぱなしにしない）`, !e1.playing && e1.sides==='', JSON.stringify(e1));
+  ok_(`${V} キー 1 を押しながら ↓ 3 回＝ -3 dB だけ（離しても鳴らさない・SET 03 はそのまま）`, c1.lv0===-3 && c2.lv0===-3 && c2.cur===2 && c2.playing && c2.sides==='', JSON.stringify({c1,c2}));
+  await p.keyboard.press('1'); await p.waitForTimeout(150); const c3=await st();
+  ok_(`${V} SET 03 が鳴っている間にキー 1 ＝ 2 つ鳴る`, c3.cur===0 && c3.playing && c3.sides==='2', JSON.stringify(c3));
+  await p.keyboard.press('3'); await p.waitForTimeout(120); await p.keyboard.press('1'); await p.waitForTimeout(120); const d1=await st();
+  ok_(`${V} もう一度押して離す＝止まる（SET 03・SET 01）`, !d1.playing && d1.sides==='' && d1.held==='', JSON.stringify(d1));
+  await p.keyboard.down('2'); await p.waitForTimeout(100); await p.evaluate(()=>window.dispatchEvent(new Event('blur'))); await p.waitForTimeout(100); await p.keyboard.up('2'); await p.waitForTimeout(100); const e1=await st();
+  ok_(`${V} キーを押したまま窓を離れたら取り消し（鳴らさない）`, !e1.playing && e1.sides==='', JSON.stringify(e1));
   const m=await p.evaluate(async()=>{ midiEnabled=true; handleMIDI([0x90,62,100]); await new Promise(r=>setTimeout(r,120)); const on={cur:setCur, playing};
-    handleMIDI([0x80,62,0]); await new Promise(r=>setTimeout(r,100)); const off={playing};
-    handleMIDI([0x90,61,100]); await new Promise(r=>setTimeout(r,80)); handleMIDI([0x90,61,0]); await new Promise(r=>setTimeout(r,100)); const off2={cur:setCur, playing}; midiEnabled=false; return {on,off,off2}; });
-  ok_(`${V} MIDI：D4 で SET 03 が鳴り、ノートオフで止まる（ベロシティ 0 のノートオンも）`, m.on.cur===2 && m.on.playing && !m.off.playing && m.off2.cur===1 && !m.off2.playing, JSON.stringify(m));
+    handleMIDI([0x80,62,0]); await new Promise(r=>setTimeout(r,100)); const off={cur:setCur, playing};
+    handleMIDI([0x90,61,100]); await new Promise(r=>setTimeout(r,80)); handleMIDI([0x90,61,0]); await new Promise(r=>setTimeout(r,100)); const off2={cur:setCur, playing, sides:sidePlayers.size};
+    if(playing) stopTransport(); sideStopAll(); setHoldClear(); midiEnabled=false; return {on,off,off2}; });
+  ok_(`${V} MIDI：D4 のノートオンでは鳴らず、ノートオフで SET 03 が鳴る（ベロシティ 0 のノートオンも離す扱い）`, !m.on.playing && m.off.cur===2 && m.off.playing && m.off2.cur===1 && m.off2.playing && m.off2.sides===1, JSON.stringify(m));
   await p.keyboard.press('Tab'); await p.waitForTimeout(120);
   ok_(`${V} SET で TAB ＝ PADS に戻る`, await p.evaluate(()=>!setMode && document.getElementById('viewPads').classList.contains('active')), 'still set');
   await p.evaluate(async()=>{ await clearAutosave(); });

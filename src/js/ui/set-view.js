@@ -82,12 +82,13 @@ function setModeEnter(on){
 (function(){
   const $=id=>document.getElementById(id);
   const say=t=>{ sampNameEl.textContent=t; if(typeof paintPerf==="function") paintPerf(); };
-  // セットのポン出し（v0.3.147 §145）：「トグル式で。押して再生、離して止まる、1 小節長押しでホールド。ミックスするから同時鳴らしも許可する」
-  // ・押す（pointerdown）＝そのセットをいまのセット（PADS / SEQ の対象）にして、頭から鳴らす。他に鳴っているセットはそのまま（ミックス）
-  // ・離す＝止まる。ただし 1 拍（4 ステップ。そのセットの BPM で。v0.3.153、当初は 1 小節）押し続けたらホールド＝離しても鳴り続ける。ホールド中のセットを叩く＝止まる
+  // セットのポン出し（v0.3.147 §145 → v0.3.187 §175）：「SET モードで、ボリュームを動かすためにタップ＋スワイプした場合は再生開始しないように」→「押して離した瞬間に鳴るにしよう」
+  // ・押して離す（上下に動かさずに）＝止まっているセットは頭から鳴らす（そのセットがいまのセット＝PADS / SEQ の対象に）。離しても鳴り続ける（ホールド）。他に鳴っているセットはそのまま（ミックス）
+  // ・鳴っているセットを押して離す＝止まる
+  // ・押しながら上下スワイプ＝音量だけ（鳴らさない・止めない）
   // ・COPY 中は鳴らさずに、いまのセットをそこへ写す。■ は鳴っているセットを全部止める
-  // v0.3.146 までの「鳴っていれば次の小節頭で切替（予約）」と「長押し 2 回で既定のキットに戻す」はこの操作に置き換えた
-  const holds=new Map();   // pointerId → {k, timer, d}（押している最中の指。マルチタッチで複数）
+  // v0.3.146 までの「鳴っていれば次の小節頭で切替（予約）」と「長押し 2 回で既定のキットに戻す」、v0.3.147–186 の「押した瞬間に鳴る・離すと止まる・1 拍押し続けるとホールド」はこの操作に置き換えた
+  const holds=new Map();   // pointerId → {k, d, mode, …}（押している最中の指。マルチタッチで複数）
   const startSet=(k)=>{
     if(AC.state!=="running") AC.resume();
     if(k!==setCur){
@@ -103,33 +104,23 @@ function setModeEnter(on){
     setHold(k,false); paintTransport();
   };
   const no=k=>String(k+1).padStart(2,"0");
-  const endHold=(h)=>{ clearTimeout(h.timer); h.d.classList.remove("pressing","adj"); };
-  // v0.3.151：「鳴っている Pad を止めるときは、押して離して止まる」「押して始めるとき、押しながら上下スワイプで音量」
+  const endHold=(h)=>{ h.d.classList.remove("pressing","adj"); };
+  // v0.3.151：「鳴っている Pad を止めるときは、押して離して止まる」「押しながら上下スワイプで音量」
   // 押している入力ごとに h = {k, d, mode, y0, db0, moved}。入力＝指（pointerId）・キー（"key:"+code）・MIDI（"midi:"+note）（v0.3.159）。
-  // mode：start＝押して鳴らした／held＝ホールド中を押した（離すと止まる）／vol＝別の入力で鳴っている最中（音量だけ）
+  // mode：start＝離すと鳴らす／stop＝鳴っているセット（離すと止まる）。上下に動かした（moved）ら離しても何もしない＝音量だけ
   const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
   const copyTo=k=>{ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); };
   const down=(k,id,y)=>{
     if(holds.has(id)) return;
-    const d=setGridEl.children[k];
-    const h={k, d, timer:0, mode:"start", y0:y||0, db0:setLevels[k]||0, moved:false};
-    if(setIsPlaying(k)){   // 鳴っているセット：ホールド中なら「離すと止まる」（音量を動かしたら止めない）。別の入力で押している最中なら音量だけ
-      h.mode = isSetHeld(k) ? "held" : "vol";
-      holds.set(id, h);
-      say((h.mode==="held" ? "離すと止まる："+no(k)+" "+setName(k)+"（上下で音量）" : "上下で音量："+no(k)+" "+setName(k)));
-      return; }
-    startSet(k);
-    const ms=Math.round(60000/(bpmVal||100));   // 1 拍＝4 ステップ（押したセットの BPM）。v0.3.153 で 1 小節から短くした
-    h.timer=setTimeout(()=>{ if(holds.get(id)!==h) return; h.d.classList.remove("pressing");
-      if(setIsPlaying(k)){ setHold(k,true); say("HOLD ▸ "+no(k)+" "+setName(k)+"（押して離すと止まる）"); paintSet(); } }, ms);
-    holds.set(id, h);
-    d.style.setProperty("--hold-ms", ms+"ms"); d.classList.add("pressing");
-    say("▶ "+no(k)+" "+setName(k)+"（離すと止まる・1 拍押し続けるとホールド・上下で音量）"); paintSet(); };
+    const d=setGridEl.children[k], on=setIsPlaying(k);
+    holds.set(id, {k, d, mode:on?"stop":"start", y0:y||0, db0:setLevels[k]||0, moved:false});
+    d.classList.add("pressing");
+    say((on ? "離すと止まる：" : "離すと鳴る：")+no(k)+" "+setName(k)+"（上下で音量）"); };
   const showLv=h=>{ paintSetLevel(h.d, h.k); say("VOL "+no(h.k)+" "+setName(h.k)+"  "+fmtSetLevel(setLevels[h.k])+" dB"); };   // 動かしている 1 枚だけ塗る（毎回 16 枚は重い）
   const up=(id,cancelled)=>{ const h=holds.get(id); if(!h) return; holds.delete(id); endHold(h);
-    if(cancelled && h.mode!=="start") return;   // 取り消された入力では止めない
-    if(h.mode==="held"){ if(!h.moved && setIsPlaying(h.k)){ stopSet(h.k); say("■ "+no(h.k)+" "+setName(h.k)); paintSet(); } return; }
-    if(h.mode==="start" && !isSetHeld(h.k) && setIsPlaying(h.k)){ stopSet(h.k); paintSet(); } };
+    if(cancelled || h.moved) return;   // 取り消された入力・音量を動かした入力では鳴らさない／止めない
+    if(h.mode==="stop"){ if(setIsPlaying(h.k)){ stopSet(h.k); say("■ "+no(h.k)+" "+setName(h.k)); paintSet(); } return; }
+    if(!setIsPlaying(h.k)){ startSet(h.k); setHold(h.k,true); say("▶ "+no(h.k)+" "+setName(h.k)+"（押して離すと止まる・上下で音量）"); paintSet(); } };
   // 指
   const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
     const k=+d.dataset.k;
