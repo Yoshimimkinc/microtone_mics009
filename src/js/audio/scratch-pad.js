@@ -18,31 +18,33 @@ let _scratchPos=0,_scratchFrame=0,_scratchFrameAt=0,_scratchDuration=0,_scratchM
 //     いまの位置から一直線に進む（イベントが届くのが遅れても位置は跳ばない）。その位置を一次ローパス＋臨界制動のばね（2 次）で追う＝速度が連続になる。
 //  2. 高速時に間引くだけ（線形補間・最大 24 倍）でエイリアシング。→ 1/2・1/4・1/8・1/16 に前もって帯域を落とした段（mipmap）を持ち、
 //     速さに応じて段を選んで（隣の段とクロスフェード）4 点エルミート補間で読む。最大 12 倍。
-//  3. 掴む・離す・止めるで速度が一瞬で変わりクリック。→ 掴むと手の止まる所まで自然に減速、離すと 25ms でモーターの速さへ、PAUSE は 40ms で止まる。
+//  3. 掴む・離す・止めるで速度が一瞬で変わりクリック。→ 掴むと手の止まる所まで自然に減速、離すと 25ms でモーターの速さへ（v0.3.186 で惰性に：下の w / wind / coast）、PAUSE は 40ms で止まる。
 //     とても遅い時は音量も下げる（実際のレコードもほぼ聞こえない）＝止まっている時は無音、DC も出ない。
 //  4. モノ（左だけ）・12bit に潰した音を読んでいた。→ ステレオ・元の音（rawBuffer）。12bit / 26kHz の味は出口の SP-DAC 段で付く。
 // data：Float32Array（1 段・モノ）か、[チャンネル][段] の配列（scratchLevels が作る）
 function createScratchHead(data,rate){
  const lv=Array.isArray(data)?(Array.isArray(data[0])?data:[data]):[[data]],N=lv[0][0].length;
- const w=2*Math.PI*30/rate,pre=1-Math.exp(-2*Math.PI*45/rate),wind=1-Math.exp(-1/(rate*.025)),brake=1-Math.exp(-1/(rate*.04));
+ // v0.3.186 §174「微妙な惰性は必要。タッチのままの再生だと感覚的におかしいと脳が感じる」：盤に少し重さ（ばね 30→16Hz）、
+ // 離すと惰性（速く送って離す＝摩擦で 0.35 秒かけて落ちる／遅い・逆向き＝モーターが 0.08 秒で引き戻す）
+ const w=2*Math.PI*16/rate,pre=1-Math.exp(-2*Math.PI*45/rate),wind=1-Math.exp(-1/(rate*.08)),coast=1-Math.exp(-1/(rate*.35)),brake=1-Math.exp(-1/(rate*.04));
  const read=(a,x)=>{const n=a.length,i=Math.floor(x),f=x-i;let i1=i%n;if(i1<0)i1+=n;   // 4 点エルミート（音声スレッドで関数を作らない）
   const i0=i1?i1-1:n-1,i2=i1+1<n?i1+1:0,i3=i2+1<n?i2+1:0,y0=a[i0],y1=a[i1],y2=a[i2],y3=a[i3];
   return y1+.5*f*(y2-y0+f*(2*y0-5*y1+4*y2-y3+f*(3*(y1-y2)+y3-y0)));};
  return {levels:lv,pos:0,vel:1,target:0,origin:0,smooth:0,drag:false,motor:true,stopped:false,dc:lv.map(()=>({i:0,o:0})),speed:1,
   message(m){if(m.type==='stop')this.stopped=true;
-   if(m.type==='hold'){this.drag=!!m.on;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
+   if(m.type==='hold'){this.fling=this.drag&&!m.on;this.drag=!!m.on;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
    if(m.type==='drag'&&this.drag&&Number.isFinite(m.delta)){const tgt=this.origin+m.delta;   // 手の速さ＝前のイベントからの移動÷時間（時刻が無ければ 0＝位置だけ追う）
     if(Number.isFinite(m.t)&&this.lastT!=null&&m.t>this.lastT){const dt=(m.t-this.lastT)/1000*rate,hand=Math.max(-12,Math.min(12,(tgt-this.target)/dt));
      this.span=Math.max(64,Math.min(dt,rate*.05));this.hand=hand;this.hv=Math.max(-12,Math.min(12,(tgt+hand*this.span-this.est)/this.span));}   // 次のイベントの頃の手の位置へ一直線
     else{this.est=tgt;this.hv=0;this.hand=0;this.span=0;}
     this.lastT=Number.isFinite(m.t)?m.t:null;this.target=tgt;this.since=0;}
-   if(m.type==='motor')this.motor=!!m.on;
+   if(m.type==='motor'){this.motor=!!m.on;this.fling=false;}
    if(m.type==='cue'){this.pos=0;this.target=0;this.origin=0;this.smooth=0;this.drag=false;}
    if(m.type==='seek'&&!this.drag&&Number.isFinite(m.frame)){this.pos=m.frame;this.target=this.origin=this.smooth=this.est=m.frame;}},   // 全体波形のタップ＝その位置へ（掴んでいる間は動かさない）
   state(){return {frame:this.pos,position:N?((this.pos%N)+N)%N/N:0,speed:this.speed};},
   sample(c,x,s){const L=this.levels[c];if(s<=1.0001||L.length<2)return read(L[0],x);   // 速さに応じた段（帯域を落としたもの）を読む
    const g=Math.min(L.length-1.0001,Math.log2(s)),k=Math.floor(g),f=g-k,a=read(L[k],x/2**k);return f>0&&k+1<L.length?a+(read(L[k+1],x/2**(k+1))-a)*f:a;},
-  lastT:null,hv:0,hand:0,since:0,span:0,est:0,
+  lastT:null,hv:0,hand:0,since:0,span:0,est:0,fling:false,
   render(outs){const chans=Array.isArray(outs)?outs:[outs],len=chans[0].length;
    if(this.stopped||!N){chans.forEach(o=>o.fill(0));return false;}
    const src=this.levels.length;
@@ -51,7 +53,8 @@ function createScratchHead(data,rate){
     if(this.drag){const k=this.since++;if(k<this.span)this.est+=this.hv;else if(k<2*this.span)this.est+=this.hand;
      const est=this.est;this.smooth+=(est-this.smooth)*pre;this.vel+=w*w*(this.smooth-this.pos)-2*w*this.vel;   // 臨界制動のばね
      if(Math.abs(this.vel)<2e-3&&Math.abs(est-this.pos)<1&&Math.abs(est-this.smooth)<.01)this.vel=0;}   // 手が止まって追いついたら止める（1 フレーム未満の残りは鳴らさない）
-    else{const goal=this.motor?1:0;this.vel+=(goal-this.vel)*(goal?wind:brake);if(Math.abs(goal-this.vel)<1e-4)this.vel=goal;}
+    else{const goal=this.motor?1:0,throwing=this.fling&&(goal?this.vel>goal:this.vel!==0);   // 離した直後：モーターより速く回っていれば惰性で、遅ければモーターが引き戻す
+     this.vel+=(goal-this.vel)*(throwing?coast:goal?wind:brake);if(Math.abs(goal-this.vel)<1e-3){this.vel=goal;this.fling=false;}}
     this.vel=Math.max(-12,Math.min(12,this.vel));this.pos+=this.vel;this.speed=this.vel;
     const s=Math.abs(this.vel),amp=Math.min(1,s/.02)*.7;
     for(let c=0;c<chans.length;c++){const sc=Math.min(c,src-1),d=this.dc[sc],v=amp?this.sample(sc,this.pos,s)*amp:0,
@@ -116,5 +119,5 @@ async function scratchOpen(i){
  if(multiOut&&t.outBus==='B')gain.connect(outBGain);
  else{gain.connect(groupBus[GROUP_OF[i]]);for(const [amount,target] of [[t.delaySend||0,tapeEcho],[Math.sqrt(t.reverbSend||0),reverbPre]])if(amount>0){const send=AC.createGain();send.gain.value=amount;gain.connect(send);send.connect(target);_scratchGraph.push(send);}}
  scratchShow(i);
- document.getElementById('scratchStatus').textContent=useWorklet?'PADキー／MIDI／HOLDを押している間だけ':'PADキー／MIDI／HOLDを押している間だけ（互換再生）';
+ document.getElementById('scratchStatus').textContent='フェーダーを手前へスワイプで音が出る（PADキー／MIDIは押している間だけ全開）'+(useWorklet?'':'（互換再生）');
 }

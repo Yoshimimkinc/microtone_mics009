@@ -46,10 +46,9 @@
     box-shadow:0 0 0 2px var(--amber) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
   .setpad.held.on,body.perf #viewPads.split>.pads .setpad.held.on{box-shadow:0 0 0 3px var(--teal) inset,0 0 26px 4px rgba(var(--hit-glow-a),.75),0 0 8px rgba(255,255,255,.35) inset;}
   .setpad.held .tag{font-weight:700;letter-spacing:.16em;}
-  /* 押している間：1 拍（v0.3.153。当初は 1 小節）でホールドになるまでの残りを下端のバーで見せる（--hold-ms は ui/set-view が押した瞬間に書く） */
-  .setpad.pressing::after{content:"";position:absolute;left:0;bottom:0;height:4px;width:0;background:rgb(var(--hit-glow-a));opacity:.9;pointer-events:none;
-    animation:setHoldFill var(--hold-ms,2400ms) linear forwards;}
-  @keyframes setHoldFill{to{width:100%;}}
+  /* 押している間（v0.3.187 §175：離した瞬間に鳴る／止まる）：下端のバーで「離すと動く」を見せる。上下に動かした（音量）ら消える */
+  .setpad.pressing::after{content:"";position:absolute;left:0;bottom:0;height:4px;width:100%;background:rgb(var(--hit-glow-a));opacity:.9;pointer-events:none;}
+  .setpad.pressing.adj::after{display:none;}
   .setpad.queued{box-shadow:0 0 0 2px var(--amber) inset,0 4px 8px rgba(0,0,0,.4);}
   .setpad.queued .n{color:var(--amber);}
   .setpad.fresh .nm,.setpad.fresh .n{color:var(--dim);}   /* 既定のキットのまま（まだ何も入れていない）＝薄く */

@@ -12,6 +12,10 @@ message({type:'drag',delta:1000});out();check('forward platter motion reads forw
 message({type:'drag',delta:-1000});for(let i=0;i<25;i++)block=out();check('backward motion crosses sample start without wrap-target jumps',()=>{assert.ok(head.head.pos<0);assert.ok(block.samples.every(Number.isFinite));});
 const before=head.head.pos;message({type:'hold',on:false});out();const early=head.head.pos;for(let k=0;k<200;k++)out();
 check('release winds the motor back up from the scratched position (no click)',()=>{assert.ok(early>before&&early-before<128);assert.equal(head.head.vel,1);});
+// v0.3.186 惰性：速く送って離すとすぐ 1 倍に戻らず、摩擦で少しずつ落ちる
+message({type:'hold',on:true});for(let k=0;k<4;k++){message({type:'drag',delta:(k+1)*400,t:k*5});out();}const flung=head.head.vel;message({type:'hold',on:false});for(let k=0;k<20;k++)out();const coasting=head.head.vel;
+check('a fast push keeps spinning a little after release (throw inertia)',()=>{assert.ok(flung>2,String(flung));assert.ok(coasting>1.2&&coasting<flung,String(coasting));});
+for(let k=0;k<800;k++)out();check('the thrown record settles back to motor speed',()=>assert.equal(head.head.vel,1));
 message({type:'motor',on:false});for(let k=0;k<200;k++)block=out();const paused=head.head.pos;block=out();check('paused motor brakes to a stop and emits silence without DC',()=>{assert.equal(head.head.pos,paused);assert.ok(block.samples.every(x=>x===0));});
 message({type:'hold',on:true});message({type:'drag',delta:200});block=out();check('manual scratching works while motor is paused',()=>assert.ok(block.samples.some(x=>Math.abs(x)>.001)));
 message({type:'hold',on:false});out();check('release respects paused motor state',()=>assert.equal(head.head.motor,false));
@@ -44,23 +48,26 @@ await ctx.scratchOpen(0);const fallback=fallbackNodes[0],fbOut=new Float32Array(
 check('compatibility path opens and produces scratch audio',()=>{assert.equal(fallbackNodes.length,1);assert.ok(fbOut.some(x=>Math.abs(x)>.001));});
 ctx.scratchHold(true);for(let k=0;k<8;k++)fallback.onaudioprocess({outputBuffer:{getChannelData:()=>fbOut}});check('compatibility record hold uses the same silent-stop core',()=>assert.ok(fbOut.every(x=>x===0)));
 ctx.scratchClose();check('compatibility close releases callback and graph',()=>{assert.equal(fallback.onaudioprocess,null);assert.equal(fallback.disconnected,true);});
-// UI: linear strip (v0.3.185) and a second pointer's fader do not disturb platter capture.
+// UI: vertical strip / swipe fader (v0.3.186) and a second pointer's fader do not disturb platter capture.
 const els=new Map(),noop=()=>{},drawing=new Proxy({},{get:()=>noop,set:()=>true});
-function el(id){if(!els.has(id))els.set(id,{id,hidden:false,clientWidth:300,width:0,height:0,value:1,listeners:{},classList:{set:new Set(),toggle(k,on){on?this.set.add(k):this.set.delete(k);},contains(k){return this.set.has(k);}},setAttribute(k,v){this[k]=v;},addEventListener(k,f){this.listeners[k]=f;},getContext:()=>drawing,getBoundingClientRect:()=>({left:0,top:0,width:300,height:300}),setPointerCapture:noop});return els.get(id);}
+function el(id){if(!els.has(id))els.set(id,{id,hidden:false,clientWidth:300,width:0,height:0,value:1,listeners:{},classList:{set:new Set(),toggle(k,on){on?this.set.add(k):this.set.delete(k);},contains(k){return this.set.has(k);}},style:{setProperty(k,v){this[k]=v;}},setAttribute(k,v){this[k]=v;},addEventListener(k,f){this.listeners[k]=f;},getContext:()=>drawing,getBoundingClientRect:()=>({left:0,top:0,width:300,height:300}),setPointerCapture:noop});return els.get(id);}
 const state={position:.2,frame:520,duration:.1,motor:true,dragging:false,fader:1,rate:26000,wave:new Float32Array(2600).map((_,k)=>Math.sin(k/9))},moves=[],seeks=[];let cancels=0;
 const ui={console,Math,Number,window:{devicePixelRatio:2,addEventListener:()=>{}},document:{getElementById:el},requestAnimationFrame:()=>1,cancelAnimationFrame:()=>cancels++,tracks:[{name:'SCR TEST'}],scratchState:()=>state,scratchHold:on=>state.dragging=on,scratchDrag:d=>moves.push(d),scratchMotor:on=>state.motor=on,scratchSetFader:v=>state.fader=Math.max(0,Math.min(1,v)),scratchCue:()=>{state.frame=0;state.dragging=false;},scratchSeek:f=>seeks.push(f),scratchClose:()=>ui.scratchHide()};
 vm.createContext(ui);vm.runInContext(fs.readFileSync(new URL('../src/js/ui/scratch-view.js',import.meta.url),'utf8'),ui);
-ui.scratchShow(0);const cv=el('scratchDeck'),e=(x,y,id=1)=>({clientX:x,clientY:y,pointerId:id,preventDefault:noop});cv.onpointerdown(e(240,150));cv.onpointermove(e(196,20));
-check('dragging the strip left moves forward, locked to the waveform (220 px = 1 s), vertical ignored',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(moves[0]-44/220*26000)<1e-6);});
-cv.onpointermove(e(284,150));check('dragging right of the grab point plays backwards',()=>assert.ok(Math.abs(moves[1]+44/220*26000)<1e-6));moves.length=1;
+ui.scratchShow(0);const cv=el('scratchDeck'),e=(x,y,id=1)=>({clientX:x,clientY:y,pointerId:id,preventDefault:noop});cv.onpointerdown(e(150,240));cv.onpointermove(e(20,196));
+check('pushing the strip away (up) moves forward, locked to the waveform (220 px = 1 s), sideways ignored',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(moves[0]-44/220*26000)<1e-6);});
+cv.onpointermove(e(150,284));check('pulling toward you (down) plays backwards',()=>assert.ok(Math.abs(moves[1]+44/220*26000)<1e-6));moves.length=1;
 check('peaks are normalised per 64-frame block',()=>{const P=ui.scratchPeaks(state.wave);assert.equal(P.peak.length,Math.ceil(2600/64));assert.ok(Math.abs(Math.max(...P.peak)-1)<1e-6);});
 cv.onpointerdown(e(240,150,2));cv.onpointermove(e(150,60,2));check('second platter pointer cannot steal the held record',()=>assert.equal(moves.length,1));
-const gate=el('scratchFader');gate.listeners.pointerdown(e(0,0,2));check('gate opens while a different pointer holds the record',()=>{assert.equal(state.dragging,true);assert.equal(state.fader,1);assert.equal(el('scratchFaderRead').textContent,'OPEN');});
-gate.listeners.pointerup(e(0,0,2));check('releasing gate closes sound without releasing the platter',()=>{assert.equal(state.dragging,true);assert.equal(state.fader,0);assert.equal(el('scratchFaderRead').textContent,'CLOSED');});
-gate.listeners.pointerdown(e(0,0,2));gate.listeners.pointercancel(e(0,0,2));check('cancelled touch cannot leave the gate open',()=>assert.equal(state.fader,0));
+const gate=el('scratchFader');gate.listeners.pointerdown(e(0,100,2));check('touching the fader does not jump the level (relative swipe)',()=>assert.equal(state.fader,0));
+gate.listeners.pointermove(e(0,180,2));check('swiping the fader toward you (down) opens it while another pointer holds the record',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(state.fader-.5)<1e-9);assert.equal(el('scratchFaderRead').textContent,'VOL 50%');});
+gate.listeners.pointermove(e(0,400,2));check('fader clamps at fully open',()=>assert.equal(state.fader,1));
+gate.listeners.pointerup(e(0,400,2));check('releasing the fader keeps its level (like a real fader) and the platter held',()=>{assert.equal(state.dragging,true);assert.equal(state.fader,1);});
+gate.listeners.pointerdown(e(0,50,2));gate.listeners.pointermove(e(0,-200,2));gate.listeners.pointercancel(e(0,-200,2));check('swiping away (up) closes the fader',()=>{assert.equal(state.fader,0);assert.equal(el('scratchFaderRead').textContent,'CLOSED');});
+gate.listeners.keydown({code:'ArrowDown',preventDefault:noop,stopPropagation:noop});check('arrow key steps the fader',()=>assert.ok(Math.abs(state.fader-.1)<1e-9));gate.listeners.keydown({code:'ArrowUp',preventDefault:noop,stopPropagation:noop});
 const key={code:'Space',repeat:false,preventDefault:noop,stopPropagation:noop};gate.listeners.keydown(key);check('keyboard hold opens the gate',()=>assert.equal(state.fader,1));gate.listeners.keyup(key);check('keyboard release closes the gate',()=>assert.equal(state.fader,0));
-gate.listeners.pointerdown(e(0,0,2));gate.listeners.blur();check('focus loss closes a held gate',()=>assert.equal(state.fader,0));
-cv.onpointerup(e(150,240));check('record release ends hold without resetting the fader',()=>{assert.equal(state.dragging,false);assert.equal(state.fader,0);});
+gate.listeners.keydown(key);gate.listeners.blur();check('focus loss closes a held key gate',()=>assert.equal(state.fader,0));
+cv.onpointerup(e(240,150));check('record release ends hold without resetting the fader',()=>{assert.equal(state.dragging,false);assert.equal(state.fader,0);});
 const ov=el('scratchOverview');ov.onpointerdown(e(75,10,3));check('tapping the overview seeks to that point',()=>assert.ok(Math.abs(seeks[0]-.25*2599)<1e-6));ov.onpointerup(e(75,10,3));
 el('scratchHand').listeners.click();check('hand swap moves the fader to the left side',()=>{assert.equal(el('scratchSurface').classList.contains('swap'),true);assert.equal(el('scratchHand')['aria-pressed'],'true');});el('scratchHand').listeners.click();check('hand swap toggles back',()=>assert.equal(el('scratchSurface').classList.contains('swap'),false));
 el('scratchPlay').listeners.click();check('UI motor button pauses independently',()=>assert.equal(state.motor,false));ui.scratchHide();check('UI close clears capture handlers and animation',()=>{assert.equal(el('scratchEditor').hidden,true);assert.equal(cv.onpointerdown,null);assert.ok(cancels>0);});
