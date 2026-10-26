@@ -1,9 +1,9 @@
 // @module audio/scratch-pad
-// @provides SCR_FADER_TAU, _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFader,
-//    _scratchFrame, _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode,
-//    _scratchPos, _scratchSpeed, _scratchToken, _scratchWave, createScratchHead, scratchClose, scratchCue,
-//    scratchDrag, scratchFallbackNode, scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek,
-//    scratchSetFader, scratchState
+// @provides SCR_FADER_TRAVEL, _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFadeAt,
+//    _scratchFadeDur, _scratchFadeFrom, _scratchFader, _scratchFrame, _scratchFrameAt, _scratchGraph,
+//    _scratchModule, _scratchMotor, _scratchNode, _scratchPos, _scratchSpeed, _scratchToken, _scratchWave,
+//    createScratchHead, scratchClose, scratchCue, scratchDrag, scratchFaderNow, scratchFallbackNode,
+//    scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek, scratchSetFader, scratchState
 // @uses AC, GROUP_OF, dbToGain, groupBus, multiOut, outBGain, reverbPre, sampNameEl, scratchHide,
 //    scratchShow, setCur, setLevelLin, stopVoices, tapeEcho, tracks
 // @depends -
@@ -92,9 +92,16 @@ function scratchDrag(frames,t){if(_scratchNode&&Number.isFinite(frames))_scratch
 function scratchMotor(on){_scratchMotor=!!on;if(_scratchNode)_scratchNode.port.postMessage({type:'motor',on:_scratchMotor});}
 function scratchCue(){_scratchDragging=false;_scratchFrame=0;_scratchPos=0;_scratchFrameAt=AC.currentTime;if(_scratchNode)_scratchNode.port.postMessage({type:'cue'});}
 function scratchSeek(frame){if(!_scratchNode||_scratchDragging||!Number.isFinite(frame))return;_scratchFrame=frame;_scratchFrameAt=AC.currentTime;_scratchNode.port.postMessage({type:'seek',frame});}
-// 一瞬で切り替えず、素早く動かしたフェーダーのように（時定数 8ms＝約 25ms でほぼ開き切る／閉じ切る。v0.3.188 §176）
-const SCR_FADER_TAU=.008;
-function scratchSetFader(value){_scratchFader=Math.max(0,Math.min(1,+value||0));if(_scratchCut){const g=_scratchCut.gain;if(g.cancelScheduledValues)g.cancelScheduledValues(AC.currentTime);g.setTargetAtTime(_scratchFader,AC.currentTime,SCR_FADER_TAU);}}
+// フェーダーの動き（v0.3.189 §177「上に近い程立ち上がりが早く、下は遅くなる」）：実物のつまみのように一定の速さで動く＝全閉から全開まで travel 秒。
+// 近い所（上＝少し開く）へはすぐ、遠い所（下＝大きく開く）へはゆっくり開く。離して全閉へ戻るのも同じ速さ。§176 の「一瞬で切り替えない」はそのまま
+const SCR_FADER_TRAVEL=.12;
+let _scratchFadeFrom=0,_scratchFadeAt=0,_scratchFadeDur=0;
+function scratchFaderNow(){const k=_scratchFadeDur>0?Math.min(1,Math.max(0,(AC.currentTime-_scratchFadeAt)/_scratchFadeDur)):1;return _scratchFadeFrom+(_scratchFader-_scratchFadeFrom)*k;}   // いまのつまみの位置
+function scratchSetFader(value,travel=SCR_FADER_TRAVEL){
+ const now=AC.currentTime,from=scratchFaderNow();_scratchFader=Math.max(0,Math.min(1,+value||0));
+ const dur=Math.max(.003,Math.abs(_scratchFader-from)*travel);_scratchFadeFrom=from;_scratchFadeAt=now;_scratchFadeDur=dur;
+ if(_scratchCut){const g=_scratchCut.gain;if(g.cancelScheduledValues)g.cancelScheduledValues(now);g.setValueAtTime(from,now);g.linearRampToValueAtTime(_scratchFader,now+dur);}
+ return dur;}
 function scratchClose(){
  _scratchToken++;
  if(_scratchNode){_scratchNode.port.postMessage({type:'stop'});_scratchNode.port.onmessage=null;_scratchNode.port.close();_scratchNode.disconnect();_scratchNode=null;}
@@ -114,7 +121,7 @@ async function scratchOpen(i){
  const src=(t.rawBuffer&&t.rawBuffer.length)?t.rawBuffer:t.buffer,from=Math.max(0,Math.min(src.length-1,Math.floor((t.start||0)*src.length))),to=Math.min(src.length,Math.max(from+1,Math.ceil((t.end??1)*src.length)));
  const levels=scratchLevels(src,from,to,AC.sampleRate),len=levels[0][0].length;
  const node=useWorklet?new AudioWorkletNode(AC,'mics-pad-tape-head',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[2],processorOptions:{levels}}):scratchFallbackNode(levels);
- _scratchNode=node;_scratchPos=0;_scratchFrame=0;_scratchFrameAt=AC.currentTime;_scratchDuration=len/AC.sampleRate;_scratchMotor=true;_scratchDragging=false;_scratchFader=0;_scratchSpeed=1;_scratchWave=levels[0][0];
+ _scratchNode=node;_scratchPos=0;_scratchFrame=0;_scratchFrameAt=AC.currentTime;_scratchDuration=len/AC.sampleRate;_scratchMotor=true;_scratchDragging=false;_scratchFader=0;_scratchFadeFrom=0;_scratchFadeDur=0;_scratchSpeed=1;_scratchWave=levels[0][0];
  node.port.onmessage=e=>{if(node!==_scratchNode||!Number.isFinite(e.data?.frame))return;_scratchFrame=e.data.frame;_scratchPos=e.data.position;_scratchSpeed=Number.isFinite(e.data.speed)?e.data.speed:0;_scratchFrameAt=AC.currentTime;};
  const cut=AC.createGain(),gain=AC.createGain();cut.gain.value=0;_scratchCut=cut;gain.gain.value=dbToGain(t.vol||0)*setLevelLin(setCur);_scratchGraph.push(cut,gain);
  let head=node;if(t.filter!=='off'){const filter=AC.createBiquadFilter();filter.type=t.filter==='lp'?'lowpass':'highpass';filter.frequency.value=t.cutoff;filter.Q.value=t.reso;node.connect(filter);head=filter;_scratchGraph.push(filter);}head.connect(cut);cut.connect(gain);

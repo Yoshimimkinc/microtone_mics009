@@ -26,7 +26,7 @@ message({type:'stop'});check('closing the scratch processor releases its audio t
 
 // Integration: real audio-unit open, gain routing, controls, stale-work guard.
 const gains=[],nodes=[];let shown=0,hidden=0;
-function gain(){const n={gain:{value:1,setTargetAtTime(v,t,tau){this.value=v;this.tau=tau;}},connections:[],connect(to){this.connections.push(to);},disconnect(){this.disconnected=true;}};gains.push(n);return n;}
+function gain(){const n={gain:{value:1,setValueAtTime(v){this.value=v;},linearRampToValueAtTime(v,t){this.value=v;this.rampEnd=t;}},connections:[],connect(to){this.connections.push(to);},disconnect(){this.disconnected=true;}};gains.push(n);return n;}
 const ctx={console,Math,Number,Float32Array,Promise,URL:{createObjectURL:()=> 'blob:qa',revokeObjectURL(){}},Blob,
  AC:{sampleRate:48000,currentTime:10,resume:async()=>{},audioWorklet:{addModule:async()=>{}},createGain:gain},
  AudioWorkletNode:class{constructor(ac,name,options){this.options=options;this.connections=[];this.messages=[];this.port={postMessage:m=>this.messages.push(m),close:()=>this.closed=true,onmessage:null};nodes.push(this);}connect(n){this.connections.push(n);}disconnect(){this.disconnected=true;}},
@@ -36,7 +36,8 @@ check('SCR opens the platter and resamples into the shared context rate',()=>{as
 check('SCR keeps band-limited copies for fast scratching (1/2 … 1/16)',()=>{const L=nodes[0].options.processorOptions.levels[0];assert.equal(L.length,5);assert.equal(L[1].length,2400);assert.equal(L[4].length,300);});
 const cut=gains[0],volume=gains[1];check('crossfader sits before dry and FX sends, outside the backing bus',()=>{assert.equal(cut.gain.value,0);assert.equal(nodes[0].connections[0],cut);assert.equal(cut.connections[0],volume);assert.ok(volume.connections.includes(ctx.groupBus[0]));assert.equal(volume.connections.length,3);});
 const volumeBefore=volume.gain.value;ctx.scratchSetFader(0);check('fader cuts only scratch audio',()=>{assert.equal(cut.gain.value,0);assert.equal(volume.gain.value,volumeBefore);});
-check('fader moves like a fast hand fader, not an instant switch (time constant 5–15 ms)',()=>assert.ok(cut.gain.tau>=.005&&cut.gain.tau<=.015,String(cut.gain.tau)));
+{const near=ctx.scratchSetFader(.2),back=ctx.scratchSetFader(0),far=ctx.scratchSetFader(1);ctx.scratchSetFader(0);
+ check('fader cap travels at a steady speed: a near (top) point opens fast, a far (bottom) point slowly — never an instant switch',()=>{assert.ok(Math.abs(near-.024)<1e-9,String(near));assert.ok(Math.abs(far-.12)<1e-9,String(far));assert.ok(back>=.003);assert.ok(Math.abs(cut.gain.rampEnd-(10+back))<1e-9||cut.gain.rampEnd>10);});}
 ctx.scratchSetFader(2);check('fader clamps to its valid range',()=>assert.equal(ctx.scratchState().fader,1));
 ctx.scratchHold(true);ctx.scratchDrag(-2400);ctx.scratchMotor(false);check('audio controls send independent hold, drag and motor commands',()=>assert.deepEqual(nodes[0].messages.slice(-3).map(m=>m.type),['hold','drag','motor']));
 ctx.scratchClose();check('close disconnects source, sends and fader',()=>{assert.ok(nodes[0].closed&&nodes[0].disconnected);assert.ok(gains.every(n=>n.disconnected));assert.ok(hidden>=1);});
@@ -55,9 +56,12 @@ function el(id){if(!els.has(id))els.set(id,{id,hidden:false,clientWidth:300,widt
 const state={position:.2,frame:520,duration:.1,motor:true,dragging:false,fader:1,rate:26000,wave:new Float32Array(2600).map((_,k)=>Math.sin(k/9))},moves=[],seeks=[];let cancels=0;
 const ui={console,Math,Number,window:{devicePixelRatio:2,addEventListener:()=>{}},document:{getElementById:el},requestAnimationFrame:()=>1,cancelAnimationFrame:()=>cancels++,tracks:[{name:'SCR TEST'}],scratchState:()=>state,scratchHold:on=>state.dragging=on,scratchDrag:d=>moves.push(d),scratchMotor:on=>state.motor=on,scratchSetFader:v=>state.fader=Math.max(0,Math.min(1,v)),scratchCue:()=>{state.frame=0;state.dragging=false;},scratchSeek:f=>seeks.push(f),scratchClose:()=>ui.scratchHide()};
 vm.createContext(ui);vm.runInContext(fs.readFileSync(new URL('../src/js/ui/scratch-view.js',import.meta.url),'utf8'),ui);
-ui.scratchShow(0);const cv=el('scratchDeck'),e=(x,y,id=1)=>({clientX:x,clientY:y,pointerId:id,preventDefault:noop});cv.onpointerdown(e(150,240));cv.onpointermove(e(20,196));
-check('pushing the strip away (up) moves forward, locked to the waveform (220 px = 1 s), sideways ignored',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(moves[0]-44/220*26000)<1e-6);});
-cv.onpointermove(e(150,284));check('pulling toward you (down) plays backwards',()=>assert.ok(Math.abs(moves[1]+44/220*26000)<1e-6));moves.length=1;
+ui.scratchShow(0);const cv=el('scratchDeck'),e=(x,y,id=1)=>({clientX:x,clientY:y,pointerId:id,preventDefault:noop});const T=y=>ui.scratchStripTime(y,300);
+check('the middle of the strip is 220 px = 1 s; the top is twice as sensitive, the bottom half',()=>{const slope=y=>(T(y+.01)-T(y-.01))/.02*220;assert.ok(Math.abs(slope(150)-1)<1e-6);assert.ok(Math.abs(slope(0)-2)<1e-3);assert.ok(Math.abs(slope(300)-.5)<1e-3);});
+cv.onpointerdown(e(150,240));cv.onpointermove(e(20,196));
+check('pushing the strip away (up) moves forward, locked to the waveform under the finger, sideways ignored',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(moves[0]-(T(240)-T(196))*26000)<1e-6);assert.ok(moves[0]>0);});
+cv.onpointermove(e(150,284));check('pulling toward you (down) plays backwards',()=>assert.ok(moves[1]<0&&Math.abs(moves[1]-(T(240)-T(284))*26000)<1e-6));
+check('the same 44 px stroke moves more audio near the top than near the bottom',()=>assert.ok((T(60)-T(16))>2*(T(284)-T(240))));moves.length=1;
 check('peaks are normalised per 64-frame block',()=>{const P=ui.scratchPeaks(state.wave);assert.equal(P.peak.length,Math.ceil(2600/64));assert.ok(Math.abs(Math.max(...P.peak)-1)<1e-6);});
 cv.onpointerdown(e(240,150,2));cv.onpointermove(e(150,60,2));check('second platter pointer cannot steal the held record',()=>assert.equal(moves.length,1));
 const gate=el('scratchFader');   // 高さ 300：上から 18%（54px）が全閉の線、下端で全開
