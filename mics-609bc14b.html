@@ -1323,30 +1323,32 @@
 
 @media(max-width:600px){.key-mainbar .key-tabs{flex:0 0 100%;width:100%;max-width:none}.key-panel .key-mainbar .key-tabs button{flex:1;min-width:0}}
 
-/* SCR (v0.3.185 §173): djay 型の横一直線のスクラッチ面＋押している間だけ開くフェーダー。左右は ⇄ で入れ替え。 */
-#scratchEditor .scratch-panel{width:min(900px,100%);background:#252e30;color:#eef1e5;padding:16px;touch-action:pan-y}
-.scratch-head-btns{display:flex;gap:8px}
-#scratchOverview{display:block;width:100%;height:44px;margin-top:12px;background:#141a1b;border:1px solid #4a5754;border-radius:6px;cursor:pointer;touch-action:none}
-.scratch-surface{display:grid;grid-template-columns:minmax(0,1fr) 170px;grid-template-areas:"strip gate";gap:12px;margin-top:10px}
-.scratch-surface.swap{grid-template-columns:170px minmax(0,1fr);grid-template-areas:"gate strip"}
-.scratch-strip{grid-area:strip;position:relative;min-width:0}
-#scratchDeck{display:block;width:100%;height:min(46vh,340px);min-height:150px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
+/* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
+#scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}
+.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand close" "strip gate";gap:10px}
+.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"close hand" "gate strip"}
+#scratchEditor .scratch-panel .scratch-hand{grid-area:hand;justify-self:center;width:min(60%,160px);font-size:22px;line-height:1}
+#scratchEditor .scratch-panel .scratch-close{grid-area:close;justify-self:end;font-size:12px}
+.scratch-strip{grid-area:strip;position:relative;min-height:0}
+#scratchDeck{display:block;width:100%;height:100%;min-height:200px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
 #scratchDeck:active{cursor:grabbing}
 .scratch-strip.on #scratchDeck{border-color:#f0904a}
-.scratch-strip-label{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.14em;color:#9aa792;pointer-events:none}
+.scratch-strip-label{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);white-space:nowrap;padding:2px 8px;border-radius:4px;background:#111617d9;font-size:10px;font-weight:800;letter-spacing:.12em;color:#9aa792;pointer-events:none}
 .scratch-strip.on .scratch-strip-label{opacity:0}
-.scratch-gate-col{grid-area:gate;display:flex;flex-direction:column;gap:6px;min-width:0}
-.scratch-fader-label{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em}.scratch-fader-label output{font-variant-numeric:tabular-nums}
-.scratch-controls{display:flex;align-items:center;gap:8px;margin-top:10px}.scratch-controls button{flex:0 0 auto;min-width:96px;font-size:11px}
-.scratch-readout{display:flex;gap:10px;margin-left:auto;font-variant-numeric:tabular-nums;font-size:11px}.scratch-readout b{color:#c0c875}
-#scratchStatus{font-size:11px;color:#bbc4b5}
-@media(max-width:650px){#scratchEditor .scratch-panel{padding:12px}.scratch-surface{grid-template-columns:minmax(0,1fr) 92px}.scratch-surface.swap{grid-template-columns:92px minmax(0,1fr)}#scratchDeck{height:min(44vh,320px)}.scratch-controls button{min-width:0;flex:1 1 0}.scratch-readout{flex-direction:column;gap:2px;text-align:right}#scratchStatus{margin:8px 0 0}}
+.scratch-fader{grid-area:gate;position:relative;min-height:200px;overflow:hidden;background:#141c1c;border:2px solid #83926e;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;--lv:0}
+.scratch-fader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
+.scratch-fader-fill{position:absolute;left:0;right:0;top:0;height:calc(18% + var(--lv)*(82% - 4px));background:#c0c875;opacity:.9;border-bottom:4px solid #e8edc1}   /* 閉＝上から 18% の線、手前へ開くほど線が下りる */
+.scratch-fader:not(.open) .scratch-fader-fill{background:transparent;border-bottom-color:#83926e}
+.scratch-fader-hint{position:absolute;left:0;right:0;top:24%;text-align:center;font-size:13px;font-weight:800;line-height:1.5;letter-spacing:.06em;color:#9aa792;pointer-events:none}
+.scratch-fader.open .scratch-fader-hint{color:#18201b}
+#scratchFaderRead{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;color:#d9dfc7;pointer-events:none}
+.scratch-controls{display:flex;align-items:center;gap:8px;margin-top:10px}.scratch-controls button{flex:0 0 auto;font-size:11px;min-width:76px}
+#scratchOverview{flex:1 1 auto;min-width:0;height:40px;background:#141a1b;border:1px solid #4a5754;border-radius:6px;cursor:pointer;touch-action:none}
+.scratch-readout{display:flex;flex-direction:column;gap:2px;text-align:right;font-variant-numeric:tabular-nums;font-size:11px;white-space:nowrap}.scratch-readout b{color:#c0c875}#scratchTitle{color:#eef1e5;font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+#scratchStatus{font-size:11px;color:#bbc4b5;margin:6px 0 0}
+@media(max-width:650px){#scratchEditor .scratch-panel{padding:10px;width:100%;height:100%}.scratch-controls button{min-width:0;padding:6px 8px}.scratch-readout{display:none}}
 #scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
 #scratchEditor .scratch-panel #scratchHand[aria-pressed=true]{color:#c0c875;border-color:#c0c875}
-
-#scratchEditor .scratch-panel #scratchFader{width:100%;flex:1 1 auto;min-height:76px;margin:0;padding:8px;background:#141c1c;color:#d9dfc7;border:2px solid #83926e;border-radius:7px;font-size:16px;font-weight:800;letter-spacing:.06em;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
-#scratchEditor .scratch-panel #scratchFader[aria-pressed=true]{background:#c0c875;color:#18201b;border-color:#e8edc1}
-#scratchEditor .scratch-panel #scratchFader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
 </style>
 </head>
 <body>
@@ -1359,7 +1361,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.185</div>
+  <div class="s-ver" id="splashVer">v0.3.186</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1611,11 +1613,11 @@
  </section>
 </div>
 <div id="scratchEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="scratchTitle" hidden>
- <section class="content-panel scratch-panel"><header><div><b id="scratchTitle">SCR</b><span class="key-voice">WAVE</span></div><div class="scratch-head-btns"><button id="scratchHand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄ 左右</button><button id="scratchClose">CLOSE</button></div></header>
- <canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas>
- <div class="scratch-surface" id="scratchSurface"><div class="scratch-strip"><canvas id="scratchDeck" tabindex="0" aria-label="スクラッチ面。波形を左右に擦る"></canvas><span class="scratch-strip-label" aria-hidden="true">◀ SCRATCH ▶</span></div>
- <div class="scratch-gate-col"><span class="scratch-fader-label">FADER <output id="scratchFaderRead">CLOSED</output></span><button id="scratchFader" class="scratch-gate" aria-label="押している間だけSCR音を開く。離すと閉じる" aria-pressed="false">HOLD TO OPEN</button></div></div>
- <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><div class="scratch-readout"><b id="scratchMotion">PLAY</b><span id="scratchPosition">0.00 s</span></div></div>
+ <section class="content-panel scratch-panel">
+ <div class="scratch-surface" id="scratchSurface"><button id="scratchHand" class="scratch-hand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄</button><button id="scratchClose" class="scratch-close">✕ CLOSE</button>
+ <div class="scratch-strip"><canvas id="scratchDeck" tabindex="0" aria-label="スクラッチ面。奥へ送るとフォワード、手前でバック"></canvas><span class="scratch-strip-label" aria-hidden="true">▲ FWD · BACK ▼</span></div>
+ <div id="scratchFader" class="scratch-fader" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="フェーダー。奥から手前へスワイプで開く"><span class="scratch-fader-fill"></span><span class="scratch-fader-hint" aria-hidden="true">スワイプ<br>↓<br>VOL UP</span><output id="scratchFaderRead">CLOSED</output></div></div>
+ <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas><div class="scratch-readout"><b id="scratchTitle">SCR</b><span><b id="scratchMotion">PLAY</b> <span id="scratchPosition">0.00 s</span></span></div></div>
  <p id="scratchStatus" role="status">波形から指を離すと通常再生</p></section>
 </div>
     <div class="viewdots" id="viewDots">
@@ -7179,31 +7181,33 @@ let _scratchPos=0,_scratchFrame=0,_scratchFrameAt=0,_scratchDuration=0,_scratchM
 //     いまの位置から一直線に進む（イベントが届くのが遅れても位置は跳ばない）。その位置を一次ローパス＋臨界制動のばね（2 次）で追う＝速度が連続になる。
 //  2. 高速時に間引くだけ（線形補間・最大 24 倍）でエイリアシング。→ 1/2・1/4・1/8・1/16 に前もって帯域を落とした段（mipmap）を持ち、
 //     速さに応じて段を選んで（隣の段とクロスフェード）4 点エルミート補間で読む。最大 12 倍。
-//  3. 掴む・離す・止めるで速度が一瞬で変わりクリック。→ 掴むと手の止まる所まで自然に減速、離すと 25ms でモーターの速さへ、PAUSE は 40ms で止まる。
+//  3. 掴む・離す・止めるで速度が一瞬で変わりクリック。→ 掴むと手の止まる所まで自然に減速、離すと 25ms でモーターの速さへ（v0.3.186 で惰性に：下の w / wind / coast）、PAUSE は 40ms で止まる。
 //     とても遅い時は音量も下げる（実際のレコードもほぼ聞こえない）＝止まっている時は無音、DC も出ない。
 //  4. モノ（左だけ）・12bit に潰した音を読んでいた。→ ステレオ・元の音（rawBuffer）。12bit / 26kHz の味は出口の SP-DAC 段で付く。
 // data：Float32Array（1 段・モノ）か、[チャンネル][段] の配列（scratchLevels が作る）
 function createScratchHead(data,rate){
  const lv=Array.isArray(data)?(Array.isArray(data[0])?data:[data]):[[data]],N=lv[0][0].length;
- const w=2*Math.PI*30/rate,pre=1-Math.exp(-2*Math.PI*45/rate),wind=1-Math.exp(-1/(rate*.025)),brake=1-Math.exp(-1/(rate*.04));
+ // v0.3.186 §174「微妙な惰性は必要。タッチのままの再生だと感覚的におかしいと脳が感じる」：盤に少し重さ（ばね 30→16Hz）、
+ // 離すと惰性（速く送って離す＝摩擦で 0.35 秒かけて落ちる／遅い・逆向き＝モーターが 0.08 秒で引き戻す）
+ const w=2*Math.PI*16/rate,pre=1-Math.exp(-2*Math.PI*45/rate),wind=1-Math.exp(-1/(rate*.08)),coast=1-Math.exp(-1/(rate*.35)),brake=1-Math.exp(-1/(rate*.04));
  const read=(a,x)=>{const n=a.length,i=Math.floor(x),f=x-i;let i1=i%n;if(i1<0)i1+=n;   // 4 点エルミート（音声スレッドで関数を作らない）
   const i0=i1?i1-1:n-1,i2=i1+1<n?i1+1:0,i3=i2+1<n?i2+1:0,y0=a[i0],y1=a[i1],y2=a[i2],y3=a[i3];
   return y1+.5*f*(y2-y0+f*(2*y0-5*y1+4*y2-y3+f*(3*(y1-y2)+y3-y0)));};
  return {levels:lv,pos:0,vel:1,target:0,origin:0,smooth:0,drag:false,motor:true,stopped:false,dc:lv.map(()=>({i:0,o:0})),speed:1,
   message(m){if(m.type==='stop')this.stopped=true;
-   if(m.type==='hold'){this.drag=!!m.on;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
+   if(m.type==='hold'){this.fling=this.drag&&!m.on;this.drag=!!m.on;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
    if(m.type==='drag'&&this.drag&&Number.isFinite(m.delta)){const tgt=this.origin+m.delta;   // 手の速さ＝前のイベントからの移動÷時間（時刻が無ければ 0＝位置だけ追う）
     if(Number.isFinite(m.t)&&this.lastT!=null&&m.t>this.lastT){const dt=(m.t-this.lastT)/1000*rate,hand=Math.max(-12,Math.min(12,(tgt-this.target)/dt));
      this.span=Math.max(64,Math.min(dt,rate*.05));this.hand=hand;this.hv=Math.max(-12,Math.min(12,(tgt+hand*this.span-this.est)/this.span));}   // 次のイベントの頃の手の位置へ一直線
     else{this.est=tgt;this.hv=0;this.hand=0;this.span=0;}
     this.lastT=Number.isFinite(m.t)?m.t:null;this.target=tgt;this.since=0;}
-   if(m.type==='motor')this.motor=!!m.on;
+   if(m.type==='motor'){this.motor=!!m.on;this.fling=false;}
    if(m.type==='cue'){this.pos=0;this.target=0;this.origin=0;this.smooth=0;this.drag=false;}
    if(m.type==='seek'&&!this.drag&&Number.isFinite(m.frame)){this.pos=m.frame;this.target=this.origin=this.smooth=this.est=m.frame;}},   // 全体波形のタップ＝その位置へ（掴んでいる間は動かさない）
   state(){return {frame:this.pos,position:N?((this.pos%N)+N)%N/N:0,speed:this.speed};},
   sample(c,x,s){const L=this.levels[c];if(s<=1.0001||L.length<2)return read(L[0],x);   // 速さに応じた段（帯域を落としたもの）を読む
    const g=Math.min(L.length-1.0001,Math.log2(s)),k=Math.floor(g),f=g-k,a=read(L[k],x/2**k);return f>0&&k+1<L.length?a+(read(L[k+1],x/2**(k+1))-a)*f:a;},
-  lastT:null,hv:0,hand:0,since:0,span:0,est:0,
+  lastT:null,hv:0,hand:0,since:0,span:0,est:0,fling:false,
   render(outs){const chans=Array.isArray(outs)?outs:[outs],len=chans[0].length;
    if(this.stopped||!N){chans.forEach(o=>o.fill(0));return false;}
    const src=this.levels.length;
@@ -7212,7 +7216,8 @@ function createScratchHead(data,rate){
     if(this.drag){const k=this.since++;if(k<this.span)this.est+=this.hv;else if(k<2*this.span)this.est+=this.hand;
      const est=this.est;this.smooth+=(est-this.smooth)*pre;this.vel+=w*w*(this.smooth-this.pos)-2*w*this.vel;   // 臨界制動のばね
      if(Math.abs(this.vel)<2e-3&&Math.abs(est-this.pos)<1&&Math.abs(est-this.smooth)<.01)this.vel=0;}   // 手が止まって追いついたら止める（1 フレーム未満の残りは鳴らさない）
-    else{const goal=this.motor?1:0;this.vel+=(goal-this.vel)*(goal?wind:brake);if(Math.abs(goal-this.vel)<1e-4)this.vel=goal;}
+    else{const goal=this.motor?1:0,throwing=this.fling&&(goal?this.vel>goal:this.vel!==0);   // 離した直後：モーターより速く回っていれば惰性で、遅ければモーターが引き戻す
+     this.vel+=(goal-this.vel)*(throwing?coast:goal?wind:brake);if(Math.abs(goal-this.vel)<1e-3){this.vel=goal;this.fling=false;}}
     this.vel=Math.max(-12,Math.min(12,this.vel));this.pos+=this.vel;this.speed=this.vel;
     const s=Math.abs(this.vel),amp=Math.min(1,s/.02)*.7;
     for(let c=0;c<chans.length;c++){const sc=Math.min(c,src-1),d=this.dc[sc],v=amp?this.sample(sc,this.pos,s)*amp:0,
@@ -7277,23 +7282,31 @@ async function scratchOpen(i){
  if(multiOut&&t.outBus==='B')gain.connect(outBGain);
  else{gain.connect(groupBus[GROUP_OF[i]]);for(const [amount,target] of [[t.delaySend||0,tapeEcho],[Math.sqrt(t.reverbSend||0),reverbPre]])if(amount>0){const send=AC.createGain();send.gain.value=amount;gain.connect(send);send.connect(target);_scratchGraph.push(send);}}
  scratchShow(i);
- document.getElementById('scratchStatus').textContent=useWorklet?'PADキー／MIDI／HOLDを押している間だけ':'PADキー／MIDI／HOLDを押している間だけ（互換再生）';
+ document.getElementById('scratchStatus').textContent='フェーダーを手前へスワイプで音が出る（PADキー／MIDIは押している間だけ全開）'+(useWorklet?'':'（互換再生）');
 }
 // @module ui/scratch-view
-// @provides SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC, _scratchGateKey, _scratchGatePointers,
-//    _scratchGesture, _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF, scratchCanvasSize,
-//    scratchDrawOverview, scratchDrawStrip, scratchGatePaint, scratchGateRelease, scratchHandPaint,
-//    scratchHandSwap, scratchHide, scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchShow
+// @provides SCR_FADER_PX, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC, _scratchFaderDrag, _scratchGateKey,
+//    _scratchGesture, _scratchLevel, _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF,
+//    scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchGatePaint, scratchGateRelease,
+//    scratchHandPaint, scratchHandSwap, scratchHide, scratchPadInputDown, scratchPadInputUp, scratchPeaks,
+//    scratchSetLevel, scratchShow
 // @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState, tracks
 // @depends audio/scratch-pad
-// Linear waveform strip (djay style, v0.3.185 §173) and independent fader. Pointer capture permits a
+// Vertical waveform strip (v0.3.186 §174, djay-like linear scratch) and a swipe fader. Pointer capture permits a
 // second finger on the fader while the first finger holds/drags the waveform. The hands can swap sides.
+// 向きは指の自然な動き：スクラッチ＝奥（上）へ送るとフォワード・手前（下）でバック。フェーダー＝奥から手前（下）へで開く。
 let _scratchRAF=0,_scratchGesture=null,_scratchPad=-1;
 const _scratchPadInputs=new Map();
-const _scratchGatePointers=new Set();let _scratchGateKey=false;
-function scratchGatePaint(){const open=_scratchGatePointers.size>0||_scratchGateKey||[..._scratchPadInputs.values()].includes(_scratchPad);scratchSetFader(open?1:0);const button=document.getElementById('scratchFader');button.setAttribute('aria-pressed',String(open));button.textContent=open?'OPEN · SCR':'HOLD TO OPEN';document.getElementById('scratchFaderRead').textContent=open?'OPEN':'CLOSED';}
-function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();_scratchGatePointers.clear();_scratchGateKey=false;scratchGatePaint();}
+// フェーダー：下へスワイプした分だけ開く（どこを触っても跳ばない＝相対。SCR_FADER_PX で全開）、離しても残る（実物のフェーダーと同じ）。
+// PC キー／MIDI のパッド・フェーダー上の Space は押している間だけ全開。
+const SCR_FADER_PX=160;
+let _scratchLevel=0,_scratchFaderDrag=null,_scratchGateKey=false;
+function scratchGatePaint(){const held=_scratchGateKey||[..._scratchPadInputs.values()].includes(_scratchPad),v=held?1:_scratchLevel;scratchSetFader(v);
+ const fader=document.getElementById('scratchFader'),pct=Math.round(v*100);fader.style.setProperty('--lv',String(v));fader.setAttribute('aria-valuenow',String(pct));fader.classList.toggle('open',v>0);
+ document.getElementById('scratchFaderRead').textContent=v>0?'VOL '+pct+'%':'CLOSED';}
+function scratchSetLevel(v){_scratchLevel=Math.max(0,Math.min(1,+v||0));scratchGatePaint();}
+function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();_scratchFaderDrag=null;_scratchGateKey=false;scratchGatePaint();}
 // Preserve held sources across asynchronous audio startup; Note Off/key up can
 // arrive before the worklet finishes loading and must keep the gate closed.
 function scratchPadInputDown(i,id){
@@ -7317,42 +7330,42 @@ function scratchPeaks(wave){
  return _scratchPeaks={wave,peak,length:wave.length};
 }
 function scratchCanvasSize(canvas,fallbackH){const dpr=window.devicePixelRatio||1,w=Math.max(1,canvas.clientWidth||300),h=Math.max(1,canvas.clientHeight||fallbackH),W=Math.round(w*dpr),H=Math.round(h*dpr);if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}return {dpr,w,h,W,H};}
-// 横一直線のスクラッチ面：まん中の縦線＝いま鳴っている所。右が先、左が鳴った後（ループするので端はつながる）
+// 縦一直線のスクラッチ面：まん中の横線＝いま鳴っている所。波形は上へ進む＝下が先、上が鳴った後（ループするので端はつながる）
 function scratchDrawStrip(canvas,state,active){
- const {W,H,dpr}=scratchCanvasSize(canvas,160),c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.fillStyle='#111617';c.fillRect(0,0,W,H);
- const P=state.wave?scratchPeaks(state.wave):null,mid=W/2,cy=H/2;
+ const {W,H,dpr}=scratchCanvasSize(canvas,320),c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.fillStyle='#111617';c.fillRect(0,0,W,H);
+ const P=state.wave?scratchPeaks(state.wave):null,mid=H/2,cx=W/2;
  if(P){const N=P.length,cur=((state.frame%N)+N)%N,perPx=state.rate/(SCR_PX_PER_SEC*dpr),nb=P.peak.length;
   for(let pass=0;pass<2;pass++){c.fillStyle=pass?'#c0c875':'#5d6a5f';c.beginPath();
-   for(let x=pass?Math.ceil(mid):0;x<(pass?W:Math.ceil(mid));x++){const f0=cur+(x-mid)*perPx;let b0=Math.floor(f0/SCR_PEAK_BLOCK),b1=Math.floor((f0+perPx)/SCR_PEAK_BLOCK),m=0;
-    for(let b=b0;b<=b1;b++){const v=P.peak[((b%nb)+nb)%nb];if(v>m)m=v;}const hh=Math.max(1,m*H*.42);c.rect(x,cy-hh,1,hh*2);}
+   for(let y=pass?Math.ceil(mid):0;y<(pass?H:Math.ceil(mid));y++){const f0=cur+(y-mid)*perPx;let b0=Math.floor(f0/SCR_PEAK_BLOCK),b1=Math.floor((f0+perPx)/SCR_PEAK_BLOCK),m=0;
+    for(let b=b0;b<=b1;b++){const v=P.peak[((b%nb)+nb)%nb];if(v>m)m=v;}const ww=Math.max(1,m*W*.44);c.rect(cx-ww,y,ww*2,1);}
    c.fill();}
   // ループのつなぎ目（サンプルの頭）
-  c.fillStyle='#4f8fd6';for(let k=Math.floor((cur-mid*perPx)/N);k<=Math.floor((cur+mid*perPx)/N)+1;k++){const x=mid+(k*N-cur)/perPx;if(x>=0&&x<W)c.fillRect(Math.round(x),0,Math.max(1,dpr),H);}}
- c.fillStyle=active?'#f0904a':'#e8edc1';c.fillRect(Math.round(mid-dpr),0,Math.max(2,Math.round(2*dpr)),H);
- c.beginPath();c.moveTo(mid-6*dpr,0);c.lineTo(mid+6*dpr,0);c.lineTo(mid,8*dpr);c.closePath();c.moveTo(mid-6*dpr,H);c.lineTo(mid+6*dpr,H);c.lineTo(mid,H-8*dpr);c.closePath();c.fill();
+  c.fillStyle='#4f8fd6';for(let k=Math.floor((cur-mid*perPx)/N);k<=Math.floor((cur+mid*perPx)/N)+1;k++){const y=mid+(k*N-cur)/perPx;if(y>=0&&y<H)c.fillRect(0,Math.round(y),W,Math.max(1,dpr));}}
+ c.fillStyle=active?'#f0904a':'#e8edc1';c.fillRect(0,Math.round(mid-dpr),W,Math.max(2,Math.round(2*dpr)));
+ c.beginPath();c.moveTo(0,mid-6*dpr);c.lineTo(0,mid+6*dpr);c.lineTo(8*dpr,mid);c.closePath();c.moveTo(W,mid-6*dpr);c.lineTo(W,mid+6*dpr);c.lineTo(W-8*dpr,mid);c.closePath();c.fill();
 }
 // 全体の波形：鳴った所は明るく、いま見えている範囲を枠で示す
 function scratchDrawOverview(canvas,state){
- const {W,H,dpr}=scratchCanvasSize(canvas,44),c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.fillStyle='#141a1b';c.fillRect(0,0,W,H);
+ const {W,H,dpr}=scratchCanvasSize(canvas,40),c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.fillStyle='#141a1b';c.fillRect(0,0,W,H);
  const P=state.wave?scratchPeaks(state.wave):null;if(!P)return;
  const N=P.length,nb=P.peak.length,pos=((state.frame%N)+N)%N/N,px=pos*W,cy=H/2;
  for(let pass=0;pass<2;pass++){c.fillStyle=pass?'#5d6a5f':'#a5ad84';c.beginPath();
   for(let x=pass?Math.ceil(px):0;x<(pass?W:Math.ceil(px));x++){const b0=Math.floor(x/W*nb),b1=Math.max(b0,Math.floor((x+1)/W*nb)-1);let m=0;for(let b=b0;b<=b1;b++)if(P.peak[b]>m)m=P.peak[b];const hh=Math.max(1,m*H*.44);c.rect(x,cy-hh,1,hh*2);}
   c.fill();}
- const span=((document.getElementById('scratchDeck').clientWidth||0)/SCR_PX_PER_SEC*state.rate/N*W);   // スクラッチ面に見えている範囲
+ const span=((document.getElementById('scratchDeck').clientHeight||0)/SCR_PX_PER_SEC*state.rate/N*W);   // スクラッチ面に見えている範囲
  if(span<W){c.strokeStyle='#e8edc1';c.lineWidth=dpr;c.strokeRect(px-span/2,1,span,H-2);}   // 短いサンプルは全部が見えているので枠なし
  c.fillStyle='#f0904a';c.fillRect(Math.round(px-dpr),0,Math.max(2,Math.round(2*dpr)),H);
 }
 function scratchHandSwap(){try{return localStorage.getItem(SCR_HAND_KEY)==='R';}catch(_){return false;}}
-function scratchHandPaint(swap){const surface=document.getElementById('scratchSurface');surface.classList.toggle('swap',swap);const button=document.getElementById('scratchHand');button.setAttribute('aria-pressed',String(swap));button.textContent=swap?'⇄ SCR 右手':'⇄ SCR 左手';}
-function scratchHide(){_scratchPad=-1;scratchGateRelease();cancelAnimationFrame(_scratchRAF);_scratchRAF=0;_scratchGesture=null;const cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview');cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=null;ov.onpointerdown=ov.onpointermove=ov.onpointerup=ov.onpointercancel=null;document.getElementById('scratchEditor').hidden=true;}
+function scratchHandPaint(swap){const surface=document.getElementById('scratchSurface');surface.classList.toggle('swap',swap);const button=document.getElementById('scratchHand');button.setAttribute('aria-pressed',String(swap));button.setAttribute('aria-label',swap?'左右入替（いま：右手でスクラッチ・左手でフェーダー）':'左右入替（いま：左手でスクラッチ・右手でフェーダー）');}
+function scratchHide(){_scratchPad=-1;_scratchLevel=0;scratchGateRelease();cancelAnimationFrame(_scratchRAF);_scratchRAF=0;_scratchGesture=null;const cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview');cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=null;ov.onpointerdown=ov.onpointermove=ov.onpointerup=ov.onpointercancel=null;document.getElementById('scratchEditor').hidden=true;}
 function scratchShow(i){
  const editor=document.getElementById('scratchEditor'),cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview'),strip=cv.parentElement;document.getElementById('scratchTitle').textContent='SCR · '+(tracks[i].name||'PAD '+(i+1));editor.hidden=false;
- _scratchPad=i;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());
+ _scratchPad=i;_scratchLevel=0;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());
  const draw=()=>{if(editor.hidden)return;const state=scratchState();scratchDrawStrip(cv,state,!!_scratchGesture);scratchDrawOverview(ov,state);strip?.classList?.toggle('on',!!_scratchGesture);document.getElementById('scratchMotion').textContent=state.dragging?'HOLD':state.motor?'PLAY':'PAUSE';document.getElementById('scratchPosition').textContent=(state.position*state.duration).toFixed(2)+' / '+state.duration.toFixed(2)+' s';const button=document.getElementById('scratchPlay');button.textContent=state.motor?'Ⅱ PAUSE':'▶ PLAY';button.setAttribute('aria-pressed',String(state.motor));_scratchRAF=requestAnimationFrame(draw);};draw();
- // 面のどこを押しても掴む。指が右へ＝波形も右へ＝戻る（音が指の下の波形に付いてくる）。縦の動きは使わない
- cv.onpointerdown=e=>{if(_scratchGesture)return;e.preventDefault();_scratchGesture={id:e.pointerId,x:e.clientX};cv.setPointerCapture(e.pointerId);scratchHold(true);};
- cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();scratchDrag(-(e.clientX-g.x)/SCR_PX_PER_SEC*scratchState().rate,e.timeStamp);};
+ // 面のどこを押しても掴む。指を奥（上）へ＝波形も上へ＝フォワード、手前（下）へ＝バック（音が指の下の波形に付いてくる）。横の動きは使わない
+ cv.onpointerdown=e=>{if(_scratchGesture)return;e.preventDefault();_scratchGesture={id:e.pointerId,y:e.clientY};cv.setPointerCapture(e.pointerId);scratchHold(true);};
+ cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();scratchDrag(-(e.clientY-g.y)/SCR_PX_PER_SEC*scratchState().rate,e.timeStamp);};
  cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;_scratchGesture=null;scratchHold(false);};
  // 全体の波形：押した所・なぞった所へ移る
  let seeking=null;const seek=e=>{const r=ov.getBoundingClientRect(),st=scratchState();if(!st.wave||!r.width)return;scratchSeek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(st.wave.length-1));};
@@ -7367,10 +7380,12 @@ function scratchShow(i){
  // 左手でスクラッチ・右手でフェーダーが基本。⇄ で入れ替え（この端末に覚える）
  document.getElementById('scratchHand').addEventListener('click',()=>{const swap=!document.getElementById('scratchSurface').classList.contains('swap');try{localStorage.setItem(SCR_HAND_KEY,swap?'R':'L');}catch(_){}scratchHandPaint(swap);});
  const gate=document.getElementById('scratchFader');
- gate.addEventListener('pointerdown',e=>{e.preventDefault();_scratchGatePointers.add(e.pointerId);gate.setPointerCapture(e.pointerId);scratchGatePaint();});
- const release=e=>{_scratchGatePointers.delete(e.pointerId);scratchGatePaint();};
+ gate.addEventListener('pointerdown',e=>{if(_scratchFaderDrag)return;e.preventDefault();_scratchFaderDrag={id:e.pointerId,y:e.clientY,from:_scratchLevel};gate.setPointerCapture(e.pointerId);});
+ gate.addEventListener('pointermove',e=>{const d=_scratchFaderDrag;if(!d||d.id!==e.pointerId)return;e.preventDefault();scratchSetLevel(d.from+(e.clientY-d.y)/SCR_FADER_PX);});
+ const release=e=>{if(_scratchFaderDrag?.id===e.pointerId)_scratchFaderDrag=null;};
  gate.addEventListener('pointerup',release);gate.addEventListener('pointercancel',release);gate.addEventListener('lostpointercapture',release);
- gate.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();if(!e.repeat){_scratchGateKey=true;scratchGatePaint();}}});
+ gate.addEventListener('keydown',e=>{if(e.code==='ArrowDown'||e.code==='ArrowUp'){e.preventDefault();e.stopPropagation();scratchSetLevel(_scratchLevel+(e.code==='ArrowDown'?.1:-.1));return;}
+  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();if(!e.repeat){_scratchGateKey=true;scratchGatePaint();}}});
  gate.addEventListener('keyup',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();_scratchGateKey=false;scratchGatePaint();}});
  gate.addEventListener('blur',scratchGateRelease);window.addEventListener('blur',scratchGateRelease);
  document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});
@@ -7729,7 +7744,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.185";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.186";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

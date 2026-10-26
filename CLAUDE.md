@@ -149,7 +149,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.185
+MICS009 beta v0.3.186
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
@@ -159,4 +159,4 @@ The splash shows `v<APP_VERSION>` and an update button. On boot it fetches `vers
 
 
 ## Local v0.3.176 integration notes
-Normal FX is live pad-value selection, EDIT+FX is parameter configuration; step automation remains retired. SCR opens a linear waveform strip + hold-to-open fader (v0.3.185 §173: djay-style, the round platter was dropped; ⇄ swaps hands, remembered per device; overview waveform tap = seek): DSP/routing in `src/js/audio/scratch-pad.js`, drawing/input in `src/js/ui/scratch-view.js`, shared tape-head core for worklet/fallback. Guitar entry/integration is retired. See latest sections of docs/codex-pad-content-handoff.md; do not follow earlier direct-FX-modal notes. Source is local only; do not push without user approval or overwrite Claude's unpublished work. Run the full gate in a browser-capable environment before merging.
+Normal FX is live pad-value selection, EDIT+FX is parameter configuration; step automation remains retired. SCR opens a vertical waveform strip + swipe fader (v0.3.186 §174, after §173's djay-style strip: push away = forward / pull toward you = back; fader opens by swiping toward you and keeps its level; slight platter mass + throw inertia on release; ⇄ swaps hands, remembered per device; overview tap = seek): DSP/routing in `src/js/audio/scratch-pad.js`, drawing/input in `src/js/ui/scratch-view.js`, shared tape-head core for worklet/fallback. Guitar entry/integration is retired. See latest sections of docs/codex-pad-content-handoff.md; do not follow earlier direct-FX-modal notes. Source is local only; do not push without user approval or overwrite Claude's unpublished work. Run the full gate in a browser-capable environment before merging.

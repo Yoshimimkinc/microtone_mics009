@@ -73,27 +73,29 @@
 
 @media(max-width:600px){.key-mainbar .key-tabs{flex:0 0 100%;width:100%;max-width:none}.key-panel .key-mainbar .key-tabs button{flex:1;min-width:0}}
 
-/* SCR (v0.3.185 §173): djay 型の横一直線のスクラッチ面＋押している間だけ開くフェーダー。左右は ⇄ で入れ替え。 */
-#scratchEditor .scratch-panel{width:min(900px,100%);background:#252e30;color:#eef1e5;padding:16px;touch-action:pan-y}
-.scratch-head-btns{display:flex;gap:8px}
-#scratchOverview{display:block;width:100%;height:44px;margin-top:12px;background:#141a1b;border:1px solid #4a5754;border-radius:6px;cursor:pointer;touch-action:none}
-.scratch-surface{display:grid;grid-template-columns:minmax(0,1fr) 170px;grid-template-areas:"strip gate";gap:12px;margin-top:10px}
-.scratch-surface.swap{grid-template-columns:170px minmax(0,1fr);grid-template-areas:"gate strip"}
-.scratch-strip{grid-area:strip;position:relative;min-width:0}
-#scratchDeck{display:block;width:100%;height:min(46vh,340px);min-height:150px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
+/* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
+#scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}
+.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand close" "strip gate";gap:10px}
+.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"close hand" "gate strip"}
+#scratchEditor .scratch-panel .scratch-hand{grid-area:hand;justify-self:center;width:min(60%,160px);font-size:22px;line-height:1}
+#scratchEditor .scratch-panel .scratch-close{grid-area:close;justify-self:end;font-size:12px}
+.scratch-strip{grid-area:strip;position:relative;min-height:0}
+#scratchDeck{display:block;width:100%;height:100%;min-height:200px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
 #scratchDeck:active{cursor:grabbing}
 .scratch-strip.on #scratchDeck{border-color:#f0904a}
-.scratch-strip-label{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.14em;color:#9aa792;pointer-events:none}
+.scratch-strip-label{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);white-space:nowrap;padding:2px 8px;border-radius:4px;background:#111617d9;font-size:10px;font-weight:800;letter-spacing:.12em;color:#9aa792;pointer-events:none}
 .scratch-strip.on .scratch-strip-label{opacity:0}
-.scratch-gate-col{grid-area:gate;display:flex;flex-direction:column;gap:6px;min-width:0}
-.scratch-fader-label{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em}.scratch-fader-label output{font-variant-numeric:tabular-nums}
-.scratch-controls{display:flex;align-items:center;gap:8px;margin-top:10px}.scratch-controls button{flex:0 0 auto;min-width:96px;font-size:11px}
-.scratch-readout{display:flex;gap:10px;margin-left:auto;font-variant-numeric:tabular-nums;font-size:11px}.scratch-readout b{color:#c0c875}
-#scratchStatus{font-size:11px;color:#bbc4b5}
-@media(max-width:650px){#scratchEditor .scratch-panel{padding:12px}.scratch-surface{grid-template-columns:minmax(0,1fr) 92px}.scratch-surface.swap{grid-template-columns:92px minmax(0,1fr)}#scratchDeck{height:min(44vh,320px)}.scratch-controls button{min-width:0;flex:1 1 0}.scratch-readout{flex-direction:column;gap:2px;text-align:right}#scratchStatus{margin:8px 0 0}}
+.scratch-fader{grid-area:gate;position:relative;min-height:200px;overflow:hidden;background:#141c1c;border:2px solid #83926e;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;--lv:0}
+.scratch-fader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
+.scratch-fader-fill{position:absolute;left:0;right:0;top:0;height:calc(18% + var(--lv)*(82% - 4px));background:#c0c875;opacity:.9;border-bottom:4px solid #e8edc1}   /* 閉＝上から 18% の線、手前へ開くほど線が下りる */
+.scratch-fader:not(.open) .scratch-fader-fill{background:transparent;border-bottom-color:#83926e}
+.scratch-fader-hint{position:absolute;left:0;right:0;top:24%;text-align:center;font-size:13px;font-weight:800;line-height:1.5;letter-spacing:.06em;color:#9aa792;pointer-events:none}
+.scratch-fader.open .scratch-fader-hint{color:#18201b}
+#scratchFaderRead{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;color:#d9dfc7;pointer-events:none}
+.scratch-controls{display:flex;align-items:center;gap:8px;margin-top:10px}.scratch-controls button{flex:0 0 auto;font-size:11px;min-width:76px}
+#scratchOverview{flex:1 1 auto;min-width:0;height:40px;background:#141a1b;border:1px solid #4a5754;border-radius:6px;cursor:pointer;touch-action:none}
+.scratch-readout{display:flex;flex-direction:column;gap:2px;text-align:right;font-variant-numeric:tabular-nums;font-size:11px;white-space:nowrap}.scratch-readout b{color:#c0c875}#scratchTitle{color:#eef1e5;font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+#scratchStatus{font-size:11px;color:#bbc4b5;margin:6px 0 0}
+@media(max-width:650px){#scratchEditor .scratch-panel{padding:10px;width:100%;height:100%}.scratch-controls button{min-width:0;padding:6px 8px}.scratch-readout{display:none}}
 #scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
 #scratchEditor .scratch-panel #scratchHand[aria-pressed=true]{color:#c0c875;border-color:#c0c875}
-
-#scratchEditor .scratch-panel #scratchFader{width:100%;flex:1 1 auto;min-height:76px;margin:0;padding:8px;background:#141c1c;color:#d9dfc7;border:2px solid #83926e;border-radius:7px;font-size:16px;font-weight:800;letter-spacing:.06em;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
-#scratchEditor .scratch-panel #scratchFader[aria-pressed=true]{background:#c0c875;color:#18201b;border-color:#e8edc1}
-#scratchEditor .scratch-panel #scratchFader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
