@@ -1360,7 +1360,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.189</div>
+  <div class="s-ver" id="splashVer">v0.3.190</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -7178,14 +7178,14 @@ let _scratchPos=0,_scratchFrame=0,_scratchFrameAt=0,_scratchDuration=0,_scratchM
 function createScratchHead(data,rate){
  const lv=Array.isArray(data)?(Array.isArray(data[0])?data:[data]):[[data]],N=lv[0][0].length;
  // v0.3.186 §174「微妙な惰性は必要。タッチのままの再生だと感覚的におかしいと脳が感じる」：盤に少し重さ（ばね 30→16Hz）、
- // 離すと惰性（速く送って離す＝摩擦で 0.35 秒かけて落ちる／遅い・逆向き＝モーターが 0.08 秒で引き戻す）
+ // 離すと惰性（速く送って離す＝摩擦で 0.35 秒かけて落ちる／遅い・逆向き＝モーターが 0.08 秒で引き戻す。v0.3.190 から引き戻しの速さは離した高さで変わる＝hold の wind）
  const w=2*Math.PI*16/rate,pre=1-Math.exp(-2*Math.PI*45/rate),wind=1-Math.exp(-1/(rate*.08)),coast=1-Math.exp(-1/(rate*.35)),brake=1-Math.exp(-1/(rate*.04));
  const read=(a,x)=>{const n=a.length,i=Math.floor(x),f=x-i;let i1=i%n;if(i1<0)i1+=n;   // 4 点エルミート（音声スレッドで関数を作らない）
   const i0=i1?i1-1:n-1,i2=i1+1<n?i1+1:0,i3=i2+1<n?i2+1:0,y0=a[i0],y1=a[i1],y2=a[i2],y3=a[i3];
   return y1+.5*f*(y2-y0+f*(2*y0-5*y1+4*y2-y3+f*(3*(y1-y2)+y3-y0)));};
  return {levels:lv,pos:0,vel:1,target:0,origin:0,smooth:0,drag:false,motor:true,stopped:false,dc:lv.map(()=>({i:0,o:0})),speed:1,
   message(m){if(m.type==='stop')this.stopped=true;
-   if(m.type==='hold'){this.fling=this.drag&&!m.on;this.drag=!!m.on;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
+   if(m.type==='hold'){this.fling=this.drag&&!m.on;this.drag=!!m.on;this.windK=Number.isFinite(m.wind)&&m.wind>0?1-Math.exp(-1/(rate*m.wind)):0;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
    if(m.type==='drag'&&this.drag&&Number.isFinite(m.delta)){const tgt=this.origin+m.delta;   // 手の速さ＝前のイベントからの移動÷時間（時刻が無ければ 0＝位置だけ追う）
     if(Number.isFinite(m.t)&&this.lastT!=null&&m.t>this.lastT){const dt=(m.t-this.lastT)/1000*rate,hand=Math.max(-12,Math.min(12,(tgt-this.target)/dt));
      this.span=Math.max(64,Math.min(dt,rate*.05));this.hand=hand;this.hv=Math.max(-12,Math.min(12,(tgt+hand*this.span-this.est)/this.span));}   // 次のイベントの頃の手の位置へ一直線
@@ -7197,7 +7197,7 @@ function createScratchHead(data,rate){
   state(){return {frame:this.pos,position:N?((this.pos%N)+N)%N/N:0,speed:this.speed};},
   sample(c,x,s){const L=this.levels[c];if(s<=1.0001||L.length<2)return read(L[0],x);   // 速さに応じた段（帯域を落としたもの）を読む
    const g=Math.min(L.length-1.0001,Math.log2(s)),k=Math.floor(g),f=g-k,a=read(L[k],x/2**k);return f>0&&k+1<L.length?a+(read(L[k+1],x/2**(k+1))-a)*f:a;},
-  lastT:null,hv:0,hand:0,since:0,span:0,est:0,fling:false,
+  lastT:null,hv:0,hand:0,since:0,span:0,est:0,fling:false,windK:0,
   render(outs){const chans=Array.isArray(outs)?outs:[outs],len=chans[0].length;
    if(this.stopped||!N){chans.forEach(o=>o.fill(0));return false;}
    const src=this.levels.length;
@@ -7207,7 +7207,7 @@ function createScratchHead(data,rate){
      const est=this.est;this.smooth+=(est-this.smooth)*pre;this.vel+=w*w*(this.smooth-this.pos)-2*w*this.vel;   // 臨界制動のばね
      if(Math.abs(this.vel)<2e-3&&Math.abs(est-this.pos)<1&&Math.abs(est-this.smooth)<.01)this.vel=0;}   // 手が止まって追いついたら止める（1 フレーム未満の残りは鳴らさない）
     else{const goal=this.motor?1:0,throwing=this.fling&&(goal?this.vel>goal:this.vel!==0);   // 離した直後：モーターより速く回っていれば惰性で、遅ければモーターが引き戻す
-     this.vel+=(goal-this.vel)*(throwing?coast:goal?wind:brake);if(Math.abs(goal-this.vel)<1e-3){this.vel=goal;this.fling=false;}}
+     this.vel+=(goal-this.vel)*(throwing?coast:goal?(this.fling&&this.windK||wind):brake);if(Math.abs(goal-this.vel)<1e-3){this.vel=goal;this.fling=false;}}
     this.vel=Math.max(-12,Math.min(12,this.vel));this.pos+=this.vel;this.speed=this.vel;
     const s=Math.abs(this.vel),amp=Math.min(1,s/.02)*.7;
     for(let c=0;c<chans.length;c++){const sc=Math.min(c,src-1),d=this.dc[sc],v=amp?this.sample(sc,this.pos,s)*amp:0,
@@ -7240,7 +7240,8 @@ function scratchFallbackNode(data){
 }
 // 表示の位置＝音声スレッドの最後の位置＋その時の速さ×経過（最大 0.1 秒。波形が指と音にぴったり付いて動く）
 function scratchState(){return {position:_scratchPos,frame:_scratchFrame+(_scratchNode?_scratchSpeed*Math.min(.1,Math.max(0,AC.currentTime-_scratchFrameAt))*AC.sampleRate:0),duration:_scratchDuration,motor:_scratchMotor,dragging:_scratchDragging,fader:_scratchFader,rate:AC.sampleRate,speed:_scratchSpeed,wave:_scratchWave};}
-function scratchHold(on){if(!_scratchNode)return;_scratchDragging=!!on;_scratchNode.port.postMessage({type:'hold',on:!!on});}
+// wind：離した後にモーターが元の速さへ引き戻す時定数（秒）。省略＝既定（0.08 秒）
+function scratchHold(on,wind){if(!_scratchNode)return;_scratchDragging=!!on;_scratchNode.port.postMessage({type:'hold',on:!!on,wind});}
 function scratchDrag(frames,t){if(_scratchNode&&Number.isFinite(frames))_scratchNode.port.postMessage({type:'drag',delta:frames,t});}   // t：指のイベントの時刻（ms）＝手の速さを出す
 function scratchMotor(on){_scratchMotor=!!on;if(_scratchNode)_scratchNode.port.postMessage({type:'motor',on:_scratchMotor});}
 function scratchCue(){_scratchDragging=false;_scratchFrame=0;_scratchPos=0;_scratchFrameAt=AC.currentTime;if(_scratchNode)_scratchNode.port.postMessage({type:'cue'});}
@@ -7285,11 +7286,11 @@ async function scratchOpen(i){
 }
 // @module ui/scratch-view
 // @provides SCR_FADER_KEY_TRAVEL, SCR_FADER_ZERO, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC,
-//    SCR_SENS_RANGE, _scratchFaderDrag, _scratchGateKey, _scratchGesture, _scratchHeldWas, _scratchLevel,
-//    _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF, scratchCanvasSize, scratchDrawOverview,
-//    scratchDrawStrip, scratchFaderAt, scratchGatePaint, scratchGateRelease, scratchHandPaint,
-//    scratchHandSwap, scratchHide, scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchSetLevel,
-//    scratchShow, scratchStripTime
+//    SCR_SENS_RANGE, SCR_WIND_RANGE, SCR_WIND_TOP, _scratchFaderDrag, _scratchGateKey, _scratchGesture,
+//    _scratchHeldWas, _scratchLevel, _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF,
+//    scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt, scratchGatePaint,
+//    scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide, scratchPadInputDown,
+//    scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchStripTime, scratchWindAt
 // @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState, tracks
 // @depends audio/scratch-pad
@@ -7327,6 +7328,9 @@ const SCR_PX_PER_SEC=220,SCR_PEAK_BLOCK=64,SCR_HAND_KEY='mics.scrHand';
 // 感度は高さで変わる（v0.3.189 §177「上は感度が良く、下は鈍くなる」＝レコードの内側と外側のように）：上端はまん中の 2 倍、下端は半分（比 SCR_SENS_RANGE）。
 // 高さ y（面の上から、CSS px）に見える時刻（秒。まん中＝0、下が先）。描画も指も同じ目盛りなので、波形は指の下に付いてくる
 const SCR_SENS_RANGE=4;
+// 離した高さ → 再生の立ち上がり（v0.3.190 §178「指を離すとこが上の方が再生の立ち上がりも早い」）：上端 0.03 秒・まん中 約 0.085 秒・下端 0.24 秒（指数で連続）
+const SCR_WIND_TOP=.03,SCR_WIND_RANGE=8;
+function scratchWindAt(y,h){return SCR_WIND_TOP*SCR_WIND_RANGE**Math.max(0,Math.min(1,h?y/h:.5));}
 function scratchStripTime(y,h){const a=Math.log(SCR_SENS_RANGE)/Math.max(1,h),d=y-h/2;return (1-Math.exp(-a*d))/(a*SCR_PX_PER_SEC);}
 let _scratchPeaks=null;
 // 波形の山（64 フレームごとの最大振幅）。開くたびに 1 回だけ作る
@@ -7377,7 +7381,7 @@ function scratchShow(i){
  const at=e=>{const r=cv.getBoundingClientRect();return scratchStripTime(e.clientY-r.top,r.height);};
  cv.onpointerdown=e=>{if(_scratchGesture)return;e.preventDefault();_scratchGesture={id:e.pointerId,t:at(e)};cv.setPointerCapture(e.pointerId);scratchHold(true);};
  cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();scratchDrag((g.t-at(e))*scratchState().rate,e.timeStamp);};
- cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;_scratchGesture=null;scratchHold(false);};
+ cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;_scratchGesture=null;const r=cv.getBoundingClientRect();scratchHold(false,scratchWindAt(e.clientY-r.top,r.height));};
  // 全体の波形：押した所・なぞった所へ移る
  let seeking=null;const seek=e=>{const r=ov.getBoundingClientRect(),st=scratchState();if(!st.wave||!r.width)return;scratchSeek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(st.wave.length-1));};
  ov.onpointerdown=e=>{if(seeking!=null)return;e.preventDefault();seeking=e.pointerId;ov.setPointerCapture(e.pointerId);seek(e);};
@@ -7754,7 +7758,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.189";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.190";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
