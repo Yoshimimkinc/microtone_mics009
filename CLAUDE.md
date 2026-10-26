@@ -150,7 +150,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.189
+MICS009 beta v0.3.190
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
@@ -160,4 +160,4 @@ The splash shows `v<APP_VERSION>` and an update button. On boot it fetches `vers
 
 
 ## Local v0.3.176 integration notes
-Normal FX is live pad-value selection, EDIT+FX is parameter configuration; step automation remains retired. SCR opens a vertical waveform strip + swipe fader (v0.3.186 §174, after §173's djay-style strip: push away = forward / pull toward you = back; fader (v0.3.188 §176) opens to where you touch and closes fully on release, the cap travels at a steady speed (v0.3.189 §177: full throw 0.12 s, so near/top opens fast and far/bottom slowly); strip sensitivity varies with height like a record's inner/outer radius (top 2×, bottom ½, display uses the same scale); slight platter mass + throw inertia on release; ⇄ swaps hands, remembered per device; overview tap = seek): DSP/routing in `src/js/audio/scratch-pad.js`, drawing/input in `src/js/ui/scratch-view.js`, shared tape-head core for worklet/fallback. Guitar entry/integration is retired. See latest sections of docs/codex-pad-content-handoff.md; do not follow earlier direct-FX-modal notes. Source is local only; do not push without user approval or overwrite Claude's unpublished work. Run the full gate in a browser-capable environment before merging.
+Normal FX is live pad-value selection, EDIT+FX is parameter configuration; step automation remains retired. SCR opens a vertical waveform strip + swipe fader (v0.3.186 §174, after §173's djay-style strip: push away = forward / pull toward you = back; fader (v0.3.188 §176) opens to where you touch and closes fully on release, the cap travels at a steady speed (v0.3.189 §177: full throw 0.12 s, so near/top opens fast and far/bottom slowly); strip sensitivity varies with height like a record's inner/outer radius (top 2×, bottom ½, display uses the same scale); the release height also sets how fast playback winds back up (v0.3.190 §178: top 0.03 s → bottom 0.24 s); slight platter mass + throw inertia on release; ⇄ swaps hands, remembered per device; overview tap = seek): DSP/routing in `src/js/audio/scratch-pad.js`, drawing/input in `src/js/ui/scratch-view.js`, shared tape-head core for worklet/fallback. Guitar entry/integration is retired. See latest sections of docs/codex-pad-content-handoff.md; do not follow earlier direct-FX-modal notes. Source is local only; do not push without user approval or overwrite Claude's unpublished work. Run the full gate in a browser-capable environment before merging.

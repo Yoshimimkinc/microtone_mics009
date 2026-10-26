@@ -25,14 +25,14 @@ let _scratchPos=0,_scratchFrame=0,_scratchFrameAt=0,_scratchDuration=0,_scratchM
 function createScratchHead(data,rate){
  const lv=Array.isArray(data)?(Array.isArray(data[0])?data:[data]):[[data]],N=lv[0][0].length;
  // v0.3.186 §174「微妙な惰性は必要。タッチのままの再生だと感覚的におかしいと脳が感じる」：盤に少し重さ（ばね 30→16Hz）、
- // 離すと惰性（速く送って離す＝摩擦で 0.35 秒かけて落ちる／遅い・逆向き＝モーターが 0.08 秒で引き戻す）
+ // 離すと惰性（速く送って離す＝摩擦で 0.35 秒かけて落ちる／遅い・逆向き＝モーターが 0.08 秒で引き戻す。v0.3.190 から引き戻しの速さは離した高さで変わる＝hold の wind）
  const w=2*Math.PI*16/rate,pre=1-Math.exp(-2*Math.PI*45/rate),wind=1-Math.exp(-1/(rate*.08)),coast=1-Math.exp(-1/(rate*.35)),brake=1-Math.exp(-1/(rate*.04));
  const read=(a,x)=>{const n=a.length,i=Math.floor(x),f=x-i;let i1=i%n;if(i1<0)i1+=n;   // 4 点エルミート（音声スレッドで関数を作らない）
   const i0=i1?i1-1:n-1,i2=i1+1<n?i1+1:0,i3=i2+1<n?i2+1:0,y0=a[i0],y1=a[i1],y2=a[i2],y3=a[i3];
   return y1+.5*f*(y2-y0+f*(2*y0-5*y1+4*y2-y3+f*(3*(y1-y2)+y3-y0)));};
  return {levels:lv,pos:0,vel:1,target:0,origin:0,smooth:0,drag:false,motor:true,stopped:false,dc:lv.map(()=>({i:0,o:0})),speed:1,
   message(m){if(m.type==='stop')this.stopped=true;
-   if(m.type==='hold'){this.fling=this.drag&&!m.on;this.drag=!!m.on;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
+   if(m.type==='hold'){this.fling=this.drag&&!m.on;this.drag=!!m.on;this.windK=Number.isFinite(m.wind)&&m.wind>0?1-Math.exp(-1/(rate*m.wind)):0;this.lastT=null;this.hv=0;this.hand=0;this.since=0;this.span=0;if(this.drag){this.origin=this.pos+this.vel/w;this.target=this.origin;this.smooth=this.origin;this.est=this.origin;}}   // 掴んだ所から自然に止まる位置を基準に
    if(m.type==='drag'&&this.drag&&Number.isFinite(m.delta)){const tgt=this.origin+m.delta;   // 手の速さ＝前のイベントからの移動÷時間（時刻が無ければ 0＝位置だけ追う）
     if(Number.isFinite(m.t)&&this.lastT!=null&&m.t>this.lastT){const dt=(m.t-this.lastT)/1000*rate,hand=Math.max(-12,Math.min(12,(tgt-this.target)/dt));
      this.span=Math.max(64,Math.min(dt,rate*.05));this.hand=hand;this.hv=Math.max(-12,Math.min(12,(tgt+hand*this.span-this.est)/this.span));}   // 次のイベントの頃の手の位置へ一直線
@@ -44,7 +44,7 @@ function createScratchHead(data,rate){
   state(){return {frame:this.pos,position:N?((this.pos%N)+N)%N/N:0,speed:this.speed};},
   sample(c,x,s){const L=this.levels[c];if(s<=1.0001||L.length<2)return read(L[0],x);   // 速さに応じた段（帯域を落としたもの）を読む
    const g=Math.min(L.length-1.0001,Math.log2(s)),k=Math.floor(g),f=g-k,a=read(L[k],x/2**k);return f>0&&k+1<L.length?a+(read(L[k+1],x/2**(k+1))-a)*f:a;},
-  lastT:null,hv:0,hand:0,since:0,span:0,est:0,fling:false,
+  lastT:null,hv:0,hand:0,since:0,span:0,est:0,fling:false,windK:0,
   render(outs){const chans=Array.isArray(outs)?outs:[outs],len=chans[0].length;
    if(this.stopped||!N){chans.forEach(o=>o.fill(0));return false;}
    const src=this.levels.length;
@@ -54,7 +54,7 @@ function createScratchHead(data,rate){
      const est=this.est;this.smooth+=(est-this.smooth)*pre;this.vel+=w*w*(this.smooth-this.pos)-2*w*this.vel;   // 臨界制動のばね
      if(Math.abs(this.vel)<2e-3&&Math.abs(est-this.pos)<1&&Math.abs(est-this.smooth)<.01)this.vel=0;}   // 手が止まって追いついたら止める（1 フレーム未満の残りは鳴らさない）
     else{const goal=this.motor?1:0,throwing=this.fling&&(goal?this.vel>goal:this.vel!==0);   // 離した直後：モーターより速く回っていれば惰性で、遅ければモーターが引き戻す
-     this.vel+=(goal-this.vel)*(throwing?coast:goal?wind:brake);if(Math.abs(goal-this.vel)<1e-3){this.vel=goal;this.fling=false;}}
+     this.vel+=(goal-this.vel)*(throwing?coast:goal?(this.fling&&this.windK||wind):brake);if(Math.abs(goal-this.vel)<1e-3){this.vel=goal;this.fling=false;}}
     this.vel=Math.max(-12,Math.min(12,this.vel));this.pos+=this.vel;this.speed=this.vel;
     const s=Math.abs(this.vel),amp=Math.min(1,s/.02)*.7;
     for(let c=0;c<chans.length;c++){const sc=Math.min(c,src-1),d=this.dc[sc],v=amp?this.sample(sc,this.pos,s)*amp:0,
@@ -87,7 +87,8 @@ function scratchFallbackNode(data){
 }
 // 表示の位置＝音声スレッドの最後の位置＋その時の速さ×経過（最大 0.1 秒。波形が指と音にぴったり付いて動く）
 function scratchState(){return {position:_scratchPos,frame:_scratchFrame+(_scratchNode?_scratchSpeed*Math.min(.1,Math.max(0,AC.currentTime-_scratchFrameAt))*AC.sampleRate:0),duration:_scratchDuration,motor:_scratchMotor,dragging:_scratchDragging,fader:_scratchFader,rate:AC.sampleRate,speed:_scratchSpeed,wave:_scratchWave};}
-function scratchHold(on){if(!_scratchNode)return;_scratchDragging=!!on;_scratchNode.port.postMessage({type:'hold',on:!!on});}
+// wind：離した後にモーターが元の速さへ引き戻す時定数（秒）。省略＝既定（0.08 秒）
+function scratchHold(on,wind){if(!_scratchNode)return;_scratchDragging=!!on;_scratchNode.port.postMessage({type:'hold',on:!!on,wind});}
 function scratchDrag(frames,t){if(_scratchNode&&Number.isFinite(frames))_scratchNode.port.postMessage({type:'drag',delta:frames,t});}   // t：指のイベントの時刻（ms）＝手の速さを出す
 function scratchMotor(on){_scratchMotor=!!on;if(_scratchNode)_scratchNode.port.postMessage({type:'motor',on:_scratchMotor});}
 function scratchCue(){_scratchDragging=false;_scratchFrame=0;_scratchPos=0;_scratchFrameAt=AC.currentTime;if(_scratchNode)_scratchNode.port.postMessage({type:'cue'});}
