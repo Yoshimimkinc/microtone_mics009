@@ -109,3 +109,6 @@ $("patCycle") [click]
 # v0.3.183 §171 SEQ は別の画面（#viewSeq）ではなく PADS 画面の状態（body.seqmode / seqMode）。表示判定は seqMode で行うので要素参照は不要。
 # 同じ版で SET の窓の A B C D（#clKeysSet の 4 ボタンと click 配線）も撤去（主面の下の A B C D と重複＝ユーザー判断）
 viewSeqEl
+# v0.3.185 §173 SCR のレコード盤（円周で擦る）を djay 型の横一直線の波形面に置き換え（ユーザー判断：「実物を模したインターフェースはタッチスクリーンに向かない」）
+scratchAngleDelta
+scratchDrawPlatter

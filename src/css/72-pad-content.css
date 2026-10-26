@@ -1,6 +1,6 @@
 .content-overlay[hidden]{display:none!important}.content-overlay{position:fixed;inset:0;z-index:10050;background:#090c10d9;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));color:var(--ink,#eee)}
 .content-panel{background:var(--bg,#14181d);border:1px solid var(--line,#444);border-radius:12px;padding:14px;width:min(900px,100%);max-height:100%;overflow:auto;font-size:13px;touch-action:pan-y}
-.content-panel header{display:flex;justify-content:space-between;align-items:center;gap:12px}.content-panel button,.content-panel input{min-height:44px;background:var(--panel,#242a30);color:inherit;border:1px solid var(--line,#555);border-radius:5px;padding:6px 10px}.content-panel input[type=number]{width:90px}.content-panel p{line-height:1.5;margin:10px 0}.content-tools{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin:10px 0}.content-tools label{display:flex;flex-direction:column;gap:4px}.content-import{display:block;margin:12px 0}.key-scroll{overflow:auto;max-height:42vh;touch-action:pan-x pan-y;border:1px solid #555}.key-scroll canvas{display:block;max-width:none;touch-action:pan-x pan-y}#scratchDeck{display:block;width:100%;height:45vh;min-height:150px;background:#101318;touch-action:none;border-radius:8px}.pad .pad-kind{position:absolute;right:5px;top:4px;font-size:9px;pointer-events:none;opacity:.65}#peKinds{display:flex;gap:6px;margin:8px 0}#peKinds button,#peKeyOpen{min-height:44px;padding:4px 12px}#peKinds .on{color:var(--teal,#3dd6c4);border-color:currentColor}
+.content-panel header{display:flex;justify-content:space-between;align-items:center;gap:12px}.content-panel button,.content-panel input{min-height:44px;background:var(--panel,#242a30);color:inherit;border:1px solid var(--line,#555);border-radius:5px;padding:6px 10px}.content-panel input[type=number]{width:90px}.content-panel p{line-height:1.5;margin:10px 0}.content-tools{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin:10px 0}.content-tools label{display:flex;flex-direction:column;gap:4px}.content-import{display:block;margin:12px 0}.key-scroll{overflow:auto;max-height:42vh;touch-action:pan-x pan-y;border:1px solid #555}.key-scroll canvas{display:block;max-width:none;touch-action:pan-x pan-y}.pad .pad-kind{position:absolute;right:5px;top:4px;font-size:9px;pointer-events:none;opacity:.65}#peKinds{display:flex;gap:6px;margin:8px 0}#peKinds button,#peKeyOpen{min-height:44px;padding:4px 12px}#peKinds .on{color:var(--teal,#3dd6c4);border-color:currentColor}
 
 #dropboxPanel{width:100%;padding:8px;border:1px solid var(--line);text-align:left}#dropboxPanel summary{cursor:pointer;min-height:36px}#dropboxPanel label{display:block;margin:8px 0}#dropboxPanel input{display:block;max-width:100%;min-height:40px}#dropboxPanel button{min-height:40px;margin:4px;white-space:normal}#dbFiles{max-height:240px;overflow:auto}#dbStatus{overflow-wrap:anywhere}
 
@@ -73,24 +73,27 @@
 
 @media(max-width:600px){.key-mainbar .key-tabs{flex:0 0 100%;width:100%;max-width:none}.key-panel .key-mainbar .key-tabs button{flex:1;min-width:0}}
 
-/* SCR: flat record, dedicated hand area and a separate scratch-voice fader. */
+/* SCR (v0.3.185 §173): djay 型の横一直線のスクラッチ面＋押している間だけ開くフェーダー。左右は ⇄ で入れ替え。 */
 #scratchEditor .scratch-panel{width:min(900px,100%);background:#252e30;color:#eef1e5;padding:16px;touch-action:pan-y}
-.scratch-surface{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:20px;align-items:center;margin-top:14px}
-.scratch-platter-wrap{width:100%;max-width:550px;justify-self:center}
-#scratchDeck{display:block;width:100%;height:auto;aspect-ratio:1;min-height:0;background:#465052;border:0;border-radius:12px;cursor:grab;touch-action:none}
+.scratch-head-btns{display:flex;gap:8px}
+#scratchOverview{display:block;width:100%;height:44px;margin-top:12px;background:#141a1b;border:1px solid #4a5754;border-radius:6px;cursor:pointer;touch-action:none}
+.scratch-surface{display:grid;grid-template-columns:minmax(0,1fr) 170px;grid-template-areas:"strip gate";gap:12px;margin-top:10px}
+.scratch-surface.swap{grid-template-columns:170px minmax(0,1fr);grid-template-areas:"gate strip"}
+.scratch-strip{grid-area:strip;position:relative;min-width:0}
+#scratchDeck{display:block;width:100%;height:min(46vh,340px);min-height:150px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
 #scratchDeck:active{cursor:grabbing}
-.scratch-controls{min-width:0}.scratch-buttons{display:flex;gap:8px}.scratch-buttons button{flex:1;min-width:0;font-size:11px;background:#465052;color:#fff}
-.scratch-readout{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;padding:20px 0;font-variant-numeric:tabular-nums;font-size:11px}.scratch-readout b{color:#c0c875}
+.scratch-strip.on #scratchDeck{border-color:#f0904a}
+.scratch-strip-label{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.14em;color:#9aa792;pointer-events:none}
+.scratch-strip.on .scratch-strip-label{opacity:0}
+.scratch-gate-col{grid-area:gate;display:flex;flex-direction:column;gap:6px;min-width:0}
 .scratch-fader-label{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em}.scratch-fader-label output{font-variant-numeric:tabular-nums}
-#scratchFader{width:100%;min-height:56px;padding:0;accent-color:#c0c875;touch-action:none;background:#171e20}
-.scratch-fader-scale{display:flex;justify-content:space-between;font-size:10px;color:#bbc4b5}
-.scratch-controls .scratch-help{font-size:11px;line-height:1.7;color:#d8dfd1}
+.scratch-controls{display:flex;align-items:center;gap:8px;margin-top:10px}.scratch-controls button{flex:0 0 auto;min-width:96px;font-size:11px}
+.scratch-readout{display:flex;gap:10px;margin-left:auto;font-variant-numeric:tabular-nums;font-size:11px}.scratch-readout b{color:#c0c875}
 #scratchStatus{font-size:11px;color:#bbc4b5}
-@media(max-width:650px){#scratchEditor .scratch-panel{padding:12px;width:min(450px,100%)}.scratch-surface{grid-template-columns:1fr;gap:12px;margin-top:10px}.scratch-platter-wrap{width:min(100%,44vh)}.scratch-controls{width:100%}.scratch-readout{padding:10px 0}.scratch-controls .scratch-help{display:none}.scratch-buttons button{min-height:44px}#scratchFader{min-height:48px}#scratchStatus{margin:8px 0 0}}
+@media(max-width:650px){#scratchEditor .scratch-panel{padding:12px}.scratch-surface{grid-template-columns:minmax(0,1fr) 92px}.scratch-surface.swap{grid-template-columns:92px minmax(0,1fr)}#scratchDeck{height:min(44vh,320px)}.scratch-controls button{min-width:0;flex:1 1 0}.scratch-readout{flex-direction:column;gap:2px;text-align:right}#scratchStatus{margin:8px 0 0}}
 #scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
-.scratch-platter-wrap{max-width:min(550px,62vh)}
-@media(max-width:650px){.scratch-platter-wrap{max-width:44vh}}
+#scratchEditor .scratch-panel #scratchHand[aria-pressed=true]{color:#c0c875;border-color:#c0c875}
 
-#scratchEditor .scratch-panel #scratchFader{width:100%;min-height:76px;margin:10px 0 4px;padding:12px;background:#141c1c;color:#d9dfc7;border:2px solid #83926e;border-radius:7px;font-size:16px;font-weight:800;letter-spacing:.06em;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+#scratchEditor .scratch-panel #scratchFader{width:100%;flex:1 1 auto;min-height:76px;margin:0;padding:8px;background:#141c1c;color:#d9dfc7;border:2px solid #83926e;border-radius:7px;font-size:16px;font-weight:800;letter-spacing:.06em;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
 #scratchEditor .scratch-panel #scratchFader[aria-pressed=true]{background:#c0c875;color:#18201b;border-color:#e8edc1}
 #scratchEditor .scratch-panel #scratchFader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
