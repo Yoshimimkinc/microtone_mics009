@@ -1,26 +1,29 @@
 // @module ui/scratch-view
-// @provides SCR_FADER_PX, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC, _scratchFaderDrag, _scratchGateKey,
-//    _scratchGesture, _scratchLevel, _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF,
-//    scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchGatePaint, scratchGateRelease,
-//    scratchHandPaint, scratchHandSwap, scratchHide, scratchPadInputDown, scratchPadInputUp, scratchPeaks,
-//    scratchSetLevel, scratchShow
+// @provides SCR_FADER_ZERO, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC, _scratchFaderDrag,
+//    _scratchGateKey, _scratchGesture, _scratchLevel, _scratchPad, _scratchPadInputs, _scratchPeaks,
+//    _scratchRAF, scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt,
+//    scratchGatePaint, scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide,
+//    scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow
 // @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState, tracks
 // @depends audio/scratch-pad
 // Vertical waveform strip (v0.3.186 §174, djay-like linear scratch) and a swipe fader. Pointer capture permits a
 // second finger on the fader while the first finger holds/drags the waveform. The hands can swap sides.
-// 向きは指の自然な動き：スクラッチ＝奥（上）へ送るとフォワード・手前（下）でバック。フェーダー＝奥から手前（下）へで開く。
+// 向きは指の自然な動き：スクラッチ＝奥（上）へ送るとフォワード・手前（下）でバック。フェーダー＝触った場所まで開く（手前ほど開く）・離すと全閉。
 let _scratchRAF=0,_scratchGesture=null,_scratchPad=-1;
 const _scratchPadInputs=new Map();
-// フェーダー：下へスワイプした分だけ開く（どこを触っても跳ばない＝相対。SCR_FADER_PX で全開）、離しても残る（実物のフェーダーと同じ）。
+// フェーダー（v0.3.188 §176）：触った場所まで開き（上から 18% の線＝全閉、下端＝全開）、指でなぞれば付いてくる、離すと全閉。
+// 音は一瞬で切り替えず、素早く動かしたフェーダーのように開閉する（scratchSetFader の時定数）。
 // PC キー／MIDI のパッド・フェーダー上の Space は押している間だけ全開。
-const SCR_FADER_PX=160;
+const SCR_FADER_ZERO=.18;
 let _scratchLevel=0,_scratchFaderDrag=null,_scratchGateKey=false;
 function scratchGatePaint(){const held=_scratchGateKey||[..._scratchPadInputs.values()].includes(_scratchPad),v=held?1:_scratchLevel;scratchSetFader(v);
  const fader=document.getElementById('scratchFader'),pct=Math.round(v*100);fader.style.setProperty('--lv',String(v));fader.setAttribute('aria-valuenow',String(pct));fader.classList.toggle('open',v>0);
  document.getElementById('scratchFaderRead').textContent=v>0?'VOL '+pct+'%':'CLOSED';}
 function scratchSetLevel(v){_scratchLevel=Math.max(0,Math.min(1,+v||0));scratchGatePaint();}
-function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();_scratchFaderDrag=null;_scratchGateKey=false;scratchGatePaint();}
+// 指の高さ → 開き（線より上＝0、下端＝1）
+function scratchFaderAt(el,y){const r=el.getBoundingClientRect();return r.height?(y-r.top-r.height*SCR_FADER_ZERO)/(r.height*(1-SCR_FADER_ZERO)):0;}
+function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();if(_scratchFaderDrag){_scratchFaderDrag=null;_scratchLevel=0;}_scratchGateKey=false;scratchGatePaint();}
 // Preserve held sources across asynchronous audio startup; Note Off/key up can
 // arrive before the worklet finishes loading and must keep the gate closed.
 function scratchPadInputDown(i,id){
@@ -94,12 +97,11 @@ function scratchShow(i){
  // 左手でスクラッチ・右手でフェーダーが基本。⇄ で入れ替え（この端末に覚える）
  document.getElementById('scratchHand').addEventListener('click',()=>{const swap=!document.getElementById('scratchSurface').classList.contains('swap');try{localStorage.setItem(SCR_HAND_KEY,swap?'R':'L');}catch(_){}scratchHandPaint(swap);});
  const gate=document.getElementById('scratchFader');
- gate.addEventListener('pointerdown',e=>{if(_scratchFaderDrag)return;e.preventDefault();_scratchFaderDrag={id:e.pointerId,y:e.clientY,from:_scratchLevel};gate.setPointerCapture(e.pointerId);});
- gate.addEventListener('pointermove',e=>{const d=_scratchFaderDrag;if(!d||d.id!==e.pointerId)return;e.preventDefault();scratchSetLevel(d.from+(e.clientY-d.y)/SCR_FADER_PX);});
- const release=e=>{if(_scratchFaderDrag?.id===e.pointerId)_scratchFaderDrag=null;};
+ gate.addEventListener('pointerdown',e=>{if(_scratchFaderDrag)return;e.preventDefault();_scratchFaderDrag={id:e.pointerId};gate.setPointerCapture(e.pointerId);scratchSetLevel(scratchFaderAt(gate,e.clientY));});
+ gate.addEventListener('pointermove',e=>{const d=_scratchFaderDrag;if(!d||d.id!==e.pointerId)return;e.preventDefault();scratchSetLevel(scratchFaderAt(gate,e.clientY));});
+ const release=e=>{if(_scratchFaderDrag?.id!==e.pointerId)return;_scratchFaderDrag=null;scratchSetLevel(0);};   // 離すと全閉
  gate.addEventListener('pointerup',release);gate.addEventListener('pointercancel',release);gate.addEventListener('lostpointercapture',release);
- gate.addEventListener('keydown',e=>{if(e.code==='ArrowDown'||e.code==='ArrowUp'){e.preventDefault();e.stopPropagation();scratchSetLevel(_scratchLevel+(e.code==='ArrowDown'?.1:-.1));return;}
-  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();if(!e.repeat){_scratchGateKey=true;scratchGatePaint();}}});
+ gate.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();if(!e.repeat){_scratchGateKey=true;scratchGatePaint();}}});
  gate.addEventListener('keyup',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();_scratchGateKey=false;scratchGatePaint();}});
  gate.addEventListener('blur',scratchGateRelease);window.addEventListener('blur',scratchGateRelease);
  document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});

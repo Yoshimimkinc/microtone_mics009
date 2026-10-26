@@ -23,7 +23,7 @@
  <section class="content-panel scratch-panel">
  <div class="scratch-surface" id="scratchSurface"><button id="scratchHand" class="scratch-hand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄</button><button id="scratchClose" class="scratch-close">✕ CLOSE</button>
  <div class="scratch-strip"><canvas id="scratchDeck" tabindex="0" aria-label="スクラッチ面。奥へ送るとフォワード、手前でバック"></canvas><span class="scratch-strip-label" aria-hidden="true">▲ FWD · BACK ▼</span></div>
- <div id="scratchFader" class="scratch-fader" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="フェーダー。奥から手前へスワイプで開く"><span class="scratch-fader-fill"></span><span class="scratch-fader-hint" aria-hidden="true">スワイプ<br>↓<br>VOL UP</span><output id="scratchFaderRead">CLOSED</output></div></div>
+ <div id="scratchFader" class="scratch-fader" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="フェーダー。触った所まで開き、離すと閉じる"><span class="scratch-fader-fill"></span><span class="scratch-fader-hint" aria-hidden="true">TOUCH ↓ VOL</span><output id="scratchFaderRead">CLOSED</output></div></div>
  <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas><div class="scratch-readout"><b id="scratchTitle">SCR</b><span><b id="scratchMotion">PLAY</b> <span id="scratchPosition">0.00 s</span></span></div></div>
  <p id="scratchStatus" role="status">波形から指を離すと通常再生</p></section>
 </div>

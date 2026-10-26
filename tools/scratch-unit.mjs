@@ -26,7 +26,7 @@ message({type:'stop'});check('closing the scratch processor releases its audio t
 
 // Integration: real audio-unit open, gain routing, controls, stale-work guard.
 const gains=[],nodes=[];let shown=0,hidden=0;
-function gain(){const n={gain:{value:1,setTargetAtTime(v){this.value=v;}},connections:[],connect(to){this.connections.push(to);},disconnect(){this.disconnected=true;}};gains.push(n);return n;}
+function gain(){const n={gain:{value:1,setTargetAtTime(v,t,tau){this.value=v;this.tau=tau;}},connections:[],connect(to){this.connections.push(to);},disconnect(){this.disconnected=true;}};gains.push(n);return n;}
 const ctx={console,Math,Number,Float32Array,Promise,URL:{createObjectURL:()=> 'blob:qa',revokeObjectURL(){}},Blob,
  AC:{sampleRate:48000,currentTime:10,resume:async()=>{},audioWorklet:{addModule:async()=>{}},createGain:gain},
  AudioWorkletNode:class{constructor(ac,name,options){this.options=options;this.connections=[];this.messages=[];this.port={postMessage:m=>this.messages.push(m),close:()=>this.closed=true,onmessage:null};nodes.push(this);}connect(n){this.connections.push(n);}disconnect(){this.disconnected=true;}},
@@ -36,6 +36,7 @@ check('SCR opens the platter and resamples into the shared context rate',()=>{as
 check('SCR keeps band-limited copies for fast scratching (1/2 … 1/16)',()=>{const L=nodes[0].options.processorOptions.levels[0];assert.equal(L.length,5);assert.equal(L[1].length,2400);assert.equal(L[4].length,300);});
 const cut=gains[0],volume=gains[1];check('crossfader sits before dry and FX sends, outside the backing bus',()=>{assert.equal(cut.gain.value,0);assert.equal(nodes[0].connections[0],cut);assert.equal(cut.connections[0],volume);assert.ok(volume.connections.includes(ctx.groupBus[0]));assert.equal(volume.connections.length,3);});
 const volumeBefore=volume.gain.value;ctx.scratchSetFader(0);check('fader cuts only scratch audio',()=>{assert.equal(cut.gain.value,0);assert.equal(volume.gain.value,volumeBefore);});
+check('fader moves like a fast hand fader, not an instant switch (time constant 5–15 ms)',()=>assert.ok(cut.gain.tau>=.005&&cut.gain.tau<=.015,String(cut.gain.tau)));
 ctx.scratchSetFader(2);check('fader clamps to its valid range',()=>assert.equal(ctx.scratchState().fader,1));
 ctx.scratchHold(true);ctx.scratchDrag(-2400);ctx.scratchMotor(false);check('audio controls send independent hold, drag and motor commands',()=>assert.deepEqual(nodes[0].messages.slice(-3).map(m=>m.type),['hold','drag','motor']));
 ctx.scratchClose();check('close disconnects source, sends and fader',()=>{assert.ok(nodes[0].closed&&nodes[0].disconnected);assert.ok(gains.every(n=>n.disconnected));assert.ok(hidden>=1);});
@@ -59,12 +60,12 @@ check('pushing the strip away (up) moves forward, locked to the waveform (220 px
 cv.onpointermove(e(150,284));check('pulling toward you (down) plays backwards',()=>assert.ok(Math.abs(moves[1]+44/220*26000)<1e-6));moves.length=1;
 check('peaks are normalised per 64-frame block',()=>{const P=ui.scratchPeaks(state.wave);assert.equal(P.peak.length,Math.ceil(2600/64));assert.ok(Math.abs(Math.max(...P.peak)-1)<1e-6);});
 cv.onpointerdown(e(240,150,2));cv.onpointermove(e(150,60,2));check('second platter pointer cannot steal the held record',()=>assert.equal(moves.length,1));
-const gate=el('scratchFader');gate.listeners.pointerdown(e(0,100,2));check('touching the fader does not jump the level (relative swipe)',()=>assert.equal(state.fader,0));
-gate.listeners.pointermove(e(0,180,2));check('swiping the fader toward you (down) opens it while another pointer holds the record',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(state.fader-.5)<1e-9);assert.equal(el('scratchFaderRead').textContent,'VOL 50%');});
-gate.listeners.pointermove(e(0,400,2));check('fader clamps at fully open',()=>assert.equal(state.fader,1));
-gate.listeners.pointerup(e(0,400,2));check('releasing the fader keeps its level (like a real fader) and the platter held',()=>{assert.equal(state.dragging,true);assert.equal(state.fader,1);});
-gate.listeners.pointerdown(e(0,50,2));gate.listeners.pointermove(e(0,-200,2));gate.listeners.pointercancel(e(0,-200,2));check('swiping away (up) closes the fader',()=>{assert.equal(state.fader,0);assert.equal(el('scratchFaderRead').textContent,'CLOSED');});
-gate.listeners.keydown({code:'ArrowDown',preventDefault:noop,stopPropagation:noop});check('arrow key steps the fader',()=>assert.ok(Math.abs(state.fader-.1)<1e-9));gate.listeners.keydown({code:'ArrowUp',preventDefault:noop,stopPropagation:noop});
+const gate=el('scratchFader');   // 高さ 300：上から 18%（54px）が全閉の線、下端で全開
+gate.listeners.pointerdown(e(0,177,2));check('touching the fader opens it to that point while another pointer holds the record',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(state.fader-.5)<1e-9);assert.equal(el('scratchFaderRead').textContent,'VOL 50%');});
+gate.listeners.pointermove(e(0,400,2));check('sliding toward you follows the finger and clamps at fully open',()=>assert.equal(state.fader,1));
+gate.listeners.pointermove(e(0,20,2));check('above the line is closed',()=>assert.equal(state.fader,0));gate.listeners.pointermove(e(0,300,2));
+gate.listeners.pointerup(e(0,300,2));check('releasing the fader closes it fully, the platter stays held',()=>{assert.equal(state.dragging,true);assert.equal(state.fader,0);assert.equal(el('scratchFaderRead').textContent,'CLOSED');});
+gate.listeners.pointerdown(e(0,250,2));gate.listeners.pointercancel(e(0,250,2));check('cancelled touch cannot leave the fader open',()=>assert.equal(state.fader,0));
 const key={code:'Space',repeat:false,preventDefault:noop,stopPropagation:noop};gate.listeners.keydown(key);check('keyboard hold opens the gate',()=>assert.equal(state.fader,1));gate.listeners.keyup(key);check('keyboard release closes the gate',()=>assert.equal(state.fader,0));
 gate.listeners.keydown(key);gate.listeners.blur();check('focus loss closes a held key gate',()=>assert.equal(state.fader,0));
 cv.onpointerup(e(240,150));check('record release ends hold without resetting the fader',()=>{assert.equal(state.dragging,false);assert.equal(state.fader,0);});

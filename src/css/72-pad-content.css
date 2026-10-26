@@ -87,9 +87,9 @@
 .scratch-strip.on .scratch-strip-label{opacity:0}
 .scratch-fader{grid-area:gate;position:relative;min-height:200px;overflow:hidden;background:#141c1c;border:2px solid #83926e;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;--lv:0}
 .scratch-fader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
-.scratch-fader-fill{position:absolute;left:0;right:0;top:0;height:calc(18% + var(--lv)*(82% - 4px));background:#c0c875;opacity:.9;border-bottom:4px solid #e8edc1}   /* 閉＝上から 18% の線、手前へ開くほど線が下りる */
+.scratch-fader-fill{position:absolute;left:0;right:0;top:0;height:calc(18% + var(--lv)*(82% - 4px));background:#c0c875;opacity:.9;border-bottom:4px solid #e8edc1;transition:height 40ms ease-out,background-color 40ms}   /* 閉＝上から 18% の線、触った所まで線が下りる（音と同じく素早く動く） */
 .scratch-fader:not(.open) .scratch-fader-fill{background:transparent;border-bottom-color:#83926e}
-.scratch-fader-hint{position:absolute;left:0;right:0;top:24%;text-align:center;font-size:13px;font-weight:800;line-height:1.5;letter-spacing:.06em;color:#9aa792;pointer-events:none}
+.scratch-fader-hint{position:absolute;left:0;right:0;top:6%;text-align:center;font-size:13px;font-weight:800;line-height:1.5;letter-spacing:.06em;color:#9aa792;pointer-events:none}
 .scratch-fader.open .scratch-fader-hint{color:#18201b}
 #scratchFaderRead{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;color:#d9dfc7;pointer-events:none}
 .scratch-controls{display:flex;align-items:center;gap:8px;margin-top:10px}.scratch-controls button{flex:0 0 auto;font-size:11px;min-width:76px}
