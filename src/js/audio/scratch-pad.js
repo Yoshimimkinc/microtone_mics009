@@ -1,8 +1,8 @@
 // @module audio/scratch-pad
-// @provides _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFader, _scratchFrame,
-//    _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode, _scratchPos,
-//    _scratchSpeed, _scratchToken, _scratchWave, createScratchHead, scratchClose, scratchCue, scratchDrag,
-//    scratchFallbackNode, scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek,
+// @provides SCR_FADER_TAU, _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFader,
+//    _scratchFrame, _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode,
+//    _scratchPos, _scratchSpeed, _scratchToken, _scratchWave, createScratchHead, scratchClose, scratchCue,
+//    scratchDrag, scratchFallbackNode, scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState
 // @uses AC, GROUP_OF, dbToGain, groupBus, multiOut, outBGain, reverbPre, sampNameEl, scratchHide,
 //    scratchShow, setCur, setLevelLin, stopVoices, tapeEcho, tracks
@@ -92,7 +92,9 @@ function scratchDrag(frames,t){if(_scratchNode&&Number.isFinite(frames))_scratch
 function scratchMotor(on){_scratchMotor=!!on;if(_scratchNode)_scratchNode.port.postMessage({type:'motor',on:_scratchMotor});}
 function scratchCue(){_scratchDragging=false;_scratchFrame=0;_scratchPos=0;_scratchFrameAt=AC.currentTime;if(_scratchNode)_scratchNode.port.postMessage({type:'cue'});}
 function scratchSeek(frame){if(!_scratchNode||_scratchDragging||!Number.isFinite(frame))return;_scratchFrame=frame;_scratchFrameAt=AC.currentTime;_scratchNode.port.postMessage({type:'seek',frame});}
-function scratchSetFader(value){_scratchFader=Math.max(0,Math.min(1,+value||0));if(_scratchCut)_scratchCut.gain.setTargetAtTime(_scratchFader,AC.currentTime,.003);}
+// 一瞬で切り替えず、素早く動かしたフェーダーのように（時定数 8ms＝約 25ms でほぼ開き切る／閉じ切る。v0.3.188 §176）
+const SCR_FADER_TAU=.008;
+function scratchSetFader(value){_scratchFader=Math.max(0,Math.min(1,+value||0));if(_scratchCut){const g=_scratchCut.gain;if(g.cancelScheduledValues)g.cancelScheduledValues(AC.currentTime);g.setTargetAtTime(_scratchFader,AC.currentTime,SCR_FADER_TAU);}}
 function scratchClose(){
  _scratchToken++;
  if(_scratchNode){_scratchNode.port.postMessage({type:'stop'});_scratchNode.port.onmessage=null;_scratchNode.port.close();_scratchNode.disconnect();_scratchNode=null;}
@@ -119,5 +121,5 @@ async function scratchOpen(i){
  if(multiOut&&t.outBus==='B')gain.connect(outBGain);
  else{gain.connect(groupBus[GROUP_OF[i]]);for(const [amount,target] of [[t.delaySend||0,tapeEcho],[Math.sqrt(t.reverbSend||0),reverbPre]])if(amount>0){const send=AC.createGain();send.gain.value=amount;gain.connect(send);send.connect(target);_scratchGraph.push(send);}}
  scratchShow(i);
- document.getElementById('scratchStatus').textContent='フェーダーを手前へスワイプで音が出る（PADキー／MIDIは押している間だけ全開）'+(useWorklet?'':'（互換再生）');
+ document.getElementById('scratchStatus').textContent='フェーダーは触った所まで開き、離すと閉じる（PADキー／MIDIは押している間だけ全開）'+(useWorklet?'':'（互換再生）');
 }

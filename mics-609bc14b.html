@@ -1336,9 +1336,9 @@
 .scratch-strip.on .scratch-strip-label{opacity:0}
 .scratch-fader{grid-area:gate;position:relative;min-height:200px;overflow:hidden;background:#141c1c;border:2px solid #83926e;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;--lv:0}
 .scratch-fader:focus-visible{outline:2px solid #e8edc1;outline-offset:3px}
-.scratch-fader-fill{position:absolute;left:0;right:0;top:0;height:calc(18% + var(--lv)*(82% - 4px));background:#c0c875;opacity:.9;border-bottom:4px solid #e8edc1}   /* 閉＝上から 18% の線、手前へ開くほど線が下りる */
+.scratch-fader-fill{position:absolute;left:0;right:0;top:0;height:calc(18% + var(--lv)*(82% - 4px));background:#c0c875;opacity:.9;border-bottom:4px solid #e8edc1;transition:height 40ms ease-out,background-color 40ms}   /* 閉＝上から 18% の線、触った所まで線が下りる（音と同じく素早く動く） */
 .scratch-fader:not(.open) .scratch-fader-fill{background:transparent;border-bottom-color:#83926e}
-.scratch-fader-hint{position:absolute;left:0;right:0;top:24%;text-align:center;font-size:13px;font-weight:800;line-height:1.5;letter-spacing:.06em;color:#9aa792;pointer-events:none}
+.scratch-fader-hint{position:absolute;left:0;right:0;top:6%;text-align:center;font-size:13px;font-weight:800;line-height:1.5;letter-spacing:.06em;color:#9aa792;pointer-events:none}
 .scratch-fader.open .scratch-fader-hint{color:#18201b}
 #scratchFaderRead{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;color:#d9dfc7;pointer-events:none}
 .scratch-controls{display:flex;align-items:center;gap:8px;margin-top:10px}.scratch-controls button{flex:0 0 auto;font-size:11px;min-width:76px}
@@ -1360,7 +1360,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.187</div>
+  <div class="s-ver" id="splashVer">v0.3.188</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1615,7 +1615,7 @@
  <section class="content-panel scratch-panel">
  <div class="scratch-surface" id="scratchSurface"><button id="scratchHand" class="scratch-hand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄</button><button id="scratchClose" class="scratch-close">✕ CLOSE</button>
  <div class="scratch-strip"><canvas id="scratchDeck" tabindex="0" aria-label="スクラッチ面。奥へ送るとフォワード、手前でバック"></canvas><span class="scratch-strip-label" aria-hidden="true">▲ FWD · BACK ▼</span></div>
- <div id="scratchFader" class="scratch-fader" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="フェーダー。奥から手前へスワイプで開く"><span class="scratch-fader-fill"></span><span class="scratch-fader-hint" aria-hidden="true">スワイプ<br>↓<br>VOL UP</span><output id="scratchFaderRead">CLOSED</output></div></div>
+ <div id="scratchFader" class="scratch-fader" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="フェーダー。触った所まで開き、離すと閉じる"><span class="scratch-fader-fill"></span><span class="scratch-fader-hint" aria-hidden="true">TOUCH ↓ VOL</span><output id="scratchFaderRead">CLOSED</output></div></div>
  <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas><div class="scratch-readout"><b id="scratchTitle">SCR</b><span><b id="scratchMotion">PLAY</b> <span id="scratchPosition">0.00 s</span></span></div></div>
  <p id="scratchStatus" role="status">波形から指を離すと通常再生</p></section>
 </div>
@@ -7152,10 +7152,10 @@ const SPLASH_PATS=(()=>{ const P=[0,1,2,3].map(()=>Array.from({length:16},()=>[]
   cycle(0);
 })();
 // @module audio/scratch-pad
-// @provides _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFader, _scratchFrame,
-//    _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode, _scratchPos,
-//    _scratchSpeed, _scratchToken, _scratchWave, createScratchHead, scratchClose, scratchCue, scratchDrag,
-//    scratchFallbackNode, scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek,
+// @provides SCR_FADER_TAU, _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFader,
+//    _scratchFrame, _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode,
+//    _scratchPos, _scratchSpeed, _scratchToken, _scratchWave, createScratchHead, scratchClose, scratchCue,
+//    scratchDrag, scratchFallbackNode, scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState
 // @uses AC, GROUP_OF, dbToGain, groupBus, multiOut, outBGain, reverbPre, sampNameEl, scratchHide,
 //    scratchShow, setCur, setLevelLin, stopVoices, tapeEcho, tracks
@@ -7245,7 +7245,9 @@ function scratchDrag(frames,t){if(_scratchNode&&Number.isFinite(frames))_scratch
 function scratchMotor(on){_scratchMotor=!!on;if(_scratchNode)_scratchNode.port.postMessage({type:'motor',on:_scratchMotor});}
 function scratchCue(){_scratchDragging=false;_scratchFrame=0;_scratchPos=0;_scratchFrameAt=AC.currentTime;if(_scratchNode)_scratchNode.port.postMessage({type:'cue'});}
 function scratchSeek(frame){if(!_scratchNode||_scratchDragging||!Number.isFinite(frame))return;_scratchFrame=frame;_scratchFrameAt=AC.currentTime;_scratchNode.port.postMessage({type:'seek',frame});}
-function scratchSetFader(value){_scratchFader=Math.max(0,Math.min(1,+value||0));if(_scratchCut)_scratchCut.gain.setTargetAtTime(_scratchFader,AC.currentTime,.003);}
+// 一瞬で切り替えず、素早く動かしたフェーダーのように（時定数 8ms＝約 25ms でほぼ開き切る／閉じ切る。v0.3.188 §176）
+const SCR_FADER_TAU=.008;
+function scratchSetFader(value){_scratchFader=Math.max(0,Math.min(1,+value||0));if(_scratchCut){const g=_scratchCut.gain;if(g.cancelScheduledValues)g.cancelScheduledValues(AC.currentTime);g.setTargetAtTime(_scratchFader,AC.currentTime,SCR_FADER_TAU);}}
 function scratchClose(){
  _scratchToken++;
  if(_scratchNode){_scratchNode.port.postMessage({type:'stop'});_scratchNode.port.onmessage=null;_scratchNode.port.close();_scratchNode.disconnect();_scratchNode=null;}
@@ -7272,31 +7274,34 @@ async function scratchOpen(i){
  if(multiOut&&t.outBus==='B')gain.connect(outBGain);
  else{gain.connect(groupBus[GROUP_OF[i]]);for(const [amount,target] of [[t.delaySend||0,tapeEcho],[Math.sqrt(t.reverbSend||0),reverbPre]])if(amount>0){const send=AC.createGain();send.gain.value=amount;gain.connect(send);send.connect(target);_scratchGraph.push(send);}}
  scratchShow(i);
- document.getElementById('scratchStatus').textContent='フェーダーを手前へスワイプで音が出る（PADキー／MIDIは押している間だけ全開）'+(useWorklet?'':'（互換再生）');
+ document.getElementById('scratchStatus').textContent='フェーダーは触った所まで開き、離すと閉じる（PADキー／MIDIは押している間だけ全開）'+(useWorklet?'':'（互換再生）');
 }
 // @module ui/scratch-view
-// @provides SCR_FADER_PX, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC, _scratchFaderDrag, _scratchGateKey,
-//    _scratchGesture, _scratchLevel, _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF,
-//    scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchGatePaint, scratchGateRelease,
-//    scratchHandPaint, scratchHandSwap, scratchHide, scratchPadInputDown, scratchPadInputUp, scratchPeaks,
-//    scratchSetLevel, scratchShow
+// @provides SCR_FADER_ZERO, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC, _scratchFaderDrag,
+//    _scratchGateKey, _scratchGesture, _scratchLevel, _scratchPad, _scratchPadInputs, _scratchPeaks,
+//    _scratchRAF, scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt,
+//    scratchGatePaint, scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide,
+//    scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow
 // @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState, tracks
 // @depends audio/scratch-pad
 // Vertical waveform strip (v0.3.186 §174, djay-like linear scratch) and a swipe fader. Pointer capture permits a
 // second finger on the fader while the first finger holds/drags the waveform. The hands can swap sides.
-// 向きは指の自然な動き：スクラッチ＝奥（上）へ送るとフォワード・手前（下）でバック。フェーダー＝奥から手前（下）へで開く。
+// 向きは指の自然な動き：スクラッチ＝奥（上）へ送るとフォワード・手前（下）でバック。フェーダー＝触った場所まで開く（手前ほど開く）・離すと全閉。
 let _scratchRAF=0,_scratchGesture=null,_scratchPad=-1;
 const _scratchPadInputs=new Map();
-// フェーダー：下へスワイプした分だけ開く（どこを触っても跳ばない＝相対。SCR_FADER_PX で全開）、離しても残る（実物のフェーダーと同じ）。
+// フェーダー（v0.3.188 §176）：触った場所まで開き（上から 18% の線＝全閉、下端＝全開）、指でなぞれば付いてくる、離すと全閉。
+// 音は一瞬で切り替えず、素早く動かしたフェーダーのように開閉する（scratchSetFader の時定数）。
 // PC キー／MIDI のパッド・フェーダー上の Space は押している間だけ全開。
-const SCR_FADER_PX=160;
+const SCR_FADER_ZERO=.18;
 let _scratchLevel=0,_scratchFaderDrag=null,_scratchGateKey=false;
 function scratchGatePaint(){const held=_scratchGateKey||[..._scratchPadInputs.values()].includes(_scratchPad),v=held?1:_scratchLevel;scratchSetFader(v);
  const fader=document.getElementById('scratchFader'),pct=Math.round(v*100);fader.style.setProperty('--lv',String(v));fader.setAttribute('aria-valuenow',String(pct));fader.classList.toggle('open',v>0);
  document.getElementById('scratchFaderRead').textContent=v>0?'VOL '+pct+'%':'CLOSED';}
 function scratchSetLevel(v){_scratchLevel=Math.max(0,Math.min(1,+v||0));scratchGatePaint();}
-function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();_scratchFaderDrag=null;_scratchGateKey=false;scratchGatePaint();}
+// 指の高さ → 開き（線より上＝0、下端＝1）
+function scratchFaderAt(el,y){const r=el.getBoundingClientRect();return r.height?(y-r.top-r.height*SCR_FADER_ZERO)/(r.height*(1-SCR_FADER_ZERO)):0;}
+function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();if(_scratchFaderDrag){_scratchFaderDrag=null;_scratchLevel=0;}_scratchGateKey=false;scratchGatePaint();}
 // Preserve held sources across asynchronous audio startup; Note Off/key up can
 // arrive before the worklet finishes loading and must keep the gate closed.
 function scratchPadInputDown(i,id){
@@ -7370,12 +7375,11 @@ function scratchShow(i){
  // 左手でスクラッチ・右手でフェーダーが基本。⇄ で入れ替え（この端末に覚える）
  document.getElementById('scratchHand').addEventListener('click',()=>{const swap=!document.getElementById('scratchSurface').classList.contains('swap');try{localStorage.setItem(SCR_HAND_KEY,swap?'R':'L');}catch(_){}scratchHandPaint(swap);});
  const gate=document.getElementById('scratchFader');
- gate.addEventListener('pointerdown',e=>{if(_scratchFaderDrag)return;e.preventDefault();_scratchFaderDrag={id:e.pointerId,y:e.clientY,from:_scratchLevel};gate.setPointerCapture(e.pointerId);});
- gate.addEventListener('pointermove',e=>{const d=_scratchFaderDrag;if(!d||d.id!==e.pointerId)return;e.preventDefault();scratchSetLevel(d.from+(e.clientY-d.y)/SCR_FADER_PX);});
- const release=e=>{if(_scratchFaderDrag?.id===e.pointerId)_scratchFaderDrag=null;};
+ gate.addEventListener('pointerdown',e=>{if(_scratchFaderDrag)return;e.preventDefault();_scratchFaderDrag={id:e.pointerId};gate.setPointerCapture(e.pointerId);scratchSetLevel(scratchFaderAt(gate,e.clientY));});
+ gate.addEventListener('pointermove',e=>{const d=_scratchFaderDrag;if(!d||d.id!==e.pointerId)return;e.preventDefault();scratchSetLevel(scratchFaderAt(gate,e.clientY));});
+ const release=e=>{if(_scratchFaderDrag?.id!==e.pointerId)return;_scratchFaderDrag=null;scratchSetLevel(0);};   // 離すと全閉
  gate.addEventListener('pointerup',release);gate.addEventListener('pointercancel',release);gate.addEventListener('lostpointercapture',release);
- gate.addEventListener('keydown',e=>{if(e.code==='ArrowDown'||e.code==='ArrowUp'){e.preventDefault();e.stopPropagation();scratchSetLevel(_scratchLevel+(e.code==='ArrowDown'?.1:-.1));return;}
-  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();if(!e.repeat){_scratchGateKey=true;scratchGatePaint();}}});
+ gate.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();if(!e.repeat){_scratchGateKey=true;scratchGatePaint();}}});
  gate.addEventListener('keyup',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();e.stopPropagation();_scratchGateKey=false;scratchGatePaint();}});
  gate.addEventListener('blur',scratchGateRelease);window.addEventListener('blur',scratchGateRelease);
  document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});
@@ -7734,7 +7738,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.187";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.188";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

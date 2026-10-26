@@ -85,8 +85,8 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
    for(let k=1;k<=8;k++){await p.mouse.move(deck.x+deck.width-20,deck.y+deck.height/2+k*12);await p.waitForTimeout(16);}await p.waitForTimeout(150);
    const f1=await p.evaluate(()=>[scratchState().frame,scratchState().dragging]);await p.mouse.up();
    ok_(`${label} SCR 面の端でも掴める・手前へ引くと戻る`,f1[1]===true&&f1[0]<f0-500,JSON.stringify({f0,f1}));
-   await p.mouse.move(gate.x+gate.width/2,gate.y+40);await p.mouse.down();await p.mouse.move(gate.x+gate.width/2,gate.y+120,{steps:4});await p.mouse.up();
-   ok_(`${label} フェーダーを手前へスワイプで開き、離しても残る`,await p.evaluate(()=>scratchState().fader)>.45,String(await p.evaluate(()=>scratchState().fader)));
+   await p.mouse.move(gate.x+gate.width/2,gate.y+gate.height*.59);await p.mouse.down();await p.waitForTimeout(60);const fo=await p.evaluate(()=>scratchState().fader);await p.mouse.up();await p.waitForTimeout(60);const fc=await p.evaluate(()=>scratchState().fader);
+   ok_(`${label} フェーダーは触った所まで開き（真ん中≒50%）、離すと全閉`,Math.abs(fo-.5)<.06&&fc===0,JSON.stringify({fo,fc}));
    await p.click('#scratchHand');const g2=await p.locator('#scratchFader').boundingBox(),d2=await p.locator('#scratchDeck').boundingBox();
    ok_(`${label} ⇄ でフェーダーが左へ`,g2.x<d2.x,JSON.stringify({g2,d2}));
    eq(`${label} 左右入替を端末に覚える`,await p.evaluate(()=>localStorage.getItem('mics.scrHand')),'R');await p.click('#scratchHand');}
