@@ -21,6 +21,12 @@ for(let k=0;k<800;k++)out();check('the thrown record settles back to motor speed
   m({type:'hold',on:true});for(let k=0;k<40;k++)o();m({type:'hold',on:false,wind});for(let k=0;k<6;k++)o();return h.head.vel;};
  const top=rise(.03),bottom=rise(.24),plain=rise(undefined);
  check('releasing near the top restarts faster than near the bottom',()=>{assert.ok(top>bottom*2,JSON.stringify({top,bottom}));assert.ok(top<=1&&bottom>0);assert.ok(plain>bottom&&plain<top,String(plain));});}
+// v0.3.191 引いて離す＝引いた分だけ 1 倍より速く飛び出し、1 倍へ戻る
+{const h=new registered({processorOptions:{data}}),o=()=>h.process([],[[new Float32Array(128)]]),m=x=>h.port.onmessage({data:x});
+ m({type:'hold',on:true});for(let k=0;k<40;k++)o();m({type:'hold',on:false,wind:.03,kick:1.5});let peak=0;for(let k=0;k<60;k++){o();peak=Math.max(peak,h.head.vel);}for(let k=0;k<900;k++)o();
+ check('pulling back then releasing launches faster than motor speed, then settles to 1x',()=>{assert.ok(peak>1.8&&peak<2.5,String(peak));assert.equal(h.head.vel,1);assert.equal(h.head.kick,0);});
+ const g=new registered({processorOptions:{data}}),go=()=>g.process([],[[new Float32Array(128)]]);g.port.onmessage({data:{type:'motor',on:false}});g.port.onmessage({data:{type:'hold',on:true}});for(let k=0;k<40;k++)go();g.port.onmessage({data:{type:'hold',on:false,kick:2}});for(let k=0;k<300;k++)go();
+ check('with the motor paused a pull does not launch the record',()=>assert.equal(g.head.vel,0));}
 message({type:'motor',on:false});for(let k=0;k<200;k++)block=out();const paused=head.head.pos;block=out();check('paused motor brakes to a stop and emits silence without DC',()=>{assert.equal(head.head.pos,paused);assert.ok(block.samples.every(x=>x===0));});
 message({type:'hold',on:true});message({type:'drag',delta:200});block=out();check('manual scratching works while motor is paused',()=>assert.ok(block.samples.some(x=>Math.abs(x)>.001)));
 message({type:'hold',on:false});out();check('release respects paused motor state',()=>assert.equal(head.head.motor,false));
@@ -79,6 +85,9 @@ const key={code:'Space',repeat:false,preventDefault:noop,stopPropagation:noop};g
 gate.listeners.keydown(key);gate.listeners.blur();check('focus loss closes a held key gate',()=>assert.equal(state.fader,0));
 cv.onpointerup(e(240,150));check('record release ends hold without resetting the fader',()=>{assert.equal(state.dragging,false);assert.equal(state.fader,0);});
 cv.onpointerdown(e(150,10,9));cv.onpointerup(e(150,10,9));const wTop=state.wind;cv.onpointerdown(e(150,290,9));cv.onpointerup(e(150,290,9));const wBottom=state.wind;
+check('kick grows with the pulled distance (2x per second, capped at +2)',()=>{assert.equal(ui.scratchSlingKick(-.3),0);assert.equal(ui.scratchSlingKick(.25),.5);assert.equal(ui.scratchSlingKick(3),2);});
+{const kicks=[];const hold=ui.scratchHold;ui.scratchHold=(on,w,k)=>{hold(on,w);kicks.push(k);};cv.onpointerdown(e(150,150,8));cv.onpointerup(e(150,250,8));cv.onpointerdown(e(150,150,8));cv.onpointerup(e(150,60,8));cv.onpointerdown(e(150,150,8));cv.onpointercancel({...e(150,280,8),type:'pointercancel'});ui.scratchHold=hold;
+ check('pulling toward you and releasing passes a kick from the pulled audio length; pushing away or a cancel does not',()=>{assert.ok(Math.abs(kicks[1]-ui.scratchSlingKick(T(250)-T(150)))<1e-9&&kicks[1]>0,String(kicks));assert.equal(kicks[3],0);assert.equal(kicks[5],0);});}
 check('the release height sets the restart: top 0.03 s, bottom 0.24 s',()=>{assert.ok(Math.abs(wTop-.03*8**(10/300))<1e-9);assert.ok(Math.abs(wBottom-.03*8**(290/300))<1e-9);assert.ok(wTop<wBottom);});
 const ov=el('scratchOverview');ov.onpointerdown(e(75,10,3));check('tapping the overview seeks to that point',()=>assert.ok(Math.abs(seeks[0]-.25*2599)<1e-6));ov.onpointerup(e(75,10,3));
 el('scratchHand').listeners.click();check('hand swap moves the fader to the left side',()=>{assert.equal(el('scratchSurface').classList.contains('swap'),true);assert.equal(el('scratchHand')['aria-pressed'],'true');});el('scratchHand').listeners.click();check('hand swap toggles back',()=>assert.equal(el('scratchSurface').classList.contains('swap'),false));

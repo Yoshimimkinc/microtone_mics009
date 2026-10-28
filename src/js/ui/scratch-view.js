@@ -1,10 +1,11 @@
 // @module ui/scratch-view
 // @provides SCR_FADER_KEY_TRAVEL, SCR_FADER_ZERO, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC,
-//    SCR_SENS_RANGE, SCR_WIND_RANGE, SCR_WIND_TOP, _scratchFaderDrag, _scratchGateKey, _scratchGesture,
-//    _scratchHeldWas, _scratchLevel, _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF,
-//    scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt, scratchGatePaint,
-//    scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide, scratchPadInputDown,
-//    scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchStripTime, scratchWindAt
+//    SCR_SENS_RANGE, SCR_SLING_MAX, SCR_SLING_PER_SEC, SCR_WIND_RANGE, SCR_WIND_TOP, _scratchFaderDrag,
+//    _scratchGateKey, _scratchGesture, _scratchHeldWas, _scratchLevel, _scratchPad, _scratchPadInputs,
+//    _scratchPeaks, _scratchRAF, scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt,
+//    scratchGatePaint, scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide,
+//    scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchSlingKick,
+//    scratchStripTime, scratchWindAt
 // @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState, tracks
 // @depends audio/scratch-pad
@@ -44,6 +45,9 @@ const SCR_PX_PER_SEC=220,SCR_PEAK_BLOCK=64,SCR_HAND_KEY='mics.scrHand';
 const SCR_SENS_RANGE=4;
 // 離した高さ → 再生の立ち上がり（v0.3.190 §178「指を離すとこが上の方が再生の立ち上がりも早い」）：上端 0.03 秒・まん中 約 0.085 秒・下端 0.24 秒（指数で連続）
 const SCR_WIND_TOP=.03,SCR_WIND_RANGE=8;
+// 引いた距離 → 離した時の飛び出し（v0.3.191 §179「スクラッチ再生速度は、引いた距離も影響が出るように」）：掴んだ所から手前へ引いた音の長さ 1 秒につき +2 倍（最大 +2＝3 倍）、0.25 秒で 1 倍へ
+const SCR_SLING_PER_SEC=2,SCR_SLING_MAX=2;
+function scratchSlingKick(pulledSec){return Math.max(0,Math.min(SCR_SLING_MAX,(pulledSec||0)*SCR_SLING_PER_SEC));}
 function scratchWindAt(y,h){return SCR_WIND_TOP*SCR_WIND_RANGE**Math.max(0,Math.min(1,h?y/h:.5));}
 function scratchStripTime(y,h){const a=Math.log(SCR_SENS_RANGE)/Math.max(1,h),d=y-h/2;return (1-Math.exp(-a*d))/(a*SCR_PX_PER_SEC);}
 let _scratchPeaks=null;
@@ -95,7 +99,7 @@ function scratchShow(i){
  const at=e=>{const r=cv.getBoundingClientRect();return scratchStripTime(e.clientY-r.top,r.height);};
  cv.onpointerdown=e=>{if(_scratchGesture)return;e.preventDefault();_scratchGesture={id:e.pointerId,t:at(e)};cv.setPointerCapture(e.pointerId);scratchHold(true);};
  cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();scratchDrag((g.t-at(e))*scratchState().rate,e.timeStamp);};
- cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;_scratchGesture=null;const r=cv.getBoundingClientRect();scratchHold(false,scratchWindAt(e.clientY-r.top,r.height));};
+ cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;const g=_scratchGesture;_scratchGesture=null;const r=cv.getBoundingClientRect();scratchHold(false,scratchWindAt(e.clientY-r.top,r.height),e.type==='pointercancel'?0:scratchSlingKick(at(e)-g.t));};   // 手前へ引いた分（音の秒）だけ飛び出す
  // 全体の波形：押した所・なぞった所へ移る
  let seeking=null;const seek=e=>{const r=ov.getBoundingClientRect(),st=scratchState();if(!st.wave||!r.width)return;scratchSeek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(st.wave.length-1));};
  ov.onpointerdown=e=>{if(seeking!=null)return;e.preventDefault();seeking=e.pointerId;ov.setPointerCapture(e.pointerId);seek(e);};
