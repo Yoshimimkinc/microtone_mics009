@@ -1,7 +1,7 @@
 // @module data/set
-// @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet, resetSet, setElapsed,
-//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
+// @provides DEFAULT_KIT, SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart,
+//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet,
+//    resetSet, setElapsed, setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
@@ -17,13 +17,14 @@
 let _setStart=0;   // いまのセットが始まった時刻（performance.now）。経過表示用
 const SET_TRACK_DEFAULT={vol:-4,tune:0,scale:"off",start:0,end:1,loop:false,loopStart:0,filter:"off",cutoff:12000,reso:0.7,attack:0,fade:3,delaySend:0,reverbSend:0,outBus:"A",midiNote:null,key:null,choke:0,mute:false,solo:false};
 function _emptyPatterns(){ return Array.from({length:4},()=>Array.from({length:4},()=>new Array(STEPS).fill(0))); }
-// 既定のキット（1-8 空、9-16 プリセット）の 1 トラック snapshot
+// 既定のキット（1-7 空、8 スクラッチ用サイン波〔SCR、v0.3.192 §180〕、9-16 プリセット）の 1 トラック snapshot
+const DEFAULT_KIT={7:["SCR SINE","scrsine"],8:["KICK","kick"],9:["SNARE","snare"],10:["HAT","hat"],11:["OHAT","ohat"],12:["CLAP","clap"],13:["RIM","rim"],14:["TOM","tom"],15:["SINBASS","sinbass"]};
 function _defaultTrackSnap(i){
-  const p=PADS[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
-  const synth = i>=8 && pr;
+  const p=PADS[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i], kit=DEFAULT_KIT[i];
+  const synth = !!(kit && pr);
   return Object.assign({}, SET_TRACK_DEFAULT, {
-    name: synth ? (["KICK","SNARE","HAT","OHAT","CLAP","RIM","TOM","SINBASS"][i-8]||p.name) : ("PAD "+(i+1)),
-    type: synth ? "synth" : "empty", voice: synth ? ["kick","snare","hat","ohat","clap","rim","tom","sinbass"][i-8] : null,
+    name: synth ? kit[0] : (p&&p.type==="empty"&&p.name)||("PAD "+(i+1)),
+    type: synth ? "synth" : "empty", voice: synth ? kit[1] : null, padKind: (synth && kit[1]==="scrsine") ? "SCR" : "SPL",
     buffer: synth ? pr.buf : null, rawBuffer: synth ? pr.raw : null,
     start: synth ? pr.start : 0, end: synth ? pr.end : 1, loop: synth ? pr.loop : false, loopStart: synth ? pr.loopStart : 0,
     choke: (synth && (i===10||i===11)) ? 1 : 0, scale: (synth && i===15) ? "chro" : "off",

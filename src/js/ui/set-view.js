@@ -1,10 +1,10 @@
 // @module ui/set-view
 // @provides _clPagePrev, _setIn, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, paintSetMap,
 //    setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp, setPadUpAll
-// @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel, focusSet,
-//    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setElapsed,
-//    setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots, sideStop,
-//    sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel,
+//    focusSet, isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur,
+//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
+//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -48,7 +48,7 @@ function _setInfo(k){   // 表示用：いまのセットは live から、他�
   if(k===setCur) return {name:setName(k), bpm:bpmVal, has:[0,1,2,3].map(p=>_snapPatHas(tracks,p)), fresh:false};
   const s=setSlots[k]; if(!s) return {name:"SET "+(k+1), bpm:100, has:[false,false,false,false], fresh:true};
   const has=[0,1,2,3].map(p=>_snapPatHas(s.tracks,p));
-  const fresh=!has.some(Boolean) && s.tracks.every((t,i)=> i>=8 ? true : !t.buffer);   // 打ち込みも音も無い＝既定のまま
+  const fresh=!has.some(Boolean) && s.tracks.every((t,i)=> i>=8 || !t.buffer || (typeof PRESET_BUFS!=="undefined" && PRESET_BUFS[i] && t.buffer===PRESET_BUFS[i].buf));   // 打ち込みも音も無い（8 番のサイン波は既定の音のまま）＝既定のまま
   return {name:s.name, bpm:s.bpm, has, fresh};
 }
 function paintSet(){

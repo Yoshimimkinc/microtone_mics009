@@ -1,9 +1,18 @@
 // @module presets
-// @provides PRESET_BUFS, contentEnd, loadPresets, renderPreset
+// @provides PRESET_BUFS, contentEnd, loadPresets, renderPreset, renderScratchSine
 // @uses AC, PADS, makeLofi, tracks
 // @depends -
 // ===== プリセット音をオフラインで生成して各パッドに焼き込む =====
+// スクラッチ用のサイン波（v0.3.192 §180「スクラッチに使える C3 くらいの音程のサイン波」）：C3≈130.81Hz・約 2 秒・一定の振幅。
+// 周期が整数個ちょうどで終わる長さにする＝スクラッチの面がループしても継ぎ目でプツらない
+function renderScratchSine(){
+  const sr=AC.sampleRate, f=130.81, cycles=Math.round(f*2), len=Math.round(cycles*sr/f);
+  const b=AC.createBuffer(1,len,sr), d=b.getChannelData(0);
+  for(let n=0;n<len;n++) d[n]=0.7*Math.sin(2*Math.PI*cycles*n/len);
+  return b;
+}
 async function renderPreset(voice){
+  if(voice==="scrsine") return renderScratchSine();
   const dur = 1.2, sr = AC.sampleRate;
   const off = new OfflineAudioContext(1, Math.ceil(sr*dur), sr);
   const out = off.destination;
@@ -74,7 +83,7 @@ function contentEnd(buf){
   let last=0; for(let k=n-1;k>=0;k--){ if(Math.abs(d[k])>thr){ last=k; break; } }
   return Math.max(0.05, Math.min(1, last/n + 0.03));   // 少し余白
 }
-// プリセット（synth 9-16）の音と既定値。セットの初期化と、audio を同梱しない .mics の復元に使う（v0.3.144 §145）
+// プリセット（synth 8〔SCR SINE〕・9-16）の音と既定値。セットの初期化と、audio を同梱しない .mics の復元に使う（v0.3.144 §145）
 const PRESET_BUFS=[];
 async function loadPresets(){
   // 順次awaitせず全プリセットを並列生成→ブート高速化
@@ -91,6 +100,7 @@ async function loadPresets(){
         tracks[i].loopStart=Math.min(0.9,(8*per)/dur);
         tracks[i].end=Math.min(1,(24*per)/dur);
       }
+      if(p.voice==="scrsine"){ tracks[i].start=0; tracks[i].end=1; tracks[i].loop=true; tracks[i].loopStart=0; tracks[i].padKind="SCR"; }   // 全体が整数周期＝そのままループ
       PRESET_BUFS[i]={raw, buf:tracks[i].buffer, start:tracks[i].start, end:tracks[i].end, loop:tracks[i].loop, loopStart:tracks[i].loopStart};
     }catch(e){console.warn("preset fail",i,e);}
   }));

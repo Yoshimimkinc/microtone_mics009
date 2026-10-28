@@ -6,7 +6,15 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`);await ready(p);
   const label=`CONTENT ${w}`;
   const initial=await p.evaluate(()=>({kind:padKind(tracks[8]),source:tracks[8].buffer.length,fx:[...document.querySelectorAll('#perfPlk [data-lock]:not(.perf-mode),#perfMute')].map(b=>b.dataset.lock)}));
-  eq(`${label} 既存パッドはSPL`,initial.kind,'SPL');eq(`${label} FX列`,initial.fx,['mute','filter','delay','reverb']);
+  eq(`${label} 既存パッドはSPL`,initial.kind,'SPL');
+  // v0.3.192 §180：新しいセットの 8 番（演奏画面の右上）はスクラッチ用の C3 サイン波（SCR）。ループの継ぎ目で途切れない・保存に音を同梱しない。起動デモの SET 1 はファイルどおり
+  const sine=await p.evaluate(async()=>{const pr=PRESET_BUFS[7],d=pr.raw.getChannelData(0),sr=pr.raw.sampleRate;let up=0;for(let n=1;n<d.length;n++)if(d[n-1]<0&&d[n]>=0)up++;
+    const hz=up/(d.length/sr),step=2*Math.PI*130.81/sr*.7,seam=Math.abs(d[0]-d[d.length-1]),demo=[tracks[7].name,padKind(tracks[7])];
+    const back=setCur,k=(back+5)%16;focusSet(k);await new Promise(r=>setTimeout(r,50));const t=tracks[7],saved=buildProject().sets[k].tracks[7];
+    const out={hz,seam,step,dur:pr.raw.duration,demo,set:[padKind(t),t.name,t.loop,t.buffer===pr.buf,document.querySelectorAll('#pads .pad')[7].dataset.kind],saved:[saved.padKind,saved.type,saved.voice,saved.audio||null]};
+    focusSet(back);await new Promise(r=>setTimeout(r,50));out.back=tracks[7].name;return out;});
+  ok_(`${label} 新しいセットの 8 番は C3 のサイン波の SCR パッド（約 2 秒・ループの継ぎ目で途切れない）`,Math.abs(sine.hz-130.81)<1.5&&sine.seam<=sine.step*1.01&&sine.dur>1.9&&sine.dur<2.1&&JSON.stringify(sine.set)==='["SCR","SCR SINE",true,true,"SCR"]',JSON.stringify(sine));
+  eq(`${label} 保存に音を同梱しない・起動デモの 8 番はそのまま`,[sine.saved,sine.back===sine.demo[0]],[['SCR','synth','scrsine',null],true]);
   // Real pointer swipes use the same row on phone and desktop. No FX/modal
   // or pattern tap may leak through the gesture; explicit pattern tap still works.
   const fxRow=mobile?'.msbar':'#perfPlk';
