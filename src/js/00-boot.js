@@ -11,6 +11,7 @@ const STEPS = 16;
 // --- pad definitions: 8 synth voices + 8 empty sample slots ---
 const PADS = [
   // 上段(1-8)＝サンプル枠（空）／下段(9-16)＝デフォルトのドラム音。番号は左上から自然順。
+  // 8 番（演奏画面では右上）は v0.3.192 から、新しいセットではスクラッチ用の C3 サイン波（SCR パッド、§180）。起動デモ（default.mics）の SET 1 はファイルどおり
   {name:"PAD 1", type:"empty"},
   {name:"PAD 2", type:"empty"},
   {name:"PAD 3", type:"empty"},
@@ -18,7 +19,7 @@ const PADS = [
   {name:"PAD 5", type:"empty"},
   {name:"PAD 6", type:"empty"},
   {name:"PAD 7", type:"empty"},
-  {name:"PAD 8", type:"empty"},
+  {name:"SCR SINE", type:"synth", voice:"scrsine"},
   {name:"KICK", type:"synth", voice:"kick"},
   {name:"SNARE",type:"synth", voice:"snare"},
   {name:"HAT",  type:"synth", voice:"hat"},

@@ -20,7 +20,7 @@ Ships as a single HTML file (`mics-609bc14b.html`), zero external dependencies. 
 - `AudioContext` with `latencyHint:"interactive"` for minimum latency
 - All samples are 12-bit quantized + 26kHz sample rate (SP-1200 emulation) via `makeLofi()`
 - Pitch shift uses drop-sample (nearest-neighbour) resampling baked to a buffer played at `rate=1.0` (`pitchBufferNN`) → SP-style aliasing/grit instead of clean browser interpolation. Only the region being played (START..END, incl. loop start) is baked (`getPitchedRegion`, v0.3.169 §163), and positions come from the source frames, so changing pitch never moves START on long samples
-- Presets are synthesized at startup via `OfflineAudioContext` then baked as samples
+- Presets are synthesized at startup via `OfflineAudioContext` then baked as samples. The default kit of a **new set** also has a scratch sine on pad 8 (top-right on the performance screen): C3 ≈130.81 Hz, ~2 s, integer cycles so it loops seamlessly, `padKind:"SCR"` (v0.3.192 §180, `renderScratchSine` / `DEFAULT_KIT`). The startup demo `default.mics` (SET 1) is left as the file has it
 - Every pad plays the same way: `AudioBufferSourceNode` → filter(optional) → gain envelope → groupBus → SP channel filter → masterGain
 - **SP channel filter = SSM2044 model** (`SP_CH`/`ssmNode`, v0.2.29): the SP-1200's per-output SSM2044 (4-pole OTA lowpass VCF) modeled as an **AudioWorklet** (`ssm-2044`): nonlinear ladder = 4 cascaded one-pole stages + resonance feedback, `tanh` saturation per stage (OTA character), 2× oversampling. One instance per group bus. Cutoff/reso/drive per group via `SP_CH`; sample groups (g0/g1) bright (high cutoff/low res), drum groups (g2/g3) rounded; g2 gets a per-hit dynamic cutoff envelope (`spDynOpen`). Graceful **biquad fallback** (`grpBiquad`) when AudioWorklet is unavailable. Stable output stage `grpOut[g]→masterGain` lets the filter impl swap without re-wiring. Runtime toggle in menu (default ON) via `applySpChFilter()`.
 
@@ -150,7 +150,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.191
+MICS009 beta v0.3.192
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は

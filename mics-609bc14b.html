@@ -1360,7 +1360,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.191</div>
+  <div class="s-ver" id="splashVer">v0.3.192</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1780,6 +1780,7 @@ const STEPS = 16;
 // --- pad definitions: 8 synth voices + 8 empty sample slots ---
 const PADS = [
   // 上段(1-8)＝サンプル枠（空）／下段(9-16)＝デフォルトのドラム音。番号は左上から自然順。
+  // 8 番（演奏画面では右上）は v0.3.192 から、新しいセットではスクラッチ用の C3 サイン波（SCR パッド、§180）。起動デモ（default.mics）の SET 1 はファイルどおり
   {name:"PAD 1", type:"empty"},
   {name:"PAD 2", type:"empty"},
   {name:"PAD 3", type:"empty"},
@@ -1787,7 +1788,7 @@ const PADS = [
   {name:"PAD 5", type:"empty"},
   {name:"PAD 6", type:"empty"},
   {name:"PAD 7", type:"empty"},
-  {name:"PAD 8", type:"empty"},
+  {name:"SCR SINE", type:"synth", voice:"scrsine"},
   {name:"KICK", type:"synth", voice:"kick"},
   {name:"SNARE",type:"synth", voice:"snare"},
   {name:"HAT",  type:"synth", voice:"hat"},
@@ -3153,11 +3154,20 @@ function trigger(i, time, accent=false){
 }
 
 // @module presets
-// @provides PRESET_BUFS, contentEnd, loadPresets, renderPreset
+// @provides PRESET_BUFS, contentEnd, loadPresets, renderPreset, renderScratchSine
 // @uses AC, PADS, makeLofi, tracks
 // @depends -
 // ===== プリセット音をオフラインで生成して各パッドに焼き込む =====
+// スクラッチ用のサイン波（v0.3.192 §180「スクラッチに使える C3 くらいの音程のサイン波」）：C3≈130.81Hz・約 2 秒・一定の振幅。
+// 周期が整数個ちょうどで終わる長さにする＝スクラッチの面がループしても継ぎ目でプツらない
+function renderScratchSine(){
+  const sr=AC.sampleRate, f=130.81, cycles=Math.round(f*2), len=Math.round(cycles*sr/f);
+  const b=AC.createBuffer(1,len,sr), d=b.getChannelData(0);
+  for(let n=0;n<len;n++) d[n]=0.7*Math.sin(2*Math.PI*cycles*n/len);
+  return b;
+}
 async function renderPreset(voice){
+  if(voice==="scrsine") return renderScratchSine();
   const dur = 1.2, sr = AC.sampleRate;
   const off = new OfflineAudioContext(1, Math.ceil(sr*dur), sr);
   const out = off.destination;
@@ -3228,7 +3238,7 @@ function contentEnd(buf){
   let last=0; for(let k=n-1;k>=0;k--){ if(Math.abs(d[k])>thr){ last=k; break; } }
   return Math.max(0.05, Math.min(1, last/n + 0.03));   // 少し余白
 }
-// プリセット（synth 9-16）の音と既定値。セットの初期化と、audio を同梱しない .mics の復元に使う（v0.3.144 §145）
+// プリセット（synth 8〔SCR SINE〕・9-16）の音と既定値。セットの初期化と、audio を同梱しない .mics の復元に使う（v0.3.144 §145）
 const PRESET_BUFS=[];
 async function loadPresets(){
   // 順次awaitせず全プリセットを並列生成→ブート高速化
@@ -3245,6 +3255,7 @@ async function loadPresets(){
         tracks[i].loopStart=Math.min(0.9,(8*per)/dur);
         tracks[i].end=Math.min(1,(24*per)/dur);
       }
+      if(p.voice==="scrsine"){ tracks[i].start=0; tracks[i].end=1; tracks[i].loop=true; tracks[i].loopStart=0; tracks[i].padKind="SCR"; }   // 全体が整数周期＝そのままループ
       PRESET_BUFS[i]={raw, buf:tracks[i].buffer, start:tracks[i].start, end:tracks[i].end, loop:tracks[i].loop, loopStart:tracks[i].loopStart};
     }catch(e){console.warn("preset fail",i,e);}
   }));
@@ -3852,9 +3863,9 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
   }
 }
 // @module data/set
-// @provides SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart, applySetSnapshot,
-//    copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet, resetSet, setElapsed,
-//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
+// @provides DEFAULT_KIT, SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart,
+//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet,
+//    resetSet, setElapsed, setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
@@ -3870,13 +3881,14 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 let _setStart=0;   // いまのセットが始まった時刻（performance.now）。経過表示用
 const SET_TRACK_DEFAULT={vol:-4,tune:0,scale:"off",start:0,end:1,loop:false,loopStart:0,filter:"off",cutoff:12000,reso:0.7,attack:0,fade:3,delaySend:0,reverbSend:0,outBus:"A",midiNote:null,key:null,choke:0,mute:false,solo:false};
 function _emptyPatterns(){ return Array.from({length:4},()=>Array.from({length:4},()=>new Array(STEPS).fill(0))); }
-// 既定のキット（1-8 空、9-16 プリセット）の 1 トラック snapshot
+// 既定のキット（1-7 空、8 スクラッチ用サイン波〔SCR、v0.3.192 §180〕、9-16 プリセット）の 1 トラック snapshot
+const DEFAULT_KIT={7:["SCR SINE","scrsine"],8:["KICK","kick"],9:["SNARE","snare"],10:["HAT","hat"],11:["OHAT","ohat"],12:["CLAP","clap"],13:["RIM","rim"],14:["TOM","tom"],15:["SINBASS","sinbass"]};
 function _defaultTrackSnap(i){
-  const p=PADS[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i];
-  const synth = i>=8 && pr;
+  const p=PADS[i], pr=(typeof PRESET_BUFS!=="undefined")&&PRESET_BUFS[i], kit=DEFAULT_KIT[i];
+  const synth = !!(kit && pr);
   return Object.assign({}, SET_TRACK_DEFAULT, {
-    name: synth ? (["KICK","SNARE","HAT","OHAT","CLAP","RIM","TOM","SINBASS"][i-8]||p.name) : ("PAD "+(i+1)),
-    type: synth ? "synth" : "empty", voice: synth ? ["kick","snare","hat","ohat","clap","rim","tom","sinbass"][i-8] : null,
+    name: synth ? kit[0] : (p&&p.type==="empty"&&p.name)||("PAD "+(i+1)),
+    type: synth ? "synth" : "empty", voice: synth ? kit[1] : null, padKind: (synth && kit[1]==="scrsine") ? "SCR" : "SPL",
     buffer: synth ? pr.buf : null, rawBuffer: synth ? pr.raw : null,
     start: synth ? pr.start : 0, end: synth ? pr.end : 1, loop: synth ? pr.loop : false, loopStart: synth ? pr.loopStart : 0,
     choke: (synth && (i===10||i===11)) ? 1 : 0, scale: (synth && i===15) ? "chro" : "off",
@@ -6924,10 +6936,10 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const sp=document.getElementById("sam
 // @module ui/set-view
 // @provides _clPagePrev, _setIn, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, paintSetMap,
 //    setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp, setPadUpAll
-// @uses AC, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel, focusSet,
-//    isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur, setElapsed,
-//    setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots, sideStop,
-//    sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel,
+//    focusSet, isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur,
+//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
+//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -6971,7 +6983,7 @@ function _setInfo(k){   // 表示用：いまのセットは live から、他�
   if(k===setCur) return {name:setName(k), bpm:bpmVal, has:[0,1,2,3].map(p=>_snapPatHas(tracks,p)), fresh:false};
   const s=setSlots[k]; if(!s) return {name:"SET "+(k+1), bpm:100, has:[false,false,false,false], fresh:true};
   const has=[0,1,2,3].map(p=>_snapPatHas(s.tracks,p));
-  const fresh=!has.some(Boolean) && s.tracks.every((t,i)=> i>=8 ? true : !t.buffer);   // 打ち込みも音も無い＝既定のまま
+  const fresh=!has.some(Boolean) && s.tracks.every((t,i)=> i>=8 || !t.buffer || (typeof PRESET_BUFS!=="undefined" && PRESET_BUFS[i] && t.buffer===PRESET_BUFS[i].buf));   // 打ち込みも音も無い（8 番のサイン波は既定の音のまま）＝既定のまま
   return {name:s.name, bpm:s.bpm, has, fresh};
 }
 function paintSet(){
@@ -7765,7 +7777,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.191";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.192";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
