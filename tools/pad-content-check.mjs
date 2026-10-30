@@ -83,6 +83,15 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     const m=parseKeyMidi(new Uint8Array(file));let bad=false;try{parseKeyMidi(new Uint8Array(file.slice(0,-3)));}catch(_){bad=true;}
     return {notes:m.tracks[0].phrase.notes,bad};
   });eq(`${label} MIDI和音・長さ・velocity`,midi.notes,[{pitch:60,beat:0,length:1,velocity:100},{pitch:64,beat:0,length:1,velocity:80}]);eq(`${label} 破損MIDIを拒否`,midi.bad,true);
+  // v0.3.193 §181：スマホのピアノロールは指で動かす＝スクロール（ノートは描かない）、動かさずに離す＝ノート（実際のタッチで）
+  if(mobile){await p.evaluate(async()=>{await setPadKind(4,'KEY');keyEditorOpen(4);});await p.waitForTimeout(300);
+   const cdp=await ctx.newCDPSession(p),sc=await p.locator('.key-scroll').boundingBox(),rb=await p.locator('#keyRoll').boundingBox(),x=Math.min(rb.x+rb.width-20,sc.x+sc.width*.6),y=sc.y+sc.height/2;
+   const st=()=>p.evaluate(()=>({top:document.querySelector('.key-scroll').scrollTop,notes:tracks[4].keyPhrase.notes.length}));const k0=await st();
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});for(let k=1;k<=10;k++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-k*12}]});await p.waitForTimeout(16);}
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await p.waitForTimeout(150);const k1=await st();
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await p.waitForTimeout(300);const k2=await st();
+   ok_(`${label} ピアノロールは指で上下にスクロール（ノートは描かない）・タップでノート`,k1.top-k0.top>=100&&k1.notes===k0.notes&&k2.notes===k0.notes+1,JSON.stringify({k0,k1,k2}));
+   await p.evaluate(async()=>{keyEditorClose();await setPadKind(4,'SPL');});await cdp.detach();}
   await p.evaluate(async()=>{await setPadKind(8,'SCR');await scratchOpen(8);});
   eq(`${label} SCRは対象パッドから起動`,await p.evaluate(()=>[document.getElementById('scratchEditor').hidden,!!_scratchNode]),[false,true]);
   await p.screenshot({path:`tools/_shots/content-scr-${w}.png`});
