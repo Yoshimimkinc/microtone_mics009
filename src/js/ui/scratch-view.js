@@ -98,7 +98,10 @@ function scratchShow(i){
  // 動いた量は高さごとの感度で数える（上ほど敏感）＝掴んだ所の時刻がそのまま指の下に来る
  const at=e=>{const r=cv.getBoundingClientRect();return scratchStripTime(e.clientY-r.top,r.height);};
  cv.onpointerdown=e=>{if(_scratchGesture)return;e.preventDefault();_scratchGesture={id:e.pointerId,t:at(e)};cv.setPointerCapture(e.pointerId);scratchHold(true);};
- cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();scratchDrag((g.t-at(e))*scratchState().rate,e.timeStamp);};
+ // 画面の 1 コマの間に届いた指の位置を全部使う（getCoalescedEvents。iPhone は画面より細かく指を測っている＝速いストロークの位置のずれが約半分、v0.3.193 §182）。
+ // 時刻が進んでいないものは送らない（手の速さの計算が 0 割りにならない）
+ cv.onpointermove=e=>{const g=_scratchGesture;if(!g||g.id!==e.pointerId)return;e.preventDefault();const rate=scratchState().rate,list=(typeof e.getCoalescedEvents==='function'&&e.getCoalescedEvents())||[];
+  for(const c of list.length?list:[e]){if(g.last!=null&&!(c.timeStamp>g.last))continue;g.last=c.timeStamp;scratchDrag((g.t-at(c))*rate,c.timeStamp);}};
  cv.onpointerup=cv.onpointercancel=e=>{if(_scratchGesture?.id!==e.pointerId)return;const g=_scratchGesture;_scratchGesture=null;const r=cv.getBoundingClientRect();scratchHold(false,scratchWindAt(e.clientY-r.top,r.height),e.type==='pointercancel'?0:scratchSlingKick(at(e)-g.t));};   // 手前へ引いた分（音の秒）だけ飛び出す
  // 全体の波形：押した所・なぞった所へ移る
  let seeking=null;const seek=e=>{const r=ov.getBoundingClientRect(),st=scratchState();if(!st.wave||!r.width)return;scratchSeek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(st.wave.length-1));};

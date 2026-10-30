@@ -61,6 +61,14 @@ el('keyDragMode').value='right';run('_keySelect(0)');
 a=xy(phrase().notes[0].beat+.3,phrase().notes[0].pitch);b={...a,x:a.x+run('_keyZoom')*.5};const oldLength=phrase().notes[0].length;
 await gesture(a,b,{pointerType:'touch'});
 check('touch Length mode resizes from note body',()=>assert.equal(phrase().notes[0].length,oldLength+.5));
+// v0.3.193 §181：スマホ（指）は何も無い所を動かす＝スクロール（ノートは描かない）、動かさずに離す＝そこへノート
+{el('.key-scroll').scrollTop=300;el('keyHorizontal').scrollLeft=200;const before=JSON.stringify(phrase()),count=phrase().notes.length,p0=xy(6,70);
+ await gesture(p0,{x:p0.x-40,y:p0.y-60},{pointerType:'touch'});
+ check('finger drag on empty roll scrolls with the finger and draws nothing',()=>{assert.equal(JSON.stringify(phrase()),before);assert.equal(el('.key-scroll').scrollTop,360);assert.equal(el('keyHorizontal').scrollLeft,240);});
+ down(p0.x,p0.y,{pointerType:'touch'});up(p0.x,p0.y);await flush();
+ check('finger tap on empty roll places a note there',()=>{assert.equal(phrase().notes.length,count+1);assert.ok(phrase().notes.some(n=>Math.abs(n.pitch-70)<=1&&Math.abs(n.beat-6)<1e-9),JSON.stringify(phrase().notes));});
+ run('_keyGesture=null');el('.key-scroll').scrollTop=300;down(20,p0.y,{pointerType:'touch'});move(20,p0.y+50,{pointerType:'touch'});up(20,p0.y+50);await flush();
+ check('finger drag on the keyboard scrolls pitch',()=>assert.equal(el('.key-scroll').scrollTop,250));}
 el('keyNav').click();const untouched=JSON.stringify(phrase());a=xy(5,72);await gesture(a,xy(6,74),{pointerType:'touch'});
 check('scroll mode cannot accidentally edit notes',()=>assert.equal(JSON.stringify(phrase()),untouched));el('keyNav').click();
 const zoomBefore=run('_keyZoom');el('keyHorizontal').clientWidth=750;for(const fn of events.resize||[])fn();

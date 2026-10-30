@@ -71,8 +71,10 @@ ui.scratchShow(0);const cv=el('scratchDeck'),e=(x,y,id=1)=>({clientX:x,clientY:y
 check('the middle of the strip is 220 px = 1 s; the top is twice as sensitive, the bottom half',()=>{const slope=y=>(T(y+.01)-T(y-.01))/.02*220;assert.ok(Math.abs(slope(150)-1)<1e-6);assert.ok(Math.abs(slope(0)-2)<1e-3);assert.ok(Math.abs(slope(300)-.5)<1e-3);});
 cv.onpointerdown(e(150,240));cv.onpointermove(e(20,196));
 check('pushing the strip away (up) moves forward, locked to the waveform under the finger, sideways ignored',()=>{assert.equal(state.dragging,true);assert.ok(Math.abs(moves[0]-(T(240)-T(196))*26000)<1e-6);assert.ok(moves[0]>0);});
-cv.onpointermove(e(150,284));check('pulling toward you (down) plays backwards',()=>assert.ok(moves[1]<0&&Math.abs(moves[1]-(T(240)-T(284))*26000)<1e-6));
+cv.onpointermove({...e(150,284),timeStamp:20});check('pulling toward you (down) plays backwards',()=>assert.ok(moves[1]<0&&Math.abs(moves[1]-(T(240)-T(284))*26000)<1e-6));
 check('the same 44 px stroke moves more audio near the top than near the bottom',()=>assert.ok((T(60)-T(16))>2*(T(284)-T(240))));moves.length=1;
+{const n=moves.length,co=(y,ts)=>({...e(150,y),timeStamp:ts});cv.onpointermove({...co(250,40),getCoalescedEvents:()=>[co(242,30),co(246,30),co(248,35),co(250,40)]});
+ check('every coalesced touch sample within a frame is used; samples whose time does not advance are skipped',()=>{assert.equal(moves.length-n,3);assert.ok(Math.abs(moves.at(-1)-(T(240)-T(250))*26000)<1e-6);});moves.length=1;}
 check('peaks are normalised per 64-frame block',()=>{const P=ui.scratchPeaks(state.wave);assert.equal(P.peak.length,Math.ceil(2600/64));assert.ok(Math.abs(Math.max(...P.peak)-1)<1e-6);});
 cv.onpointerdown(e(240,150,2));cv.onpointermove(e(150,60,2));check('second platter pointer cannot steal the held record',()=>assert.equal(moves.length,1));
 const gate=el('scratchFader');   // 高さ 300：上から 18%（54px）が全閉の線、下端で全開

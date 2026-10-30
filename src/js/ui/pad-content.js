@@ -3,8 +3,8 @@
 //    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
 //    _keyInScale, _keyLow, _keyMidi, _keyMulti, _keyNavigate, _keyPaint, _keyPhrase, _keyPoint,
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
-//    _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen, padKind, setPadKind,
-//    syncPadContentEditor
+//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen, padKind,
+//    setPadKind, syncPadContentEditor
 // @uses AC, NOTE_NAMES, PADS, bpmVal, doUndo, masterGain, normalizeKeyPhrase, paintPerf, parseKeyMidi,
 //    peTarget, prepareKeyTrack, previewVoiceFrom, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
 //    scheduleAutosave, scratchClose, stopVoices, tracks
@@ -117,8 +117,17 @@ async function _keyAudition(pitch,velocity=96){
   if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch,beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
 }
 function _keyPoint(e,canvas){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
+// スマホ（指）：何も無い所・鍵盤を指で動かす＝スクロール、動かさずに離す＝そこへノート（v0.3.193 §181「スマホでピアノロールがスクロールしない」）
+function _keyTapNote(beat,pitch){
+  const p=_keyPhrase();if(p.notes.length>=512||beat<0||beat>=p.bars*4)return;
+  const start=Math.max(0,Math.min(p.bars*4-1/96,_keySnapBeat(beat,p.editor,false))),note={pitch:_keyScalePitch(pitch,p.editor),beat:start,length:Math.min(.25,p.bars*4-start),velocity:96};
+  _keyUpdate(q=>{q.notes.push(note);});const notes=tracks[_keyTarget]?.keyPhrase?.notes||[],i=notes.findIndex(n=>n.pitch===note.pitch&&Math.abs(n.beat-note.beat)<1/192);
+  if(i>=0){_keySelect(i);_keyPaint();}_keyAudition(note.pitch,note.velocity);
+}
 function _keyEndGesture(cancel=false){
-  const g=_keyGesture;if(!g)return;_keyGesture=null;const next=_keyDraft;_keyDraft=null;
+  const g=_keyGesture;if(!g)return;_keyGesture=null;
+  if(g.type==='pan'){if(!cancel&&!g.moved&&g.tap&&g.target===_keyTarget&&tracks[_keyTarget]===g.track)_keyTapNote(g.beat,g.pitch);else _keyPaint();return;}
+  const next=_keyDraft;_keyDraft=null;
   if(!cancel&&next&&g.target===_keyTarget&&tracks[_keyTarget]===g.track&&(g.track._contentEpoch||0)===g.epoch)_keyUpdate(p=>Object.assign(p,next));else _keyPaint();
 }
 function _keyDuplicate(){if(!_keySelection.size)return;_keyUpdate(p=>{const selected=[..._keySelection].sort((a,b)=>a-b).map(i=>p.notes[i]),offset=Math.max(...selected.map(n=>n.beat+n.length))-Math.min(...selected.map(n=>n.beat)),end=p.bars*4;if(p.notes.length+selected.length>512||selected.some(n=>n.beat+offset+n.length>end)){document.getElementById('keyStatus').textContent='複製先が小節の範囲外か、512ノートの上限です';return;}_keySelection.clear();for(const n of selected){_keySelection.add(p.notes.length);p.notes.push({...n,beat:n.beat+offset});}_keySelected=[..._keySelection][0];});}
@@ -153,15 +162,18 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   function begin(e,isVelocity){
     if(_keyTarget<0||_keyNavigate||e.button>0||_keyGesture)return;
     const canvas=e.currentTarget,point=_keyPoint(e,canvas),p=_keyPhrase(),beat=(point.x-58)/_keyZoom,pitch=_keyLow+35-Math.floor(point.y/28);
-    if(point.x<58){if(!isVelocity)_keyAudition(pitch);return;}e.preventDefault();canvas.focus({preventScroll:true});
+    const touch=e.pointerType==='touch',pan=tap=>{e.preventDefault();const scroll=document.querySelector('.key-scroll'),h=document.getElementById('keyHorizontal');
+      _keyGesture={id:e.pointerId,target:_keyTarget,track:tracks[_keyTarget],canvas,type:'pan',x:e.clientX,y:e.clientY,top:scroll.scrollTop,left:h.scrollLeft,beat,pitch,tap,moved:false};canvas.setPointerCapture(e.pointerId);};
+    if(point.x<58){if(!isVelocity)_keyAudition(pitch);if(touch)pan(false);return;}e.preventDefault();canvas.focus({preventScroll:true});
     let index=-1,type='move';
-    if(isVelocity){let best=20;for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i],dx=Math.abs((n.beat-beat)*_keyZoom),dy=Math.abs(88-(n.velocity-1)/126*72-point.y),distance=Math.hypot(dx,dy*.2);if(dx<14&&distance<best){index=i;best=distance;}}type='velocity';if(index<0)return;}
+    if(isVelocity){let best=20;for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i],dx=Math.abs((n.beat-beat)*_keyZoom),dy=Math.abs(88-(n.velocity-1)/126*72-point.y),distance=Math.hypot(dx,dy*.2);if(dx<14&&distance<best){index=i;best=distance;}}type='velocity';if(index<0){if(touch)pan(false);return;}}
     else{for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i];if(n.pitch===pitch&&beat>=n.beat-3/_keyZoom&&beat<=n.beat+n.length+3/_keyZoom){index=i;break;}}}
     if(index>=0){
       if(e.shiftKey||_keyMulti){_keySelect(index,true);_keyPaint();if(!_keySelection.has(index))return;}
       else if(!_keySelection.has(index))_keySelect(index);else _keySelected=index;
       if(!isVelocity){const n=p.notes[index],x=58+n.beat*_keyZoom,w=n.length*_keyZoom,edge=Math.min(e.pointerType==='touch'?14:8,w/3);type=_keyDragType(n,point.x,e.pointerType,document.getElementById('keyDragMode').value,e.altKey);}
     }else{
+      if(touch&&!(_keyMulti||e.shiftKey)){pan(!isVelocity);return;}   // 指：動かせばスクロール・そのまま離せばノート（ベロシティ欄はスクロールだけ）
       if(_keyMulti||e.shiftKey){_keySelection.clear();_keySelected=-1;_keyPaint();return;}
       if(p.notes.length>=512||beat<0||beat>=p.bars*4)return;
       const start=Math.max(0,Math.min(p.bars*4-1/96,_keySnapBeat(beat,p.editor,e.metaKey))),note={pitch:_keyScalePitch(pitch,p.editor),beat:start,length:Math.min(.25,p.bars*4-start),velocity:96};
@@ -169,7 +181,11 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
     }
     _keyDraft=p;_keyGesture={id:e.pointerId,target:_keyTarget,track:tracks[_keyTarget],epoch:tracks[_keyTarget]._contentEpoch||0,canvas,index,type,x:e.clientX,y:e.clientY,point,before:normalizeKeyPhrase(p),moved:false};canvas.setPointerCapture(e.pointerId);_keyPaint();if(!isVelocity)_keyAudition(p.notes[index].pitch,p.notes[index].velocity);
   }
-  function move(e){const g=_keyGesture;if(!g){if(e.currentTarget===roll)_keyHover(e);return;}if(g.id!==e.pointerId)return;e.preventDefault();const pt=_keyPoint(e,g.canvas),dx=pt.x-g.point.x,dy=pt.y-g.point.y;if(Math.hypot(e.clientX-g.x,e.clientY-g.y)<3&&!g.moved)return;g.moved=true;
+  function move(e){const g=_keyGesture;if(!g){if(e.currentTarget===roll)_keyHover(e);return;}if(g.id!==e.pointerId)return;e.preventDefault();
+    // 指に付いて動く（縦＝音の高さ、横＝小節）
+    if(g.type==='pan'){if(!g.moved&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<8)return;g.moved=true;const scroll=document.querySelector('.key-scroll'),h=document.getElementById('keyHorizontal');
+      if(g.canvas===roll)scroll.scrollTop=Math.max(0,g.top-(e.clientY-g.y));h.scrollLeft=Math.max(0,g.left-(e.clientX-g.x));return;}
+    const pt=_keyPoint(e,g.canvas),dx=pt.x-g.point.x,dy=pt.y-g.point.y;if(Math.hypot(e.clientX-g.x,e.clientY-g.y)<3&&!g.moved)return;g.moved=true;
     const p=normalizeKeyPhrase(g.before),n=p.notes[g.index],end=p.bars*4,ids=[..._keySelection],bypass=e.metaKey;
     if(g.type==='move'){
       let delta=_keySnapBeat(n.beat+dx/_keyZoom,p.editor,bypass)-n.beat;delta=Math.max(-Math.min(...ids.map(i=>p.notes[i].beat)),Math.min(delta,end-Math.max(...ids.map(i=>p.notes[i].beat+p.notes[i].length))));
