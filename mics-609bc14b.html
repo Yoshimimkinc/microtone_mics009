@@ -525,6 +525,11 @@
     color:var(--ink);font-size:18px;letter-spacing:.1em;line-height:1.9;}
   .perf-rotate small{color:var(--dim);font-size:12px;letter-spacing:.2em;}
   body.perf-rotate .perf-rotate{display:flex;}
+  /* SAMPLE ページの種類ボタン（v0.3.203 §192）：3 つで 1 つの切り替え。選んでいる種類は選択の色 */
+  .perf-screen .cl-kinds{display:inline-flex;gap:0;border:1px solid rgba(61,214,196,.35);border-radius:6px;overflow:hidden;}
+  .perf-screen .cl-kinds .cl-kind{border:0;border-radius:0;margin:0;padding:4px 8px;font-size:11px;letter-spacing:.06em;min-height:32px;height:32px;}   /* 外枠 1px×2 と合わせて他の欄と同じ 34px＝窓の高さを変えない */
+  .perf-screen .cl-kinds .cl-kind+.cl-kind{border-left:1px solid rgba(61,214,196,.25);}
+  .perf-screen .cl-kinds .cl-kind.on{background:var(--teal);color:var(--hit-ink);}
 
   /* ===== Performance Mode artware（見た目だけ／レイアウト・機能・状態は不変） ===== */
   /* 筐体：演奏中はフレームを一枚板のグラファイトに */
@@ -1461,7 +1466,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.202</div>
+  <div class="s-ver" id="splashVer">v0.3.203</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -3397,9 +3402,9 @@ new MutationObserver(()=>{
 //    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
-//    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
-//    prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen, selected, swapPads,
-//    syncEditor, tracks, trigger
+//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
+//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
+//    selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -3502,7 +3507,7 @@ PADS.forEach((p,i)=>{
     const tgt=editDrag.over, copy=editDrag.copy, moved=editDrag.moved;
     editDrag=null;
     if(!moved){                                   // 動かさず離した＝タップ：編集モーダル（従来挙動）
-      selectPad(i); openPadEdit(i); arm("edit", false);
+      selectPad(i); arm("edit", false); openPadContent(i);   // パッドの種類に合った画面を直接（KEY＝ピアノロール・SCRATCH＝スクラッチ、v0.3.203 §192）
       return;
     }
     if(tgt>=0 && tgt!==i){
@@ -4367,10 +4372,12 @@ let _rsT=null;
 }));
 
 // @module ui-window
-// @provides CL_PAGES, CL_SPEC, clPage, clSyncWave, clWaveTo, paintClPage, renderClPage
-// @uses assignTarget, bpmVal, midiNoteName, multiOut, openPadEdit, paintPadStates, paintPerf, peTarget,
-//    peV0, peV1, pushUndo, refreshOpenPadEdit, refreshSeqMode, renderPeOver, renderPeWave, sampNameEl,
-//    selected, swingPct, syncEditor, tapTempoCancel, tapTempoDown, tapTempoUp, tracks, warmPitch
+// @provides CL_KIND_NAME, CL_PAGES, CL_SPEC, clPage, clSyncWave, clWaveTo, paintClKind, paintClPage,
+//    renderClPage
+// @uses assignTarget, bpmVal, midiNoteName, multiOut, openPadEdit, padKind, padKindGo, paintPadStates,
+//    paintPerf, peTarget, peV0, peV1, pushUndo, refreshOpenPadEdit, refreshSeqMode, renderPeOver,
+//    renderPeWave, sampNameEl, selected, swingPct, syncEditor, tapTempoCancel, tapTempoDown, tapTempoUp,
+//    tracks, warmPitch
 // @depends -
 // ===== 情報窓のパラメータを横ドラッグで編集（パッドを叩きながら追い込める＝モーダル不要の連続編集） =====
 // パッド1枚の編集項目を「カテゴリ＝ページ」に棚卸ししたもの（docs/screen-spec.md §96 の表と1:1）。
@@ -4416,7 +4423,9 @@ const CL_PAGES=[
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
      +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>MIX</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
-   b:[{id:"clWave",t:'EDIT'}]},   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
+   b:[{id:"clWave",t:'EDIT'}],   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
+   // 種類の切り替え（v0.3.203 §192「EDIT からさらにモードを選ぶけど 1 発で行ける経路」）：押す＝その種類にして、すぐその画面へ（KEY＝ピアノロール・SCRATCH＝スクラッチ）
+   x:'<span class="cl-kinds" role="group" aria-label="パッドの種類"><button class="cl-btn cl-kind" data-kind="SPL">SAMPLE</button><button class="cl-btn cl-kind" data-kind="KEY">KEY</button><button class="cl-btn cl-kind" data-kind="SCR">SCRATCH</button></span>'},
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
    x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
@@ -4449,6 +4458,7 @@ function clWaveTo(where){   // "screen" | "modal"
 }
 // SAMPLEページを開いている間は、窓の波形が選択パッドを指す（peTarget＝波形まわりの対象）
 function clSyncWave(){
+  paintClKind();
   if(clPage!=="smpl") return;
   const slot=document.getElementById("clWaveSlot"); if(!slot) return;
   if(peTarget!==selected){ peTarget=selected; peV0=0; peV1=1; }
@@ -4457,9 +4467,18 @@ function clSyncWave(){
     if(typeof renderPeWave==="function") renderPeWave(peTarget);
   });
 }
+// SAMPLE ページの種類ボタンと、タブの名前（SAMPLE / KEY / SCRATCH）を選択パッドの種類に合わせる（v0.3.203 §192）
+const CL_KIND_NAME={SPL:"SAMPLE",KEY:"KEY",SCR:"SCRATCH"};
+function paintClKind(){
+  if(typeof tracks==="undefined"||typeof padKind!=="function") return;
+  const t=tracks[selected]; if(!t) return; const k=padKind(t);
+  document.querySelectorAll("#clPage .cl-kind").forEach(b=>{ const on=b.dataset.kind===k; b.classList.toggle("on",on); b.setAttribute("aria-pressed",String(on)); });
+  const tab=document.querySelector('#clKeys .cl-key[data-pg="smpl"]'); if(tab&&tab.textContent!==CL_KIND_NAME[k]) tab.textContent=CL_KIND_NAME[k];
+}
 function paintClPage(){
   if(typeof tracks==="undefined") return;
   const t=tracks[selected]; if(!t) return;
+  paintClKind();
   document.querySelectorAll("#clPage .cl-par").forEach(el=>{
     const sp=CL_SPEC[el.dataset.p]; if(!sp) return;
     el.querySelector("b").textContent=sp.fmt(sp.get(t));
@@ -4560,6 +4579,7 @@ function paintClPage(){
     const b=e.target.closest(".cl-btn"); if(!b) return;
     const t=tracks[selected];
     if(b.id==="clWave"){ if(typeof openPadEdit==="function") openPadEdit(selected); return; }
+    if(b.dataset.kind){ padKindGo(selected,b.dataset.kind).catch(e=>{ sampNameEl.textContent=e.message; }); return; }
     if(b.id==="clLearn"){
       if(assignTarget===selected){ assignTarget=-1; sampNameEl.textContent="ASSIGN 取消"; }
       else { assignTarget=selected; sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤かキーを押す（もう一度で取消）"; }
@@ -7553,11 +7573,11 @@ function scratchShow(i){
 //    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
 //    _keyInScale, _keyLow, _keyMidi, _keyMulti, _keyNavigate, _keyPaint, _keyPhrase, _keyPoint,
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
-//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen, padKind,
-//    setPadKind, syncPadContentEditor
-// @uses AC, NOTE_NAMES, PADS, bpmVal, doUndo, masterGain, normalizeKeyPhrase, paintPerf, parseKeyMidi,
-//    peTarget, prepareKeyTrack, previewVoiceFrom, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
-//    scheduleAutosave, scratchClose, stopVoices, tracks
+//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
+//    openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
+// @uses AC, NOTE_NAMES, PADS, bpmVal, doUndo, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
+//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, previewVoiceFrom, pushUndo, refreshPadDisplay,
+//    renderKeyPhrase, sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -7577,12 +7597,28 @@ async function setPadKind(i,kind){
   }else sampNameEl.textContent=kind==='SCR'?'SCR · パッドを押すとスクラッチ':'SPL · サンプルを再生';
   refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
 }
+// 種類に合った画面を開く（v0.3.203 §192）：KEY＝ピアノロール・SCRATCH＝スクラッチ・SAMPLE＝EDIT（波形・TRIM・CHOP）。EDIT＋パッドのタップもここ
+function openPadContent(i){
+  const k=padKind(tracks[i]);
+  if(k==='KEY')keyEditorOpen(i);
+  else if(k==='SCR')scratchOpen(i).catch(e=>{sampNameEl.textContent=e.message;});
+  else openPadEdit(i);
+}
+// 窓の種類ボタン：その種類にして、すぐその画面へ（同じ種類ならそのまま開く）。SAMPLE は窓の波形のまま（開かない）
+async function padKindGo(i,kind){
+  if(padKind(tracks[i])!==kind)await setPadKind(i,kind);
+  if(padKind(tracks[i])!==kind)return;
+  if(kind==='KEY')keyEditorOpen(i);
+  else if(kind==='SCR')await scratchOpen(i);
+  if(typeof paintClKind==='function')paintClKind();
+}
 function syncPadContentEditor(i){
   const kind=padKind(tracks[i]);
   document.getElementById('padEditModal').dataset.padKind=kind;
   document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
   document.getElementById('peKeyOpen').hidden=kind!=='KEY';
   document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
+  if(typeof paintClKind==='function')paintClKind();
 }
 let _keyTarget=-1, _keySelected=-1, _keyLow=48, _keyMidi=null;
 let _keySelection=new Set(), _keyDraft=null, _keyGesture=null, _keyZoom=128, _keySound=false, _keyAutoFit=true, _keyNavigate=false, _keyMulti=false, _keyAuditionNode=null, _keyAuditionToken=0;
@@ -7919,7 +7955,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.202";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.203";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
