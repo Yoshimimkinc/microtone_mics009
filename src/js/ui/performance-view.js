@@ -99,7 +99,8 @@ function fxBtnTap(effect){
   if(armMode==='edit'){setActiveLock(null);perfLockApply();fxModalOpen(effect);return;}
   if(armMode)arm(armMode,false);
   setActiveLock(effect);perfLockApply();
-  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整':effect.toUpperCase()+' · 選択解除（設定値は保持）';
+  // 隠れた操作（ダブルタップ・EDIT＋ボタン）を一言で案内（v0.3.196 §185）
+  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整（ダブルタップ＝全部外す・EDIT＋'+effect.toUpperCase()+'＝詳しく）':effect.toUpperCase()+' · 選択解除（設定値は保持・ダブルタップ＝全部外す）';
 }
 // ---------- EDIT → エフェクトのボタン＝詳しい設定のモーダル（v0.3.168）：パッドごとの量、FILTER は種類も、RESET ----------
 let fxmParam=null, _fxmUndo=false;

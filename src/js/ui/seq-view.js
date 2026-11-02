@@ -27,7 +27,7 @@ PADS.forEach((p,i)=>{
 
   const rn=document.createElement("div");
   rn.className="rn";
-  rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${p.name}`;
+  rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${p.name}</span>`;   // 番号の後に名前（切らずに 2 行まで、v0.3.198 §187）
   rn.addEventListener("click",async()=>{
     if(AC.state!=="running")await AC.resume();
     if(melodicMode){

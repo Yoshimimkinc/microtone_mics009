@@ -132,3 +132,24 @@
     .colnums .cn{font-size:9px;}
     .colnums .cn:not(:nth-child(4n+2)){visibility:hidden;}   /* 拍頭1,5,9,13だけ表示＝位置把握には十分で読める大きさに */
   }
+
+  /* v0.3.195 §184（参考 UI の「どの画面でも上下の位置が同じ」）：スマホは上＝画面のタブ（PADS / SEQ / SET＋MENU）、下＝再生まわり（名前付き）に固定。
+     .top を display:contents にして、タブ（#viewDots）と再生まわり（.transport）を .unit の上下へ並べ替える（DOM はそのまま） */
+  @media(max-width:767px){
+    .unit{position:relative;}
+    .top{display:contents;}
+    #viewDots{order:-1;flex:0 0 auto;box-sizing:border-box;width:100%;gap:5px;padding:0 52px 8px 0;margin-bottom:6px;border-bottom:1px solid var(--line);}
+    #viewDots .logo{font-size:16px;padding:0 4px 0 2px;}
+    .unit>.body{order:0;}
+    .transport{order:1;flex:0 0 auto;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
+    .transport button.t[data-label]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1;font-size:15px;}
+    .transport button.t[data-label]::after{margin:0;font-size:9px;letter-spacing:.08em;}
+    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:44px;flex:none;padding:0;}
+    .viewdots .vdot{min-height:44px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
+    .viewdots .vdot .vd-dot{display:none;}
+    .viewdots .vdot.on{color:var(--ink);border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}
+    .viewdots .vd-ic{display:block;width:14px;height:14px;fill:currentColor;flex:0 0 auto;}
+    .viewdots .vdot[data-view="viewSet"]{flex-grow:1.3;}
+    .viewdots .vdot[data-view="viewSet"] .vd-ic{display:none;}   /* SET はセットの地図がアイコンの代わり */
+  }
+

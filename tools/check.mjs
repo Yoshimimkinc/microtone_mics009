@@ -202,6 +202,18 @@ async function run(w,h,mobile){
     const stacked=w<=767;   // 積み上げレイアウト（media query と relocateLogo の境界）。touch 有無とは別
     if(stacked){ ok_(`${V} 16枚のパッドが下段の上に収まる（スクロール無し）`, g.n===16 && g.lastBot<=g.msTop, JSON.stringify(g)); ok_(`${V} パッド高さ ≥44px`, g.minH>=44, g.minH); }
     ok_(`${V} ロゴが画面に残る（${stacked?'PADS/SEQ行':'ヘッダ'}）`, g.logoVis && g.logoIn===(stacked?'dots':'top'), JSON.stringify(g));
+    // v0.3.195 §184：スマホは上＝画面のタブ（PADS / SEQ / SET＋MENU）、下＝名前付きの再生まわり（FX 列の下・画面内）。PC も記号に名前
+    { const L=await p.evaluate(()=>{const r=id=>document.getElementById(id).getBoundingClientRect();const ms=document.querySelector('#viewPads>.msbar').getBoundingClientRect();
+        const tabs=[...document.querySelectorAll('#viewDots .vdot')].map(b=>b.getBoundingClientRect()),menu=r('menuBtn'),play=r('play');
+        return {playTop:Math.round(play.top),playBot:Math.round(play.bottom),msBot:Math.round(ms.bottom),vh:innerHeight,tabsBot:Math.round(Math.max(...tabs.map(t=>t.bottom))),tabH:Math.round(Math.min(...tabs.map(t=>t.height))),
+          overlap:tabs.some(t=>t.right>menu.left+1&&t.top<menu.bottom),menuTop:Math.round(menu.top),labels:['play','rec','undoBtn'].map(id=>getComputedStyle(document.getElementById(id),'::after').content)};});
+      if(stacked) ok_(`${V} スマホ：タブは上（44px 以上・MENU と重ならない）、再生まわりは FX 列の下で画面内`, L.playTop>=L.msBot && L.playBot<=L.vh && !L.overlap && L.menuTop<L.tabsBot && L.tabH>=44, JSON.stringify(L));
+      ok_(`${V} 再生・録音・取り消しのボタンに名前`, L.labels.join()==='"PLAY","REC","UNDO"', JSON.stringify(L.labels)); }
+    // v0.3.196 §185：隠れた操作の案内（FX 列の横スワイプの行き先・FX のダブルタップ・BAR のダブルタップ）
+    { const H=await p.evaluate(()=>{const row=document.querySelector('.fx-swipe');const ind=getComputedStyle(row,'::after').content;
+        fxBtnTap('delay');const fx=sampNameEl.textContent;fxBtnTap('delay');barTapHold(2);const bar=sampNameEl.textContent;barTapHold(-9);return {ind,fx,bar};});
+      if(stacked) ok_(`${V} FX 列のスワイプの行き先が見える（FX / ABCD）`, /FX/.test(H.ind)&&/ABCD/.test(H.ind), H.ind);
+      ok_(`${V} FX と BAR のダブルタップを一言で案内`, /ダブルタップ/.test(H.fx) && /もう一度/.test(H.bar), JSON.stringify(H)); }
   }
   // 6d) スマホの下段は MUTE/FILTER/DELAY/REVERB/EDIT。SOLOはヘッダに残す。
   if(mobile){
@@ -251,6 +263,16 @@ async function run(w,h,mobile){
             btns:[...m.querySelectorAll('button,.loadbtn')].map(b=>(b.id||b.textContent.trim()).slice(0,12))};});
   eq(`${V} モーダルにノブ/セレクトが無い`, [md.ranges,md.selects], [0,0]);
   ok_(`${V} モーダルは表示できる`, md.disp==='flex', md.disp);
+  // v0.3.199 §188：EDIT は見出しで区切り、START / END / LENGTH を数字と単位で（参考 UI の TRIM 画面）。略さない
+  { const ed=await p.evaluate(()=>{const m=document.getElementById('padEditModal');const t=tracks[peTarget],d=t.buffer.duration;
+      const secs=[...m.querySelectorAll('.pe-sec')].filter(e=>e.getBoundingClientRect().height>0).map(e=>e.firstChild.textContent.trim());
+      const v=id=>document.getElementById(id).textContent,before=[v('peStartVal'),v('peEndVal'),v('peLenVal')];
+      const s0=t.start,e0=t.end;t.start=0.25;t.end=0.75;renderPeWave(peTarget);const after=[v('peStartVal'),v('peEndVal'),v('peLenVal')];t.start=s0;t.end=e0;renderPeWave(peTarget);
+      const fmt=x=>x<1?Math.round(x*1000)+' ms':x.toFixed(2)+' s';
+      return {secs,before,after,want:[fmt(.25*d),fmt(.75*d),fmt(.5*d)],kinds:[...m.querySelectorAll('#peKinds [data-kind]')].map(b=>b.textContent),rev:v('peRev')};});
+    eq(`${V} EDIT の見出し`, ed.secs, ['SOUND TYPE','SOURCE','TRIM','PROCESS','CHOP']);
+    ok_(`${V} EDIT の START / END / LENGTH が数字と単位で、動かすと追従`, ed.before.every(x=>/ ms$| s$/.test(x)) && JSON.stringify(ed.after)===JSON.stringify(ed.want), JSON.stringify(ed));
+    ok_(`${V} EDIT の種類・加工は略さない`, ed.kinds.join()==='SAMPLE,KEY,SCRATCH' && /REVERSE/.test(ed.rev), JSON.stringify(ed)); }
   await p.click('#peClose'); await p.waitForTimeout(400);
   eq(`${V} 閉じたら窓へ戻る`, await where(), 'clWaveSlot');
 
@@ -619,7 +641,7 @@ async function copyPaint(){
   await p.evaluate(()=>{ arm('edit',false); selectPad(9); tracks[9].tune=2; });
   await p.setInputFiles('#samp', wavPath); await p.waitForTimeout(1500);
   const l=await p.evaluate(()=>({ name:tracks[9].name, type:PADS[9].type, tune:tracks[9].tune, nm:document.querySelectorAll('#pads .pad')[9].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[9].textContent, cat:document.querySelectorAll('#pads .pad')[9].className }));
-  ok_(`LOAD 名前・パッド表示・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WA' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
+  ok_(`LOAD 名前・パッド表示（8 文字で切らない v0.3.198）・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WAV' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
   ok_(`LOAD 新しい音は PITCH 0 から（前の +2 を引き継がない v0.3.170）`, l.tune===0, JSON.stringify(l));
   // Phase 3：EDIT モーダルの ● SMPL / LOAD は selected を直書きせず selectPad（入口）を通る＝エディタ側の選択表示も追従
   await p.evaluate(()=>{ document.getElementById('peClose').click(); selectPad(0); openPadEdit(4); });
@@ -674,6 +696,9 @@ async function setMode(){
     ok_(`${V} 起動時から 16 セット（SET 1 = 既定プロジェクト、他は既定のキット）`, boot.cur===0 && boot.n===16 && boot.names.join(',')==='SET 1,SET 2,SET 16' && boot.fresh1, JSON.stringify(boot));
     // 上段スイッチ（スマホ=vdot / PC=modebar）で SET へ：1 タップ
     await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(250);
+    // v0.3.196 §185：隠れた操作（押して離す・上下で音量）を SET の窓に一言
+    { const hp=await p.evaluate(()=>{const e=document.getElementById('clSetHelp');const r=e&&e.getBoundingClientRect();return e?{t:e.textContent,vis:r.height>0&&getComputedStyle(e).display!=='none'}:null;});
+      ok_(`${V} SET の窓に操作の案内（押して離す・上下で音量）`, hp && hp.vis && /押して離す/.test(hp.t) && /上下＝音量/.test(hp.t), JSON.stringify(hp)); }
     const st=await p.evaluate(()=>({mode:setMode, body:document.body.classList.contains('setmode'), page:clPage, cells:document.querySelectorAll('#setGrid .setpad').length, fresh:document.querySelectorAll('#setGrid .setpad.fresh').length,
       padsHidden:getComputedStyle(document.getElementById('pads')).display==='none', keysSet:getComputedStyle(document.getElementById('clKeysSet')).display, keys:getComputedStyle(document.getElementById('clKeys')).display, bar:getComputedStyle(document.querySelector('#viewPads>.msbar')).display,
       sel:document.querySelector('#setGrid .setpad.on .n span').textContent, tag:document.querySelector('#setGrid .setpad.on .tag').textContent}));

@@ -142,3 +142,15 @@
   .fxm-v{text-align:right;font-variant-numeric:tabular-nums;}
   .fxm-type{display:none;min-height:28px;padding:2px 4px;font-size:11px;background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;cursor:pointer;}
   .fxm-list.filt .fxm-type{display:block;}
+
+  /* v0.3.199 §188 EDIT を見出しで区切る・値に名前と単位（参考 UI の TRIM 画面） */
+  .pe-sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--line);
+    font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--ink);}
+  .pe-sec small{font-size:10px;font-weight:400;letter-spacing:.02em;color:var(--dim);}
+  .pe-range{display:flex;justify-content:space-between;gap:8px;margin:6px 0 0;font-size:10px;letter-spacing:.1em;color:var(--dim);}
+  .pe-range b{margin-left:4px;font-size:13px;letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums;}
+  #padEditModal[data-pad-kind=KEY] .pe-sec-wave,#padEditModal[data-pad-kind=KEY] .pe-range{display:none;}
+  #peKinds .t{font-size:11px;letter-spacing:.08em;}
+
+  .pe-transport button{min-width:0;}
+  @media(max-width:600px){ .pe-transport{gap:6px;} .pe-transport button{padding:10px 4px;letter-spacing:.06em;gap:5px;} }

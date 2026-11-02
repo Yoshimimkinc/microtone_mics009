@@ -31,7 +31,7 @@ const playBtn=document.getElementById("play");
 function paintTransport(){
   const any = playing || (typeof sideCount==="function" && sideCount()>0);
   playBtn.classList.toggle("on",any);
-  playBtn.textContent=any?"■":"▶";   // アイコンのみ（文字なし）
+  playBtn.textContent=any?"■":"▶";playBtn.dataset.label=any?"STOP":"PLAY";   // 記号＋名前（名前は data-label、v0.3.195 §184）
   if(typeof paintSet==="function") paintSet();   // SET 画面：再生中のセットをオレンジに（v0.3.145）
   if(typeof paintPadStates==="function") paintPadStates();   // 止めると編集中のパターンのミュート / エフェクトに戻る（v0.3.149 / v0.3.150）
   if(!playing && typeof paintPerf==="function") paintPerf();
@@ -52,7 +52,7 @@ playBtn.addEventListener("click",async()=>{
 });
 const recBtn=document.getElementById("rec");
 function updateRecBtnLabel(){
-  recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording);   // アイコンのみ
+  recBtn.textContent = recording ? "■" : "●"; recBtn.dataset.label = recording ? "STOP REC" : "REC"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording);   // 記号＋名前
 }
 recBtn.addEventListener("click",()=>{
   recording=!recording; if(recording) pushUndo(); updateRecBtnLabel();

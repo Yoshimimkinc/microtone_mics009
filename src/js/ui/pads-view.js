@@ -1,6 +1,6 @@
 // @module ui/pads-view
-// @provides _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl, paintPadName,
-//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
+// @provides PAD_KIND_TAG, _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl,
+//    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
@@ -32,13 +32,15 @@ function applyPadCategory(i){
 }
 // パッド名の表示（パッド内は8文字・大文字／SEQ の行名は全文）。t.name → PADS[i].name の順。名前を書く唯一の口（v0.3.132）
 // v0.3.131 までは録音・LOAD・読込・undo・改名の5箇所がそれぞれ .nm を直書きしていて、整形の有無や SEQ 行名の更新漏れがあった
+// パッド右上の種類の札：サンプル（既定）は出さない、KEY / SCRATCH だけ略さずに（v0.3.198 §187）
+const PAD_KIND_TAG={KEY:"KEY",SCR:"SCRATCH"};
 function paintPadName(i){
   const nm=tracks[i].name||PADS[i].name||"";
   const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
-  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=tracks[i].padKind||"SPL";}
+  if(ne) ne.textContent=nm.toUpperCase();   // 8 文字で切らない（2 行まで CSS で。v0.3.198 §187）
+  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=PAD_KIND_TAG[tracks[i].padKind]||"";}
   const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
+  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${nm}</span>`;
 }
 // パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
 function refreshPadDisplay(i){
@@ -50,7 +52,7 @@ function refreshPadDisplay(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><span class="pad-kind">SPL</span><div class="stepn">${i+1}</div><div class="lockv"></div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><span class="pad-kind"></span><div class="stepn">${i+1}</div><div class="lockv"></div>`;
   d._lockfill=d.querySelector(".lockfill"); d._lockv=d.querySelector(".lockv");   // 毎ステップ描画でquerySelectorしないよう参照をキャッシュ
   d.dataset.i=i;
   d.setAttribute("role","button");

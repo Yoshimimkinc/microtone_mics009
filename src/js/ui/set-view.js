@@ -17,7 +17,7 @@ function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/6
   if(!setGridEl) return;
   for(let k=0;k<16;k++){
     const d=document.createElement("button"); d.className="pad setpad"; d.dataset.k=k; d.setAttribute("aria-label","SET "+(k+1));
-    d.innerHTML='<div class="lvfill"></div><div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
+    d.innerHTML='<div class="lvfill"></div><div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots" title="中身のある A B C D"><i>A</i><i>B</i><i>C</i><i>D</i></span></div>';
     setGridEl.appendChild(d);
   }
 })();
@@ -59,7 +59,7 @@ function paintSet(){
     d.classList.toggle("on",k===setCur); d.classList.toggle("playing",on); d.classList.toggle("held",held); d.classList.toggle("queued",k===queuedSet); d.classList.toggle("fresh",info.fresh);
     d.querySelector(".nm").textContent = info.name;
     d.querySelector(".tag").textContent = on ? (held?"HOLD":"NOW") : (k===setCur ? "SEL" : (k===queuedSet ? "NEXT" : ""));
-    d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
+    { const b=+info.bpm||100; d.querySelector(".bpm").textContent = (Number.isInteger(b)?String(b):b.toFixed(1))+" BPM"; }   // 単位を付ける（v0.3.198 §187）
     paintSetLevel(d,k);   // ミックス音量（塗り潰しと数字。0 dB のときは出さない）
     d.querySelectorAll(".dots i").forEach((i,p)=>i.classList.toggle("has", info.has[p]));
   }
