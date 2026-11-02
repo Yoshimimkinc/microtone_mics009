@@ -202,6 +202,13 @@ async function run(w,h,mobile){
     const stacked=w<=767;   // 積み上げレイアウト（media query と relocateLogo の境界）。touch 有無とは別
     if(stacked){ ok_(`${V} 16枚のパッドが下段の上に収まる（スクロール無し）`, g.n===16 && g.lastBot<=g.msTop, JSON.stringify(g)); ok_(`${V} パッド高さ ≥44px`, g.minH>=44, g.minH); }
     ok_(`${V} ロゴが画面に残る（${stacked?'PADS/SEQ行':'ヘッダ'}）`, g.logoVis && g.logoIn===(stacked?'dots':'top'), JSON.stringify(g));
+    // v0.3.195 §184：スマホは上＝画面のタブ（PADS / SEQ / SET＋MENU）、下＝名前付きの再生まわり（FX 列の下・画面内）。PC も記号に名前
+    { const L=await p.evaluate(()=>{const r=id=>document.getElementById(id).getBoundingClientRect();const ms=document.querySelector('#viewPads>.msbar').getBoundingClientRect();
+        const tabs=[...document.querySelectorAll('#viewDots .vdot')].map(b=>b.getBoundingClientRect()),menu=r('menuBtn'),play=r('play');
+        return {playTop:Math.round(play.top),playBot:Math.round(play.bottom),msBot:Math.round(ms.bottom),vh:innerHeight,tabsBot:Math.round(Math.max(...tabs.map(t=>t.bottom))),tabH:Math.round(Math.min(...tabs.map(t=>t.height))),
+          overlap:tabs.some(t=>t.right>menu.left+1&&t.top<menu.bottom),menuTop:Math.round(menu.top),labels:['play','rec','undoBtn'].map(id=>getComputedStyle(document.getElementById(id),'::after').content)};});
+      if(stacked) ok_(`${V} スマホ：タブは上（40px 以上・MENU と重ならない）、再生まわりは FX 列の下で画面内`, L.playTop>=L.msBot && L.playBot<=L.vh && !L.overlap && L.menuTop<L.tabsBot && L.tabH>=40, JSON.stringify(L));
+      ok_(`${V} 再生・録音・取り消しのボタンに名前`, L.labels.join()==='"PLAY","REC","UNDO"', JSON.stringify(L.labels)); }
   }
   // 6d) スマホの下段は MUTE/FILTER/DELAY/REVERB/EDIT。SOLOはヘッダに残す。
   if(mobile){

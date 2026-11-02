@@ -5,11 +5,12 @@
       <div class="model">MICS009</div>
     </div>
     <div class="transport">
-      <button class="t play" id="play" aria-label="Play/Stop">▶</button>
-      <button class="t rec" id="rec" aria-label="Rec">●</button>
-      <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩</button>
+      <!-- v0.3.195 §184：記号だけのボタンに名前（data-label、表示は CSS）。スマホは画面の下に固定、PC は右上のまま -->
+      <button class="t play" id="play" aria-label="Play/Stop" data-label="PLAY">▶</button>
+      <button class="t rec" id="rec" aria-label="Rec" data-label="REC">●</button>
+      <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す" data-label="UNDO">↩</button>
       <button class="t arm copy" id="holdCopy" title="押した後パッドで音色コピー">COPY</button>
       <button class="t arm solo" id="holdSolo" title="押した後パッドでソロ">SOLO</button>
-      <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog">⋮</button>
+      <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog" data-label="MENU">⋮</button>
     </div>
     <!-- メニュー（SKIN / プロジェクト操作） -->
