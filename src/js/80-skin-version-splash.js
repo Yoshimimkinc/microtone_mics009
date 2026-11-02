@@ -2,11 +2,11 @@
 // @provides APP_VERSION
 // @uses AC, buildAllTrackWaves, drawAllPadWaves, previewName
 // @depends autosave
-// ---------- skin（AK / SP / RL）テーマ切替・選択を記憶 ----------
+// ---------- skin（AK / SP / WIRE / GIRLY。TR は v0.3.201 で廃止）テーマ切替・選択を記憶 ----------
 (function(){
   const seg=document.getElementById("themeSeg"), KEY="mics-skin";
   function apply(th){
-    document.body.classList.remove("t-ak","t-sp","t-rl","t-wf","t-gl");   // WIRE（t-wf）は v0.3.163、GIRLY（t-gl）は v0.3.200
+    document.body.classList.remove("t-ak","t-sp","t-rl","t-wf","t-gl");   // WIRE（t-wf）は v0.3.163、GIRLY（t-gl）は v0.3.200、TR（t-rl）は v0.3.201 で廃止（古い t-rl も外す）
     document.body.classList.add("t-"+th);
     if(typeof drawAllPadWaves==="function") drawAllPadWaves();
     if(typeof buildAllTrackWaves==="function") buildAllTrackWaves();   // テーマ変更でink色が変わるので波形も再生成
@@ -15,6 +15,7 @@
   }
   seg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) apply(b.dataset.th); });
   let saved="ak"; try{ saved=localStorage.getItem(KEY)||"ak"; }catch(e){}
+  if(![...seg.children].some(b=>b.dataset.th===saved)) saved="ak";   // 廃止したスキン（TR＝rl）を覚えていた端末は AK に戻す（v0.3.201 §190）
   apply(saved);
 })();
 

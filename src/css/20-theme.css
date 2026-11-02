@@ -14,15 +14,7 @@
     --hit-c2:#93291c;--hit-glow-a:214,69,47;--hit-ink:#fdece7;}
   /* SP-1200の質感：グレー本体＋青いセクションライン＋緑LCD寄りの画面＋赤アクセント */
   body.t-sp .label{color:#3f86d6;}
-  /* Roland TR-808風：黒地 + チャコール本体 + オレンジ/黄アクセント */
-  body.t-rl{--bg:#0e0f11;--panel:#2c2f34;--panel2:#373c43;--edge:#121316;--line:#474d56;
-    --ink:#eceff2;--dim:#8a9099;--amber:#ff7a2d;--amber-dim:#7a3a12;--teal:#ffcf3a;--pad:#33373d;--pad-face:#3e444c;
-    --hit-c2:#b34e12;--hit-glow-a:255,122,45;--hit-ink:#2a1405;}
-  /* TR-808：枠をオレンジのグラデに（拍内で暗→明・OFF時のみ）。空セル=共通の灰グラデ、充填=共通のアンバー */
-  body.t-rl .step:nth-child(4n+2):not(.on){border-color:#6e3310;}  /* 拍内1: 暗オレンジ */
-  body.t-rl .step:nth-child(4n+3):not(.on){border-color:#a85a18;}  /* 拍内2 */
-  body.t-rl .step:nth-child(4n):not(.on){border-color:#d98426;}    /* 拍内3 */
-  body.t-rl .step:nth-child(4n+1):not(.on){border-color:#ffb24d;}  /* 拍内4: 明オレンジ */
+  /* TR（Roland TR-808 風、t-rl）は v0.3.201 §190 で廃止（ユーザー判断「TRは廃止」） */
   /* WIRE（v0.3.163 §157）：「ヴェイパー調ワイヤーフレーム。シンプルな線とブラックバックな 80 年代のワイヤーフレームゲームのような」。
      黒一色の地に、シアンの細い線（枠）とマゼンタの点灯。面は塗らない＝線だけ。光はベクター管の滲み程度に薄く */
   body.t-wf{--bg:#000;--panel:#000;--panel2:#000;--edge:#1d6b7a;--line:#164a57;--well:#000;--well-ink:#2de2e6;--modal-deep:#000;
