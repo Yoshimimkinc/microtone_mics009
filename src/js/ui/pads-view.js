@@ -4,8 +4,8 @@
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
-//    selected, swapPads, syncEditor, tracks, trigger
+//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, selected,
+//    swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -77,7 +77,6 @@ PADS.forEach((p,i)=>{
     // v0.3.160：EDIT / COPY / MUTE / SOLO を押しているときはそちらが先（P-LOCK を選んだまま EDIT にすると、ドラッグで入れ替えられずに値が動いていた）
     if(perfPadDown(e,i,d)) return;
     if(AC.state!=="running")await AC.resume();
-    if(tracks[i].padKind==="SCR"){selectPad(i);scratchOpen(i).catch(e=>sampNameEl.textContent=e.message);return;}
     // 空パッドの「＋」(中央40%)タップ＝ワンタップで音入れ（Koala流・案1）。端のタップは選択＋案内のみ
     if(PADS[i].type==="empty" && !tracks[i].buffer){
       const r=d.getBoundingClientRect();
@@ -87,6 +86,8 @@ PADS.forEach((p,i)=>{
     }
     if(tracks[i].padKind==="KEY"){const target=tracks[i],epoch=target._contentEpoch||0;await prepareKeyTrack(target,bpmVal);if((target._contentEpoch||0)!==epoch||target.padKind!=="KEY")return;}
     trigger(i);selectPad(i,true);
+    // SCRATCH のパッドは押しても普通に鳴るだけ（v0.3.204 §193「Pad 押してすぐスクラッチになるのはやめたい」）。スクラッチ画面への入口を一言で
+    if(tracks[i].padKind==="SCR") sampNameEl.textContent=String(i+1).padStart(2,"0")+" SCRATCH · スクラッチ画面は窓の SAMPLE ページの SCRATCH か、EDIT＋パッド";
   });
   // --- EDIT中のドラッグ並べ替え（移動/コピー）---
   d.addEventListener("pointermove",(e)=>{
