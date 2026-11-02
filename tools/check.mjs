@@ -841,6 +841,14 @@ async function wireSkin(){
     return {cls:document.body.className.match(/t-\w+/g).join(), ls:localStorage.getItem('mics-skin'), on:document.querySelector('#themeSeg button.on').dataset.th,
       bg:cs('body').backgroundColor, pad:cs('#pads .pad').backgroundImage+'|'+cs('#pads .pad').backgroundColor, step:(document.querySelector('#stepStrip .stepbtn:not(.on)')?cs('#stepStrip .stepbtn:not(.on)').backgroundColor:'-') }; });
   ok_(`${V} スキン WIRE：黒地・パッドとステップは塗らない（線だけ）・選んだスキンを覚える`, r.cls==='t-wf' && r.ls==='wf' && r.on==='wf' && r.bg==='rgb(0, 0, 0)' && /none\|rgb\(0, 0, 0\)/.test(r.pad) && (r.step==='-'||r.step==='rgb(0, 0, 0)'), JSON.stringify(r));
+  // v0.3.200 §189：GIRLY（桜色の本体・ラベンダーの選択・ローズの点灯）。文字は地に対して 4.5:1 以上、選んだスキンを覚える
+  { const g=await p.evaluate(()=>{ document.querySelector('#themeSeg button[data-th="gl"]').click();
+      const rgb=c=>c.match(/\d+(\.\d+)?/g).slice(0,3).map(Number),lum=c=>{const v=rgb(c).map(x=>{x/=255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4);});return .2126*v[0]+.7152*v[1]+.0722*v[2];};
+      const cr=(a,b)=>{const L=[lum(a),lum(b)].sort((x,y)=>y-x);return (L[0]+.05)/(L[1]+.05);};
+      const cs=getComputedStyle(document.body),ink=cs.getPropertyValue('--ink').trim(),bg=cs.backgroundColor,unit=getComputedStyle(document.querySelector('.unit')).backgroundColor;
+      const hex=h=>'rgb('+[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(',')+')';
+      return {cls:document.body.className.match(/t-\w+/g).join(), ls:localStorage.getItem('mics-skin'), unit, inkOnUnit:+cr(hex(ink),unit).toFixed(2), selOnTeal:+cr(hex(cs.getPropertyValue('--hit-ink').trim()),hex(cs.getPropertyValue('--teal').trim())).toFixed(2)}; });
+    ok_(`${V} スキン GIRLY：桜色の本体・文字 4.5:1 以上・選択の塗りの上の文字も読める・選んだスキンを覚える`, g.cls==='t-gl' && g.ls==='gl' && /rgb\(246, 217, 228\)/.test(g.unit) && g.inkOnUnit>=4.5 && g.selOnTeal>=4.5, JSON.stringify(g)); }
   await p.evaluate(()=>{ document.querySelector('#themeSeg button[data-th="ak"]').click(); });
   ok_(`${V} AK に戻せる`, await p.evaluate(()=>document.body.classList.contains('t-ak') && !document.body.classList.contains('t-wf')), 'stuck');
   eq(`${V} 0 errors`, errs, []);
