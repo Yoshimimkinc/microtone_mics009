@@ -63,7 +63,9 @@ function barTapHold(b){
     const h=heldBars();
     sampNameEl.textContent = h.length ? "BAR HOLD ▸ "+h.map(x=>x+1).join(" → ")+"（ここだけ"+(h.length>1?"順番に":"")+"くり返す"+(h.length>1?"・打ち込みは "+h.map(x=>x+1).join("・")+" に同時に入る":"")+"）" : "BAR HOLD 解除（全部の小節を順に）";
     paintPatBar(); return true; }
-  _barTapB=b; _barTapT=now; return false;
+  _barTapB=b; _barTapT=now;
+  sampNameEl.textContent="BAR "+(b+1)+" を編集（すばやくもう一度押す＝この小節だけくり返す HOLD）";   // 隠れた操作を一言で案内（v0.3.196 §185）
+  return false;
 }
 // SEQ/GRIDのパターンA-D・小節1-4を押して選ぶ（COPY中は元→先でコピー）
 [[patSeg,"p",setEditPat,"pat"],[barSeg,"b",setEditBar,"bar"]].forEach(([seg,k,fn,ct])=>{

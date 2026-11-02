@@ -209,6 +209,11 @@ async function run(w,h,mobile){
           overlap:tabs.some(t=>t.right>menu.left+1&&t.top<menu.bottom),menuTop:Math.round(menu.top),labels:['play','rec','undoBtn'].map(id=>getComputedStyle(document.getElementById(id),'::after').content)};});
       if(stacked) ok_(`${V} スマホ：タブは上（40px 以上・MENU と重ならない）、再生まわりは FX 列の下で画面内`, L.playTop>=L.msBot && L.playBot<=L.vh && !L.overlap && L.menuTop<L.tabsBot && L.tabH>=40, JSON.stringify(L));
       ok_(`${V} 再生・録音・取り消しのボタンに名前`, L.labels.join()==='"PLAY","REC","UNDO"', JSON.stringify(L.labels)); }
+    // v0.3.196 §185：隠れた操作の案内（FX 列の横スワイプの行き先・FX のダブルタップ・BAR のダブルタップ）
+    { const H=await p.evaluate(()=>{const row=document.querySelector('.fx-swipe');const ind=getComputedStyle(row,'::after').content;
+        fxBtnTap('delay');const fx=sampNameEl.textContent;fxBtnTap('delay');barTapHold(2);const bar=sampNameEl.textContent;barTapHold(-9);return {ind,fx,bar};});
+      if(stacked) ok_(`${V} FX 列のスワイプの行き先が見える（FX / ABCD）`, /FX/.test(H.ind)&&/ABCD/.test(H.ind), H.ind);
+      ok_(`${V} FX と BAR のダブルタップを一言で案内`, /ダブルタップ/.test(H.fx) && /もう一度/.test(H.bar), JSON.stringify(H)); }
   }
   // 6d) スマホの下段は MUTE/FILTER/DELAY/REVERB/EDIT。SOLOはヘッダに残す。
   if(mobile){
@@ -681,6 +686,9 @@ async function setMode(){
     ok_(`${V} 起動時から 16 セット（SET 1 = 既定プロジェクト、他は既定のキット）`, boot.cur===0 && boot.n===16 && boot.names.join(',')==='SET 1,SET 2,SET 16' && boot.fresh1, JSON.stringify(boot));
     // 上段スイッチ（スマホ=vdot / PC=modebar）で SET へ：1 タップ
     await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(250);
+    // v0.3.196 §185：隠れた操作（押して離す・上下で音量）を SET の窓に一言
+    { const hp=await p.evaluate(()=>{const e=document.getElementById('clSetHelp');const r=e&&e.getBoundingClientRect();return e?{t:e.textContent,vis:r.height>0&&getComputedStyle(e).display!=='none'}:null;});
+      ok_(`${V} SET の窓に操作の案内（押して離す・上下で音量）`, hp && hp.vis && /押して離す/.test(hp.t) && /上下＝音量/.test(hp.t), JSON.stringify(hp)); }
     const st=await p.evaluate(()=>({mode:setMode, body:document.body.classList.contains('setmode'), page:clPage, cells:document.querySelectorAll('#setGrid .setpad').length, fresh:document.querySelectorAll('#setGrid .setpad.fresh').length,
       padsHidden:getComputedStyle(document.getElementById('pads')).display==='none', keysSet:getComputedStyle(document.getElementById('clKeysSet')).display, keys:getComputedStyle(document.getElementById('clKeys')).display, bar:getComputedStyle(document.querySelector('#viewPads>.msbar')).display,
       sel:document.querySelector('#setGrid .setpad.on .n span').textContent, tag:document.querySelector('#setGrid .setpad.on .tag').textContent}));

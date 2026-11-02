@@ -77,8 +77,9 @@
 .fx-swipe .fx-pattern[hidden]{display:none!important}
 .fx-swipe[data-fx-page=patterns]>button:not(.fx-pattern){display:none!important}
 .fx-swipe[data-fx-page=patterns]>.fx-pattern{display:flex!important;align-items:center;justify-content:center;flex:1 1 0!important;min-width:0!important;min-height:46px;font-size:22px;font-weight:800;letter-spacing:.08em;padding:8px 0;touch-action:pan-y}
-.fx-swipe::after{content:"● ○";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;line-height:7px;letter-spacing:3px;color:var(--ink);pointer-events:none;opacity:.55}
-.fx-swipe[data-fx-page=patterns]::after{content:"○ ●"}
+/* 横スワイプの案内（v0.3.196 §185：記号だけの「● ○」に行き先の名前。隠れた操作に一言） */
+.fx-swipe::after{content:"FX ● ○ ABCD  ⟷";position:absolute;bottom:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:8px;letter-spacing:1px;white-space:nowrap;color:var(--ink);pointer-events:none;opacity:.7}
+.fx-swipe[data-fx-page=patterns]::after{content:"FX ○ ● ABCD  ⟷"}
 .fx-swipe.swiping{cursor:grabbing}
 /* 場所がある画面（768px 以上＝PC / iPad 横の演奏画面）は A B C D をスワイプの裏に隠さない（v0.3.182 §169）。
    下の段の A B C D を横長に大きく。FX 列の中の A B C D とページの点（● ○）は出さない */

@@ -795,8 +795,9 @@
 .fx-swipe .fx-pattern[hidden]{display:none!important}
 .fx-swipe[data-fx-page=patterns]>button:not(.fx-pattern){display:none!important}
 .fx-swipe[data-fx-page=patterns]>.fx-pattern{display:flex!important;align-items:center;justify-content:center;flex:1 1 0!important;min-width:0!important;min-height:46px;font-size:22px;font-weight:800;letter-spacing:.08em;padding:8px 0;touch-action:pan-y}
-.fx-swipe::after{content:"● ○";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;line-height:7px;letter-spacing:3px;color:var(--ink);pointer-events:none;opacity:.55}
-.fx-swipe[data-fx-page=patterns]::after{content:"○ ●"}
+/* 横スワイプの案内（v0.3.196 §185：記号だけの「● ○」に行き先の名前。隠れた操作に一言） */
+.fx-swipe::after{content:"FX ● ○ ABCD  ⟷";position:absolute;bottom:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:8px;letter-spacing:1px;white-space:nowrap;color:var(--ink);pointer-events:none;opacity:.7}
+.fx-swipe[data-fx-page=patterns]::after{content:"FX ○ ● ABCD  ⟷"}
 .fx-swipe.swiping{cursor:grabbing}
 /* 場所がある画面（768px 以上＝PC / iPad 横の演奏画面）は A B C D をスワイプの裏に隠さない（v0.3.182 §169）。
    下の段の A B C D を横長に大きく。FX 列の中の A B C D とページの点（● ○）は出さない */
@@ -892,6 +893,8 @@
   body.perf.setmode #perfPlk{visibility:hidden;}   /* 場所は残す＝PADS / SEQ / SET で主面の位置が同じ（v0.3.183 §171） */
   /* 窓の A B C D は v0.3.183 で撤去（主面の下と重複 §171）。窓の高さを PADS と同じに保つため、キー列の高さだけ残す */
   #clKeysSet{min-height:50px;}
+/* SET の窓の操作の案内（v0.3.196 §185） */
+.cl-help{grid-column:1/-1;flex:1 1 100%;align-self:center;margin:0 4px;font-size:11px;line-height:1.45;letter-spacing:.04em;color:inherit;opacity:.85}   /* SET の窓の空いていた段（#clKeysSet、高さ 50px は PADS のページ切替と同じ）に入れる＝窓の高さは変わらない */
   /* 編集モーダル */
   .modal.pe{width:min(440px,94vw);}
   /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
@@ -1384,7 +1387,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.195</div>
+  <div class="s-ver" id="splashVer">v0.3.196</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1755,7 +1758,7 @@
           <button class="cl-key" data-pg="asgn">ASSIGN</button>
         </div>
         <!-- SET モードのキー列：A B C D は窓の外（主面の下の A B C D）と重複するので v0.3.183 で撤去（§171）。窓の高さを変えないよう、行の高さだけ残す -->
-        <div class="cl-keys cl-keys-set" id="clKeysSet" aria-hidden="true"></div>
+        <div class="cl-keys cl-keys-set" id="clKeysSet"><p class="cl-help" id="clSetHelp">パッドを押して離す＝鳴らす／止める · 押したまま上下＝音量 · 同時に鳴らせる（MIX）</p></div>
         <!-- メッセージとヒントは1行に統合し、空でも高さを確保する。
              出入りで畳んでいた頃は、トーストが出るたびに窓が伸び縮みしてパッドがずれていた -->
         <div class="cl-row cl-note"><b id="clMsg"></b><span id="clHint"></span></div>
@@ -3584,7 +3587,8 @@ function fxBtnTap(effect){
   if(armMode==='edit'){setActiveLock(null);perfLockApply();fxModalOpen(effect);return;}
   if(armMode)arm(armMode,false);
   setActiveLock(effect);perfLockApply();
-  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整':effect.toUpperCase()+' · 選択解除（設定値は保持）';
+  // 隠れた操作（ダブルタップ・EDIT＋ボタン）を一言で案内（v0.3.196 §185）
+  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整（ダブルタップ＝全部外す・EDIT＋'+effect.toUpperCase()+'＝詳しく）':effect.toUpperCase()+' · 選択解除（設定値は保持・ダブルタップ＝全部外す）';
 }
 // ---------- EDIT → エフェクトのボタン＝詳しい設定のモーダル（v0.3.168）：パッドごとの量、FILTER は種類も、RESET ----------
 let fxmParam=null, _fxmUndo=false;
@@ -6209,7 +6213,9 @@ function barTapHold(b){
     const h=heldBars();
     sampNameEl.textContent = h.length ? "BAR HOLD ▸ "+h.map(x=>x+1).join(" → ")+"（ここだけ"+(h.length>1?"順番に":"")+"くり返す"+(h.length>1?"・打ち込みは "+h.map(x=>x+1).join("・")+" に同時に入る":"")+"）" : "BAR HOLD 解除（全部の小節を順に）";
     paintPatBar(); return true; }
-  _barTapB=b; _barTapT=now; return false;
+  _barTapB=b; _barTapT=now;
+  sampNameEl.textContent="BAR "+(b+1)+" を編集（すばやくもう一度押す＝この小節だけくり返す HOLD）";   // 隠れた操作を一言で案内（v0.3.196 §185）
+  return false;
 }
 // SEQ/GRIDのパターンA-D・小節1-4を押して選ぶ（COPY中は元→先でコピー）
 [[patSeg,"p",setEditPat,"pat"],[barSeg,"b",setEditBar,"bar"]].forEach(([seg,k,fn,ct])=>{
@@ -7821,7 +7827,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.195";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.196";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
