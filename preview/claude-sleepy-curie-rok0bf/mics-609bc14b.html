@@ -172,6 +172,9 @@
   .brand .model{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.28em;
     border:1px solid var(--line);border-radius:3px;padding:3px 7px;}
   .transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  /* 記号だけのボタンに名前（v0.3.195 §184）。記号は textContent のまま（状態の表示）、名前は data-label */
+  .transport button.t[data-label]::after{content:attr(data-label);margin-left:7px;font-size:10px;letter-spacing:.12em;}
+  .viewdots .vd-ic{display:none;}
   button.t{
     background:var(--panel2);color:var(--ink);border:1px solid var(--line);
     border-radius:6px;padding:9px 14px;font:inherit;font-size:13px;letter-spacing:.12em;
@@ -713,6 +716,36 @@
   }
   /* 演奏画面の小節ボタン：選択中（.on）の影より、ホールドの枠を優先（v0.3.183：SEQ も演奏画面の BAR を使うので見えるように） */
   body.perf .perf-bar.hold,body.perf .perf-bar.on.hold{box-shadow:0 0 0 2px var(--amber) inset,0 0 10px rgba(var(--hit-glow-a),.5);}
+
+/* v0.3.198 §187 略さない・単位・切らない（参考 UI の「すべてに名前」） */
+/* A B C D・1 2 3 4 の段に「PATTERN」「BAR」の小見出し（最初のボタンの左上。BAR 1 をホールド中は ⟳ が優先） */
+#patSeg .patbtn[data-p="0"]::before,.perf-pat[data-p="0"]::before,#barSeg .patbtn[data-b="0"]:not(.hold)::before,.perf-bar[data-b="0"]:not(.hold)::before{
+  position:absolute;top:2px;left:4px;font-size:7px;line-height:1;font-weight:700;letter-spacing:.08em;color:currentColor;opacity:.7;pointer-events:none;}
+#patSeg .patbtn[data-p="0"]::before,.perf-pat[data-p="0"]::before{content:"PATTERN";}
+#barSeg .patbtn[data-b="0"]:not(.hold)::before,.perf-bar[data-b="0"]:not(.hold)::before{content:"BAR";}
+#patSeg .patbtn,#barSeg .patbtn{position:relative;}
+/* SEQ の行の名前：番号の後に名前、収まらなければ折り返して 2 行まで（8 文字で切らない） */
+.row .rn{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:9px;line-height:1.15;}
+.row .rn b{font-size:9px;margin-right:3px;}
+/* 下の段が暗い背景（AK の筐体のグラデーション）でも読めるように、名前の欄に淡い地 */
+.row .rn{background:color-mix(in srgb,var(--panel2) 80%,transparent);color:var(--ink);}
+/* スマホは欄が狭い：番号の段＋名前（折り返して 2 行まで） */
+@media(max-width:767px){
+  .row .rn{display:flex;flex-direction:column;-webkit-line-clamp:unset;}
+  .row .rn span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
+}
+/* パッドの名前：8 文字で切らずに 2 行まで */
+.pad .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;overflow-wrap:anywhere;line-height:1.15;padding-right:2px;}
+.pad[data-kind="KEY"] .nm,.pad[data-kind="SCR"] .nm{padding-right:44px;}
+/* SET のパッド：BPM に単位、A B C D は点ではなく文字（中身のあるものだけ濃く） */
+.setpad .bpm{white-space:nowrap;}
+.setpad .ft{gap:4px;}
+.setpad .dots{gap:2px;flex:0 0 auto;}
+.setpad .dots i{width:auto;height:auto;background:none!important;font-style:normal;font-size:8px;font-weight:700;line-height:1;color:var(--dim);opacity:.45;}
+.setpad .dots i.has{opacity:1;}
+.setpad .dots i.has{color:var(--amber);}
+/* スマホの窓の 1 段目：略さない名前（SWING / PATTERN）にすると STEP が 2 段目へ落ちて窓が伸びる → STEP は出さない（SEQ のカーソルと下の段で分かる） */
+@media(max-width:767px){.cl-stat>span:has(#clStep){display:none;}}
   /* mode switch (実機風) */
   .modebar{display:flex;gap:0;margin:8px 0 10px;
     background:#0d1013;border:1px solid var(--edge);border-radius:8px;padding:5px;width:fit-content;
@@ -792,8 +825,9 @@
 .fx-swipe .fx-pattern[hidden]{display:none!important}
 .fx-swipe[data-fx-page=patterns]>button:not(.fx-pattern){display:none!important}
 .fx-swipe[data-fx-page=patterns]>.fx-pattern{display:flex!important;align-items:center;justify-content:center;flex:1 1 0!important;min-width:0!important;min-height:46px;font-size:22px;font-weight:800;letter-spacing:.08em;padding:8px 0;touch-action:pan-y}
-.fx-swipe::after{content:"● ○";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;line-height:7px;letter-spacing:3px;color:var(--ink);pointer-events:none;opacity:.55}
-.fx-swipe[data-fx-page=patterns]::after{content:"○ ●"}
+/* 横スワイプの案内（v0.3.196 §185：記号だけの「● ○」に行き先の名前。隠れた操作に一言） */
+.fx-swipe::after{content:"FX ● ○ ABCD  ⟷";position:absolute;bottom:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:8px;letter-spacing:1px;white-space:nowrap;color:var(--ink);pointer-events:none;opacity:.7}
+.fx-swipe[data-fx-page=patterns]::after{content:"FX ○ ● ABCD  ⟷"}
 .fx-swipe.swiping{cursor:grabbing}
 /* 場所がある画面（768px 以上＝PC / iPad 横の演奏画面）は A B C D をスワイプの裏に隠さない（v0.3.182 §169）。
    下の段の A B C D を横長に大きく。FX 列の中の A B C D とページの点（● ○）は出さない */
@@ -805,6 +839,18 @@
 
 /* EDIT is also reachable on phone; the pattern page still shows only A–D. */
 @media(max-width:600px){#viewPads>.msbar[data-fx-page=effects] #holdEdit{display:flex}}
+
+/* v0.3.197 §186 色の意味を整理（参考 UI の「色の意味は 1 つ」）：
+   選択・オン・モード中＝--teal ／ 鳴っている・入っている（ステップ・パッドの点灯・鳴っているセット）＝--amber ／ 録音＝--red ／ それ以外は文字色。
+   エフェクトごとの色（MUTE ティール・FILTER 紫・DELAY 緑・REVERB 青）と、パッドの種類の色帯（サンプル＝teal・ドラム＝amber・ベース＝red が
+   「選択」「鳴っている」「録音」と同じ色で意味が重なっていた）はやめる。種類は右上の SPL / KEY / SCR の文字で示す */
+.msbtn.fx[data-lock],.perf-plkbtn[data-lock]{color:var(--ink);}
+.msbtn.fx[data-lock].on,.perf-plkbtn[data-lock].on,.msbtn.edit.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 14px color-mix(in srgb,var(--teal) 45%,transparent);}
+.msbtn.edit.armed .d{background:var(--hit-ink);}
+body.perf .perf-plkbtn[data-lock]::after{background:var(--line);}
+body.perf .perf-plkbtn[data-lock].on{box-shadow:0 0 16px -2px color-mix(in srgb,var(--teal) 60%,transparent);}
+button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 45%,transparent);}
+.pad.pcat-drum,.pad.pcat-bass,.pad.pcat-sample{--cat:var(--line);}
   /* ===== SET モード（v0.3.143 §144）：情報窓が SET 演奏モード、格子が 16 の枠、下段が ◀ / NEXT / LIVE ===== */
   /* 格子：#pads と同じ .pads なので寸法は同じ。body.setmode で入れ替える */
   #setGrid{display:none;}
@@ -889,6 +935,8 @@
   body.perf.setmode #perfPlk{visibility:hidden;}   /* 場所は残す＝PADS / SEQ / SET で主面の位置が同じ（v0.3.183 §171） */
   /* 窓の A B C D は v0.3.183 で撤去（主面の下と重複 §171）。窓の高さを PADS と同じに保つため、キー列の高さだけ残す */
   #clKeysSet{min-height:50px;}
+/* SET の窓の操作の案内（v0.3.196 §185） */
+.cl-help{grid-column:1/-1;flex:1 1 100%;align-self:center;margin:0 4px;font-size:11px;line-height:1.45;letter-spacing:.04em;color:inherit;opacity:.85}   /* SET の窓の空いていた段（#clKeysSet、高さ 50px は PADS のページ切替と同じ）に入れる＝窓の高さは変わらない */
   /* 編集モーダル */
   .modal.pe{width:min(440px,94vw);}
   /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
@@ -1033,6 +1081,18 @@
   .fxm-v{text-align:right;font-variant-numeric:tabular-nums;}
   .fxm-type{display:none;min-height:28px;padding:2px 4px;font-size:11px;background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;cursor:pointer;}
   .fxm-list.filt .fxm-type{display:block;}
+
+  /* v0.3.199 §188 EDIT を見出しで区切る・値に名前と単位（参考 UI の TRIM 画面） */
+  .pe-sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--line);
+    font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--ink);}
+  .pe-sec small{font-size:10px;font-weight:400;letter-spacing:.02em;color:var(--dim);}
+  .pe-range{display:flex;justify-content:space-between;gap:8px;margin:6px 0 0;font-size:10px;letter-spacing:.1em;color:var(--dim);}
+  .pe-range b{margin-left:4px;font-size:13px;letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums;}
+  #padEditModal[data-pad-kind=KEY] .pe-sec-wave,#padEditModal[data-pad-kind=KEY] .pe-range{display:none;}
+  #peKinds .t{font-size:11px;letter-spacing:.08em;}
+
+  .pe-transport button{min-width:0;}
+  @media(max-width:600px){ .pe-transport{gap:6px;} .pe-transport button{padding:10px 4px;letter-spacing:.06em;gap:5px;} }
   /* responsive */
   @media(max-width:767px){   /* 積み上げレイアウトを767pxまで＝splitの開始点と隙間なく接続 */
     /* セーフエリア（ノッチ/ステータスバー/ホームバー）を避ける＝ロゴが時刻に重ならない */
@@ -1167,6 +1227,27 @@
     .colnums .cn{font-size:9px;}
     .colnums .cn:not(:nth-child(4n+2)){visibility:hidden;}   /* 拍頭1,5,9,13だけ表示＝位置把握には十分で読める大きさに */
   }
+
+  /* v0.3.195 §184（参考 UI の「どの画面でも上下の位置が同じ」）：スマホは上＝画面のタブ（PADS / SEQ / SET＋MENU）、下＝再生まわり（名前付き）に固定。
+     .top を display:contents にして、タブ（#viewDots）と再生まわり（.transport）を .unit の上下へ並べ替える（DOM はそのまま） */
+  @media(max-width:767px){
+    .unit{position:relative;}
+    .top{display:contents;}
+    #viewDots{order:-1;flex:0 0 auto;box-sizing:border-box;width:100%;gap:5px;padding:0 52px 8px 0;margin-bottom:6px;border-bottom:1px solid var(--line);}
+    #viewDots .logo{font-size:16px;padding:0 4px 0 2px;}
+    .unit>.body{order:0;}
+    .transport{order:1;flex:0 0 auto;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
+    .transport button.t[data-label]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1;font-size:15px;}
+    .transport button.t[data-label]::after{margin:0;font-size:9px;letter-spacing:.08em;}
+    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:44px;flex:none;padding:0;}
+    .viewdots .vdot{min-height:44px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
+    .viewdots .vdot .vd-dot{display:none;}
+    .viewdots .vdot.on{color:var(--ink);border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}
+    .viewdots .vd-ic{display:block;width:14px;height:14px;fill:currentColor;flex:0 0 auto;}
+    .viewdots .vdot[data-view="viewSet"]{flex-grow:1.3;}
+    .viewdots .vdot[data-view="viewSet"] .vd-ic{display:none;}   /* SET はセットの地図がアイコンの代わり */
+  }
+
   @media(max-width:400px){
     body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
     .unit{padding:10px 8px 8px;}
@@ -1360,7 +1441,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.194</div>
+  <div class="s-ver" id="splashVer">v0.3.199</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1376,12 +1457,13 @@
       <div class="model">MICS009</div>
     </div>
     <div class="transport">
-      <button class="t play" id="play" aria-label="Play/Stop">▶</button>
-      <button class="t rec" id="rec" aria-label="Rec">●</button>
-      <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す">↩</button>
+      <!-- v0.3.195 §184：記号だけのボタンに名前（data-label、表示は CSS）。スマホは画面の下に固定、PC は右上のまま -->
+      <button class="t play" id="play" aria-label="Play/Stop" data-label="PLAY">▶</button>
+      <button class="t rec" id="rec" aria-label="Rec" data-label="REC">●</button>
+      <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す" data-label="UNDO">↩</button>
       <button class="t arm copy" id="holdCopy" title="押した後パッドで音色コピー">COPY</button>
       <button class="t arm solo" id="holdSolo" title="押した後パッドでソロ">SOLO</button>
-      <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog">⋮</button>
+      <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog" data-label="MENU">⋮</button>
     </div>
     <!-- メニュー（SKIN / プロジェクト操作） -->
     <div class="modal-backdrop" id="menuModal" style="display:none;">
@@ -1528,13 +1610,17 @@
           <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
                  spellcheck="false" aria-label="パッドの名前" hidden>
         </div>
-        <div id="peKinds"><button class="t" data-kind="SPL">SPL</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCR</button><button class="t" id="peKeyOpen" hidden>PIANO ROLL</button></div>
+        <!-- v0.3.199 §188：見出しで区切り、値に名前と単位（参考 UI の TRIM 画面）。略さない（SPL→SAMPLE・SCR→SCRATCH・REV→REVERSE・ATK→ATTACK） -->
+        <div class="pe-sec">SOUND TYPE<small>音の種類</small></div>
+        <div id="peKinds"><button class="t" data-kind="SPL">SAMPLE</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCRATCH</button><button class="t" id="peKeyOpen" hidden>PIANO ROLL</button></div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
+        <div class="pe-sec pe-sec-wave">SOURCE<small>音を入れる</small></div>
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
-          <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SMPL</span>
-          <span class="pe-sample-hint">音源を読み込み / 録音</span>
+          <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SAMPLING</span>
+          <span class="pe-sample-hint">ファイルを読み込む / マイク・タブの音を録る</span>
         </div>
+        <div class="pe-sec pe-sec-wave">TRIM<small>START / END を波形の上でドラッグ（ダブルタップ＝全体）</small></div>
         <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
         <div id="peWaveHome">
           <div id="peWaveBox">
@@ -1549,19 +1635,22 @@
               <div class="playhead" id="pePlayhead"></div>
               <div class="cue" id="peCue"><span class="cap">▶</span></div>
               <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
-              <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
+              <div class="handle start" id="peStart"><span class="cap">START</span></div>
               <div class="handle end" id="peEnd"><span class="cap">END</span></div>
             </div>
           </div>
         </div>
+        <div class="pe-range" aria-live="polite"><span>START <b id="peStartVal">0 ms</b></span><span>END <b id="peEndVal">—</b></span><span>LENGTH <b id="peLenVal">—</b></span></div>
+        <div class="pe-sec pe-sec-wave">PROCESS<small>試聴・加工</small></div>
         <div class="pe-transport">
           <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
           <button class="pe-trim" id="peTrunc">✂ TRIM</button>
-          <button class="pe-trim" id="peRev">⇄ REV</button>
+          <button class="pe-trim" id="peRev">⇄ REVERSE</button>
           <button class="pe-trim pe-del" id="peDel" title="このパッドの音を消す（2 回押す・↩ で戻せる）">✕ DELETE</button>
         </div>
+        <div class="pe-sec pe-sec-wave">CHOP<small>パッドに分ける：分け方・数（OFF＝分けない）</small></div>
         <div class="pe-chop">
-          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATK</button></div>
+          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATTACK</button></div>
           <div class="seg" id="edChopDiv"><button class="on" data-n="0">OFF</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
           <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
           <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
@@ -1620,9 +1709,9 @@
  <p id="scratchStatus" role="status">波形から指を離すと通常再生</p></section>
 </div>
     <div class="viewdots" id="viewDots">
-      <button class="vdot on" data-view="viewPads" aria-label="Pads"><span class="vd-dot"></span>PADS</button>
-      <button class="vdot" data-view="viewSeq" aria-label="Seq"><span class="vd-dot"></span>SEQ</button>
-      <button class="vdot" data-view="viewSet" aria-label="Set"><span class="vd-dot"></span>SET<span class="setmap" aria-hidden="true"></span><b class="setno">01</b></button>
+      <button class="vdot on" data-view="viewPads" aria-label="Pads"><span class="vd-dot"></span><svg class="vd-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>PADS</button>
+      <button class="vdot" data-view="viewSeq" aria-label="Seq"><span class="vd-dot"></span><svg class="vd-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="2" width="3" height="3"/><rect x="5" y="2" width="3" height="3" opacity=".35"/><rect x="9" y="2" width="3" height="3"/><rect x="13" y="2" width="2" height="3" opacity=".35"/><rect x="1" y="7" width="3" height="3" opacity=".35"/><rect x="5" y="7" width="3" height="3"/><rect x="9" y="7" width="3" height="3" opacity=".35"/><rect x="13" y="7" width="2" height="3"/><rect x="1" y="12" width="3" height="3"/><rect x="5" y="12" width="3" height="3" opacity=".35"/><rect x="9" y="12" width="3" height="3"/><rect x="13" y="12" width="2" height="3" opacity=".35"/></svg>SEQ</button>
+      <button class="vdot" data-view="viewSet" aria-label="Set"><span class="vd-dot"></span><svg class="vd-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="1" width="12" height="9" rx="1" opacity=".35"/><rect x="1" y="5" width="12" height="10" rx="1"/></svg>SET<span class="setmap" aria-hidden="true"></span><b class="setno">01</b></button>
     </div>
   </div>
 
@@ -1684,7 +1773,7 @@
       </div>
       <div class="seq-head" id="seqHead">
         <div class="pat-bar">
-          <span class="patlabel">PAT</span>
+          <span class="patlabel">PATTERN</span>
           <div class="seg" id="patSeg">
             <button class="patbtn on" data-p="0">A</button>
             <button class="patbtn" data-p="1">B</button>
@@ -1713,12 +1802,12 @@
         <div class="cl-body">
         <div class="cl-row cl-stat">
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
-          <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
-          <span><i>PAT</i><b class="cl-num" id="perfPat">A</b></span>
+          <span class="cl-par" data-p="swing"><i>SWING</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
+          <span><i>PATTERN</i><b class="cl-num" id="perfPat">A</b></span>
           <span><i>BAR</i><b class="cl-num" id="clBar">1</b></span>
           <span><i>STEP</i><b class="cl-num" id="clStep">--</b></span>
         </div>
-        <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
+        <div class="cl-row cl-trk"><span><i>PAD</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params cl-page" id="clPage"></div>
         </div><!-- /.cl-body -->
         <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
@@ -1730,7 +1819,7 @@
           <button class="cl-key" data-pg="asgn">ASSIGN</button>
         </div>
         <!-- SET モードのキー列：A B C D は窓の外（主面の下の A B C D）と重複するので v0.3.183 で撤去（§171）。窓の高さを変えないよう、行の高さだけ残す -->
-        <div class="cl-keys cl-keys-set" id="clKeysSet" aria-hidden="true"></div>
+        <div class="cl-keys cl-keys-set" id="clKeysSet"><p class="cl-help" id="clSetHelp">パッドを押して離す＝鳴らす／止める · 押したまま上下＝音量 · 同時に鳴らせる（MIX）</p></div>
         <!-- メッセージとヒントは1行に統合し、空でも高さを確保する。
              出入りで畳んでいた頃は、トーストが出るたびに窓が伸び縮みしてパッドがずれていた -->
         <div class="cl-row cl-note"><b id="clMsg"></b><span id="clHint"></span></div>
@@ -3284,8 +3373,8 @@ new MutationObserver(()=>{
   sampNameEl.classList.toggle("in-window", !!fits);
 }).observe(sampNameEl,{childList:true,characterData:true,subtree:true});
 // @module ui/pads-view
-// @provides _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl, paintPadName,
-//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
+// @provides PAD_KIND_TAG, _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl,
+//    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
@@ -3317,13 +3406,15 @@ function applyPadCategory(i){
 }
 // パッド名の表示（パッド内は8文字・大文字／SEQ の行名は全文）。t.name → PADS[i].name の順。名前を書く唯一の口（v0.3.132）
 // v0.3.131 までは録音・LOAD・読込・undo・改名の5箇所がそれぞれ .nm を直書きしていて、整形の有無や SEQ 行名の更新漏れがあった
+// パッド右上の種類の札：サンプル（既定）は出さない、KEY / SCRATCH だけ略さずに（v0.3.198 §187）
+const PAD_KIND_TAG={KEY:"KEY",SCR:"SCRATCH"};
 function paintPadName(i){
   const nm=tracks[i].name||PADS[i].name||"";
   const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
-  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=tracks[i].padKind||"SPL";}
+  if(ne) ne.textContent=nm.toUpperCase();   // 8 文字で切らない（2 行まで CSS で。v0.3.198 §187）
+  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=PAD_KIND_TAG[tracks[i].padKind]||"";}
   const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
+  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${nm}</span>`;
 }
 // パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
 function refreshPadDisplay(i){
@@ -3335,7 +3426,7 @@ function refreshPadDisplay(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><span class="pad-kind">SPL</span><div class="stepn">${i+1}</div><div class="lockv"></div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><span class="pad-kind"></span><div class="stepn">${i+1}</div><div class="lockv"></div>`;
   d._lockfill=d.querySelector(".lockfill"); d._lockv=d.querySelector(".lockv");   // 毎ステップ描画でquerySelectorしないよう参照をキャッシュ
   d.dataset.i=i;
   d.setAttribute("role","button");
@@ -3559,7 +3650,8 @@ function fxBtnTap(effect){
   if(armMode==='edit'){setActiveLock(null);perfLockApply();fxModalOpen(effect);return;}
   if(armMode)arm(armMode,false);
   setActiveLock(effect);perfLockApply();
-  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整':effect.toUpperCase()+' · 選択解除（設定値は保持）';
+  // 隠れた操作（ダブルタップ・EDIT＋ボタン）を一言で案内（v0.3.196 §185）
+  sampNameEl.textContent=activeLock?effect.toUpperCase()+' · PADを左右／上下に動かして調整（ダブルタップ＝全部外す・EDIT＋'+effect.toUpperCase()+'＝詳しく）':effect.toUpperCase()+' · 選択解除（設定値は保持・ダブルタップ＝全部外す）';
 }
 // ---------- EDIT → エフェクトのボタン＝詳しい設定のモーダル（v0.3.168）：パッドごとの量、FILTER は種類も、RESET ----------
 let fxmParam=null, _fxmUndo=false;
@@ -3638,7 +3730,7 @@ PADS.forEach((p,i)=>{
 
   const rn=document.createElement("div");
   rn.className="rn";
-  rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${p.name}`;
+  rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${p.name}</span>`;   // 番号の後に名前（切らずに 2 行まで、v0.3.198 §187）
   rn.addEventListener("click",async()=>{
     if(AC.state!=="running")await AC.resume();
     if(melodicMode){
@@ -4268,7 +4360,7 @@ const CL_SPEC={
   // （setDelayTempo・readout・paintPerf が既存ハンドラでまとめて走る）
   bpm:   {lbl:"BPM", g:1, get:()=>bpmVal, min:40,max:250,st:0.5,px:5, fmt:v=>v.toFixed(1), w:5, zero:100,
           set:v=>{ const el=document.getElementById("bpm"); el.value=v; el.dispatchEvent(new Event("input",{bubbles:true})); }},
-  swing: {lbl:"SWG", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>String(v), w:2,
+  swing: {lbl:"SWING", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>String(v), w:2,
           set:v=>{ const el=document.getElementById("swing"); el.value=v; el.dispatchEvent(new Event("change",{bubbles:true})); }},
   pitch: {lbl:"PITCH", u:"st", get:t=>t.tune,  set:(t,v)=>t.tune=v, min:-12,max:12,st:1,px:14, fmt:v=>(v>0?"+":"")+v, w:3},
   scale: {lbl:"SCALE", en:["off","chro","maj","min","pent"], get:t=>t.scale||"off",
@@ -4766,7 +4858,7 @@ const playBtn=document.getElementById("play");
 function paintTransport(){
   const any = playing || (typeof sideCount==="function" && sideCount()>0);
   playBtn.classList.toggle("on",any);
-  playBtn.textContent=any?"■":"▶";   // アイコンのみ（文字なし）
+  playBtn.textContent=any?"■":"▶";playBtn.dataset.label=any?"STOP":"PLAY";   // 記号＋名前（名前は data-label、v0.3.195 §184）
   if(typeof paintSet==="function") paintSet();   // SET 画面：再生中のセットをオレンジに（v0.3.145）
   if(typeof paintPadStates==="function") paintPadStates();   // 止めると編集中のパターンのミュート / エフェクトに戻る（v0.3.149 / v0.3.150）
   if(!playing && typeof paintPerf==="function") paintPerf();
@@ -4787,7 +4879,7 @@ playBtn.addEventListener("click",async()=>{
 });
 const recBtn=document.getElementById("rec");
 function updateRecBtnLabel(){
-  recBtn.textContent = recording ? "■" : "●"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording);   // アイコンのみ
+  recBtn.textContent = recording ? "■" : "●"; recBtn.dataset.label = recording ? "STOP REC" : "REC"; recBtn.classList.toggle("on",recording); recBtn.classList.toggle("rec-live",recording);   // 記号＋名前
 }
 recBtn.addEventListener("click",()=>{
   recording=!recording; if(recording) pushUndo(); updateRecBtnLabel();
@@ -4984,8 +5076,8 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // @module edit-modal
 // @provides _ovCache, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor, peCueFrom, peCueT,
-//    peCueTimer, peNameSync, pePlayRAF, pePlayheadRun, peSetCue, peWaveVisible, refreshOpenPadEdit,
-//    renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+//    peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue, peWaveVisible,
+//    refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
 //    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
 //    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
@@ -5150,6 +5242,7 @@ function renderPeWave(i){
   document.getElementById("peStart").style.left=sx+"px";
   document.getElementById("peEnd").style.left=ex+"px";
   const pl=document.getElementById("peLoop"); pl.style.left=lx+"px"; pl.style.display=t.loop?"block":"none";
+  peRangePaint(t);
   if(peCueFor!==i || peCueBuf!==t.buffer){ peCue=null; peCueFor=i; peCueBuf=t.buffer; }   // パッドか音が替わったら試聴カーソルは消す
   const cu=document.getElementById("peCue");
   if(cu){ const cx=peCue==null?-1:nx(peCue); cu.classList.toggle("show", peCue!=null && cx>=0 && cx<=W); if(peCue!=null) cu.style.left=cx+"px"; }
@@ -5157,6 +5250,13 @@ function renderPeWave(i){
   const sxc=Math.max(0,Math.min(W,sx)), exc=Math.max(0,Math.min(W,ex));
   shL.style.left="0"; shL.style.width=sxc+"px"; shR.style.left=exc+"px"; shR.style.width=(W-exc)+"px";
   renderPeOver(i); syncPeOverWin();
+}
+// START / END / LENGTH を数字で（v0.3.199 §188：参考 UI の「START 0ms・END 11.43s」。1 秒未満は ms、それ以上は s）
+function peFmtTime(sec){ return !(sec>=0) ? "—" : sec<1 ? Math.round(sec*1000)+" ms" : sec.toFixed(2)+" s"; }
+function peRangePaint(t){
+  const dur=t&&t.buffer?t.buffer.duration:NaN, s=(t&&t.start||0)*dur, e=(t&&(t.end??1))*dur;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&el.textContent!==v) el.textContent=v; };
+  set("peStartVal",peFmtTime(s)); set("peEndVal",peFmtTime(e)); set("peLenVal",peFmtTime(e-s));
 }
 // EDITモーダルが開いていて、取り込み先がその編集パッドなら波形/タイトルを更新
 function refreshOpenPadEdit(i){
@@ -6184,7 +6284,9 @@ function barTapHold(b){
     const h=heldBars();
     sampNameEl.textContent = h.length ? "BAR HOLD ▸ "+h.map(x=>x+1).join(" → ")+"（ここだけ"+(h.length>1?"順番に":"")+"くり返す"+(h.length>1?"・打ち込みは "+h.map(x=>x+1).join("・")+" に同時に入る":"")+"）" : "BAR HOLD 解除（全部の小節を順に）";
     paintPatBar(); return true; }
-  _barTapB=b; _barTapT=now; return false;
+  _barTapB=b; _barTapT=now;
+  sampNameEl.textContent="BAR "+(b+1)+" を編集（すばやくもう一度押す＝この小節だけくり返す HOLD）";   // 隠れた操作を一言で案内（v0.3.196 §185）
+  return false;
 }
 // SEQ/GRIDのパターンA-D・小節1-4を押して選ぶ（COPY中は元→先でコピー）
 [[patSeg,"p",setEditPat,"pat"],[barSeg,"b",setEditBar,"bar"]].forEach(([seg,k,fn,ct])=>{
@@ -6952,7 +7054,7 @@ function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/6
   if(!setGridEl) return;
   for(let k=0;k<16;k++){
     const d=document.createElement("button"); d.className="pad setpad"; d.dataset.k=k; d.setAttribute("aria-label","SET "+(k+1));
-    d.innerHTML='<div class="lvfill"></div><div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
+    d.innerHTML='<div class="lvfill"></div><div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots" title="中身のある A B C D"><i>A</i><i>B</i><i>C</i><i>D</i></span></div>';
     setGridEl.appendChild(d);
   }
 })();
@@ -6994,7 +7096,7 @@ function paintSet(){
     d.classList.toggle("on",k===setCur); d.classList.toggle("playing",on); d.classList.toggle("held",held); d.classList.toggle("queued",k===queuedSet); d.classList.toggle("fresh",info.fresh);
     d.querySelector(".nm").textContent = info.name;
     d.querySelector(".tag").textContent = on ? (held?"HOLD":"NOW") : (k===setCur ? "SEL" : (k===queuedSet ? "NEXT" : ""));
-    d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
+    { const b=+info.bpm||100; d.querySelector(".bpm").textContent = (Number.isInteger(b)?String(b):b.toFixed(1))+" BPM"; }   // 単位を付ける（v0.3.198 §187）
     paintSetLevel(d,k);   // ミックス音量（塗り潰しと数字。0 dB のときは出さない）
     d.querySelectorAll(".dots i").forEach((i,p)=>i.classList.toggle("has", info.has[p]));
   }
@@ -7796,7 +7898,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.194";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.199";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
