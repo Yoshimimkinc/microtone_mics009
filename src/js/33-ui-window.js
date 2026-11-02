@@ -1,8 +1,10 @@
 // @module ui-window
-// @provides CL_PAGES, CL_SPEC, clPage, clSyncWave, clWaveTo, paintClPage, renderClPage
-// @uses assignTarget, bpmVal, midiNoteName, multiOut, openPadEdit, paintPadStates, paintPerf, peTarget,
-//    peV0, peV1, pushUndo, refreshOpenPadEdit, refreshSeqMode, renderPeOver, renderPeWave, sampNameEl,
-//    selected, swingPct, syncEditor, tapTempoCancel, tapTempoDown, tapTempoUp, tracks, warmPitch
+// @provides CL_KIND_NAME, CL_PAGES, CL_SPEC, clPage, clSyncWave, clWaveTo, paintClKind, paintClPage,
+//    renderClPage
+// @uses assignTarget, bpmVal, midiNoteName, multiOut, openPadEdit, padKind, padKindGo, paintPadStates,
+//    paintPerf, peTarget, peV0, peV1, pushUndo, refreshOpenPadEdit, refreshSeqMode, renderPeOver,
+//    renderPeWave, sampNameEl, selected, swingPct, syncEditor, tapTempoCancel, tapTempoDown, tapTempoUp,
+//    tracks, warmPitch
 // @depends -
 // ===== 情報窓のパラメータを横ドラッグで編集（パッドを叩きながら追い込める＝モーダル不要の連続編集） =====
 // パッド1枚の編集項目を「カテゴリ＝ページ」に棚卸ししたもの（docs/screen-spec.md §96 の表と1:1）。
@@ -48,7 +50,9 @@ const CL_PAGES=[
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
      +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>MIX</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
-   b:[{id:"clWave",t:'EDIT'}]},   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
+   b:[{id:"clWave",t:'EDIT'}],   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
+   // 種類の切り替え（v0.3.203 §192「EDIT からさらにモードを選ぶけど 1 発で行ける経路」）：押す＝その種類にして、すぐその画面へ（KEY＝ピアノロール・SCRATCH＝スクラッチ）
+   x:'<span class="cl-kinds" role="group" aria-label="パッドの種類"><button class="cl-btn cl-kind" data-kind="SPL">SAMPLE</button><button class="cl-btn cl-kind" data-kind="KEY">KEY</button><button class="cl-btn cl-kind" data-kind="SCR">SCRATCH</button></span>'},
   {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
   {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
    x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
@@ -81,6 +85,7 @@ function clWaveTo(where){   // "screen" | "modal"
 }
 // SAMPLEページを開いている間は、窓の波形が選択パッドを指す（peTarget＝波形まわりの対象）
 function clSyncWave(){
+  paintClKind();
   if(clPage!=="smpl") return;
   const slot=document.getElementById("clWaveSlot"); if(!slot) return;
   if(peTarget!==selected){ peTarget=selected; peV0=0; peV1=1; }
@@ -89,9 +94,18 @@ function clSyncWave(){
     if(typeof renderPeWave==="function") renderPeWave(peTarget);
   });
 }
+// SAMPLE ページの種類ボタンと、タブの名前（SAMPLE / KEY / SCRATCH）を選択パッドの種類に合わせる（v0.3.203 §192）
+const CL_KIND_NAME={SPL:"SAMPLE",KEY:"KEY",SCR:"SCRATCH"};
+function paintClKind(){
+  if(typeof tracks==="undefined"||typeof padKind!=="function") return;
+  const t=tracks[selected]; if(!t) return; const k=padKind(t);
+  document.querySelectorAll("#clPage .cl-kind").forEach(b=>{ const on=b.dataset.kind===k; b.classList.toggle("on",on); b.setAttribute("aria-pressed",String(on)); });
+  const tab=document.querySelector('#clKeys .cl-key[data-pg="smpl"]'); if(tab&&tab.textContent!==CL_KIND_NAME[k]) tab.textContent=CL_KIND_NAME[k];
+}
 function paintClPage(){
   if(typeof tracks==="undefined") return;
   const t=tracks[selected]; if(!t) return;
+  paintClKind();
   document.querySelectorAll("#clPage .cl-par").forEach(el=>{
     const sp=CL_SPEC[el.dataset.p]; if(!sp) return;
     el.querySelector("b").textContent=sp.fmt(sp.get(t));
@@ -192,6 +206,7 @@ function paintClPage(){
     const b=e.target.closest(".cl-btn"); if(!b) return;
     const t=tracks[selected];
     if(b.id==="clWave"){ if(typeof openPadEdit==="function") openPadEdit(selected); return; }
+    if(b.dataset.kind){ padKindGo(selected,b.dataset.kind).catch(e=>{ sampNameEl.textContent=e.message; }); return; }
     if(b.id==="clLearn"){
       if(assignTarget===selected){ assignTarget=-1; sampNameEl.textContent="ASSIGN 取消"; }
       else { assignTarget=selected; sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤かキーを押す（もう一度で取消）"; }

@@ -3,9 +3,9 @@
 //    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
-//    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
-//    prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen, selected, swapPads,
-//    syncEditor, tracks, trigger
+//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
+//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
+//    selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -108,7 +108,7 @@ PADS.forEach((p,i)=>{
     const tgt=editDrag.over, copy=editDrag.copy, moved=editDrag.moved;
     editDrag=null;
     if(!moved){                                   // 動かさず離した＝タップ：編集モーダル（従来挙動）
-      selectPad(i); openPadEdit(i); arm("edit", false);
+      selectPad(i); arm("edit", false); openPadContent(i);   // パッドの種類に合った画面を直接（KEY＝ピアノロール・SCRATCH＝スクラッチ、v0.3.203 §192）
       return;
     }
     if(tgt>=0 && tgt!==i){

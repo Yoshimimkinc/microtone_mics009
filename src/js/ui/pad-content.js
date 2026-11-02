@@ -3,11 +3,11 @@
 //    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
 //    _keyInScale, _keyLow, _keyMidi, _keyMulti, _keyNavigate, _keyPaint, _keyPhrase, _keyPoint,
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
-//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen, padKind,
-//    setPadKind, syncPadContentEditor
-// @uses AC, NOTE_NAMES, PADS, bpmVal, doUndo, masterGain, normalizeKeyPhrase, paintPerf, parseKeyMidi,
-//    peTarget, prepareKeyTrack, previewVoiceFrom, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
-//    scheduleAutosave, scratchClose, stopVoices, tracks
+//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
+//    openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
+// @uses AC, NOTE_NAMES, PADS, bpmVal, doUndo, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
+//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, previewVoiceFrom, pushUndo, refreshPadDisplay,
+//    renderKeyPhrase, sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -27,12 +27,28 @@ async function setPadKind(i,kind){
   }else sampNameEl.textContent=kind==='SCR'?'SCR · パッドを押すとスクラッチ':'SPL · サンプルを再生';
   refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
 }
+// 種類に合った画面を開く（v0.3.203 §192）：KEY＝ピアノロール・SCRATCH＝スクラッチ・SAMPLE＝EDIT（波形・TRIM・CHOP）。EDIT＋パッドのタップもここ
+function openPadContent(i){
+  const k=padKind(tracks[i]);
+  if(k==='KEY')keyEditorOpen(i);
+  else if(k==='SCR')scratchOpen(i).catch(e=>{sampNameEl.textContent=e.message;});
+  else openPadEdit(i);
+}
+// 窓の種類ボタン：その種類にして、すぐその画面へ（同じ種類ならそのまま開く）。SAMPLE は窓の波形のまま（開かない）
+async function padKindGo(i,kind){
+  if(padKind(tracks[i])!==kind)await setPadKind(i,kind);
+  if(padKind(tracks[i])!==kind)return;
+  if(kind==='KEY')keyEditorOpen(i);
+  else if(kind==='SCR')await scratchOpen(i);
+  if(typeof paintClKind==='function')paintClKind();
+}
 function syncPadContentEditor(i){
   const kind=padKind(tracks[i]);
   document.getElementById('padEditModal').dataset.padKind=kind;
   document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
   document.getElementById('peKeyOpen').hidden=kind!=='KEY';
   document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
+  if(typeof paintClKind==='function')paintClKind();
 }
 let _keyTarget=-1, _keySelected=-1, _keyLow=48, _keyMidi=null;
 let _keySelection=new Set(), _keyDraft=null, _keyGesture=null, _keyZoom=128, _keySound=false, _keyAutoFit=true, _keyNavigate=false, _keyMulti=false, _keyAuditionNode=null, _keyAuditionToken=0;
