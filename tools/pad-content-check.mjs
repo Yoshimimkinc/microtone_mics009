@@ -92,6 +92,24 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await p.waitForTimeout(300);const k2=await st();
    ok_(`${label} ピアノロールは指で上下にスクロール（ノートは描かない）・タップでノート`,k1.top-k0.top>=100&&k1.notes===k0.notes&&k2.notes===k0.notes+1,JSON.stringify({k0,k1,k2}));
    await p.evaluate(async()=>{keyEditorClose();await setPadKind(4,'SPL');});await cdp.detach();}
+  // v0.3.203 §192：窓の SAMPLE ページの種類ボタン＝その種類にしてすぐその画面へ（KEY＝ピアノロール・SCRATCH＝スクラッチ）、タブの名前も種類に。EDIT＋タップも種類に合った画面
+  { await p.evaluate(()=>{selectPad(5);}); await p.click('#clKeys .cl-key[data-pg="smpl"]'); await p.waitForTimeout(250);
+    await p.click('#clPage .cl-kind[data-kind="KEY"]'); await p.waitForTimeout(500);
+    const k1=await p.evaluate(()=>({kind:padKind(tracks[5]),roll:!document.getElementById('keyEditor').hidden,tab:document.querySelector('#clKeys .cl-key[data-pg="smpl"]').textContent,on:document.querySelector('#clPage .cl-kind.on')?.dataset.kind}));
+    await p.evaluate(()=>keyEditorClose()); await p.waitForTimeout(150);
+    await p.click('#clPage .cl-kind[data-kind="SCR"]'); await p.waitForTimeout(600);
+    const k2=await p.evaluate(()=>({kind:padKind(tracks[5]),scr:!document.getElementById('scratchEditor').hidden,tab:document.querySelector('#clKeys .cl-key[data-pg="smpl"]').textContent}));
+    await p.evaluate(()=>scratchClose()); await p.click('#clPage .cl-kind[data-kind="KEY"]'); await p.waitForTimeout(500); await p.evaluate(()=>keyEditorClose());
+    await p.evaluate(()=>{arm('edit',true);}); const pr=await p.evaluate(()=>{const b=document.querySelectorAll('#pads .pad')[5].getBoundingClientRect();return [b.left+b.width/2,b.top+b.height/2];});
+    await p.mouse.click(pr[0],pr[1]); await p.waitForTimeout(500);
+    const k3=await p.evaluate(()=>({roll:!document.getElementById('keyEditor').hidden,modal:getComputedStyle(document.getElementById('padEditModal')).display}));
+    await p.evaluate(()=>keyEditorClose()); await p.click('#clPage .cl-kind[data-kind="SPL"]'); await p.waitForTimeout(300);
+    const k4=await p.evaluate(()=>({kind:padKind(tracks[5]),tab:document.querySelector('#clKeys .cl-key[data-pg="smpl"]').textContent}));
+    ok_(`${label} 窓の KEY＝KEY にしてピアノロールを開く・タブも KEY`, k1.kind==='KEY'&&k1.roll&&k1.tab==='KEY'&&k1.on==='KEY', JSON.stringify(k1));
+    ok_(`${label} 窓の SCRATCH＝SCRATCH にしてスクラッチを開く・タブも SCRATCH`, k2.kind==='SCR'&&k2.scr&&k2.tab==='SCRATCH', JSON.stringify(k2));
+    ok_(`${label} EDIT＋KEY のパッド＝ピアノロールを直接（EDIT の画面は出ない）`, k3.roll&&k3.modal==='none', JSON.stringify(k3));
+    eq(`${label} 窓の SAMPLE＝サンプルに戻る・タブも SAMPLE`, k4, {kind:'SPL',tab:'SAMPLE'});
+    await p.click('#clKeys .cl-key[data-pg="main"]'); await p.waitForTimeout(150); }
   await p.evaluate(async()=>{await setPadKind(8,'SCR');await scratchOpen(8);});
   eq(`${label} SCRは対象パッドから起動`,await p.evaluate(()=>[document.getElementById('scratchEditor').hidden,!!_scratchNode]),[false,true]);
   await p.screenshot({path:`tools/_shots/content-scr-${w}.png`});
