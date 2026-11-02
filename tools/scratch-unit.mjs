@@ -99,14 +99,15 @@ const app=fs.readFileSync(new URL('../mics-609bc14b.html',import.meta.url),'utf8
 ui.tracks[0].padKind='SCR';let resolveOpen,openCount=0;
 ui.scratchOpen=i=>{openCount++;ui.scratchHide();return new Promise(resolve=>{resolveOpen=()=>{ui.scratchShow(i);resolve();};});};
 check('SPL pads remain on the normal trigger path',()=>{ui.tracks.push({padKind:'SPL'});assert.equal(ui.scratchPadInputDown(1,'key:Digit2'),false);});
-ui.scratchPadInputDown(0,'key:Digit1');ui.scratchPadInputUp('key:Digit1');resolveOpen();await Promise.resolve();
-check('release before worklet startup cannot leave sound open',()=>assert.equal(state.fader,0));
-ui.scratchPadInputDown(0,'key:Digit1');check('assigned PC pad key opens the current platter without restarting',()=>{assert.equal(state.fader,1);assert.equal(openCount,1);});
-ui.scratchPadInputDown(0,'key:Digit1');check('repeated Note On/key down does not restart the platter',()=>assert.equal(openCount,1));
+ui.scratchHide();check('v0.3.204: with the scratch screen closed, an SCR pad key / note just plays the pad (the screen does not open)',()=>{assert.equal(ui.scratchPadInputDown(0,'key:Digit1'),false);assert.equal(openCount,0);assert.equal(el('scratchEditor').hidden,true);});ui.scratchPadInputUp('key:Digit1');
+ui.scratchShow(0);ui.scratchPadInputDown(0,'key:Digit1');check('with the screen open, the pad key opens the fader while held, without restarting the record',()=>{assert.equal(state.fader,1);assert.equal(openCount,0);});
+ui.scratchPadInputDown(0,'key:Digit1');check('repeated Note On/key down does not restart the platter',()=>assert.equal(openCount,0));
 ui.scratchPadInputDown(0,'midi:0:60');ui.scratchPadInputUp('key:Digit1');check('one released source does not cut another held source',()=>assert.equal(state.fader,1));
 ui.scratchPadInputDown(0,'midi:1:60');ui.scratchPadInputUp('midi:0:60');check('identical notes on different MIDI channels are independent',()=>assert.equal(state.fader,1));
 ui.scratchPadInputUp('midi:1:60');check('last external release closes the gate and leaves the record open',()=>{assert.equal(state.fader,0);assert.equal(el('scratchEditor').hidden,false);});
-ui.scratchHide();ui.scratchPadInputDown(0,'key:Digit1');ui.scratchPadInputDown(0,'midi:0:60');resolveOpen();await Promise.resolve();
+ui.tracks[2]={padKind:'SCR'};ui.scratchPadInputDown(2,'key:Digit3');ui.scratchPadInputUp('key:Digit3');resolveOpen();await Promise.resolve();
+check('another SCR pad while the screen is open switches records; release before it opens cannot leave sound open',()=>{assert.equal(openCount,1);assert.equal(state.fader,0);});
+ui.scratchPadInputDown(0,'key:Digit1');ui.scratchPadInputDown(0,'midi:0:60');resolveOpen();await Promise.resolve();
 check('simultaneous sources share one pending platter startup',()=>{assert.equal(openCount,2);assert.equal(state.fader,1);});
 ui.scratchGateRelease();check('blur/close releases all external gate sources',()=>assert.equal(state.fader,0));
 // Exercise the actual PC/MIDI entry points, rather than only the UI helper.

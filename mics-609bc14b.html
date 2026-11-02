@@ -1466,7 +1466,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.203</div>
+  <div class="s-ver" id="splashVer">v0.3.204</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -3403,8 +3403,8 @@ new MutationObserver(()=>{
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
-//    selected, swapPads, syncEditor, tracks, trigger
+//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, selected,
+//    swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -3476,7 +3476,6 @@ PADS.forEach((p,i)=>{
     // v0.3.160：EDIT / COPY / MUTE / SOLO を押しているときはそちらが先（P-LOCK を選んだまま EDIT にすると、ドラッグで入れ替えられずに値が動いていた）
     if(perfPadDown(e,i,d)) return;
     if(AC.state!=="running")await AC.resume();
-    if(tracks[i].padKind==="SCR"){selectPad(i);scratchOpen(i).catch(e=>sampNameEl.textContent=e.message);return;}
     // 空パッドの「＋」(中央40%)タップ＝ワンタップで音入れ（Koala流・案1）。端のタップは選択＋案内のみ
     if(PADS[i].type==="empty" && !tracks[i].buffer){
       const r=d.getBoundingClientRect();
@@ -3486,6 +3485,8 @@ PADS.forEach((p,i)=>{
     }
     if(tracks[i].padKind==="KEY"){const target=tracks[i],epoch=target._contentEpoch||0;await prepareKeyTrack(target,bpmVal);if((target._contentEpoch||0)!==epoch||target.padKind!=="KEY")return;}
     trigger(i);selectPad(i,true);
+    // SCRATCH のパッドは押しても普通に鳴るだけ（v0.3.204 §193「Pad 押してすぐスクラッチになるのはやめたい」）。スクラッチ画面への入口を一言で
+    if(tracks[i].padKind==="SCR") sampNameEl.textContent=String(i+1).padStart(2,"0")+" SCRATCH · スクラッチ画面は窓の SAMPLE ページの SCRATCH か、EDIT＋パッド";
   });
   // --- EDIT中のドラッグ並べ替え（移動/コピー）---
   d.addEventListener("pointermove",(e)=>{
@@ -7472,8 +7473,11 @@ function scratchFaderAt(el,y){const r=el.getBoundingClientRect();return r.height
 function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();if(_scratchFaderDrag){_scratchFaderDrag=null;_scratchLevel=0;}_scratchGateKey=false;scratchGatePaint();}
 // Preserve held sources across asynchronous audio startup; Note Off/key up can
 // arrive before the worklet finishes loading and must keep the gate closed.
+// v0.3.204 §193：スクラッチ画面が開いていない時は、SCRATCH のパッドも PC キー／MIDI では普通に鳴るだけ（画面を開かない）。
+// 開いている間だけ、押している間フェーダーが開く（別の SCRATCH パッドならその盤に替える）
 function scratchPadInputDown(i,id){
  if(tracks[i]?.padKind!=='SCR')return false;
+ if(document.getElementById('scratchEditor').hidden&&!_scratchPadInputs.size)return false;
  if(_scratchPadInputs.has(id))return true;
  const opening=(_scratchPad===i&&!document.getElementById('scratchEditor').hidden)||[..._scratchPadInputs.values()].includes(i)?null:scratchOpen(i);
  _scratchPadInputs.set(id,i);scratchGatePaint();
@@ -7955,7 +7959,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.203";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.204";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

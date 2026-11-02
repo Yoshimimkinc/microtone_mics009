@@ -110,6 +110,12 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     ok_(`${label} EDIT＋KEY のパッド＝ピアノロールを直接（EDIT の画面は出ない）`, k3.roll&&k3.modal==='none', JSON.stringify(k3));
     eq(`${label} 窓の SAMPLE＝サンプルに戻る・タブも SAMPLE`, k4, {kind:'SPL',tab:'SAMPLE'});
     await p.click('#clKeys .cl-key[data-pg="main"]'); await p.waitForTimeout(150); }
+  // v0.3.204 §193：SCRATCH のパッドを押しても画面は開かず、普通に鳴る（案内だけ出る）
+  { await p.evaluate(async()=>{await setPadKind(6,'SCR');scratchClose();}); const pr=await p.evaluate(()=>{const b=document.querySelectorAll('#pads .pad')[6].getBoundingClientRect();return [b.left+b.width/2,b.top+b.height*.8];});
+    await p.mouse.click(pr[0],pr[1]); await p.waitForTimeout(300);
+    const s6=await p.evaluate(()=>({scr:!document.getElementById('scratchEditor').hidden,node:!!_scratchNode,voices:(tracks[6].activeVoices||[]).length,msg:sampNameEl.textContent,sel:selected}));
+    ok_(`${label} SCRATCH のパッドを押しても画面は開かず普通に鳴る`, !s6.scr && !s6.node && s6.voices>0 && /SCRATCH/.test(s6.msg) && s6.sel===6, JSON.stringify(s6));
+    await p.evaluate(async()=>{await setPadKind(6,'SPL');}); }
   await p.evaluate(async()=>{await setPadKind(8,'SCR');await scratchOpen(8);});
   eq(`${label} SCRは対象パッドから起動`,await p.evaluate(()=>[document.getElementById('scratchEditor').hidden,!!_scratchNode]),[false,true]);
   await p.screenshot({path:`tools/_shots/content-scr-${w}.png`});
