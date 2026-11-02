@@ -850,6 +850,10 @@ async function wireSkin(){
       return {cls:document.body.className.match(/t-\w+/g).join(), ls:localStorage.getItem('mics-skin'), unit, inkOnUnit:+cr(hex(ink),unit).toFixed(2), selOnTeal:+cr(hex(cs.getPropertyValue('--hit-ink').trim()),hex(cs.getPropertyValue('--teal').trim())).toFixed(2)}; });
     ok_(`${V} スキン GIRLY：桜色の本体・文字 4.5:1 以上・選択の塗りの上の文字も読める・選んだスキンを覚える`, g.cls==='t-gl' && g.ls==='gl' && /rgb\(246, 217, 228\)/.test(g.unit) && g.inkOnUnit>=4.5 && g.selOnTeal>=4.5, JSON.stringify(g)); }
   await p.evaluate(()=>{ document.querySelector('#themeSeg button[data-th="ak"]').click(); });
+  // v0.3.201 §190：TR は廃止。ボタンが無く、rl を覚えていた端末も AK で開く
+  { await p.evaluate(()=>localStorage.setItem('mics-skin','rl')); await p.reload({waitUntil:'load'}); await ready(p);
+    const t=await p.evaluate(()=>({btns:[...document.querySelectorAll('#themeSeg button')].map(b=>b.dataset.th).join(), cls:document.body.className.match(/t-\w+/g).join()}));
+    ok_(`${V} スキン TR は廃止（ボタン無し・覚えていても AK）`, t.btns==='ak,sp,wf,gl' && t.cls==='t-ak', JSON.stringify(t)); }
   ok_(`${V} AK に戻せる`, await p.evaluate(()=>document.body.classList.contains('t-ak') && !document.body.classList.contains('t-wf')), 'stuck');
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
