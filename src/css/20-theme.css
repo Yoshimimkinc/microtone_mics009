@@ -62,6 +62,29 @@
   body.t-wf .sa-cell.pick{background:rgba(45,226,230,.12);border-color:var(--teal);box-shadow:0 0 12px rgba(45,226,230,.7);}
   body.t-wf .sa-pad{background:#000;border-color:var(--edge);}
   body.t-wf .sa-pad.hit{background:rgba(255,43,214,.25);border-color:var(--amber);box-shadow:0 0 12px rgba(255,43,214,.8);}
+  /* GIRLY（v0.3.200 §189）：「女子受けしそうな色使いのスキン」。桜色の本体・ラベンダーの「選択」・ローズの「鳴っている」・深いプラムの LCD。
+     文字は深いベリー（桜色の地で 4.5:1 以上）。色の意味は §186 のまま（--teal＝選択・オン、--amber＝鳴っている） */
+  body.t-gl{--bg:#f9e4ec;--panel:#f6d9e4;--panel2:#efc6d6;--edge:#c98ea6;--line:#dfadc1;--well:#3a2333;--well-ink:#ffe3ef;--modal-deep:#efc6d6;
+    --ink:#4a1f36;--dim:#7c4a64;--amber:#d63a72;--amber-dim:#f4c1d4;--teal:#8152e6;--red:#e0303f;--pad:#e8b7c9;--pad-face:#f3cddb;
+    --hit-c2:#a32659;--hit-glow-a:214,58,114;--hit-ink:#fff4f8;}
+  body.t-gl .unit{background:#f6d9e4;}
+  body.t-gl.perf .unit{background:radial-gradient(120% 90% at 50% -20%,#fbe9f0,transparent 55%),linear-gradient(180deg,#f6d9e4 0%,#c48aa3 100%);}
+  body.t-gl #splash{background:#f9e4ec;}
+  body.t-gl .modebar{background:#f0c9d8;}
+  body.t-gl .modebtn .led{background:#d8a4b8;box-shadow:0 0 0 1px #c98ea6 inset;}
+  /* 窓：深いプラムの LCD に淡いラベンダーの文字（ラベンダーそのままでは暗い地で読みにくい） */
+  body.t-gl .perf-screen{background:#2a1626;color:#dccbff;}
+  body.t-gl.perf .perf-screen{background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px),radial-gradient(140% 180% at 50% -40%,#4a2442,#1e0f1b 70%);
+    color:#e4d6ff;text-shadow:0 0 6px rgba(160,120,255,.45);}
+  body.t-gl.perf #viewPads.split>.pads{background:radial-gradient(120% 120% at 50% 50%,#d29ab2,#a5677f);}
+  body.t-gl .perf-screen .cl-key{color:#d2bcff;opacity:.85;}
+  body.t-gl .perf-screen .cl-key.on{opacity:1;color:#f1e8ff;background:rgba(129,82,230,.3);border-color:#a98bff;}
+  body.t-gl .perf-screen .cl-par{border-color:rgba(201,170,255,.28);}
+  /* ステップの拍内の濃淡：グレーの代わりにプラム→桜 */
+  body.t-gl .step:nth-child(4n+2):not(.on),body.t-gl .stepbtn:nth-child(4n+1):not(.on){background:#6b3a57;}
+  body.t-gl .step:nth-child(4n+3):not(.on),body.t-gl .stepbtn:nth-child(4n+2):not(.on){background:#93587a;}
+  body.t-gl .step:nth-child(4n):not(.on),body.t-gl .stepbtn:nth-child(4n+3):not(.on){background:#bb7f9e;}
+  body.t-gl .step:nth-child(4n+1):not(.on),body.t-gl .stepbtn:nth-child(4n):not(.on){background:#f6dbe6;}
   /* skin切替：右上角の最上位に小さく配置（行を増やさない） */
   /* ケバブメニュー & モーダル（DADS dialog風） */
   .tempo-row{display:contents;}   /* PCはインライン（透過） */
