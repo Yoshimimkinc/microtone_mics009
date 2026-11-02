@@ -91,3 +91,15 @@
 
 /* EDIT is also reachable on phone; the pattern page still shows only A–D. */
 @media(max-width:600px){#viewPads>.msbar[data-fx-page=effects] #holdEdit{display:flex}}
+
+/* v0.3.197 §186 色の意味を整理（参考 UI の「色の意味は 1 つ」）：
+   選択・オン・モード中＝--teal ／ 鳴っている・入っている（ステップ・パッドの点灯・鳴っているセット）＝--amber ／ 録音＝--red ／ それ以外は文字色。
+   エフェクトごとの色（MUTE ティール・FILTER 紫・DELAY 緑・REVERB 青）と、パッドの種類の色帯（サンプル＝teal・ドラム＝amber・ベース＝red が
+   「選択」「鳴っている」「録音」と同じ色で意味が重なっていた）はやめる。種類は右上の SPL / KEY / SCR の文字で示す */
+.msbtn.fx[data-lock],.perf-plkbtn[data-lock]{color:var(--ink);}
+.msbtn.fx[data-lock].on,.perf-plkbtn[data-lock].on,.msbtn.edit.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 14px color-mix(in srgb,var(--teal) 45%,transparent);}
+.msbtn.edit.armed .d{background:var(--hit-ink);}
+body.perf .perf-plkbtn[data-lock]::after{background:var(--line);}
+body.perf .perf-plkbtn[data-lock].on{box-shadow:0 0 16px -2px color-mix(in srgb,var(--teal) 60%,transparent);}
+button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 45%,transparent);}
+.pad.pcat-drum,.pad.pcat-bass,.pad.pcat-sample{--cat:var(--line);}

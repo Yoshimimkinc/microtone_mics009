@@ -207,7 +207,7 @@ async function run(w,h,mobile){
         const tabs=[...document.querySelectorAll('#viewDots .vdot')].map(b=>b.getBoundingClientRect()),menu=r('menuBtn'),play=r('play');
         return {playTop:Math.round(play.top),playBot:Math.round(play.bottom),msBot:Math.round(ms.bottom),vh:innerHeight,tabsBot:Math.round(Math.max(...tabs.map(t=>t.bottom))),tabH:Math.round(Math.min(...tabs.map(t=>t.height))),
           overlap:tabs.some(t=>t.right>menu.left+1&&t.top<menu.bottom),menuTop:Math.round(menu.top),labels:['play','rec','undoBtn'].map(id=>getComputedStyle(document.getElementById(id),'::after').content)};});
-      if(stacked) ok_(`${V} スマホ：タブは上（40px 以上・MENU と重ならない）、再生まわりは FX 列の下で画面内`, L.playTop>=L.msBot && L.playBot<=L.vh && !L.overlap && L.menuTop<L.tabsBot && L.tabH>=40, JSON.stringify(L));
+      if(stacked) ok_(`${V} スマホ：タブは上（44px 以上・MENU と重ならない）、再生まわりは FX 列の下で画面内`, L.playTop>=L.msBot && L.playBot<=L.vh && !L.overlap && L.menuTop<L.tabsBot && L.tabH>=44, JSON.stringify(L));
       ok_(`${V} 再生・録音・取り消しのボタンに名前`, L.labels.join()==='"PLAY","REC","UNDO"', JSON.stringify(L.labels)); }
     // v0.3.196 §185：隠れた操作の案内（FX 列の横スワイプの行き先・FX のダブルタップ・BAR のダブルタップ）
     { const H=await p.evaluate(()=>{const row=document.querySelector('.fx-swipe');const ind=getComputedStyle(row,'::after').content;

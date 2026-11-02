@@ -809,6 +809,18 @@
 
 /* EDIT is also reachable on phone; the pattern page still shows only A–D. */
 @media(max-width:600px){#viewPads>.msbar[data-fx-page=effects] #holdEdit{display:flex}}
+
+/* v0.3.197 §186 色の意味を整理（参考 UI の「色の意味は 1 つ」）：
+   選択・オン・モード中＝--teal ／ 鳴っている・入っている（ステップ・パッドの点灯・鳴っているセット）＝--amber ／ 録音＝--red ／ それ以外は文字色。
+   エフェクトごとの色（MUTE ティール・FILTER 紫・DELAY 緑・REVERB 青）と、パッドの種類の色帯（サンプル＝teal・ドラム＝amber・ベース＝red が
+   「選択」「鳴っている」「録音」と同じ色で意味が重なっていた）はやめる。種類は右上の SPL / KEY / SCR の文字で示す */
+.msbtn.fx[data-lock],.perf-plkbtn[data-lock]{color:var(--ink);}
+.msbtn.fx[data-lock].on,.perf-plkbtn[data-lock].on,.msbtn.edit.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 14px color-mix(in srgb,var(--teal) 45%,transparent);}
+.msbtn.edit.armed .d{background:var(--hit-ink);}
+body.perf .perf-plkbtn[data-lock]::after{background:var(--line);}
+body.perf .perf-plkbtn[data-lock].on{box-shadow:0 0 16px -2px color-mix(in srgb,var(--teal) 60%,transparent);}
+button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 45%,transparent);}
+.pad.pcat-drum,.pad.pcat-bass,.pad.pcat-sample{--cat:var(--line);}
   /* ===== SET モード（v0.3.143 §144）：情報窓が SET 演奏モード、格子が 16 の枠、下段が ◀ / NEXT / LIVE ===== */
   /* 格子：#pads と同じ .pads なので寸法は同じ。body.setmode で入れ替える */
   #setGrid{display:none;}
@@ -1185,8 +1197,8 @@
     .transport{order:1;flex:0 0 auto;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
     .transport button.t[data-label]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1;font-size:15px;}
     .transport button.t[data-label]::after{margin:0;font-size:9px;letter-spacing:.08em;}
-    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:40px;flex:none;padding:0;}
-    .viewdots .vdot{min-height:40px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
+    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:44px;flex:none;padding:0;}
+    .viewdots .vdot{min-height:44px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
     .viewdots .vdot .vd-dot{display:none;}
     .viewdots .vdot.on{color:var(--ink);border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}
     .viewdots .vd-ic{display:block;width:14px;height:14px;fill:currentColor;flex:0 0 auto;}
@@ -1387,7 +1399,7 @@
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.196</div>
+  <div class="s-ver" id="splashVer">v0.3.197</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -7827,7 +7839,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.196";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.197";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

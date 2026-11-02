@@ -144,8 +144,8 @@
     .transport{order:1;flex:0 0 auto;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
     .transport button.t[data-label]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1;font-size:15px;}
     .transport button.t[data-label]::after{margin:0;font-size:9px;letter-spacing:.08em;}
-    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:40px;flex:none;padding:0;}
-    .viewdots .vdot{min-height:40px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
+    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:44px;flex:none;padding:0;}
+    .viewdots .vdot{min-height:44px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
     .viewdots .vdot .vd-dot{display:none;}
     .viewdots .vdot.on{color:var(--ink);border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}
     .viewdots .vd-ic{display:block;width:14px;height:14px;fill:currentColor;flex:0 0 auto;}

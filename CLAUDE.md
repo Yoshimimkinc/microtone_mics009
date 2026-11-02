@@ -65,7 +65,7 @@ tapeHiss ───────────────────────�
   いまのセットは `audio/transport`、他に鳴っているセットは `audio/set-players`（snapshot のトラック列を `playVoice(..., trs)` で鳴らす。時計はセットごと）。
 
 ### Key Design Rules
-- **UI の原則（v0.3.195〜 §184〜、参考 UI の分析から）**：どの画面でも上下の位置が同じ（スマホは上＝画面のタブ PADS / SEQ / SET＋MENU、下＝名前付きの再生まわり PLAY / REC / UNDO / COPY / SOLO。PC は右上）・記号だけのボタンを作らない（`data-label` で名前）・隠れた操作には見える代わりか一言の案内・色の意味は少なく・略語を使わず値に単位
+- **UI の原則（v0.3.195〜 §184〜、参考 UI の分析から）**：どの画面でも上下の位置が同じ（スマホは上＝画面のタブ PADS / SEQ / SET＋MENU、下＝名前付きの再生まわり PLAY / REC / UNDO / COPY / SOLO。PC は右上）・記号だけのボタンを作らない（`data-label` で名前）・隠れた操作には見える代わりか一言の案内・色の意味は少なく（v0.3.197 §186：選択・オン・モード中＝`--teal`、鳴っている・入っている＝`--amber`、録音＝`--red`、他は文字色。エフェクトごとの色とパッドの種類の色帯は廃止）・略語を使わず値に単位
 - **"aki rule"**: Hide complex settings. Anyone should be able to enjoy sampling music without understanding filters or choke groups. Simple surface, depth underneath.
 - Pad layout: natural numbering (top-left = pad 1). Sample slots (1-8) on top, default drums (9-16) on bottom. Numbering reads top→bottom; drums stay on the bottom rows for ergonomics. No CSS `order` reversal — DOM order = visual order.
 - **Single source of truth for state**: a given track property should be edited from one place (avoid duplicate UIs writing the same `tracks[i].*` — that caused sync bugs).
@@ -151,7 +151,7 @@ v0.3.96 まで**検査を持つ役が居なかった**ため、SEQの小節が�
 意味のある変更の後は `node tools/check.mjs` が全項目パスすることを確認する。
 
 ## Version
-MICS009 beta v0.3.196
+MICS009 beta v0.3.197
 
 **Versioning rule**: bump by +0.0.1 on every change (even minor fixes).
 **編集するのは `version.json` の `"version"` だけ**。`APP_VERSION` とスプラッシュ表記は
