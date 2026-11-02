@@ -631,7 +631,7 @@ async function copyPaint(){
   await p.evaluate(()=>{ arm('edit',false); selectPad(9); tracks[9].tune=2; });
   await p.setInputFiles('#samp', wavPath); await p.waitForTimeout(1500);
   const l=await p.evaluate(()=>({ name:tracks[9].name, type:PADS[9].type, tune:tracks[9].tune, nm:document.querySelectorAll('#pads .pad')[9].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[9].textContent, cat:document.querySelectorAll('#pads .pad')[9].className }));
-  ok_(`LOAD 名前・パッド表示・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WA' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
+  ok_(`LOAD 名前・パッド表示（8 文字で切らない v0.3.198）・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WAV' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
   ok_(`LOAD 新しい音は PITCH 0 から（前の +2 を引き継がない v0.3.170）`, l.tune===0, JSON.stringify(l));
   // Phase 3：EDIT モーダルの ● SMPL / LOAD は selected を直書きせず selectPad（入口）を通る＝エディタ側の選択表示も追従
   await p.evaluate(()=>{ document.getElementById('peClose').click(); selectPad(0); openPadEdit(4); });

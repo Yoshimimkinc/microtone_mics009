@@ -90,3 +90,33 @@
   }
   /* 演奏画面の小節ボタン：選択中（.on）の影より、ホールドの枠を優先（v0.3.183：SEQ も演奏画面の BAR を使うので見えるように） */
   body.perf .perf-bar.hold,body.perf .perf-bar.on.hold{box-shadow:0 0 0 2px var(--amber) inset,0 0 10px rgba(var(--hit-glow-a),.5);}
+
+/* v0.3.198 §187 略さない・単位・切らない（参考 UI の「すべてに名前」） */
+/* A B C D・1 2 3 4 の段に「PATTERN」「BAR」の小見出し（最初のボタンの左上。BAR 1 をホールド中は ⟳ が優先） */
+#patSeg .patbtn[data-p="0"]::before,.perf-pat[data-p="0"]::before,#barSeg .patbtn[data-b="0"]:not(.hold)::before,.perf-bar[data-b="0"]:not(.hold)::before{
+  position:absolute;top:2px;left:4px;font-size:7px;line-height:1;font-weight:700;letter-spacing:.08em;color:currentColor;opacity:.7;pointer-events:none;}
+#patSeg .patbtn[data-p="0"]::before,.perf-pat[data-p="0"]::before{content:"PATTERN";}
+#barSeg .patbtn[data-b="0"]:not(.hold)::before,.perf-bar[data-b="0"]:not(.hold)::before{content:"BAR";}
+#patSeg .patbtn,#barSeg .patbtn{position:relative;}
+/* SEQ の行の名前：番号の後に名前、収まらなければ折り返して 2 行まで（8 文字で切らない） */
+.row .rn{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:9px;line-height:1.15;}
+.row .rn b{font-size:9px;margin-right:3px;}
+/* 下の段が暗い背景（AK の筐体のグラデーション）でも読めるように、名前の欄に淡い地 */
+.row .rn{background:color-mix(in srgb,var(--panel2) 80%,transparent);color:var(--ink);}
+/* スマホは欄が狭い：番号の段＋名前（折り返して 2 行まで） */
+@media(max-width:767px){
+  .row .rn{display:flex;flex-direction:column;-webkit-line-clamp:unset;}
+  .row .rn span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
+}
+/* パッドの名前：8 文字で切らずに 2 行まで */
+.pad .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;overflow-wrap:anywhere;line-height:1.15;padding-right:2px;}
+.pad[data-kind="KEY"] .nm,.pad[data-kind="SCR"] .nm{padding-right:44px;}
+/* SET のパッド：BPM に単位、A B C D は点ではなく文字（中身のあるものだけ濃く） */
+.setpad .bpm{white-space:nowrap;}
+.setpad .ft{gap:4px;}
+.setpad .dots{gap:2px;flex:0 0 auto;}
+.setpad .dots i{width:auto;height:auto;background:none!important;font-style:normal;font-size:8px;font-weight:700;line-height:1;color:var(--dim);opacity:.45;}
+.setpad .dots i.has{opacity:1;}
+.setpad .dots i.has{color:var(--amber);}
+/* スマホの窓の 1 段目：略さない名前（SWING / PATTERN）にすると STEP が 2 段目へ落ちて窓が伸びる → STEP は出さない（SEQ のカーソルと下の段で分かる） */
+@media(max-width:767px){.cl-stat>span:has(#clStep){display:none;}}

@@ -12,7 +12,7 @@ const CL_SPEC={
   // （setDelayTempo・readout・paintPerf が既存ハンドラでまとめて走る）
   bpm:   {lbl:"BPM", g:1, get:()=>bpmVal, min:40,max:250,st:0.5,px:5, fmt:v=>v.toFixed(1), w:5, zero:100,
           set:v=>{ const el=document.getElementById("bpm"); el.value=v; el.dispatchEvent(new Event("input",{bubbles:true})); }},
-  swing: {lbl:"SWG", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>String(v), w:2,
+  swing: {lbl:"SWING", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>String(v), w:2,
           set:v=>{ const el=document.getElementById("swing"); el.value=v; el.dispatchEvent(new Event("change",{bubbles:true})); }},
   pitch: {lbl:"PITCH", u:"st", get:t=>t.tune,  set:(t,v)=>t.tune=v, min:-12,max:12,st:1,px:14, fmt:v=>(v>0?"+":"")+v, w:3},
   scale: {lbl:"SCALE", en:["off","chro","maj","min","pent"], get:t=>t.scale||"off",

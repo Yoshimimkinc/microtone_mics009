@@ -716,6 +716,36 @@
   }
   /* 演奏画面の小節ボタン：選択中（.on）の影より、ホールドの枠を優先（v0.3.183：SEQ も演奏画面の BAR を使うので見えるように） */
   body.perf .perf-bar.hold,body.perf .perf-bar.on.hold{box-shadow:0 0 0 2px var(--amber) inset,0 0 10px rgba(var(--hit-glow-a),.5);}
+
+/* v0.3.198 §187 略さない・単位・切らない（参考 UI の「すべてに名前」） */
+/* A B C D・1 2 3 4 の段に「PATTERN」「BAR」の小見出し（最初のボタンの左上。BAR 1 をホールド中は ⟳ が優先） */
+#patSeg .patbtn[data-p="0"]::before,.perf-pat[data-p="0"]::before,#barSeg .patbtn[data-b="0"]:not(.hold)::before,.perf-bar[data-b="0"]:not(.hold)::before{
+  position:absolute;top:2px;left:4px;font-size:7px;line-height:1;font-weight:700;letter-spacing:.08em;color:currentColor;opacity:.7;pointer-events:none;}
+#patSeg .patbtn[data-p="0"]::before,.perf-pat[data-p="0"]::before{content:"PATTERN";}
+#barSeg .patbtn[data-b="0"]:not(.hold)::before,.perf-bar[data-b="0"]:not(.hold)::before{content:"BAR";}
+#patSeg .patbtn,#barSeg .patbtn{position:relative;}
+/* SEQ の行の名前：番号の後に名前、収まらなければ折り返して 2 行まで（8 文字で切らない） */
+.row .rn{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:9px;line-height:1.15;}
+.row .rn b{font-size:9px;margin-right:3px;}
+/* 下の段が暗い背景（AK の筐体のグラデーション）でも読めるように、名前の欄に淡い地 */
+.row .rn{background:color-mix(in srgb,var(--panel2) 80%,transparent);color:var(--ink);}
+/* スマホは欄が狭い：番号の段＋名前（折り返して 2 行まで） */
+@media(max-width:767px){
+  .row .rn{display:flex;flex-direction:column;-webkit-line-clamp:unset;}
+  .row .rn span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
+}
+/* パッドの名前：8 文字で切らずに 2 行まで */
+.pad .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;overflow-wrap:anywhere;line-height:1.15;padding-right:2px;}
+.pad[data-kind="KEY"] .nm,.pad[data-kind="SCR"] .nm{padding-right:44px;}
+/* SET のパッド：BPM に単位、A B C D は点ではなく文字（中身のあるものだけ濃く） */
+.setpad .bpm{white-space:nowrap;}
+.setpad .ft{gap:4px;}
+.setpad .dots{gap:2px;flex:0 0 auto;}
+.setpad .dots i{width:auto;height:auto;background:none!important;font-style:normal;font-size:8px;font-weight:700;line-height:1;color:var(--dim);opacity:.45;}
+.setpad .dots i.has{opacity:1;}
+.setpad .dots i.has{color:var(--amber);}
+/* スマホの窓の 1 段目：略さない名前（SWING / PATTERN）にすると STEP が 2 段目へ落ちて窓が伸びる → STEP は出さない（SEQ のカーソルと下の段で分かる） */
+@media(max-width:767px){.cl-stat>span:has(#clStep){display:none;}}
   /* mode switch (実機風) */
   .modebar{display:flex;gap:0;margin:8px 0 10px;
     background:#0d1013;border:1px solid var(--edge);border-radius:8px;padding:5px;width:fit-content;
@@ -1399,7 +1429,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.197</div>
+  <div class="s-ver" id="splashVer">v0.3.198</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1724,7 +1754,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
       </div>
       <div class="seq-head" id="seqHead">
         <div class="pat-bar">
-          <span class="patlabel">PAT</span>
+          <span class="patlabel">PATTERN</span>
           <div class="seg" id="patSeg">
             <button class="patbtn on" data-p="0">A</button>
             <button class="patbtn" data-p="1">B</button>
@@ -1753,12 +1783,12 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
         <div class="cl-body">
         <div class="cl-row cl-stat">
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
-          <span class="cl-par" data-p="swing"><i>SWG</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
-          <span><i>PAT</i><b class="cl-num" id="perfPat">A</b></span>
+          <span class="cl-par" data-p="swing"><i>SWING</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
+          <span><i>PATTERN</i><b class="cl-num" id="perfPat">A</b></span>
           <span><i>BAR</i><b class="cl-num" id="clBar">1</b></span>
           <span><i>STEP</i><b class="cl-num" id="clStep">--</b></span>
         </div>
-        <div class="cl-row cl-trk"><span><i>TRK</i><b id="perfSel">01 KICK</b></span></div>
+        <div class="cl-row cl-trk"><span><i>PAD</i><b id="perfSel">01 KICK</b></span></div>
         <div class="cl-row cl-params cl-page" id="clPage"></div>
         </div><!-- /.cl-body -->
         <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
@@ -3324,8 +3354,8 @@ new MutationObserver(()=>{
   sampNameEl.classList.toggle("in-window", !!fits);
 }).observe(sampNameEl,{childList:true,characterData:true,subtree:true});
 // @module ui/pads-view
-// @provides _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl, paintPadName,
-//    paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
+// @provides PAD_KIND_TAG, _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl,
+//    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown, perfPadEnd, perfPadMove,
@@ -3357,13 +3387,15 @@ function applyPadCategory(i){
 }
 // パッド名の表示（パッド内は8文字・大文字／SEQ の行名は全文）。t.name → PADS[i].name の順。名前を書く唯一の口（v0.3.132）
 // v0.3.131 までは録音・LOAD・読込・undo・改名の5箇所がそれぞれ .nm を直書きしていて、整形の有無や SEQ 行名の更新漏れがあった
+// パッド右上の種類の札：サンプル（既定）は出さない、KEY / SCRATCH だけ略さずに（v0.3.198 §187）
+const PAD_KIND_TAG={KEY:"KEY",SCR:"SCRATCH"};
 function paintPadName(i){
   const nm=tracks[i].name||PADS[i].name||"";
   const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.slice(0,8).toUpperCase();
-  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=tracks[i].padKind||"SPL";}
+  if(ne) ne.textContent=nm.toUpperCase();   // 8 文字で切らない（2 行まで CSS で。v0.3.198 §187）
+  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=PAD_KIND_TAG[tracks[i].padKind]||"";}
   const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${nm}`;
+  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${nm}</span>`;
 }
 // パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
 function refreshPadDisplay(i){
@@ -3375,7 +3407,7 @@ function refreshPadDisplay(i){
 PADS.forEach((p,i)=>{
   const d=document.createElement("div");
   d.className="pad pcat-"+padCategory(i)+(i===selected?" sel":"");
-  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><span class="pad-kind">SPL</span><div class="stepn">${i+1}</div><div class="lockv"></div>`;
+  d.innerHTML=`<canvas class="pad-wave"></canvas><div class="lockfill"></div><div class="nm">${p.name}</div><div class="n">${String(i+1).padStart(2,"0")}</div><div class="k"></div><span class="pad-kind"></span><div class="stepn">${i+1}</div><div class="lockv"></div>`;
   d._lockfill=d.querySelector(".lockfill"); d._lockv=d.querySelector(".lockv");   // 毎ステップ描画でquerySelectorしないよう参照をキャッシュ
   d.dataset.i=i;
   d.setAttribute("role","button");
@@ -3679,7 +3711,7 @@ PADS.forEach((p,i)=>{
 
   const rn=document.createElement("div");
   rn.className="rn";
-  rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> ${p.name}`;
+  rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${p.name}</span>`;   // 番号の後に名前（切らずに 2 行まで、v0.3.198 §187）
   rn.addEventListener("click",async()=>{
     if(AC.state!=="running")await AC.resume();
     if(melodicMode){
@@ -4309,7 +4341,7 @@ const CL_SPEC={
   // （setDelayTempo・readout・paintPerf が既存ハンドラでまとめて走る）
   bpm:   {lbl:"BPM", g:1, get:()=>bpmVal, min:40,max:250,st:0.5,px:5, fmt:v=>v.toFixed(1), w:5, zero:100,
           set:v=>{ const el=document.getElementById("bpm"); el.value=v; el.dispatchEvent(new Event("input",{bubbles:true})); }},
-  swing: {lbl:"SWG", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>String(v), w:2,
+  swing: {lbl:"SWING", g:1, en:[50,54,58,63,67,71], get:()=>swingPct, fmt:v=>String(v), w:2,
           set:v=>{ const el=document.getElementById("swing"); el.value=v; el.dispatchEvent(new Event("change",{bubbles:true})); }},
   pitch: {lbl:"PITCH", u:"st", get:t=>t.tune,  set:(t,v)=>t.tune=v, min:-12,max:12,st:1,px:14, fmt:v=>(v>0?"+":"")+v, w:3},
   scale: {lbl:"SCALE", en:["off","chro","maj","min","pent"], get:t=>t.scale||"off",
@@ -6995,7 +7027,7 @@ function fmtClock(sec){ sec=Math.max(0,Math.floor(sec)); return Math.floor(sec/6
   if(!setGridEl) return;
   for(let k=0;k<16;k++){
     const d=document.createElement("button"); d.className="pad setpad"; d.dataset.k=k; d.setAttribute("aria-label","SET "+(k+1));
-    d.innerHTML='<div class="lvfill"></div><div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots"><i></i><i></i><i></i><i></i></span></div>';
+    d.innerHTML='<div class="lvfill"></div><div class="n"><span>'+String(k+1).padStart(2,"0")+'</span><span class="tag"></span></div><div class="nm"></div><div class="ft"><span class="bpm"></span><span class="lv"></span><span class="dots" title="中身のある A B C D"><i>A</i><i>B</i><i>C</i><i>D</i></span></div>';
     setGridEl.appendChild(d);
   }
 })();
@@ -7037,7 +7069,7 @@ function paintSet(){
     d.classList.toggle("on",k===setCur); d.classList.toggle("playing",on); d.classList.toggle("held",held); d.classList.toggle("queued",k===queuedSet); d.classList.toggle("fresh",info.fresh);
     d.querySelector(".nm").textContent = info.name;
     d.querySelector(".tag").textContent = on ? (held?"HOLD":"NOW") : (k===setCur ? "SEL" : (k===queuedSet ? "NEXT" : ""));
-    d.querySelector(".bpm").textContent = (+info.bpm||100).toFixed(1);
+    { const b=+info.bpm||100; d.querySelector(".bpm").textContent = (Number.isInteger(b)?String(b):b.toFixed(1))+" BPM"; }   // 単位を付ける（v0.3.198 §187）
     paintSetLevel(d,k);   // ミックス音量（塗り潰しと数字。0 dB のときは出さない）
     d.querySelectorAll(".dots i").forEach((i,p)=>i.classList.toggle("has", info.has[p]));
   }
@@ -7839,7 +7871,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.197";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.198";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
