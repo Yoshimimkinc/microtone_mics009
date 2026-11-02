@@ -848,7 +848,7 @@ async function wireSkin(){
       const cs=getComputedStyle(document.body),ink=cs.getPropertyValue('--ink').trim(),bg=cs.backgroundColor,unit=getComputedStyle(document.querySelector('.unit')).backgroundColor;
       const hex=h=>'rgb('+[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(',')+')';
       return {cls:document.body.className.match(/t-\w+/g).join(), ls:localStorage.getItem('mics-skin'), unit, inkOnUnit:+cr(hex(ink),unit).toFixed(2), selOnTeal:+cr(hex(cs.getPropertyValue('--hit-ink').trim()),hex(cs.getPropertyValue('--teal').trim())).toFixed(2)}; });
-    ok_(`${V} スキン GIRLY：桜色の本体・文字 4.5:1 以上・選択の塗りの上の文字も読める・選んだスキンを覚える`, g.cls==='t-gl' && g.ls==='gl' && /rgb\(246, 217, 228\)/.test(g.unit) && g.inkOnUnit>=4.5 && g.selOnTeal>=4.5, JSON.stringify(g)); }
+    ok_(`${V} スキン GIRLY：桜色の本体・文字 4.5:1 以上・選択の塗りの上の文字も読める・選んだスキンを覚える`, g.cls==='t-gl' && g.ls==='gl' && /rgb\(242, 207, 221\)/.test(g.unit) && g.inkOnUnit>=4.5 && g.selOnTeal>=4.5, JSON.stringify(g)); }
   await p.evaluate(()=>{ document.querySelector('#themeSeg button[data-th="ak"]').click(); });
   // v0.3.201 §190：TR は廃止。ボタンが無く、rl を覚えていた端末も AK で開く
   { await p.evaluate(()=>localStorage.setItem('mics-skin','rl')); await p.reload({waitUntil:'load'}); await ready(p);
