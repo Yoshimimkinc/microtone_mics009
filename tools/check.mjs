@@ -263,6 +263,16 @@ async function run(w,h,mobile){
             btns:[...m.querySelectorAll('button,.loadbtn')].map(b=>(b.id||b.textContent.trim()).slice(0,12))};});
   eq(`${V} モーダルにノブ/セレクトが無い`, [md.ranges,md.selects], [0,0]);
   ok_(`${V} モーダルは表示できる`, md.disp==='flex', md.disp);
+  // v0.3.199 §188：EDIT は見出しで区切り、START / END / LENGTH を数字と単位で（参考 UI の TRIM 画面）。略さない
+  { const ed=await p.evaluate(()=>{const m=document.getElementById('padEditModal');const t=tracks[peTarget],d=t.buffer.duration;
+      const secs=[...m.querySelectorAll('.pe-sec')].filter(e=>e.getBoundingClientRect().height>0).map(e=>e.firstChild.textContent.trim());
+      const v=id=>document.getElementById(id).textContent,before=[v('peStartVal'),v('peEndVal'),v('peLenVal')];
+      const s0=t.start,e0=t.end;t.start=0.25;t.end=0.75;renderPeWave(peTarget);const after=[v('peStartVal'),v('peEndVal'),v('peLenVal')];t.start=s0;t.end=e0;renderPeWave(peTarget);
+      const fmt=x=>x<1?Math.round(x*1000)+' ms':x.toFixed(2)+' s';
+      return {secs,before,after,want:[fmt(.25*d),fmt(.75*d),fmt(.5*d)],kinds:[...m.querySelectorAll('#peKinds [data-kind]')].map(b=>b.textContent),rev:v('peRev')};});
+    eq(`${V} EDIT の見出し`, ed.secs, ['SOUND TYPE','SOURCE','TRIM','PROCESS','CHOP']);
+    ok_(`${V} EDIT の START / END / LENGTH が数字と単位で、動かすと追従`, ed.before.every(x=>/ ms$| s$/.test(x)) && JSON.stringify(ed.after)===JSON.stringify(ed.want), JSON.stringify(ed));
+    ok_(`${V} EDIT の種類・加工は略さない`, ed.kinds.join()==='SAMPLE,KEY,SCRATCH' && /REVERSE/.test(ed.rev), JSON.stringify(ed)); }
   await p.click('#peClose'); await p.waitForTimeout(400);
   eq(`${V} 閉じたら窓へ戻る`, await where(), 'clWaveSlot');
 

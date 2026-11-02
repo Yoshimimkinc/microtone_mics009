@@ -1081,6 +1081,18 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   .fxm-v{text-align:right;font-variant-numeric:tabular-nums;}
   .fxm-type{display:none;min-height:28px;padding:2px 4px;font-size:11px;background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;cursor:pointer;}
   .fxm-list.filt .fxm-type{display:block;}
+
+  /* v0.3.199 §188 EDIT を見出しで区切る・値に名前と単位（参考 UI の TRIM 画面） */
+  .pe-sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--line);
+    font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--ink);}
+  .pe-sec small{font-size:10px;font-weight:400;letter-spacing:.02em;color:var(--dim);}
+  .pe-range{display:flex;justify-content:space-between;gap:8px;margin:6px 0 0;font-size:10px;letter-spacing:.1em;color:var(--dim);}
+  .pe-range b{margin-left:4px;font-size:13px;letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums;}
+  #padEditModal[data-pad-kind=KEY] .pe-sec-wave,#padEditModal[data-pad-kind=KEY] .pe-range{display:none;}
+  #peKinds .t{font-size:11px;letter-spacing:.08em;}
+
+  .pe-transport button{min-width:0;}
+  @media(max-width:600px){ .pe-transport{gap:6px;} .pe-transport button{padding:10px 4px;letter-spacing:.06em;gap:5px;} }
   /* responsive */
   @media(max-width:767px){   /* 積み上げレイアウトを767pxまで＝splitの開始点と隙間なく接続 */
     /* セーフエリア（ノッチ/ステータスバー/ホームバー）を避ける＝ロゴが時刻に重ならない */
@@ -1429,7 +1441,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.198</div>
+  <div class="s-ver" id="splashVer">v0.3.199</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1598,13 +1610,17 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
           <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
                  spellcheck="false" aria-label="パッドの名前" hidden>
         </div>
-        <div id="peKinds"><button class="t" data-kind="SPL">SPL</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCR</button><button class="t" id="peKeyOpen" hidden>PIANO ROLL</button></div>
+        <!-- v0.3.199 §188：見出しで区切り、値に名前と単位（参考 UI の TRIM 画面）。略さない（SPL→SAMPLE・SCR→SCRATCH・REV→REVERSE・ATK→ATTACK） -->
+        <div class="pe-sec">SOUND TYPE<small>音の種類</small></div>
+        <div id="peKinds"><button class="t" data-kind="SPL">SAMPLE</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCRATCH</button><button class="t" id="peKeyOpen" hidden>PIANO ROLL</button></div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
+        <div class="pe-sec pe-sec-wave">SOURCE<small>音を入れる</small></div>
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
-          <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SMPL</span>
-          <span class="pe-sample-hint">音源を読み込み / 録音</span>
+          <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SAMPLING</span>
+          <span class="pe-sample-hint">ファイルを読み込む / マイク・タブの音を録る</span>
         </div>
+        <div class="pe-sec pe-sec-wave">TRIM<small>START / END を波形の上でドラッグ（ダブルタップ＝全体）</small></div>
         <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
         <div id="peWaveHome">
           <div id="peWaveBox">
@@ -1619,19 +1635,22 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
               <div class="playhead" id="pePlayhead"></div>
               <div class="cue" id="peCue"><span class="cap">▶</span></div>
               <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
-              <div class="handle start" id="peStart"><span class="cap">STRT</span></div>
+              <div class="handle start" id="peStart"><span class="cap">START</span></div>
               <div class="handle end" id="peEnd"><span class="cap">END</span></div>
             </div>
           </div>
         </div>
+        <div class="pe-range" aria-live="polite"><span>START <b id="peStartVal">0 ms</b></span><span>END <b id="peEndVal">—</b></span><span>LENGTH <b id="peLenVal">—</b></span></div>
+        <div class="pe-sec pe-sec-wave">PROCESS<small>試聴・加工</small></div>
         <div class="pe-transport">
           <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
           <button class="pe-trim" id="peTrunc">✂ TRIM</button>
-          <button class="pe-trim" id="peRev">⇄ REV</button>
+          <button class="pe-trim" id="peRev">⇄ REVERSE</button>
           <button class="pe-trim pe-del" id="peDel" title="このパッドの音を消す（2 回押す・↩ で戻せる）">✕ DELETE</button>
         </div>
+        <div class="pe-sec pe-sec-wave">CHOP<small>パッドに分ける：分け方・数（OFF＝分けない）</small></div>
         <div class="pe-chop">
-          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATK</button></div>
+          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATTACK</button></div>
           <div class="seg" id="edChopDiv"><button class="on" data-n="0">OFF</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
           <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
           <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
@@ -5057,8 +5076,8 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 
 // @module edit-modal
 // @provides _ovCache, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor, peCueFrom, peCueT,
-//    peCueTimer, peNameSync, pePlayRAF, pePlayheadRun, peSetCue, peWaveVisible, refreshOpenPadEdit,
-//    renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+//    peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue, peWaveVisible,
+//    refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
 //    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
 //    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
@@ -5223,6 +5242,7 @@ function renderPeWave(i){
   document.getElementById("peStart").style.left=sx+"px";
   document.getElementById("peEnd").style.left=ex+"px";
   const pl=document.getElementById("peLoop"); pl.style.left=lx+"px"; pl.style.display=t.loop?"block":"none";
+  peRangePaint(t);
   if(peCueFor!==i || peCueBuf!==t.buffer){ peCue=null; peCueFor=i; peCueBuf=t.buffer; }   // パッドか音が替わったら試聴カーソルは消す
   const cu=document.getElementById("peCue");
   if(cu){ const cx=peCue==null?-1:nx(peCue); cu.classList.toggle("show", peCue!=null && cx>=0 && cx<=W); if(peCue!=null) cu.style.left=cx+"px"; }
@@ -5230,6 +5250,13 @@ function renderPeWave(i){
   const sxc=Math.max(0,Math.min(W,sx)), exc=Math.max(0,Math.min(W,ex));
   shL.style.left="0"; shL.style.width=sxc+"px"; shR.style.left=exc+"px"; shR.style.width=(W-exc)+"px";
   renderPeOver(i); syncPeOverWin();
+}
+// START / END / LENGTH を数字で（v0.3.199 §188：参考 UI の「START 0ms・END 11.43s」。1 秒未満は ms、それ以上は s）
+function peFmtTime(sec){ return !(sec>=0) ? "—" : sec<1 ? Math.round(sec*1000)+" ms" : sec.toFixed(2)+" s"; }
+function peRangePaint(t){
+  const dur=t&&t.buffer?t.buffer.duration:NaN, s=(t&&t.start||0)*dur, e=(t&&(t.end??1))*dur;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&el.textContent!==v) el.textContent=v; };
+  set("peStartVal",peFmtTime(s)); set("peEndVal",peFmtTime(e)); set("peLenVal",peFmtTime(e-s));
 }
 // EDITモーダルが開いていて、取り込み先がその編集パッドなら波形/タイトルを更新
 function refreshOpenPadEdit(i){
@@ -7871,7 +7898,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.198";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.199";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

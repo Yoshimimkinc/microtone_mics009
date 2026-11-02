@@ -1,7 +1,7 @@
 // @module edit-modal
 // @provides _ovCache, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor, peCueFrom, peCueT,
-//    peCueTimer, peNameSync, pePlayRAF, pePlayheadRun, peSetCue, peWaveVisible, refreshOpenPadEdit,
-//    renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+//    peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue, peWaveVisible,
+//    refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
 //    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
 //    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
@@ -166,6 +166,7 @@ function renderPeWave(i){
   document.getElementById("peStart").style.left=sx+"px";
   document.getElementById("peEnd").style.left=ex+"px";
   const pl=document.getElementById("peLoop"); pl.style.left=lx+"px"; pl.style.display=t.loop?"block":"none";
+  peRangePaint(t);
   if(peCueFor!==i || peCueBuf!==t.buffer){ peCue=null; peCueFor=i; peCueBuf=t.buffer; }   // パッドか音が替わったら試聴カーソルは消す
   const cu=document.getElementById("peCue");
   if(cu){ const cx=peCue==null?-1:nx(peCue); cu.classList.toggle("show", peCue!=null && cx>=0 && cx<=W); if(peCue!=null) cu.style.left=cx+"px"; }
@@ -173,6 +174,13 @@ function renderPeWave(i){
   const sxc=Math.max(0,Math.min(W,sx)), exc=Math.max(0,Math.min(W,ex));
   shL.style.left="0"; shL.style.width=sxc+"px"; shR.style.left=exc+"px"; shR.style.width=(W-exc)+"px";
   renderPeOver(i); syncPeOverWin();
+}
+// START / END / LENGTH を数字で（v0.3.199 §188：参考 UI の「START 0ms・END 11.43s」。1 秒未満は ms、それ以上は s）
+function peFmtTime(sec){ return !(sec>=0) ? "—" : sec<1 ? Math.round(sec*1000)+" ms" : sec.toFixed(2)+" s"; }
+function peRangePaint(t){
+  const dur=t&&t.buffer?t.buffer.duration:NaN, s=(t&&t.start||0)*dur, e=(t&&(t.end??1))*dur;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&el.textContent!==v) el.textContent=v; };
+  set("peStartVal",peFmtTime(s)); set("peEndVal",peFmtTime(e)); set("peLenVal",peFmtTime(e-s));
 }
 // EDITモーダルが開いていて、取り込み先がその編集パッドなら波形/タイトルを更新
 function refreshOpenPadEdit(i){

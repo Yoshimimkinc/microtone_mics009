@@ -2403,3 +2403,11 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - SET のパッド：BPM に**単位（100 BPM）**、4 つの点 → **A B C D の文字**（中身のあるものだけ濃く＝`--amber`）。
 - EDIT の SPL / KEY / SCR はその 5（EDIT の作り直し）で。
 検査：既存の関門（名前の検査は 8 文字で切らない前提に合わせた）。
+
+## 188. EDIT を見出しと数字で（v0.3.199）
+§184 の続き（その 5）。参考 UI の TRIM 画面は見出し（SAMPLE EDIT・PROCESS・CHOP・LOOP）で区切り、START 0ms・END 11.43s と値を出していた。009 の EDIT は見出しが無く、START / END の値が出ず、「TIME ATK」「OFF 2 4 8 16」が何か書いていなかった。
+- 見出し（`.pe-sec`、一言の使い方付き）：**SOUND TYPE**（音の種類）／**SOURCE**（音を入れる）／**TRIM**（START / END を波形の上でドラッグ・ダブルタップ＝全体）／**PROCESS**（試聴・加工）／**CHOP**（パッドに分ける：分け方・数、OFF＝分けない）。KEY のパッドでは波形まわりの見出しも隠す。
+- **START / END / LENGTH**（`#peStartVal` `#peEndVal` `#peLenVal`、`peRangePaint`）：1 秒未満は ms、それ以上は s（小数 2 桁）。`renderPeWave` のたびに更新＝ハンドルを動かすと追従。
+- 略さない：SPL→**SAMPLE**・SCR→**SCRATCH**・● SMPL→**● SAMPLING**・⇄ REV→**⇄ REVERSE**・ATK→**ATTACK**・ハンドルの STRT→**START**。
+- 波形エディタは 1 つ（情報窓の SAMPLE ページと行き来する、v0.3.125）のまま。数字の段はモーダルの側。
+検査：`check.mjs`（見出し 5 つ・START / END / LENGTH が単位付きで、0.25〜0.75 に動かすと値が追従・種類と加工は略さない）。

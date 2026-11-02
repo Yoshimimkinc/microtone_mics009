@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.199 (2026-11-02)
+- EDIT を見出しで区切った：SOUND TYPE（音の種類）・SOURCE（音を入れる）・TRIM・PROCESS（試聴・加工）・CHOP（パッドに分ける）。各見出しに一言の使い方。
+- TRIM の下に START / END / LENGTH を数字と単位で（1 秒未満は ms、それ以上は s）。ハンドルを動かすと追従。
+- 略さない：SPL→SAMPLE・SCR→SCRATCH・SMPL→SAMPLING・REV→REVERSE・ATK→ATTACK・STRT→START。
+
 ## v0.3.198 (2026-11-02)
 - 略さない・単位・切らない：窓の SWG→SWING・PAT→PATTERN・TRK→PAD。パッドの名前を 8 文字で切らず 2 行まで、SEQ の行の名前も切らずに折り返す（名前の欄に淡い地＝暗い所でも読める）。A B C D と 1 2 3 4 の段に「PATTERN」「BAR」の小見出し。SET のパッドは「100 BPM」と単位、4 つの点は A B C D の文字（中身のあるものだけ濃く）。パッド右上の種類の札はサンプル（既定）では出さず、KEY / SCRATCH を略さずに。
 - スマホの窓は STEP を出さない（略さない名前で 1 段目に収まらなくなるため。SEQ のカーソルで分かる）。
