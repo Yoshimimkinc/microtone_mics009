@@ -34,7 +34,7 @@
 .key-extra:not([hidden]){display:flex;flex-direction:column;gap:6px;padding:8px}
 .key-more-head{flex:0 0 auto;display:flex;gap:6px;align-items:stretch}
 .key-more-tabs{flex:1 1 auto;min-width:0;display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.key-panel .key-more-tabs button{flex:1 1 0;min-width:0;border:0;border-radius:0;padding:6px 2px;font-size:11px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
+.key-panel .key-more-tabs button{flex:1 1 0;min-width:0;border:0;border-radius:0;padding:4px 2px;font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1.15;white-space:normal;overflow-wrap:anywhere}   /* v0.3.212：狭い携帯では 2 行に折り返す（はみ出さない） */
 .key-more-tabs [aria-selected=true]{background:var(--teal,#3dd6c4);color:#101719}
 .key-panel #keyMoreClose{flex:0 0 auto;font-size:11px}
 .key-more-page{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
@@ -48,6 +48,8 @@
 .key-panel .key-chord-grid button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:6px 8px;text-align:left}
 .key-chord-grid small{font-size:10px;font-weight:400;opacity:.8;letter-spacing:0}
 .key-fields button{flex:0 0 auto;align-self:end}
+.key-panel .key-del{color:var(--red,#e0464b);border-color:var(--red,#e0464b)}.key-panel .key-del.armed{background:var(--red,#e0464b);color:#fff}
+.key-range-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.key-range-read{flex:1 1 160px;font-size:12px;font-variant-numeric:tabular-nums}.key-panel #keyRangeReset{min-height:44px}
 .key-panel .key-chop-apply{min-height:48px;font-weight:800;color:var(--amber,#f0a030);border-color:var(--amber,#f0a030)}.key-panel .key-chop-apply:disabled{opacity:.4}
 .key-extra .content-tools{align-items:end;margin:0}
 .key-extra label{display:flex;flex-direction:column;gap:3px;font-size:10px;letter-spacing:.05em}
@@ -58,7 +60,7 @@
 .key-horizontal{flex:1 1 auto;min-height:120px;display:flex;flex-direction:column;overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;border:1px solid #5b6366;background:#b7bbbc;touch-action:pan-x pan-y}
 .key-inner{position:relative;width:max-content;min-width:100%;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .key-panel .key-scroll{flex:1 1 auto;min-height:0;height:auto;max-height:none;overflow-x:hidden;overflow-y:auto;border:0;touch-action:pan-x pan-y}
-.key-panel canvas{display:block;flex:0 0 auto;max-width:none;touch-action:none}.key-panel canvas[hidden]{display:none}
+.key-panel canvas{display:block;flex:0 0 auto;align-self:flex-start;max-width:none;touch-action:none}   /* v0.3.212：縦並びの中で横に引き伸ばさない（引き伸ばすと PC で目盛り・ロールの位置がずれていた） */.key-panel canvas[hidden]{display:none}
 .key-panel #keyRoll{cursor:crosshair;outline:none;transition:none}.key-panel #keyRoll:focus-visible{outline:2px solid #0a8478;outline-offset:-2px}
 .key-panel.is-navigating #keyRoll{touch-action:pan-x pan-y;cursor:grab}.key-panel.is-navigating #keyVelocityRoll{touch-action:pan-x}
 #keyRuler{height:28px}#keyVelocityRoll{height:100px;border-top:1px solid #5c6469;cursor:ns-resize}
@@ -86,7 +88,7 @@
  .key-pads{width:min(340px,34%);min-height:0}
  .key-pad-grid{flex:1 1 auto;min-height:0;grid-template-rows:repeat(4,minmax(40px,1fr))}
 }
-@media(max-width:380px){.key-panel .key-bar button,.key-panel .key-more-tabs button{font-size:10px;letter-spacing:0;padding:6px 2px}}
+@media(max-width:380px){.key-panel .key-bar button{font-size:10px;letter-spacing:0;padding:6px 2px}.key-panel .key-more-tabs button{font-size:10px;letter-spacing:0;padding:4px 1px}}
 @media(max-width:600px){
  #keyEditor{padding:max(6px,env(safe-area-inset-top)) 6px max(6px,env(safe-area-inset-bottom))}#keyEditor .key-panel{padding:8px;border-radius:8px;gap:5px}   /* v0.3.207：ノッチ／ダイナミックアイランドの下に上端が潜らない（6px だけにするとセーフエリアが消えていた） */
  .key-panel button{font-size:11px;padding:6px 8px}.key-panel select{max-width:154px}

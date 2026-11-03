@@ -75,7 +75,7 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   { const L=await p.evaluate(()=>{const r=s=>document.querySelector(s).getBoundingClientRect();const pads=[...document.querySelectorAll('#keyPadGrid .key-pad')].map(b=>b.getBoundingClientRect());
       return {roll:r('.key-scroll').height,panel:r('#keyEditor .key-panel').bottom,vh:innerHeight,pads:pads.length,padMin:Math.min(...pads.map(b=>Math.min(b.width,b.height))),over:document.documentElement.scrollWidth>innerWidth,rows:_keyRows().length,rowH:_keyRowH(),bar:r('#keyPreview').top===r('#keyMore').top};});
     ok_(`${label} KEY のロールが画面の高さを使う・鍵盤 16 個（44px 以上）・道具 1 段・横にはみ出さない`,L.roll>=(mobile?330:500)&&L.pads===16&&L.padMin>=44&&L.bar&&!L.over&&L.panel<=L.vh,JSON.stringify(L));
-    eq(`${label} KEY はスケールの外の音の行を畳む（C メジャー＝21 行・40px）`,[L.rows,L.rowH],[21,40]);
+    eq(`${label} KEY はスケールの外の音の行を畳む（A0〜C8 の C メジャー＝52 行・40px）`,[L.rows,L.rowH],[52,40]);
     const n0=await p.evaluate(()=>tracks[8].keyPhrase.notes.length);await p.click('#keyStep');
     { const r=await p.evaluate(()=>{const b=document.getElementById('keyRuler').getBoundingClientRect();return {x:b.left+58+2*_keyZoom+3,y:b.top+14};});await p.mouse.click(r.x,r.y); }   // 目盛りをタップ＝STEP の位置（2 拍目の頭）
     for(const d of [12,13]){const b=await p.locator('#keyPadGrid .key-pad').nth(d).boundingBox();await p.mouse.move(b.x+b.width/2,b.y+b.height/2);await p.mouse.down();await p.waitForTimeout(40);await p.mouse.up();await p.waitForTimeout(120);}
@@ -98,15 +98,43 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   eq(`${label} KEY保存読込・コピー深複製・UNDO・SPL復帰`,round,{a:['KEY',3,4],b:['KEY',3],isolated:60,undone:'SPL',source:initial.source});
   const epoch=await p.evaluate(async()=>{await setPadKind(8,'KEY');const t=tracks[8];t.keyPhrase={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:80}]};const pending=prepareKeyTrack(t,bpmVal);t._contentEpoch++;const old=t.buffer;await pending;return old===t.buffer;});
   ok_(`${label} 古い非同期renderが別状態を上書きしない`,epoch,String(epoch));
-  // v0.3.211 §200：KEY の CHOP（MORE → CHOP · EDIT）。コードの変わり目で切って PAD 13–16 へ・KEY の音の波形・打ち込みは残る・UNDO 1 回で戻る
+  // v0.3.211 §200 / v0.3.212 §201：KEY の CHOP（MORE → CHOP · EDIT）。コードの変わり目で切る。KEY のパッド（13）はそのまま、右に入らないので左の PAD 09–12 へ・UNDO 1 回で戻る
   { await p.evaluate(async()=>{await setPadKind(12,'KEY');keyEditorOpen(12);await keyApplyPreset('komuro');_keyLoopStop();});
-    const before=await p.evaluate(()=>[12,13,14,15].map(k=>padKind(tracks[k])+':'+(tracks[k].buffer?tracks[k].buffer.length:0)));
+    const before=await p.evaluate(()=>[8,9,10,11,12].map(k=>padKind(tracks[k])+':'+(padKind(tracks[k])==='KEY'?'':(tracks[k].buffer?tracks[k].buffer.length:0))));   // KEY は戻すと作り直すので種類だけ
     await p.click('#keyMore');await p.click('#keyExtra [data-more-tab="edit"]');await p.click('#keyExtra [data-chop="chord"]');
     const chopLabel=await p.textContent('#keyChopApply');await p.click('#keyChopApply');await p.waitForFunction(()=>document.getElementById('keyEditor').hidden,null,{timeout:8000});
-    const c=await p.evaluate(()=>{const ts=[12,13,14,15].map(k=>tracks[k]);return {kinds:ts.map(t=>padKind(t)),same:ts.every(t=>t.buffer===ts[0].buffer),stamped:_keyBuffers.has(ts[0].buffer),starts:ts.map(t=>+t.start.toFixed(3)),last:ts[3].end,notes:tracks[12].keyPhrase.notes.length,sel:selected};});
-    ok_(`${label} KEY の CHOP（コードごと）→ PAD 13–16 に SAMPLE で並ぶ・打ち込みは残る`,chopLabel.includes('13–16')&&c.kinds.join()==='SPL,SPL,SPL,SPL'&&c.same&&!c.stamped&&c.starts[0]===0&&c.starts.every((v,k)=>k===0||v>c.starts[k-1])&&c.last===1&&c.notes===16&&c.sel===12,JSON.stringify({chopLabel,c}));
-    await p.evaluate(()=>doUndo());const after=await p.evaluate(()=>[12,13,14,15].map(k=>padKind(tracks[k])+':'+(tracks[k].buffer?tracks[k].buffer.length:0)));
+    const c=await p.evaluate(()=>{const ts=[8,9,10,11].map(k=>tracks[k]);return {kinds:ts.map(t=>padKind(t)),key:padKind(tracks[12]),same:ts.every(t=>t.buffer===ts[0].buffer),stamped:_keyBuffers.has(ts[0].buffer),starts:ts.map(t=>+t.start.toFixed(3)),last:ts[3].end,notes:tracks[12].keyPhrase.notes.length,sel:selected};});
+    ok_(`${label} KEY の CHOP（コードごと）→ PAD 09–12 に SAMPLE で並び、KEY のパッドは KEY のまま`,chopLabel.includes('09–12')&&c.kinds.join()==='SPL,SPL,SPL,SPL'&&c.key==='KEY'&&c.same&&!c.stamped&&c.starts[0]===0&&c.starts.every((v,k)=>k===0||v>c.starts[k-1])&&c.last===1&&c.notes===16&&c.sel===8,JSON.stringify({chopLabel,c}));
+    // KEY で開き直しても CHOP は消えない（「KEY からチョップして、それを KEY で開くとチョップも戻ってる」）
+    await p.evaluate(()=>{selectPad(12);});await p.click('#clKeys .cl-key[data-pg="smpl"]');await p.waitForTimeout(150);await p.click('#clPage .cl-kind[data-kind="KEY"]');await p.waitForTimeout(400);
+    const k2=await p.evaluate(()=>({ed:!document.getElementById('keyEditor').hidden,kinds:[8,9,10,11].map(k=>padKind(tracks[k])).join()}));await p.evaluate(()=>keyEditorClose());await p.click('#clKeys .cl-key[data-pg="main"]');
+    ok_(`${label} KEY で開き直しても CHOP したパッドはそのまま`,k2.ed&&k2.kinds==='SPL,SPL,SPL,SPL',JSON.stringify(k2));
+    await p.evaluate(()=>doUndo());const after=await p.evaluate(()=>[8,9,10,11,12].map(k=>padKind(tracks[k])+':'+(padKind(tracks[k])==='KEY'?'':(tracks[k].buffer?tracks[k].buffer.length:0))));
     eq(`${label} KEY の CHOP は UNDO 1 回で戻る`,after,before);
+    // v0.3.212：PC でもスクロールできる＝ホイール・鍵盤の列をマウスでドラッグ（ロールは全音域）
+    if(!mobile){ await p.evaluate(async()=>{keyEditorOpen(12);});await p.waitForTimeout(200);
+      const sb=await p.locator('.key-scroll').boundingBox(),t0=await p.evaluate(()=>document.querySelector('.key-scroll').scrollTop);
+      await p.mouse.move(sb.x+sb.width/2,sb.y+sb.height/2);await p.mouse.wheel(0,400);await p.waitForTimeout(250);const t1=await p.evaluate(()=>document.querySelector('.key-scroll').scrollTop);
+      await p.mouse.move(sb.x+20,sb.y+sb.height/2);await p.mouse.down();await p.mouse.move(sb.x+20,sb.y+sb.height/2+150,{steps:5});await p.mouse.up();await p.waitForTimeout(150);
+      const t2=await p.evaluate(()=>({top:document.querySelector('.key-scroll').scrollTop,n:tracks[12].keyPhrase.notes.length}));
+      ok_(`${label} KEY のロールは PC のホイールと鍵盤の列のドラッグでスクロールする（ノートは置かない）`,t1-t0>=200&&t1-t2.top>=100&&t2.n===16,JSON.stringify({t0,t1,t2}));
+      await p.evaluate(()=>keyEditorClose()); }
+    // START / END：目盛りの END を 2 小節目の頭へドラッグ → ループとパッドは 1 小節目だけ。RESET で全体
+    await p.evaluate(async()=>{keyEditorOpen(12);_keyAutoFit=true;_keyFit();});await p.waitForTimeout(200);
+    const rr=await p.evaluate(()=>{const b=document.getElementById('keyRuler').getBoundingClientRect(),h=document.getElementById('keyHorizontal');h.scrollLeft=h.scrollWidth;const b2=document.getElementById('keyRuler').getBoundingClientRect();return {x1:b2.left+58+16*_keyZoom-2,x2:b2.left+58+4*_keyZoom,y:b2.top+14,vis:b2.left+58+16*_keyZoom<=innerWidth};});
+    if(rr.x1>0){await p.mouse.move(rr.x1,rr.y);await p.mouse.down();await p.mouse.move((rr.x1+rr.x2)/2,rr.y,{steps:3});await p.mouse.move(rr.x2,rr.y,{steps:3});await p.mouse.up();}
+    await p.waitForFunction(()=>tracks[12]._keySignature===JSON.stringify([normalizeKeyPhrase(tracks[12].keyPhrase),bpmVal]),null,{timeout:8000});
+    const rg=await p.evaluate(()=>({range:tracks[12].keyPhrase.range,end:tracks[12].end,want:4*60/bpmVal/tracks[12].buffer.duration,read:document.getElementById('keyRangeRead').textContent}));
+    ok_(`${label} KEY の END を目盛りでドラッグ → パッドは START〜END だけ鳴る`,rg.range.start===0&&rg.range.end===4&&Math.abs(rg.end-rg.want)<1e-6&&rg.read.includes('END 2.1'),JSON.stringify(rg));
+    await p.click('#keyMore');await p.click('#keyExtra [data-more-tab="key"]');await p.click('#keyRangeReset');await p.waitForTimeout(200);
+    eq(`${label} KEY の START / END の RESET＝全体`,await p.evaluate(()=>tracks[12].keyPhrase.range),{start:0,end:null});
+    // 消す：ノートを全部消す（1 回）／このパッドを消す（2 回）。どちらも UNDO で戻る
+    await p.click('#keyExtra [data-more-tab="edit"]');await p.click('#keyClearNotes');await p.waitForTimeout(200);
+    const cl=await p.evaluate(()=>tracks[12].keyPhrase.notes.length);await p.click('#keyUndo');await p.waitForTimeout(200);const cl2=await p.evaluate(()=>tracks[12].keyPhrase.notes.length);
+    ok_(`${label} KEY の「ノートを全部消す」・UNDO で戻る`,cl===0&&cl2===16,JSON.stringify([cl,cl2]));
+    await p.click('#keyMore');await p.click('#keyExtra [data-more-tab="edit"]');await p.click('#keyDeletePad');const armed=await p.evaluate(()=>({kind:padKind(tracks[12]),txt:document.getElementById('keyDeletePad').textContent}));await p.click('#keyDeletePad');await p.waitForTimeout(200);
+    const dl=await p.evaluate(()=>({kind:padKind(tracks[12]),buf:!!tracks[12].buffer,ed:!document.getElementById('keyEditor').hidden,type:PADS[12].type}));await p.evaluate(()=>doUndo());const dl2=await p.evaluate(()=>padKind(tracks[12]));
+    ok_(`${label} KEY の「このパッドを消す」＝2 回で空のパッド・UNDO で KEY に戻る`,armed.kind==='KEY'&&armed.txt.includes('もう一度')&&dl.kind==='SPL'&&!dl.buf&&!dl.ed&&dl.type==='empty'&&dl2==='KEY',JSON.stringify({armed,dl,dl2}));
     await p.evaluate(async()=>{await setPadKind(12,'SPL');}); }
   // Minimal format-0 SMF with simultaneous E/C notes and note-off timings at PPQ96.
   const midi=await p.evaluate(()=>{
