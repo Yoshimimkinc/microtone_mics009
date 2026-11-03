@@ -166,6 +166,13 @@ el('keyPreview').click();check('pressing PLAY again stops the loop',()=>assert.e
  check('a chord button applies the progression and closes MORE',()=>{assert.equal(phrase().notes.length,16);assert.equal(el('keyExtra').hidden,true);});
  run('_keyLoopStop()');el('keyUndo').click();await flush();el('keyUndo').click();await flush();el('keyUndo').click();await flush();el('keyUndo').click();await flush();el('keyUndo').click();await flush();
  el('keyDragMode').value='auto';run('keyEditorOpen(0)');}
+// v0.3.211 §200：KEY の CHOP の切れ目は打ち込みから（和音は 1 つ・最大 16）
+{const q=context.keyPresetPhrase('komuro',0),p=context.normalizeKeyPhrase({bars:q.bars,notes:q.notes});
+ check('CHOP by chord cuts at each chord change',()=>assert.equal(JSON.stringify(context.keyChopBeats(p,'chord')),'[0,4,8,12]'));
+ check('CHOP by bar / 2 beats / beat',()=>{assert.equal(JSON.stringify(context.keyChopBeats(p,'bar')),'[0,4,8,12]');assert.equal(context.keyChopBeats(p,'half').length,8);assert.equal(context.keyChopBeats(p,'beat').length,16);});
+ const arp=context.normalizeKeyPhrase({bars:4,notes:Array.from({length:40},(_,k)=>({pitch:60+k%5,beat:k*.25,length:.25,velocity:90}))});
+ check('CHOP never makes more than 16 slices',()=>assert.equal(context.keyChopBeats(arp,'chord').length,16));
+ check('an empty phrase has nothing to CHOP',()=>assert.equal(context.keyChopBeats(context.normalizeKeyPhrase({bars:2,notes:[]}),'chord').length,0));}
 // v0.3.207 §196：CHORDS＝定番の進行のプリセット。どのキーでも正しいフレーズ・いまの KEY へ移す・SCALE も合わせる・UNDO 1 回で戻る
 check('every chord preset is a valid phrase in every key',()=>{for(const p of run('KEY_PRESETS'))for(const r of [0,2,5,6,11]){const q=context.keyPresetPhrase(p.id,r),n=context.normalizeKeyPhrase({bars:q.bars,notes:q.notes});assert.equal(n.notes.length,q.notes.length,p.id+' '+r);assert.ok(q.notes.every(x=>x.pitch>=28&&x.pitch<=84&&x.beat+x.length<=q.bars*4+1e-9),p.id+' '+r);}});
 check('the preset menu lists every progression',()=>{const groups=el('keyChordPreset').children.filter(c=>c.label!==undefined||c.children.length);assert.equal(groups.reduce((s,g)=>s+g.children.length,0),run('KEY_PRESETS.length'));});

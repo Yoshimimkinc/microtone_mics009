@@ -98,6 +98,16 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   eq(`${label} KEY保存読込・コピー深複製・UNDO・SPL復帰`,round,{a:['KEY',3,4],b:['KEY',3],isolated:60,undone:'SPL',source:initial.source});
   const epoch=await p.evaluate(async()=>{await setPadKind(8,'KEY');const t=tracks[8];t.keyPhrase={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:80}]};const pending=prepareKeyTrack(t,bpmVal);t._contentEpoch++;const old=t.buffer;await pending;return old===t.buffer;});
   ok_(`${label} 古い非同期renderが別状態を上書きしない`,epoch,String(epoch));
+  // v0.3.211 §200：KEY の CHOP（MORE → CHOP · EDIT）。コードの変わり目で切って PAD 13–16 へ・KEY の音の波形・打ち込みは残る・UNDO 1 回で戻る
+  { await p.evaluate(async()=>{await setPadKind(12,'KEY');keyEditorOpen(12);await keyApplyPreset('komuro');_keyLoopStop();});
+    const before=await p.evaluate(()=>[12,13,14,15].map(k=>padKind(tracks[k])+':'+(tracks[k].buffer?tracks[k].buffer.length:0)));
+    await p.click('#keyMore');await p.click('#keyExtra [data-more-tab="edit"]');await p.click('#keyExtra [data-chop="chord"]');
+    const chopLabel=await p.textContent('#keyChopApply');await p.click('#keyChopApply');await p.waitForFunction(()=>document.getElementById('keyEditor').hidden,null,{timeout:8000});
+    const c=await p.evaluate(()=>{const ts=[12,13,14,15].map(k=>tracks[k]);return {kinds:ts.map(t=>padKind(t)),same:ts.every(t=>t.buffer===ts[0].buffer),stamped:_keyBuffers.has(ts[0].buffer),starts:ts.map(t=>+t.start.toFixed(3)),last:ts[3].end,notes:tracks[12].keyPhrase.notes.length,sel:selected};});
+    ok_(`${label} KEY の CHOP（コードごと）→ PAD 13–16 に SAMPLE で並ぶ・打ち込みは残る`,chopLabel.includes('13–16')&&c.kinds.join()==='SPL,SPL,SPL,SPL'&&c.same&&!c.stamped&&c.starts[0]===0&&c.starts.every((v,k)=>k===0||v>c.starts[k-1])&&c.last===1&&c.notes===16&&c.sel===12,JSON.stringify({chopLabel,c}));
+    await p.evaluate(()=>doUndo());const after=await p.evaluate(()=>[12,13,14,15].map(k=>padKind(tracks[k])+':'+(tracks[k].buffer?tracks[k].buffer.length:0)));
+    eq(`${label} KEY の CHOP は UNDO 1 回で戻る`,after,before);
+    await p.evaluate(async()=>{await setPadKind(12,'SPL');}); }
   // Minimal format-0 SMF with simultaneous E/C notes and note-off timings at PPQ96.
   const midi=await p.evaluate(()=>{
     const track=[0,0x90,60,100,0,0x90,64,80,96,0x80,60,0,0,0x80,64,0,0,0xff,0x2f,0];

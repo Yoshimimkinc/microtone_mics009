@@ -1,13 +1,16 @@
 // @module ui/key-entry
-// @provides _keyAllNotesOff, _keyBeatSec, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer,
-//    _keyLiveCache, _keyLoop, _keyLoopBeat, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
-//    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
-//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRecCommit,
-//    _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads,
-//    keyApplyPreset, keyEntryClose, keyEntryOpen
+// @provides _keyAllNotesOff, _keyBeatSec, _keyChopMode, _keyChopPaint, _keyChopPlan, _keyClick,
+//    _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache, _keyLoop, _keyLoopBeat,
+//    _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint, _keyMoreTab, _keyMoreTabSet, _keyNativeSet,
+//    _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow, _keyPadPitches, _keyPadRoot, _keyPadsLit,
+//    _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt,
+//    _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop,
+//    keyChopBeats, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
-//    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks, wakeSync
+//    bpmVal, chopKeyToPads, keyApplyEffects, keyEditorClose, keyPresetPhrase, keyTineNote, masterGain,
+//    padKind, paintPerf, prepareKeyTrack, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave,
+//    selectPad, stopVoices, syncPadContentEditor, tracks, wakeSync
 // @depends data/key-presets, plock-undo
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
@@ -138,6 +141,37 @@ function _keyMorePaint(){
   document.querySelectorAll('#keyExtra [data-more-page]').forEach(pg=>pg.hidden=pg.dataset.morePage!==_keyMoreTab);
   for(const [sel,key,val] of [['[data-root]','root',String(e.root)],['[data-scale]','scale',e.scale],['[data-bars]','bars',String(p.bars)],['[data-tool]','tool',tool]])
     document.querySelectorAll('#keyExtra '+sel).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[key]===val)));
+  _keyChopPaint();
+}
+// v0.3.211 §200：KEY の CHOP。切れ目（拍）は打ち込みから：chord＝音の出だしごと（和音は 1 つ）、bar / half / beat＝小節・2 拍・1 拍ごと。最大 16
+let _keyChopMode='chord';
+function keyChopBeats(p,mode){
+  const end=p.bars*4;let b;
+  if(mode==='chord')b=[...new Set(p.notes.map(n=>Math.round(n.beat*96)/96))].sort((x,y)=>x-y);
+  else{const step={bar:4,half:2,beat:1}[mode]||4;b=[];for(let x=0;x<end-1e-9;x+=step)b.push(x);}
+  return b.filter(x=>x>=0&&x<end).slice(0,16);
+}
+function _keyChopPlan(){const p=_keyPhrase(),beats=keyChopBeats(p,_keyChopMode),N=beats.length;return {beats,N,anchor:Math.max(0,Math.min(_keyTarget,16-N))};}
+async function keyChop(){
+  if(_keyTarget<0)return;const i=_keyTarget,t=tracks[i],plan=_keyChopPlan();if(!plan.N)return;
+  if(_keyLoop)_keyLoopStop();
+  const b=(await prepareKeyTrack(t,bpmVal))||(_keyBuffers.has(t.buffer)?t.buffer:null);
+  if(!b||_keyTarget!==i||padKind(t)!=='KEY')return;
+  // KEY の印が付かない別の波形へ写す（v0.3.206 の「波形にする」と同じ）
+  const buf=AC.createBuffer(1,b.length,b.sampleRate);buf.getChannelData(0).set(b.getChannelData(0));
+  const spb=60/Math.max(40,Math.min(250,+bpmVal||100)),bounds=plan.beats.map(x=>Math.min(1,x*spb/b.duration)).concat([1]);
+  pushUndo();for(let k=0;k<plan.N;k++)stopVoices(tracks[plan.anchor+k],AC.currentTime);
+  const r=chopKeyToPads(i,buf,bounds);
+  keyEditorClose();
+  for(let k=0;k<r.N;k++)refreshPadDisplay(r.anchor+k);
+  syncPadContentEditor(i);selectPad(r.anchor);paintPerf();scheduleAutosave();
+  sampNameEl.textContent='KEY の CHOP → PAD '+String(r.anchor+1).padStart(2,'0')+'–'+String(r.anchor+r.N).padStart(2,'0')+'  ↩で戻せる · 打ち込みは窓の KEY で戻せる';
+}
+function _keyChopPaint(){
+  const plan=_keyChopPlan(),info=document.getElementById('keyChopInfo'),btn=document.getElementById('keyChopApply'),pad=n=>String(n+1).padStart(2,'0');
+  document.querySelectorAll('#keyExtra [data-chop]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.chop===_keyChopMode)));
+  btn.disabled=!plan.N;btn.textContent=plan.N?'✂ CHOP → PAD '+pad(plan.anchor)+'–'+pad(plan.anchor+plan.N-1):'✂ CHOP';
+  info.textContent=plan.N?plan.N+' つに分けて PAD '+pad(plan.anchor)+'–'+pad(plan.anchor+plan.N-1)+' へ（そのパッドの音は置き換え・UNDO で戻せる）。このパッドは SAMPLE になり、打ち込みは窓の KEY で戻せます':'分けるノートがありません';
 }
 function _keyNativeSet(id,value){const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('change'));}
 function _keyPadsLit(){const held=new Set([..._keyLive.values()].map(v=>v.pitch));document.querySelectorAll('#keyPadGrid .key-pad').forEach(b=>b.classList.toggle('on',held.has(+b.dataset.pitch)&&b.dataset.pitch!==''));}
@@ -173,6 +207,8 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
     else if(d.scale)_keyNativeSet('keyScaleType',d.scale);
     else if(d.bars)_keyNativeSet('keyBars',d.bars);
     else if(d.tool){_keyNativeSet('keyDragMode',d.tool);_keyMorePaint();}
+    else if(d.chop){_keyChopMode=d.chop;_keyChopPaint();}
+    else if(b.id==='keyChopApply')keyChop().catch(err=>{document.getElementById('keyStatus').textContent=err.message;});
   });
   document.getElementById('keyMoreClose').addEventListener('click',()=>_keyMoreShow(false));
   // MORE が開いている間に外側を触った＝閉じる。ロール・鍵盤なら閉じるだけ（その場所にノートを置かない・鳴らさない）
