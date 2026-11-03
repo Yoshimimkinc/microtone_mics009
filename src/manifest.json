@@ -66,6 +66,7 @@
   "js/ui/splash-anim.js",
   "js/audio/scratch-pad.js",
   "js/ui/scratch-view.js",
+  "js/ui/key-entry.js",
   "js/ui/pad-content.js",
   "js/data/dropbox.js",
   "js/audio/lifecycle.js",
