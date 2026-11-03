@@ -1,13 +1,15 @@
 // @module ui/pad-content
 // @provides KEY_SCALES, _keyAudition, _keyAuditionNode, _keyAuditionToken, _keyAutoFit, _keyDeleteSelection,
 //    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
-//    _keyInScale, _keyLow, _keyMidi, _keyMulti, _keyNavigate, _keyPaint, _keyPhrase, _keyPoint,
-//    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
-//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
-//    openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, NOTE_NAMES, PADS, bpmVal, doUndo, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
-//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, previewVoiceFrom, pushUndo, refreshPadDisplay,
-//    renderKeyPhrase, sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
+//    _keyInScale, _keyLanesShow, _keyLow, _keyMidi, _keyMoreShow, _keyMulti, _keyNavigate, _keyPaint,
+//    _keyPhrase, _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows, _keyScalePitch, _keySelect,
+//    _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound, _keyTapNote, _keyTarget,
+//    _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen, openPadContent, padKind, padKindGo,
+//    setPadKind, syncPadContentEditor
+// @uses AC, NOTE_NAMES, PADS, _keyEntryPaint, _keyPref, _keySetPref, bpmVal, doUndo, keyEntryClose,
+//    keyEntryOpen, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf, parseKeyMidi,
+//    peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl, scheduleAutosave,
+//    scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -23,7 +25,7 @@ async function setPadKind(i,kind){
     t.keyPhrase=normalizeKeyPhrase(t.keyPhrase);PADS[i].type='sample';PADS[i].voice=null;
     const epoch=t._contentEpoch;sampNameEl.textContent='KEYを生成中…';const ready=await prepareKeyTrack(t,bpmVal);
     if(t._contentEpoch!==epoch||t.padKind!=='KEY')return;
-    if(ready)sampNameEl.textContent=t.keyPhrase.notes.length?'KEY · フレーズを演奏できます':'KEY · PIANO ROLLでノートを入力してください';
+    if(ready)sampNameEl.textContent=t.keyPhrase.notes.length?'KEY · フレーズを演奏できます':'KEY · 鍵盤で弾いて入れるか、ロールをタップして置いてください';
   }else sampNameEl.textContent=kind==='SCR'?'SCR · パッドを押すとスクラッチ':'SPL · サンプルを再生';
   refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
 }
@@ -56,16 +58,26 @@ const KEY_SCALES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,
 function _keyPhrase(){return _keyDraft||normalizeKeyPhrase(tracks[_keyTarget]?.keyPhrase);}
 function _keyInScale(pitch,e){return KEY_SCALES[e.scale].includes(((pitch-e.root)%12+12)%12);}
 function _keyScalePitch(pitch,e){pitch=Math.max(21,Math.min(108,Math.round(pitch)));if(!e.scaleEnabled)return pitch;for(let d=0;d<12;d++){if(pitch-d>=21&&_keyInScale(pitch-d,e))return pitch-d;if(pitch+d<=108&&_keyInScale(pitch+d,e))return pitch+d;}return pitch;}
+// v0.3.205 §194（C）：スケールがオンなら外の音の行を畳む（7 音なら 1 オクターブ 7 行・行は 40px）。使っている音の行は外の音でも残す。オフは 12 半音・28px
+function _keyRowH(){return _keyPhrase().editor.scaleEnabled?40:28;}
+function _keyRows(){const p=_keyPhrase(),used=new Set(normalizeKeyPhrase(tracks[_keyTarget]?.keyPhrase).notes.map(n=>n.pitch)),rows=[];for(let pitch=_keyLow+35;pitch>=_keyLow;pitch--)if(!p.editor.scaleEnabled||_keyInScale(pitch,p.editor)||used.has(pitch))rows.push(pitch);return rows;}
+function _keyRowY(pitch){const i=_keyRows().findIndex(r=>r<=pitch);return (i<0?_keyRows().length-1:i)*_keyRowH();}
+function _keyPitchAt(y){const rows=_keyRows();return rows[Math.max(0,Math.min(rows.length-1,Math.floor(y/_keyRowH())))];}
 function _keySnapBeat(beat,e,bypass=false){return Math.round(beat*(e.snap&&!bypass?4:96))/(e.snap&&!bypass?4:96);}
 function _keySelect(i,extend=false){if(!extend)_keySelection.clear();if(extend&&_keySelection.has(i))_keySelection.delete(i);else _keySelection.add(i);_keySelected=_keySelection.has(i)?i:([..._keySelection].at(-1)??-1);}
 function _keyFit(){const box=document.getElementById('keyHorizontal'),bars=_keyPhrase().bars;_keyZoom=Math.max(32,Math.min(384,Math.floor((box.clientWidth-58)/(bars*4))));_keyPaint();}
 function keyEditorOpen(i){
   _keyTarget=i;_keySound=false;_keyAutoFit=true;_keySelected=-1;_keySelection.clear();_keyDraft=null;_keyGesture=null;_keyNavigate=false;_keyMulti=false;
   const notes=normalizeKeyPhrase(tracks[i].keyPhrase).notes;_keyLow=notes.length?Math.max(21,Math.min(73,Math.floor((Math.min(...notes.map(n=>n.pitch))-12)/12)*12)):48;
-  document.getElementById('keyEditor').hidden=false;document.getElementById('keyExtra').open=window.innerWidth>600;document.getElementById('keyDragMode').value='auto';_keyFit();
-  const scroll=document.querySelector('.key-scroll');scroll.scrollTop=Math.max(0,(_keyLow+35-(notes[0]?.pitch||60))*28-scroll.clientHeight/2);document.getElementById('keyHorizontal').scrollLeft=0;
+  document.getElementById('keyEditor').hidden=false;_keyMoreShow(false);_keyLanesShow();document.getElementById('keyDragMode').value='auto';_keyFit();
+  const scroll=document.querySelector('.key-scroll');_keyPaint();scroll.scrollTop=Math.max(0,_keyRowY(notes[0]?.pitch||60)-scroll.clientHeight/2);document.getElementById('keyHorizontal').scrollLeft=0;
+  keyEntryOpen();
 }
-function keyEditorClose(){_keyAuditionToken++;_keyGesture=null;_keyDraft=null;_keySelection.clear();document.getElementById('keyEditor').hidden=true;_keyTarget=-1;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}_keyAuditionNode=null;}}
+// v0.3.205 §194（B）：MORE＝しまってある道具。強弱の欄と鍵盤は出す／しまうを端末ごとに覚える（強弱は既定でしまう）
+function _keyMoreShow(on){document.getElementById('keyExtra').hidden=!on;document.getElementById('keyMore').setAttribute('aria-expanded',String(on));document.getElementById('keyMore').classList.toggle('on',on);}
+function _keyLanesShow(){const vel=_keyPref('Vel',false),pads=_keyPref('Pads',true);document.getElementById('keyVelocityRoll').hidden=!vel;document.getElementById('keyPads').hidden=!pads;
+  for(const [id,on,name] of [['keyVelShow',vel,'VELOCITY'],['keyPadsShow',pads,'KEYBOARD']]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(on));b.textContent=name+(on?' ON':' OFF');}}
+function keyEditorClose(){if(_keyTarget>=0)keyEntryClose();_keyAuditionToken++;_keyGesture=null;_keyDraft=null;_keySelection.clear();document.getElementById('keyEditor').hidden=true;_keyTarget=-1;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}_keyAuditionNode=null;}}
 function _keyDragType(n,x,pointerType,tool,alt){
   if(tool&&tool!=='auto')return tool;
   const start=58+n.beat*_keyZoom,width=n.length*_keyZoom,edge=Math.min(pointerType==='touch'?14:8,width/3);
@@ -80,7 +92,7 @@ function _keySetCursor(type){
 function _keyHover(e){
   if(_keyTarget<0)return;const pt=_keyPoint(e,e.currentTarget),p=_keyPhrase();
   if(pt.x<58&&!_keyNavigate){_keySetCursor();e.currentTarget.style.cursor='pointer';return;}
-  const pitch=_keyLow+35-Math.floor(pt.y/28),beat=(pt.x-58)/_keyZoom;
+  const pitch=_keyPitchAt(pt.y),beat=(pt.x-58)/_keyZoom;
   for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i];if(n.pitch===pitch&&beat>=n.beat-3/_keyZoom&&beat<=n.beat+n.length+3/_keyZoom){_keySetCursor(_keyDragType(n,pt.x,e.pointerType,document.getElementById('keyDragMode').value,e.altKey));return;}}
   _keySetCursor();
 }
@@ -93,23 +105,23 @@ function _keyPaint(){
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
   document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1));document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
-  for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(v?' ON':' OFF');}
+  for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(id==='keyScaleOn'?'':v?' ON':' OFF');}
   document.querySelector('.key-panel').classList.toggle('is-navigating',_keyNavigate);document.getElementById('keyScaleRoot').value=p.editor.root;document.getElementById('keyScaleType').value=p.editor.scale;
-  if(cv.width!==width)cv.width=width;if(cv.height!==36*28)cv.height=36*28;
+  const rows=_keyRows(),rh=_keyRowH(),rowOf=new Map(rows.map((r,k)=>[r,k*rh]));if(cv.width!==width)cv.width=width;if(cv.height!==rows.length*rh)cv.height=rows.length*rh;
   c.font='11px sans-serif';c.textBaseline='middle';
-  for(let row=0;row<36;row++){
-    const pitch=_keyLow+35-row,y=row*28,black=[1,3,6,8,10].includes(pitch%12),allowed=_keyInScale(pitch,p.editor);
-    c.fillStyle=black?'#a4a9ad':'#bdc1c3';if(p.editor.scaleEnabled)c.fillStyle=allowed?'#b9cac5':'#999ea1';c.fillRect(58,y,width-58,28);
-    if(p.editor.scaleEnabled&&pitch%12===p.editor.root){c.fillStyle='#9eb9b2';c.fillRect(58,y,width-58,28);}
-    c.strokeStyle='#91989c';c.beginPath();c.moveTo(58,y+27.5);c.lineTo(width,y+27.5);c.stroke();
-    c.fillStyle=black?'#333b40':'#e9eae4';c.fillRect(0,y,57,27);c.fillStyle=black?'#f4f5f2':'#263037';c.fillText(NOTE_NAMES[pitch%12]+(Math.floor(pitch/12)-1),6,y+14);
-  }
+  rows.forEach((pitch,row)=>{
+    const y=row*rh,black=[1,3,6,8,10].includes(pitch%12),allowed=_keyInScale(pitch,p.editor);
+    c.fillStyle=black?'#a4a9ad':'#bdc1c3';if(p.editor.scaleEnabled)c.fillStyle=allowed?'#b9cac5':'#999ea1';c.fillRect(58,y,width-58,rh);
+    if(p.editor.scaleEnabled&&pitch%12===p.editor.root){c.fillStyle='#9eb9b2';c.fillRect(58,y,width-58,rh);}
+    c.strokeStyle=p.editor.scaleEnabled&&pitch%12===p.editor.root?'#56636b':'#91989c';c.beginPath();c.moveTo(58,y+rh-.5);c.lineTo(width,y+rh-.5);c.stroke();
+    c.fillStyle=p.editor.scaleEnabled?(allowed?(pitch%12===p.editor.root?'#cfe3dd':'#e9eae4'):'#555d62'):black?'#333b40':'#e9eae4';c.fillRect(0,y,57,rh-1);c.fillStyle=p.editor.scaleEnabled?(allowed?'#263037':'#f4f5f2'):black?'#f4f5f2':'#263037';c.fillText(NOTE_NAMES[pitch%12]+(Math.floor(pitch/12)-1),6,y+rh/2);
+  });
   for(let step=0;step<=p.bars*16;step++){const x=58+step*_keyZoom/4;c.strokeStyle=step%16===0?'#56636b':step%4===0?'#7a858b':'#9da4a8';c.beginPath();c.moveTo(x+.5,0);c.lineTo(x+.5,cv.height);c.stroke();}
   p.notes.forEach((n,j)=>{
-    const y=(_keyLow+35-n.pitch)*28;if(y<0||y>=cv.height)return;const x=58+n.beat*_keyZoom,w=Math.max(4,n.length*_keyZoom),selected=_keySelection.has(j);
-    c.fillStyle=selected?'#ffb24a':'hsl(168 48% '+(74-n.velocity*.26)+'%)';c.fillRect(x+1,y+3,w-2,22);c.strokeStyle=selected?'#6b3c0f':'#246255';c.strokeRect(x+1.5,y+3.5,Math.max(1,w-3),21);
-    c.save();c.beginPath();c.rect(x+2,y+3,Math.max(1,w-4),22);c.clip();c.fillStyle='#122923';if(w>35)c.fillText(NOTE_NAMES[n.pitch%12]+(Math.floor(n.pitch/12)-1),x+7,y+14);c.restore();
-    if(selected&&w>14){c.fillStyle='#68451c';c.fillRect(x+4,y+8,2,12);c.fillRect(x+w-6,y+8,2,12);}
+    const y=rowOf.get(n.pitch);if(y===undefined)return;const x=58+n.beat*_keyZoom,w=Math.max(4,n.length*_keyZoom),selected=_keySelection.has(j);
+    c.fillStyle=selected?'#ffb24a':'hsl(168 48% '+(74-n.velocity*.26)+'%)';c.fillRect(x+1,y+3,w-2,rh-6);c.strokeStyle=selected?'#6b3c0f':'#246255';c.strokeRect(x+1.5,y+3.5,Math.max(1,w-3),rh-7);
+    c.save();c.beginPath();c.rect(x+2,y+3,Math.max(1,w-4),rh-6);c.clip();c.fillStyle='#122923';if(w>35)c.fillText(NOTE_NAMES[n.pitch%12]+(Math.floor(n.pitch/12)-1),x+7,y+rh/2);c.restore();
+    if(selected&&w>14){c.fillStyle='#68451c';c.fillRect(x+4,y+rh/2-6,2,12);c.fillRect(x+w-6,y+rh/2-6,2,12);}
   });
   const ruler=document.getElementById('keyRuler');if(ruler.width!==width)ruler.width=width;if(ruler.height!==28)ruler.height=28;const rc=ruler.getContext('2d');rc.fillStyle='#67747b';rc.fillRect(0,0,width,28);rc.font='11px sans-serif';rc.fillStyle='#fff';rc.fillText('4/4',10,18);for(let b=0;b<p.bars*4;b++){const x=58+b*_keyZoom;rc.fillText((Math.floor(b/4)+1)+'.'+(b%4+1),x+5,18);}
   const vel=document.getElementById('keyVelocityRoll');if(vel.width!==width)vel.width=width;if(vel.height!==100)vel.height=100;const vc=vel.getContext('2d');vc.fillStyle='#bdc1c3';vc.fillRect(0,0,width,100);vc.font='10px sans-serif';vc.fillStyle='#334049';vc.fillText('VEL',9,17);vc.fillText('127',9,31);vc.fillText('1',18,90);vc.strokeStyle='#929a9f';for(const y of [16,88]){vc.beginPath();vc.moveTo(58,y+.5);vc.lineTo(width,y+.5);vc.stroke();}
@@ -118,6 +130,7 @@ function _keyPaint(){
   const n=p.notes[_keySelected],fields={keyPitch:n?.pitch??60,keyBeat:n?.beat??0,keyLength:n?.length??0.25,keyVelocity:n?.velocity??96};
   for(const [id,v] of Object.entries(fields)){const el=document.getElementById(id);el.value=typeof v==='number'?+v.toFixed(4):v;el.disabled=!n;}
   document.getElementById('keyDelete').disabled=!_keySelection.size;document.getElementById('keyDuplicate').disabled=!_keySelection.size;
+  document.getElementById('keyFields').hidden=!n;_keyEntryPaint();
   document.getElementById('keySelectionInfo').textContent=n?(_keySelection.size>1?_keySelection.size+' NOTES · ':'')+NOTE_NAMES[n.pitch%12]+(Math.floor(n.pitch/12)-1)+' · '+n.length.toFixed(2)+' beats · VEL '+n.velocity:'ノートを追加';
 }
 async function _keyUpdate(change){
@@ -161,7 +174,10 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   document.getElementById('peKeyOpen').addEventListener('click',()=>keyEditorOpen(peTarget));
   document.getElementById('keyClose').addEventListener('click',keyEditorClose);
   document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
-  document.getElementById('keyPreview').addEventListener('click',async()=>{if(_keyTarget<0)return;const i=_keyTarget;await AC.resume();await prepareKeyTrack(tracks[i],bpmVal);if(_keyTarget===i)previewVoiceFrom(i,null);});
+  // ▶ PLAY（keyPreview）は v0.3.205 §194 でループ再生に（ui/key-entry）。MORE・強弱の欄・鍵盤の出し入れ
+  document.getElementById('keyMore').addEventListener('click',()=>{_keyMoreShow(document.getElementById('keyExtra').hidden);if(_keyAutoFit)requestAnimationFrame(()=>{if(_keyTarget>=0)_keyFit();});});
+  document.getElementById('keyVelShow').addEventListener('click',()=>{_keySetPref('Vel',document.getElementById('keyVelocityRoll').hidden);_keyLanesShow();});
+  document.getElementById('keyPadsShow').addEventListener('click',()=>{_keySetPref('Pads',document.getElementById('keyPads').hidden);_keyLanesShow();if(_keyAutoFit)requestAnimationFrame(()=>{if(_keyTarget>=0)_keyFit();});});
   document.getElementById('keyBars').addEventListener('change',e=>{const bars=Math.max(1,Math.min(4,+e.target.value||1));if(_keyTarget<0)return;const p=_keyPhrase();if(p.notes.some(n=>n.beat+n.length>bars*4)&&!confirm('小節数を減らすと範囲外の音が切り詰められます。続けますか？')){_keyPaint();return;}_keyUpdate(p=>{p.bars=bars;_keySelection.clear();_keySelected=-1;});});
   document.getElementById('keyDelete').addEventListener('click',_keyDeleteSelection);document.getElementById('keyDuplicate').addEventListener('click',_keyDuplicate);
   document.getElementById('keySelectAll').addEventListener('click',()=>{_keySelection=new Set(_keyPhrase().notes.map((_,i)=>i));_keySelected=[..._keySelection][0]??-1;_keyPaint();});
@@ -177,7 +193,7 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   const roll=document.getElementById('keyRoll'),velocity=document.getElementById('keyVelocityRoll');
   function begin(e,isVelocity){
     if(_keyTarget<0||_keyNavigate||e.button>0||_keyGesture)return;
-    const canvas=e.currentTarget,point=_keyPoint(e,canvas),p=_keyPhrase(),beat=(point.x-58)/_keyZoom,pitch=_keyLow+35-Math.floor(point.y/28);
+    const canvas=e.currentTarget,point=_keyPoint(e,canvas),p=_keyPhrase(),beat=(point.x-58)/_keyZoom,pitch=_keyPitchAt(point.y);
     const touch=e.pointerType==='touch',pan=tap=>{e.preventDefault();const scroll=document.querySelector('.key-scroll'),h=document.getElementById('keyHorizontal');
       _keyGesture={id:e.pointerId,target:_keyTarget,track:tracks[_keyTarget],canvas,type:'pan',x:e.clientX,y:e.clientY,top:scroll.scrollTop,left:h.scrollLeft,beat,pitch,tap,moved:false};canvas.setPointerCapture(e.pointerId);};
     if(point.x<58){if(!isVelocity)_keyAudition(pitch);if(touch)pan(false);return;}e.preventDefault();canvas.focus({preventScroll:true});
@@ -205,7 +221,7 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
     const p=normalizeKeyPhrase(g.before),n=p.notes[g.index],end=p.bars*4,ids=[..._keySelection],bypass=e.metaKey;
     if(g.type==='move'){
       let delta=_keySnapBeat(n.beat+dx/_keyZoom,p.editor,bypass)-n.beat;delta=Math.max(-Math.min(...ids.map(i=>p.notes[i].beat)),Math.min(delta,end-Math.max(...ids.map(i=>p.notes[i].beat+p.notes[i].length))));
-      let transpose=_keyScalePitch(n.pitch-Math.round(dy/28),p.editor)-n.pitch;transpose=Math.max(21-Math.min(...ids.map(i=>p.notes[i].pitch)),Math.min(transpose,108-Math.max(...ids.map(i=>p.notes[i].pitch))));
+      const rows=_keyRows(),r0=rows.indexOf(n.pitch),rowTo=rows[Math.max(0,Math.min(rows.length-1,r0+Math.round(dy/_keyRowH())))];let transpose=_keyScalePitch(r0<0?n.pitch-Math.round(dy/_keyRowH()):rowTo,p.editor)-n.pitch;transpose=Math.max(21-Math.min(...ids.map(i=>p.notes[i].pitch)),Math.min(transpose,108-Math.max(...ids.map(i=>p.notes[i].pitch))));
       ids.forEach(i=>{p.notes[i].beat+=delta;p.notes[i].pitch=_keyScalePitch(p.notes[i].pitch+transpose,p.editor);});
     }else if(g.type==='right'||g.type==='draw'){
       const desired=_keySnapBeat(n.beat+n.length+dx/_keyZoom,p.editor,bypass),delta=desired-n.beat-n.length,group=g.type==='draw'?[g.index]:ids;
@@ -219,7 +235,7 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
     const scroll=document.querySelector('.key-scroll'),r=scroll.getBoundingClientRect(),h=document.getElementById('keyHorizontal'),hr=h.getBoundingClientRect();if(g.canvas===roll){if(e.clientY<r.top+24)scroll.scrollTop-=14;else if(e.clientY>r.bottom-24)scroll.scrollTop+=14;}if(e.clientX>hr.right-24)h.scrollLeft+=12;else if(e.clientX<hr.left+80)h.scrollLeft-=12;
   }
   for(const canvas of [roll,velocity]){canvas.addEventListener('pointerdown',e=>begin(e,canvas===velocity));canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',e=>{if(_keyGesture?.id===e.pointerId)_keyEndGesture();});canvas.addEventListener('pointercancel',()=>_keyEndGesture(true));canvas.addEventListener('lostpointercapture',()=>_keyEndGesture(true));}
-  roll.addEventListener('dblclick',e=>{if(_keyNavigate||_keyTarget<0)return;const pt=_keyPoint(e,roll),pitch=_keyLow+35-Math.floor(pt.y/28),beat=(pt.x-58)/_keyZoom,p=_keyPhrase();const i=p.notes.findIndex(n=>n.pitch===pitch&&beat>=n.beat&&beat<n.beat+n.length);if(i>=0){_keySelect(i);_keyDeleteSelection();}});
+  roll.addEventListener('dblclick',e=>{if(_keyNavigate||_keyTarget<0)return;const pt=_keyPoint(e,roll),pitch=_keyPitchAt(pt.y),beat=(pt.x-58)/_keyZoom,p=_keyPhrase();const i=p.notes.findIndex(n=>n.pitch===pitch&&beat>=n.beat&&beat<n.beat+n.length);if(i>=0){_keySelect(i);_keyDeleteSelection();}});
   document.getElementById('keyMidiFile').addEventListener('change',async e=>{
     const f=e.target.files[0];e.target.value='';if(!f)return;const target=_keyTarget;
     try{const midi=parseKeyMidi(await f.arrayBuffer());if(target!==_keyTarget)return;_keyMidi=midi;const list=document.getElementById('keyMidiTracks');list.replaceChildren();midi.tracks.forEach(t=>{const b=document.createElement('button');b.textContent=t.name;b.addEventListener('click',()=>_keyUpdate(p=>{const editor=p.editor;Object.assign(p,t.phrase);p.editor=editor;_keySelection.clear();_keySelected=-1;}));list.appendChild(b);});document.getElementById('keyStatus').textContent=midi.warnings.join(' / ')+' — 取り込むトラックを選択';}

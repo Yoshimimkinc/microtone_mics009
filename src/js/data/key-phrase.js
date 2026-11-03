@@ -6,8 +6,9 @@
 function normalizeKeyPhrase(src){
   const bars=Math.max(1,Math.min(4,Math.round(+src?.bars||1))), end=bars*4;
   const notes=(Array.isArray(src?.notes)?src.notes:[]).slice(0,512).filter(n=>Number.isFinite(+n.pitch)&&Number.isFinite(+n.beat)&&Number.isFinite(+n.length)&&+n.beat>=0&&+n.beat<end&&+n.length>0).map(n=>({pitch:Math.max(21,Math.min(108,Math.round(+n.pitch))),beat:Math.round(+n.beat*96)/96,length:Math.min(end-+n.beat,Math.max(1/96,+n.length)),velocity:Math.max(1,Math.min(127,Math.round(+n.velocity||96)))})).filter(n=>n.beat<end).map(n=>({...n,length:Math.min(n.length,end-n.beat)}));
+  // v0.3.205 §194（C）：スケールは既定でオン（保存された OFF はそのまま）
   const e=src?.editor||{};
-  const editor={root:Math.max(0,Math.min(11,Math.round(+e.root||0))),scale:['major','minor','dorian','mixolydian','pentatonic','minorPentatonic','chromatic'].includes(e.scale)?e.scale:'major',scaleEnabled:!!e.scaleEnabled,snap:e.snap!==false};
+  const editor={root:Math.max(0,Math.min(11,Math.round(+e.root||0))),scale:['major','minor','dorian','mixolydian','pentatonic','minorPentatonic','chromatic'].includes(e.scale)?e.scale:'major',scaleEnabled:e.scaleEnabled!==false,snap:e.snap!==false};
   const fx=src?.effects||{}, clamp=(v,lo,hi,def)=>Number.isFinite(+v)?Math.max(lo,Math.min(hi,+v)):def;
   const effects={motion:['off','tremolo','wah'].includes(fx.motion)?fx.motion:'off',motionDepth:clamp(fx.motionDepth,0,1,.5),motionRate:clamp(fx.motionRate,.1,10,3),color:['off','chorus','phaser'].includes(fx.color)?fx.color:'off',colorDepth:clamp(fx.colorDepth,0,1,.5),colorRate:clamp(fx.colorRate,.05,5,.8)};
   return {bars,instrument:'rhodes-tine-v2',notes,editor,effects};

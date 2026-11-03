@@ -10,22 +10,26 @@ function el(id){if(!elements.has(id))elements.set(id,{id,value:0,hidden:false,di
 class Buffer {constructor(ch,len,rate){this.length=len;this.sampleRate=rate;this.duration=len/rate;this.a=new Float32Array(len);}getChannelData(){return this.a;}}
 const context={console,Float32Array,Uint8Array,DataView,TextDecoder,Math,Number,JSON,Map,Set,WeakMap,Promise,setTimeout,clearTimeout,
  OfflineAudioContext:class{createBuffer(c,l,r){return new Buffer(c,l,r);}},
- AC:{currentTime:0,resume:async()=>{},createBufferSource:()=>({connect:noop,disconnect:noop,start:noop,stop:noop}),createGain:()=>({gain:{value:0},connect:noop,disconnect:noop})},masterGain:{},
+ AC:{currentTime:0,resume:async()=>{},createBuffer:(c,l,r)=>new Buffer(c,l,r),createBufferSource:()=>({connect:noop,disconnect:noop,start:noop,stop:noop}),createGain:()=>({gain:{value:0,setTargetAtTime:noop,setValueAtTime:noop,exponentialRampToValueAtTime:noop},connect:noop,disconnect:noop}),createOscillator:()=>({frequency:{value:0},connect:noop,disconnect:noop,start:noop,stop:noop})},masterGain:{},
+ KEYMAP:['1','2','3','4','5','6','7','8','q','w','e','r','t','y','u','i'],requestAnimationFrame:()=>0,cancelAnimationFrame:noop,setInterval:()=>0,clearInterval:noop,
  document:{getElementById:el,querySelector:s=>el(s),querySelectorAll:sel=>sel==='[data-key-motion]'?['tremolo','off','wah'].map(value=>{const b=el('motion-'+value);b.dataset.keyMotion=value;return b;}):sel==='[data-key-color]'?['chorus','off','phaser'].map(value=>{const b=el('color-'+value);b.dataset.keyColor=value;return b;}):[],createElement:()=>el('child'+Math.random()),activeElement:null},window:{addEventListener:(k,fn)=>(events[k]??=[]).push(fn)},
  tracks:[{padKind:'KEY',keyPhrase:{bars:2,notes:[]}}],PADS:[{}],NOTE_NAMES:['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],bpmVal:100,peTarget:0,
  pushUndo:()=>history.push(JSON.parse(JSON.stringify(context.tracks[0].keyPhrase))),doUndo:()=>{context.tracks[0].keyPhrase=history.pop();context.tracks[0]._keySignature=null;},
  refreshPadDisplay:noop,scheduleAutosave:noop,scratchClose:noop,sampNameEl:{},paintPerf:noop,stopVoices:noop,previewVoiceFrom:noop,trigger:noop};
 vm.createContext(context);
 const base=new URL('../src/js/',import.meta.url);
-for(const file of ['data/key-phrase.js','audio/key-instrument.js','ui/pad-content.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
+for(const file of ['data/key-phrase.js','audio/key-instrument.js','ui/key-entry.js','ui/pad-content.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
 const run=code=>vm.runInContext(code,context),flush=async()=>{await new Promise(r=>setTimeout(r,0));};
 const phrase=()=>context.tracks[0].keyPhrase;
 const ev=(id,type,x,y,extra={})=>{const e={currentTarget:el(id),target:el(id),clientX:x,clientY:y,pointerId:1,pointerType:'mouse',button:0,preventDefault:noop,stopImmediatePropagation:noop,...extra};for(const f of el(id).listeners[type]||[])f(e);};
 const down=(x,y,extra)=>ev('keyRoll','pointerdown',x,y,extra),move=(x,y,extra)=>ev('keyRoll','pointermove',x,y,extra),up=(x,y)=>ev('keyRoll','pointerup',x,y);
-const xy=(beat,pitch)=>({x:58+beat*run('_keyZoom'),y:(run('_keyLow')+35-pitch)*28+14});
+const xy=(beat,pitch)=>({x:58+beat*run('_keyZoom'),y:run('_keyRowY('+pitch+')')+run('_keyRowH()')/2});
 const gesture=async(a,b,extra)=>{down(a.x,a.y,extra);move(b.x,b.y,extra);up(b.x,b.y);await flush();};
 let passed=0;function check(label,fn){fn();console.log('PASS '+label);passed++;}
 run('keyEditorOpen(0)');
+// v0.3.205 §194（C）：スケールは既定でオン＝外の音の行を畳む（C メジャー 3 オクターブ＝21 行・40px）。保存された OFF はそのまま
+check('new phrases start with scale ON; a saved OFF stays OFF',()=>{assert.equal(context.normalizeKeyPhrase({}).editor.scaleEnabled,true);assert.equal(context.normalizeKeyPhrase({editor:{scaleEnabled:false}}).editor.scaleEnabled,false);});
+check('scale ON folds out-of-scale rows and makes rows taller',()=>{assert.equal(run('_keyRows().length'),21);assert.equal(run('_keyRowH()'),40);assert.ok(run('_keyRows().every(p=>_keyInScale(p,_keyPhrase().editor))'));});
 let a=xy(0,60),b=xy(.75,60);await gesture(a,b);
 check('draw note by dragging; one undo entry',()=>{assert.equal(phrase().notes.length,1);assert.equal(phrase().notes[0].length,1);assert.equal(history.length,1);});
 a=xy(.5,60);b=xy(1,62);await gesture(a,b);
@@ -40,12 +44,14 @@ el('keySnap').click();await flush();a=xy(1.1,62);b={...a,x:a.x+run('_keyZoom')*.
 check('snap OFF permits time between sixteenths',()=>assert.ok(Math.abs(phrase().notes[0].beat*4-Math.round(phrase().notes[0].beat*4))>.05));
 el('keySnap').click();await flush();a=xy(phrase().notes[0].beat+.4,62);b={...a,x:a.x+run('_keyZoom')*.163};await gesture(a,b);
 check('snap ON aligns move to 1/16 grid',()=>assert.equal(phrase().notes[0].beat*4,Math.round(phrase().notes[0].beat*4)));
-el('keyScaleOn').click();await flush();a=xy(3,61);down(a.x,a.y);up(a.x,a.y);await flush();
+a=xy(3,61);down(a.x,a.y);up(a.x,a.y);await flush();
 check('scale ON constrains new notes to C major',()=>assert.equal(phrase().notes[1].pitch,60));
 el('keyScaleOn').click();await flush();a=xy(4,61);down(a.x,a.y);up(a.x,a.y);await flush();
 check('scale OFF permits chromatic notes',()=>assert.equal(phrase().notes[2].pitch,61));
+check('scale OFF shows all 12 semitones at 28px',()=>{assert.equal(run('_keyRows().length'),36);assert.equal(run('_keyRowH()'),28);});
 el('keyScaleOn').click();await flush();
 check('scale toggle never rewrites existing or imported pitches',()=>assert.equal(phrase().notes[2].pitch,61));
+check('a used out-of-scale pitch keeps its row while folded',()=>{assert.ok(run('_keyRows().includes(61)'));assert.equal(run('_keyRows().length'),22);});
 check('editor preferences survive JSON save/load',()=>{const x=context.normalizeKeyPhrase(JSON.parse(JSON.stringify(phrase())));assert.equal(x.editor.scaleEnabled,true);assert.equal(x.editor.snap,true);assert.equal(x.instrument,'rhodes-tine-v2');});
 const before=JSON.stringify(phrase()),undos=history.length;a=xy(1.2,62);b=xy(2,67);down(a.x,a.y);move(b.x,b.y);ev('keyRoll','pointercancel',b.x,b.y);await flush();
 check('cancel gesture preserves data and undo history',()=>{assert.equal(JSON.stringify(phrase()),before);assert.equal(history.length,undos);});
@@ -121,7 +127,35 @@ check('effect processing never mutates the dry voice',()=>assert.deepEqual(signa
 const dryCount=run('_keyDryCache.size');await context.renderKeyPhrase({bars:4,notes:[{pitch:60,beat:0,length:1,velocity:96},{pitch:64,beat:0,length:1,velocity:80},{pitch:67,beat:1,length:2,velocity:120}],effects:{motion:'tremolo',color:'chorus'}},100);
 check('effect changes reuse physical voice cache',()=>assert.equal(run('_keyDryCache.size'),dryCount));
 let previewCount=0,performanceCount=0;context.previewVoiceFrom=()=>previewCount++;context.trigger=()=>performanceCount++;
-await el('keyPreview').listeners.click[0]();check('editor preview bypasses performance recording path',()=>{assert.equal(previewCount,1);assert.equal(performanceCount,0);});
+// v0.3.205 §194（A）：PLAY＝エディタの中でループ再生（演奏の録音経路は通らない）、もう一度で止まる
+el('keyPreview').click();for(let k=0;k<40&&!run('_keyLoop');k++)await new Promise(r=>setTimeout(r,5));
+check('PLAY loops the phrase inside the editor, never the performance path',()=>{assert.ok(run('_keyLoop'));assert.equal(performanceCount,0);assert.equal(previewCount,0);});
+el('keyPreview').click();check('pressing PLAY again stops the loop',()=>assert.equal(run('_keyLoop'),null));
+// 鍵盤 4×4：スケールの音だけ、左下が一番低い
+{Object.assign(context.tracks[0],{keyPhrase:{bars:2,notes:[]}});run('keyEditorOpen(0)');
+ const grid=el('keyPadGrid'),pads=grid.children,padEv=(type,d,id)=>{for(const f of grid.listeners[type]||[])f({target:{closest:()=>pads[d]},pointerId:id,preventDefault:noop});};
+ check('keyboard holds 16 in-scale notes, lowest at bottom-left',()=>{assert.equal(pads.length,16);const ps=run('_keyPadPitches()');assert.equal(ps.length,16);assert.ok(ps.every(p=>run('_keyInScale('+p+',_keyPhrase().editor)')));assert.equal(+pads[12].dataset.pitch,48);assert.equal(+pads[13].dataset.pitch,50);assert.equal(+pads[3].dataset.pitch,ps[15]);});
+ const quiet=JSON.stringify(phrase());padEv('pointerdown',12,1);padEv('pointerup',12,1);await flush();
+ check('playing the keyboard without REC/STEP only auditions',()=>assert.equal(JSON.stringify(phrase()),quiet));
+ el('keyStep').click();const u0=history.length;
+ padEv('pointerdown',12,1);padEv('pointerup',12,1);await flush();padEv('pointerdown',13,2);padEv('pointerup',13,2);await flush();
+ check('STEP puts a 1/16 note at the cursor and advances one step',()=>{assert.deepEqual(phrase().notes.map(n=>[n.pitch,n.beat,n.length]),[[48,0,.25],[50,.25,.25]]);assert.equal(run('_keyStepAt'),.5);assert.equal(history.length,u0+2);});
+ padEv('pointerdown',12,3);padEv('pointerdown',14,4);padEv('pointerup',12,3);check('STEP waits for every key to be released (chord)',()=>assert.equal(run('_keyStepAt'),.5));padEv('pointerup',14,4);await flush();
+ check('STEP chord lands on one step',()=>{assert.deepEqual(phrase().notes.slice(2).map(n=>[n.pitch,n.beat]),[[48,.5],[52,.5]]);assert.equal(run('_keyStepAt'),.75);});
+ el('keyStepRest').click();el('keyStepBack').click();el('keyStepBack').click();check('REST and BACK move the cursor by one step',()=>assert.equal(run('_keyStepAt'),.5));
+ padEv('pointerdown',12,5);padEv('pointerup',12,5);await flush();check('STEP replaces the same pitch at the same step instead of stacking',()=>assert.equal(phrase().notes.filter(n=>n.beat===.5).length,2));
+ el('keyStep').click();
+ // REC：聞こえた拍（出力の遅れを引く）で記録、SNAP の細かさに揃える。長さは押していた長さ
+ run('_keyRecOn=true;_keyLoop={target:0,t0:0,beats:8,len:8*_keyBeatSec(),next:99,click:99,nodes:new Set(),out:{gain:{setTargetAtTime(){}},disconnect(){}},timer:0,raf:0}');
+ context.AC.currentTime=.6*2.1;padEv('pointerdown',15,6);context.AC.currentTime=.6*3.0;padEv('pointerup',15,6);await flush();
+ check('REC records at the snapped beat with the held length',()=>assert.ok(phrase().notes.some(n=>n.pitch===53&&n.beat===2&&n.length===1),JSON.stringify(phrase().notes)));
+ context.AC.outputLatency=.06;context.AC.currentTime=.6*4.1+.06;padEv('pointerdown',12,7);context.AC.currentTime=.6*4.3+.06;padEv('pointerup',12,7);await flush();
+ check('REC subtracts output latency and keeps at least one grid step',()=>assert.ok(phrase().notes.some(n=>n.pitch===48&&n.beat===4&&n.length===.25),JSON.stringify(phrase().notes)));
+ context.AC.outputLatency=0;context.AC.currentTime=.6*7.95;padEv('pointerdown',14,8);context.AC.currentTime=.6*8.6;padEv('pointerup',14,8);await flush();
+ check('REC wraps a note pressed at the very end to the loop start',()=>assert.ok(phrase().notes.some(n=>n.pitch===52&&n.beat===0&&n.length===.75),JSON.stringify(phrase().notes)));
+ run('_keyLoopStop()');check('stopping the loop also ends REC',()=>{assert.equal(run('_keyLoop'),null);assert.equal(run('_keyRecOn'),false);});
+ context.AC.currentTime=0;run('keyEditorClose()');check('closing the editor releases held keys and stops entry modes',()=>{assert.equal(run('_keyLive.size'),0);assert.equal(run('_keyStepOn'),false);});
+ run('keyEditorOpen(0)');}
 // Regression: returning to KEY after restoring its original sample must not
 // accept that SPL buffer just because the old KEY signature is still present.
 const sample=new Buffer(1,128,26000);sample.a[0]=.8;

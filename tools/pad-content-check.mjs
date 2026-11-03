@@ -65,12 +65,25 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   eq(`${label} 元サンプルを保持`,key.source,initial.source);
   await p.screenshot({path:`tools/_shots/content-key-${w}.png`});
   // Actual pointer selection and numeric note edit, then the editor's accessible UNDO button.
-  const note=await p.evaluate(()=>{const c=document.getElementById('keyRoll'),r=c.getBoundingClientRect();return {x:r.left+58+_keyZoom*.4,y:r.top+(_keyLow+35-60)*28+14};});
+  const note=await p.evaluate(()=>{const c=document.getElementById('keyRoll'),r=c.getBoundingClientRect();return {x:r.left+58+_keyZoom*.4,y:r.top+_keyRowY(60)+_keyRowH()/2};});
   await p.mouse.click(note.x,note.y);await p.fill('#keyLength','2');await p.locator('#keyLength').dispatchEvent('change');
   await p.waitForFunction(()=>tracks[8]._keySignature===JSON.stringify([normalizeKeyPhrase(tracks[8].keyPhrase),bpmVal]));
   eq(`${label} ピアノロールから音の長さを編集`,await p.evaluate(()=>tracks[8].keyPhrase.notes[0].length),2);
   await p.click('#keyUndo');eq(`${label} ピアノロールのUNDO`,await p.evaluate(()=>tracks[8].keyPhrase.notes[0].length),1);
 
+  // v0.3.205 §194：ロールが残りの高さを使う（B）・スケールの鍵盤 4×4 を実際に押して STEP で入る（A）・外の音の行は畳む（C）
+  { const L=await p.evaluate(()=>{const r=s=>document.querySelector(s).getBoundingClientRect();const pads=[...document.querySelectorAll('#keyPadGrid .key-pad')].map(b=>b.getBoundingClientRect());
+      return {roll:r('.key-scroll').height,panel:r('#keyEditor .key-panel').bottom,vh:innerHeight,pads:pads.length,padMin:Math.min(...pads.map(b=>Math.min(b.width,b.height))),over:document.documentElement.scrollWidth>innerWidth,rows:_keyRows().length,rowH:_keyRowH(),bar:r('#keyPreview').top===r('#keyMore').top};});
+    ok_(`${label} KEY のロールが画面の高さを使う・鍵盤 16 個（44px 以上）・道具 1 段・横にはみ出さない`,L.roll>=(mobile?330:500)&&L.pads===16&&L.padMin>=44&&L.bar&&!L.over&&L.panel<=L.vh,JSON.stringify(L));
+    eq(`${label} KEY はスケールの外の音の行を畳む（C メジャー＝21 行・40px）`,[L.rows,L.rowH],[21,40]);
+    const n0=await p.evaluate(()=>tracks[8].keyPhrase.notes.length);await p.click('#keyStep');
+    { const r=await p.evaluate(()=>{const b=document.getElementById('keyRuler').getBoundingClientRect();return {x:b.left+58+2*_keyZoom+3,y:b.top+14};});await p.mouse.click(r.x,r.y); }   // 目盛りをタップ＝STEP の位置（2 拍目の頭）
+    for(const d of [12,13]){const b=await p.locator('#keyPadGrid .key-pad').nth(d).boundingBox();await p.mouse.move(b.x+b.width/2,b.y+b.height/2);await p.mouse.down();await p.waitForTimeout(40);await p.mouse.up();await p.waitForTimeout(120);}
+    const st=await p.evaluate(()=>({n:tracks[8].keyPhrase.notes.length,at:_keyStepAt,cursor:!document.getElementById('keyStepCursor').hidden}));
+    ok_(`${label} KEY の鍵盤を押すと STEP でカーソルの位置へ入って進む`,st.n===n0+2&&st.at===2.5&&st.cursor,JSON.stringify(st));
+    await p.click('#keyStep');await p.click('#keyUndo');await p.click('#keyUndo');
+    await p.click('#keyPreview');await p.waitForTimeout(400);const pl=await p.evaluate(()=>({loop:!!_keyLoop,head:!document.getElementById('keyPlayhead').hidden}));await p.click('#keyPreview');
+    ok_(`${label} KEY の PLAY はループ再生とプレイヘッド`,pl.loop&&pl.head,JSON.stringify(pl)); }
   await p.evaluate(()=>keyEditorClose());
   const round=await p.evaluate(async()=>{const project=JSON.parse(JSON.stringify(buildProject()));await applyProject(project);await prepareKeyTrack(tracks[8],bpmVal);const a=[tracks[8].padKind,tracks[8].keyPhrase.notes.length,tracks[8].keyPhrase.bars];copyPadSound(8,9);const b=[tracks[9].padKind,tracks[9].keyPhrase.notes.length];tracks[9].keyPhrase.notes[0].pitch=72;const isolated=tracks[8].keyPhrase.notes[0].pitch;doUndo();const undone=padKind(tracks[9]);await setPadKind(8,'SPL');return {a,b,isolated,undone,source:tracks[8].buffer.length};});
   eq(`${label} KEY保存読込・コピー深複製・UNDO・SPL復帰`,round,{a:['KEY',3,4],b:['KEY',3],isolated:60,undone:'SPL',source:initial.source});
