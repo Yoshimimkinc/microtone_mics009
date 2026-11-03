@@ -2485,3 +2485,13 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - **上端のはみ出し**：スマホ（600px まで）で `#keyEditor` の余白を 6px にしていたため、セーフエリア（ノッチ／ダイナミックアイランド）の分が消え、名前・NOTES｜SOUND・CLOSE の段が上に潜っていた → `max(6px, env(safe-area-inset-top))`。
 - **MORE のはみ出し**：MORE を段の間に挟んでいたので、低い画面（360×640〜390×664）で開くとロールが潰れ、鍵盤が下へはみ出した → 道具の段の下に重なるシート（`position:absolute`、パネルの中でスクロール）。幅 380px 以下は道具の段の文字を 10px に（UNDO がはみ出さない）。
 検査：`key-editor-unit`（全プリセットがどのキーでも正しいフレーズ・メニューに全部・いまの KEY へ移して SCALE も・置き換えは UNDO 1 回・入れるとループ）、`pad-content-check`（390 / 1280：MORE は段の下に重なり鍵盤は動かない・CHORDS で小室進行 16 音・MORE が閉じてループ・UNDO）。
+
+## 197. Between the Sheets のプリセットを原曲の進行に（v0.3.208）
+「ネットワーク許可した、調べて追記して」
+- §196 の「Between the Sheets 系」は原曲を確かめられないまま作った型（IVM9 – IIIm7 – IIm9 – IIIm7）だった。
+- 調べた結果（[Hooktheory の TheoryTab](https://www.hooktheory.com/theorytab/view/the-isley-brothers/between-the-sheets)＝ユーザーの耳コピ解析、[Wikipedia](https://en.wikipedia.org/wiki/Between_the_Sheets_(song))＝A マイナー・84 BPM、Musicnotes の楽譜による）：
+  - イントロ・ヴァース：VI9 – V7(♭9) – i7 – ii7/VI – V11/VI ＝ Fmaj9 – E7(♭9) – Am7 – Gm7 – C11。相対長調で数えると IVM9 – III7 – VIm7 – Vm7 – I11＝丸サ進行と同じ形。
+  - サビ：iv7 – VII – III – i7 – iiø7 ＝ Dm7 – G – C – Am7 – Bm7♭5。
+- プリセット：`sheets`＝イントロ、`sheetsChorus`＝サビ（どちらも scale minor、マイナーの主音＝C で書き、KEY を A にすれば原曲のキー）。各コードの長さは解析ページから取れないので目安（4 小節）。これまでの型は `slowjam`「スロウ・ジャム（7th の往復）」として残す。
+- 調べ方の記録：このセッションの WebFetch は名前解決できず、`curl`（エージェントのプロキシ経由）なら届いた。
+検査：`key-editor-unit`（全プリセットがどのキーでも正しいフレーズ・メニューに全部）。
