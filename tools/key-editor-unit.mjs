@@ -6,9 +6,9 @@ import assert from 'node:assert/strict';
 const elements=new Map(),events={},history=[];
 const noop=()=>{};
 const drawing=new Proxy({},{get:(_,k)=>k==='measureText'?()=>({width:20}):noop,set:()=>true});
-function el(id){if(!elements.has(id))elements.set(id,{id,value:0,hidden:false,disabled:false,width:1000,height:1000,clientWidth:1150,clientHeight:350,scrollTop:0,scrollLeft:0,dataset:{},style:{},children:[],listeners:{},classList:{toggle:noop},setAttribute(k,v){this[k]=v;},appendChild(e){this.children.push(e);},replaceChildren(){this.children=[];},getContext:()=>drawing,getBoundingClientRect(){return {left:0,top:0,width:this.width,height:this.height,right:this.width,bottom:this.height};},addEventListener(k,fn){(this.listeners[k]??=[]).push(fn);},focus:noop,setPointerCapture:noop,click(){for(const f of this.listeners.click||[])f({target:this});}});return elements.get(id);}
+function el(id){if(!elements.has(id))elements.set(id,{id,value:0,hidden:false,disabled:false,width:1000,height:1000,clientWidth:1150,clientHeight:350,scrollTop:0,scrollLeft:0,dataset:{},style:{},children:[],listeners:{},classList:{toggle:noop},setAttribute(k,v){this[k]=v;},appendChild(e){this.children.push(e);},replaceChildren(){this.children=[];},getContext:()=>drawing,getBoundingClientRect(){return {left:0,top:0,width:this.width,height:this.height,right:this.width,bottom:this.height};},addEventListener(k,fn){(this.listeners[k]??=[]).push(fn);},focus:noop,setPointerCapture:noop,click(){for(const f of this.listeners.click||[])f({target:this});},dispatchEvent(ev){for(const f of this.listeners[ev.type]||[])f({target:this,type:ev.type});}});return elements.get(id);}
 class Buffer {constructor(ch,len,rate){this.length=len;this.sampleRate=rate;this.duration=len/rate;this.a=new Float32Array(len);}getChannelData(){return this.a;}}
-const context={console,Float32Array,Uint8Array,DataView,TextDecoder,Math,Number,JSON,Map,Set,WeakMap,Promise,setTimeout,clearTimeout,
+const context={Event:class{constructor(type){this.type=type;}},Float32Array,Uint8Array,DataView,TextDecoder,Math,Number,JSON,Map,Set,WeakMap,Promise,setTimeout,clearTimeout,
  OfflineAudioContext:class{createBuffer(c,l,r){return new Buffer(c,l,r);}},
  AC:{currentTime:0,resume:async()=>{},createBuffer:(c,l,r)=>new Buffer(c,l,r),createBufferSource:()=>({connect:noop,disconnect:noop,start:noop,stop:noop}),createGain:()=>({gain:{value:0,setTargetAtTime:noop,setValueAtTime:noop,exponentialRampToValueAtTime:noop},connect:noop,disconnect:noop}),createOscillator:()=>({frequency:{value:0},connect:noop,disconnect:noop,start:noop,stop:noop})},masterGain:{},
  KEYMAP:['1','2','3','4','5','6','7','8','q','w','e','r','t','y','u','i'],requestAnimationFrame:()=>0,cancelAnimationFrame:noop,setInterval:()=>0,clearInterval:noop,
@@ -156,6 +156,16 @@ el('keyPreview').click();check('pressing PLAY again stops the loop',()=>assert.e
  run('_keyLoopStop()');check('stopping the loop also ends REC',()=>{assert.equal(run('_keyLoop'),null);assert.equal(run('_keyRecOn'),false);});
  context.AC.currentTime=0;run('keyEditorClose()');check('closing the editor releases held keys and stops entry modes',()=>{assert.equal(run('_keyLive.size'),0);assert.equal(run('_keyStepOn'),false);});
  run('keyEditorOpen(0)');}
+// v0.3.210 §199：MORE は大きなボタン。押すと隠れた入力（KEY / SCALE / BARS / TOOL）へ渡り、押された物＝いまの値。ページは覚える
+{const more=(data)=>{for(const f of el('keyExtra').listeners.click||[])f({target:{closest:()=>({dataset:data})}});};
+ context.tracks[0].keyPhrase={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:90}]};run('keyEditorOpen(0)');
+ more({root:'7'});await flush();more({scale:'dorian'});await flush();more({bars:'3'});await flush();more({tool:'right'});
+ check('MORE buttons set key, scale, bars and tool',()=>{const p=phrase();assert.equal(p.editor.root,7);assert.equal(p.editor.scale,'dorian');assert.equal(p.bars,3);assert.equal(el('keyDragMode').value,'right');});
+ more({moreTab:'view'});check('MORE remembers the page it was on',()=>assert.equal(run('_keyMoreTab'),'view'));
+ more({moreTab:'chords'});run('_keyMoreShow(true)');more({preset:'komuro'});for(let k=0;k<40&&!run('_keyLoop');k++)await new Promise(r=>setTimeout(r,5));
+ check('a chord button applies the progression and closes MORE',()=>{assert.equal(phrase().notes.length,16);assert.equal(el('keyExtra').hidden,true);});
+ run('_keyLoopStop()');el('keyUndo').click();await flush();el('keyUndo').click();await flush();el('keyUndo').click();await flush();el('keyUndo').click();await flush();el('keyUndo').click();await flush();
+ el('keyDragMode').value='auto';run('keyEditorOpen(0)');}
 // v0.3.207 §196：CHORDS＝定番の進行のプリセット。どのキーでも正しいフレーズ・いまの KEY へ移す・SCALE も合わせる・UNDO 1 回で戻る
 check('every chord preset is a valid phrase in every key',()=>{for(const p of run('KEY_PRESETS'))for(const r of [0,2,5,6,11]){const q=context.keyPresetPhrase(p.id,r),n=context.normalizeKeyPhrase({bars:q.bars,notes:q.notes});assert.equal(n.notes.length,q.notes.length,p.id+' '+r);assert.ok(q.notes.every(x=>x.pitch>=28&&x.pitch<=84&&x.beat+x.length<=q.bars*4+1e-9),p.id+' '+r);}});
 check('the preset menu lists every progression',()=>{const groups=el('keyChordPreset').children.filter(c=>c.label!==undefined||c.children.length);assert.equal(groups.reduce((s,g)=>s+g.children.length,0),run('KEY_PRESETS.length'));});

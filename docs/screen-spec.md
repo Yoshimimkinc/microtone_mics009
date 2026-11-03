@@ -2505,3 +2505,16 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
   - 全部止まって 5 秒で手放す（止めてすぐ次を鳴らす時に取り直さない）。画面が隠れると OS が外すので、戻った時に鳴っていれば取り直す。
   - 対応していない端末（iOS 16.4 より前の Safari など）では何もしない。電池のため、止まっている間は取らない。
 検査：`check.mjs`（`navigator.wakeLock` を差し替えて：止まっている間は取らない・▶ で 1 つ取る・再生中は取り直さない・止めてすぐは持ったまま、5 秒ほどで手放す）。
+
+## 199. KEY の MORE を使いやすく（v0.3.210）
+「Key の画面の more が激烈使いにくい！」
+- それまで（§194・§196）：MORE は 1 枚のシートに CHORDS（ドロップダウン）・KEY / SCALE（ドロップダウン）・BARS（数字入力）・SNAP・強弱・鍵盤・TOOL（ドロップダウン）・SCROLL・MULTI・SELECT ALL・DUPLICATE・DELETE・表示のオクターブ・FIT・ZOOM・MIDI 読み込みが混ざって並び、スマホでは縦に長くスクロールして探す形だった。ドロップダウンはスマホでは画面が切り替わって 1 回ずつ選ぶので手数も多い。閉じる手段は MORE をもう一度押すだけ。
+- **4 つのページ**（タブ、`data-more-tab`。最後に開いたページを端末ごとに覚える）：
+  - **CHORDS**：進行のボタン（名前＋ディグリー、グループ見出し付き）。押す＝入れてループ、MORE は閉じる。
+  - **KEY · SCALE**：主音 12 個（6×2）・スケール 7 種・小節数 1〜4・SNAP。
+  - **EDIT**：TOOL（Auto / Move / Length / Start / Velocity）・SELECT ALL・MULTI・SCROLL・MIDI 読み込み。
+  - **VIEW**：強弱の欄・鍵盤の出し入れ、ロールの表示のオクターブ・FIT・ZOOM。
+- 選ぶ物は全部 44px 以上のボタン。押されている物＝いまの値（`_keyMorePaint`）。ボタンは隠れた入力（`#keyScaleRoot` `#keyScaleType` `#keyBars` `#keyDragMode` `#keyChordPreset`）へ値を渡すだけで、処理は今までの 1 か所のまま（`_keyNativeSet`）。
+- **閉じ方**：CLOSE、MORE、外側のタップ。ロールと鍵盤へのタップは閉じるだけ（ノートを置かない・鳴らさない）。名前の段・道具の段のボタンはそのまま働く。
+- **DUPLICATE / DELETE** は、ノートを選んだ時に出る段（数値の欄）へ移した。
+検査：`key-editor-unit`（ボタンで主音・スケール・小節数・TOOL が変わる・ページを覚える・進行ボタンで入って閉じる）、`pad-content-check`（CHORDS のページの進行ボタンで小室進行）。

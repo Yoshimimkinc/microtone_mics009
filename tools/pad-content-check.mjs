@@ -89,7 +89,7 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     await p.click('#keyMore');await p.waitForTimeout(150);
     const sheet=await p.evaluate(()=>{const r=s=>document.querySelector(s).getBoundingClientRect();return {pads:r('#keyPads').bottom,bar:r('#keyPreview').bottom,more:r('#keyExtra').top,panel:r('#keyEditor .key-panel').bottom};});
     ok_(`${label} KEY の MORE は道具の段の下に重なり、鍵盤ははみ出さない`,Math.abs(sheet.pads-before.pads)<1&&sheet.more>=sheet.bar&&sheet.pads<=sheet.panel+1,JSON.stringify({before,sheet}));
-    await p.selectOption('#keyChordPreset','komuro');await p.waitForFunction(()=>!!_keyLoop,null,{timeout:8000});
+    await p.click('#keyExtra [data-more-tab="chords"]');await p.click('#keyExtra [data-preset="komuro"]');await p.waitForFunction(()=>!!_keyLoop,null,{timeout:8000});
     const pr=await p.evaluate(()=>({n:tracks[8].keyPhrase.notes.length,bars:tracks[8].keyPhrase.bars,more:!document.getElementById('keyExtra').hidden,status:document.getElementById('keyStatus').textContent}));
     ok_(`${label} KEY の CHORDS で小室進行が入り、MORE を閉じてループで鳴る`,pr.n===16&&pr.bars===4&&!pr.more&&pr.status.includes('小室進行'),JSON.stringify(pr));
     await p.click('#keyPreview');await p.click('#keyUndo');eq(`${label} KEY の CHORDS は UNDO 1 回で戻る`,await p.evaluate(()=>tracks[8].keyPhrase.notes.length),before.n); }
