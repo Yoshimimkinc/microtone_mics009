@@ -1,13 +1,14 @@
 // @module ui/key-entry
 // @provides _keyAllNotesOff, _keyBeatSec, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer,
-//    _keyLiveCache, _keyLoop, _keyLoopBeat, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyNoteName,
-//    _keyNoteOff, _keyNoteOn, _keyPadLow, _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame,
-//    _keyPref, _keyPutNote, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove,
-//    _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyEntryClose, keyEntryOpen
+//    _keyLiveCache, _keyLoop, _keyLoopBeat, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
+//    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
+//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRecCommit,
+//    _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads,
+//    keyApplyPreset, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks, wakeSync
-// @depends data/key-presets
+// @depends data/key-presets, plock-undo
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
 // STEP＝鍵盤を押すたびにカーソルの位置へ 1/16 の音を入れ、全部離したら 1 マス進む（同時に押せば和音）。
@@ -126,8 +127,19 @@ function _keyEntryPaint(){
   document.getElementById('keyPadsRange').textContent=pads.length?_keyNoteName(pads[0])+'–'+_keyNoteName(pads.at(-1))+(e.scaleEnabled?' · '+NOTE_NAMES[e.root]+' '+document.querySelector('#keyScaleType option[value="'+e.scale+'"]')?.textContent:''):'';
   document.getElementById('keyPads').classList.toggle('stepping',_keyStepOn);
   const cur=document.getElementById('keyStepCursor');cur.hidden=!_keyStepOn;cur.style.transform='translateX('+(58+_keyStepAt*_keyZoom)+'px)';cur.style.width=Math.max(3,_keyZoom/4)+'px';
-  _keyPadsLit();
+  _keyPadsLit();_keyMorePaint();
 }
+// v0.3.210 §199：MORE のページ（CHORDS / KEY・SCALE / EDIT / VIEW）。最後に開いたページを端末ごとに覚える。押されている物＝いまの値
+let _keyMoreTab=(()=>{try{return localStorage.getItem('mics.keyMoreTab')||'chords';}catch(_){return 'chords';}})();
+function _keyMoreTabSet(tab){_keyMoreTab=tab;try{localStorage.setItem('mics.keyMoreTab',tab);}catch(_){}_keyMorePaint();}
+function _keyMorePaint(){
+  if(_keyTarget<0)return;const p=_keyPhrase(),e=p.editor,tool=document.getElementById('keyDragMode').value||'auto';
+  document.querySelectorAll('#keyExtra [data-more-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.moreTab===_keyMoreTab)));
+  document.querySelectorAll('#keyExtra [data-more-page]').forEach(pg=>pg.hidden=pg.dataset.morePage!==_keyMoreTab);
+  for(const [sel,key,val] of [['[data-root]','root',String(e.root)],['[data-scale]','scale',e.scale],['[data-bars]','bars',String(p.bars)],['[data-tool]','tool',tool]])
+    document.querySelectorAll('#keyExtra '+sel).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[key]===val)));
+}
+function _keyNativeSet(id,value){const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('change'));}
 function _keyPadsLit(){const held=new Set([..._keyLive.values()].map(v=>v.pitch));document.querySelectorAll('#keyPadGrid .key-pad').forEach(b=>b.classList.toggle('on',held.has(+b.dataset.pitch)&&b.dataset.pitch!==''));}
 function keyEntryOpen(){
   _keyAllNotesOff();_keyRecOn=false;_keyStepOn=false;_keyStepAt=0;
@@ -148,6 +160,24 @@ async function keyApplyPreset(id){
 }
 function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keyStepOn=false;}
 (function(){
+  // MORE：進行のボタン（グループごと）・主音 12 個。押した物は隠れた入力（KEY / SCALE / BARS / TOOL）へ渡す＝処理は 1 か所
+  const list=document.getElementById('keyChordList'),roots=document.getElementById('keyRootGrid');
+  for(const g of [...new Set(KEY_PRESETS.map(p=>p.group))]){const h=document.createElement('b');h.className='key-more-label';h.textContent=g;list.appendChild(h);const box=document.createElement('div');box.className='key-grid key-chord-grid';
+    for(const p of KEY_PRESETS.filter(x=>x.group===g)){const b=document.createElement('button');b.type='button';b.dataset.preset=p.id;const nm=document.createElement('span'),dg=document.createElement('small');nm.textContent=p.name;dg.textContent=p.degrees;b.appendChild(nm);b.appendChild(dg);box.appendChild(b);}list.appendChild(box);}
+  NOTE_NAMES.forEach((n,k)=>{const b=document.createElement('button');b.type='button';b.dataset.root=k;b.textContent=n;roots.appendChild(b);});
+  document.getElementById('keyExtra').addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+    if(d.moreTab)_keyMoreTabSet(d.moreTab);
+    else if(d.preset){_keyMoreShow(false);keyApplyPreset(d.preset);}
+    else if(d.root!==undefined)_keyNativeSet('keyScaleRoot',d.root);
+    else if(d.scale)_keyNativeSet('keyScaleType',d.scale);
+    else if(d.bars)_keyNativeSet('keyBars',d.bars);
+    else if(d.tool){_keyNativeSet('keyDragMode',d.tool);_keyMorePaint();}
+  });
+  document.getElementById('keyMoreClose').addEventListener('click',()=>_keyMoreShow(false));
+  // MORE が開いている間に外側を触った＝閉じる。ロール・鍵盤なら閉じるだけ（その場所にノートを置かない・鳴らさない）
+  // （名前の段・道具の段のボタンはそのまま働く。ロールと鍵盤への指は閉じるだけに使う）
+  document.querySelector('#keyEditor .key-panel').addEventListener('pointerdown',e=>{if(document.getElementById('keyExtra').hidden||e.target.closest('#keyExtra,#keyMore'))return;_keyMoreShow(false);if(e.target.closest('#keyHorizontal,#keyPads')){e.preventDefault();e.stopPropagation();}},true);
   const preset=document.getElementById('keyChordPreset');
   for(const g of [...new Set(KEY_PRESETS.map(p=>p.group))]){const og=document.createElement('optgroup');og.label=g;for(const p of KEY_PRESETS.filter(x=>x.group===g)){const o=document.createElement('option');o.value=p.id;o.textContent=p.name+' · '+p.degrees;og.appendChild(o);}preset.appendChild(og);}
   preset.addEventListener('change',()=>{const id=preset.value;preset.value='';if(!id)return;_keyMoreShow(false);keyApplyPreset(id);});
