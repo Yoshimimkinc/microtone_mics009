@@ -1492,7 +1492,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.208</div>
+  <div class="s-ver" id="splashVer">v0.3.209</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4701,7 +4701,7 @@ function paintClPage(){
 // @uses AC, PADS, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar, getPlayPattern,
 //    isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot, patSwitchMode, playBar, playPat,
 //    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, stepIdx, stopAllVoices, stopVoices,
-//    swingPct, switchSetNow, tracks
+//    swingPct, switchSetNow, tracks, wakeSync
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -4799,6 +4799,7 @@ function startTransport(){
   barStartTime=AC.currentTime+0.005;
   schedTimer=setInterval(scheduler, INTERVAL);
   scheduler();
+  wakeSync();   // 再生中は画面をスリープさせない（audio/lifecycle、v0.3.209）
 }
 // keepVoices：SET のミックスで、いまのセットを「他のセットの再生」へ引き継ぐとき（audio/set-players の sideTakeCurrent）は音を止めない
 function stopTransport(keepVoices){
@@ -7676,7 +7677,7 @@ function scratchShow(i){
 //    _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
-//    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks
+//    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks, wakeSync
 // @depends data/key-presets
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
@@ -7776,6 +7777,7 @@ async function _keyLoopStart(){
   const beats=_keyPhrase().bars*4;
   _keyLoop={target:i,t0:AC.currentTime+.06,beats,len:beats*_keyBeatSec(),out,next:0,click:0,nodes:new Set(),timer:0,raf:0};
   _keyLoopTick();_keyLoop.timer=setInterval(_keyLoopTick,25);_keyLoop.raf=requestAnimationFrame(_keyPlayheadFrame);_keyEntryPaint();
+  if(typeof wakeSync==='function')wakeSync();   // ループ中も画面をスリープさせない（v0.3.209）
 }
 function _keyLoopStop(keepRec=false){
   const L=_keyLoop;if(!L)return;_keyLoop=null;clearInterval(L.timer);cancelAnimationFrame(L.raf);
@@ -8216,9 +8218,10 @@ async function _dbRun(fn){
   _dbStatus(_dbSession()?'接続中':'未接続：初回はDropboxアプリの設定が必要です');_dbCallback();
 })();
 // @module audio/lifecycle
-// @provides _audioNeedsRecovery, _audioRecovering, audioRecover, audioSuspendScheduling
-// @uses AC, pauseSideClock, pauseTransportClock, resumeSideClock, resumeTransportClock, sampNameEl,
-//    scratchClose, sidePlayers, sideTrs, stopAllVoices, stopVoices
+// @provides _audioNeedsRecovery, _audioRecovering, _wakeIdleAt, _wakeLock, _wakeReq, audioRecover,
+//    audioSuspendScheduling, wakeSync, wakeWanted
+// @uses AC, _keyLoop, pauseSideClock, pauseTransportClock, playing, resumeSideClock, resumeTransportClock,
+//    sampNameEl, scratchClose, sideCount, sidePlayers, sideTrs, stopAllVoices, stopVoices
 // @depends engine-core
 // アプリ復帰時に古い先読み予約を捨てる。AudioContextとサンプルは作り直さない。
 let _audioNeedsRecovery=false, _audioRecovering=null;
@@ -8247,6 +8250,28 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden) audioSusp
 window.addEventListener('pageshow',()=>audioRecover());
 AC.addEventListener('statechange',()=>{ if(AC.state==='interrupted'||AC.state==='suspended'){ audioSuspendScheduling(); } else if(AC.state==='running'&&!document.hidden) audioRecover(); });
 document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=='running') audioRecover(); },{capture:true});
+// v0.3.209 §198：再生中は画面をスリープさせない（Screen Wake Lock）。▶・SET で鳴っている他のセット・KEY のループのどれかが鳴っていれば取り、
+// 全部止まって 5 秒で手放す（止めてすぐ次を鳴らす時に取り直さない）。画面が隠れると OS が外すので、戻った時に鳴っていればまた取る。
+// iPhone の Safari は 16.4 から対応。対応していない端末では何もしない。取るのは ▶ を押した瞬間（startTransport）にも行う＝ユーザー操作の中で頼む
+let _wakeLock=null, _wakeReq=null, _wakeIdleAt=0;
+function wakeWanted(){ return !!(playing || sideCount() || (typeof _keyLoop!=='undefined' && _keyLoop)); }
+function wakeSync(){
+  if(!navigator.wakeLock) return;
+  if(wakeWanted() && !document.hidden){
+    _wakeIdleAt=0;
+    if(_wakeLock || _wakeReq) return;
+    _wakeReq=navigator.wakeLock.request('screen').then(l=>{ _wakeLock=l; l.addEventListener('release',()=>{ if(_wakeLock===l) _wakeLock=null; }); })
+      .catch(()=>{}).finally(()=>{ _wakeReq=null; });
+    return;
+  }
+  if(!_wakeLock) return;
+  const now=performance.now();
+  if(!_wakeIdleAt){ _wakeIdleAt=now; return; }
+  if(now-_wakeIdleAt<5000) return;
+  const l=_wakeLock; _wakeLock=null; _wakeIdleAt=0; l.release().catch(()=>{});
+}
+setInterval(wakeSync, 1000);
+document.addEventListener('visibilitychange', wakeSync);
 // @module skin-version-splash
 // @provides APP_VERSION
 // @uses AC, buildAllTrackWaves, drawAllPadWaves, previewName
@@ -8269,7 +8294,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.208";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.209";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
