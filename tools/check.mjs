@@ -529,6 +529,23 @@ async function iosLoad(){
     await ctx.close();
   }
 }
+// v0.3.209 §198：再生中は画面をスリープさせない（Screen Wake Lock）。▶ で取り、止めて 5 秒で手放す。隠れて戻った時に鳴っていれば取り直す
+async function wakeLockWhilePlaying(){
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  await ctx.addInitScript(()=>{ window.__wake={req:0,rel:0,held:0}; const mk=()=>{ const ls={}; return {released:false,addEventListener(k,f){(ls[k]??=[]).push(f);},release(){ if(this.released) return Promise.resolve(); this.released=true; window.__wake.rel++; window.__wake.held--; (ls.release||[]).forEach(f=>f()); return Promise.resolve(); }}; };
+    Object.defineProperty(navigator,'wakeLock',{value:{request(){ window.__wake.req++; window.__wake.held++; return Promise.resolve(mk()); }},configurable:true}); });
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'}); await ready(p);
+  const w=()=>p.evaluate(()=>({...window.__wake}));
+  const w0=await w(); await p.click('#play'); await p.waitForTimeout(300); const w1=await w();
+  ok_(`スリープ防止 止まっている間は取らない・▶ で取る`, w0.req===0 && w1.req===1 && w1.held===1, JSON.stringify({w0,w1}));
+  await p.waitForTimeout(1500); const w2=await w();
+  ok_(`スリープ防止 再生中は取り直さない（1 つだけ）`, w2.req===1 && w2.held===1, JSON.stringify(w2));
+  await p.click('#play'); await p.waitForTimeout(2500); const w3=await w(); await p.waitForTimeout(4500); const w4=await w();
+  ok_(`スリープ防止 止めてすぐは持ったまま・5 秒ほどで手放す`, w3.held===1 && w4.held===0 && w4.rel===1, JSON.stringify({w3,w4}));
+  eq(`スリープ防止 0 errors`, errs, []);
+  await ctx.close();
+}
 // §15 プレビュー分離（v0.3.118）：/preview/<枝>/ で開いた時は自動保存の保存先が本番と別になる
 async function previewIsolated(){
   const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
@@ -1387,6 +1404,7 @@ await renameFlow();
 await plockKeeps();
 await iosLoad();
 await previewIsolated();
+await wakeLockWhilePlaying();
 await latency();
 const res=[];
 for(const [w,h,m] of [[390,844,true],[390,664,true],[520,900,true],[700,900,false],[960,1040,false],[1024,768,false],[1280,800,false]]) res.push(await run(w,h,m));
