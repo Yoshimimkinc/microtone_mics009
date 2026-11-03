@@ -6,7 +6,13 @@
 // 和音 = [始まりの拍, 長さ(拍), ベース(左手のルート), [右手の音…]]。右手は C3〜C5 あたりで、次の和音へ近い音で動く形（ヴォイシング）。
 // scale はプリセットを入れた時の SCALE（外の音を使う進行は、その音の行だけ残る）。
 const KEY_PRESETS=[
- {id:'sheets',group:'SLOW JAM',name:'Between the Sheets 系',degrees:'IVM9 – IIIm7 – IIm9 – IIIm7',scale:'major',bars:4,
+ // v0.3.208 §197：Between the Sheets（The Isley Brothers, 1983）は原曲の進行（Hooktheory の TheoryTab：A マイナー・84 BPM）。
+ // マイナーの主音＝C で書いてある（KEY を A にすれば原曲のキー＝Fmaj9 – E7(♭9) – Am7 – Gm7 – C11）。各コードの長さは目安
+ {id:'sheets',group:'SLOW JAM',name:'Between the Sheets（イントロ）',degrees:'VI9 – V7(♭9) – i7 – ii7/VI – V11/VI',scale:'minor',bars:4,
+  chords:[[0,4,44,[60,63,67,70]],[4,4,43,[59,65,68]],[8,4,48,[58,63,67]],[12,2,46,[56,61,65]],[14,2,51,[61,65,68]]]},
+ {id:'sheetsChorus',group:'SLOW JAM',name:'Between the Sheets（サビ）',degrees:'iv7 – VII – III – i7 – iiø7',scale:'minor',bars:4,
+  chords:[[0,4,41,[56,60,63]],[4,2,46,[58,62,65]],[6,2,51,[58,63,67]],[8,4,48,[58,63,67]],[12,4,50,[56,60,65]]]},
+ {id:'slowjam',group:'SLOW JAM',name:'スロウ・ジャム（7th の往復）',degrees:'IVM9 – IIIm7 – IIm9 – IIIm7',scale:'major',bars:4,
   chords:[[0,4,41,[57,60,64,67]],[4,4,40,[55,59,62,64]],[8,4,38,[53,57,60,64]],[12,4,40,[55,59,62,64]]]},
  {id:'lofi2',group:'SLOW JAM',name:'Lo-fi 2 コード',degrees:'IVM9 – IIIm7',scale:'major',bars:2,
   chords:[[0,4,41,[57,60,64,67]],[4,4,40,[55,59,62,64]]]},
