@@ -18,7 +18,7 @@ const context={Event:class{constructor(type){this.type=type;}},Float32Array,Uint
  refreshPadDisplay:noop,scheduleAutosave:noop,scratchClose:noop,sampNameEl:{},paintPerf:noop,stopVoices:noop,previewVoiceFrom:noop,trigger:noop};
 vm.createContext(context);
 const base=new URL('../src/js/',import.meta.url);
-for(const file of ['data/key-phrase.js','data/key-presets.js','audio/key-instrument.js','ui/key-entry.js','ui/pad-content.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
+for(const file of ['data/key-phrase.js','data/key-presets.js','data/pads.js','audio/key-instrument.js','ui/key-entry.js','ui/pad-content.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
 const run=code=>vm.runInContext(code,context),flush=async()=>{await new Promise(r=>setTimeout(r,0));};
 const phrase=()=>context.tracks[0].keyPhrase;
 const ev=(id,type,x,y,extra={})=>{const e={currentTarget:el(id),target:el(id),clientX:x,clientY:y,pointerId:1,pointerType:'mouse',button:0,preventDefault:noop,stopImmediatePropagation:noop,...extra};for(const f of el(id).listeners[type]||[])f(e);};
@@ -29,7 +29,8 @@ let passed=0;function check(label,fn){fn();console.log('PASS '+label);passed++;}
 run('keyEditorOpen(0)');
 // v0.3.205 §194（C）：スケールは既定でオン＝外の音の行を畳む（C メジャー 3 オクターブ＝21 行・40px）。保存された OFF はそのまま
 check('new phrases start with scale ON; a saved OFF stays OFF',()=>{assert.equal(context.normalizeKeyPhrase({}).editor.scaleEnabled,true);assert.equal(context.normalizeKeyPhrase({editor:{scaleEnabled:false}}).editor.scaleEnabled,false);});
-check('scale ON folds out-of-scale rows and makes rows taller',()=>{assert.equal(run('_keyRows().length'),21);assert.equal(run('_keyRowH()'),40);assert.ok(run('_keyRows().every(p=>_keyInScale(p,_keyPhrase().editor))'));});
+const inC=Array.from({length:88},(_,k)=>21+k).filter(p=>[0,2,4,5,7,9,11].includes(p%12)).length;   // A0〜C8 の C メジャーの音（v0.3.212：ロールは全音域）
+check('scale ON folds out-of-scale rows and makes rows taller',()=>{assert.equal(run('_keyRows().length'),inC);assert.equal(run('_keyRowH()'),40);assert.ok(run('_keyRows().every(p=>_keyInScale(p,_keyPhrase().editor))'));});
 let a=xy(0,60),b=xy(.75,60);await gesture(a,b);
 check('draw note by dragging; one undo entry',()=>{assert.equal(phrase().notes.length,1);assert.equal(phrase().notes[0].length,1);assert.equal(history.length,1);});
 a=xy(.5,60);b=xy(1,62);await gesture(a,b);
@@ -48,10 +49,10 @@ a=xy(3,61);down(a.x,a.y);up(a.x,a.y);await flush();
 check('scale ON constrains new notes to C major',()=>assert.equal(phrase().notes[1].pitch,60));
 el('keyScaleOn').click();await flush();a=xy(4,61);down(a.x,a.y);up(a.x,a.y);await flush();
 check('scale OFF permits chromatic notes',()=>assert.equal(phrase().notes[2].pitch,61));
-check('scale OFF shows all 12 semitones at 28px',()=>{assert.equal(run('_keyRows().length'),36);assert.equal(run('_keyRowH()'),28);});
+check('scale OFF shows all 12 semitones at 28px',()=>{assert.equal(run('_keyRows().length'),88);assert.equal(run('_keyRowH()'),28);});
 el('keyScaleOn').click();await flush();
 check('scale toggle never rewrites existing or imported pitches',()=>assert.equal(phrase().notes[2].pitch,61));
-check('a used out-of-scale pitch keeps its row while folded',()=>{assert.ok(run('_keyRows().includes(61)'));assert.equal(run('_keyRows().length'),22);});
+check('a used out-of-scale pitch keeps its row while folded',()=>{assert.ok(run('_keyRows().includes(61)'));assert.equal(run('_keyRows().length'),inC+1);});
 check('editor preferences survive JSON save/load',()=>{const x=context.normalizeKeyPhrase(JSON.parse(JSON.stringify(phrase())));assert.equal(x.editor.scaleEnabled,true);assert.equal(x.editor.snap,true);assert.equal(x.instrument,'rhodes-tine-v2');});
 const before=JSON.stringify(phrase()),undos=history.length;a=xy(1.2,62);b=xy(2,67);down(a.x,a.y);move(b.x,b.y);ev('keyRoll','pointercancel',b.x,b.y);await flush();
 check('cancel gesture preserves data and undo history',()=>{assert.equal(JSON.stringify(phrase()),before);assert.equal(history.length,undos);});
@@ -173,6 +174,17 @@ el('keyPreview').click();check('pressing PLAY again stops the loop',()=>assert.e
  const arp=context.normalizeKeyPhrase({bars:4,notes:Array.from({length:40},(_,k)=>({pitch:60+k%5,beat:k*.25,length:.25,velocity:90}))});
  check('CHOP never makes more than 16 slices',()=>assert.equal(context.keyChopBeats(arp,'chord').length,16));
  check('an empty phrase has nothing to CHOP',()=>assert.equal(context.keyChopBeats(context.normalizeKeyPhrase({bars:2,notes:[]}),'chord').length,0));}
+// v0.3.212 §201：START / END（拍）。既定は全体、END が最後なら null（余韻まで）。パッドの START / END に写る・CHOP は範囲の中・並べ方は KEY のパッドを触らない
+{const N=context.normalizeKeyPhrase;
+ check('range defaults to the whole phrase',()=>assert.equal(JSON.stringify(N({bars:2}).range),'{"start":0,"end":null}'));
+ check('range is clamped when bars shrink and END at the end means to the tail',()=>{assert.equal(JSON.stringify(N({bars:1,range:{start:2,end:7}}).range),'{"start":2,"end":null}');assert.equal(JSON.stringify(N({bars:2,range:{start:1,end:5}}).range),'{"start":1,"end":5}');});
+ const t={padKind:'KEY',keyPhrase:{bars:2,notes:[{pitch:60,beat:0,length:1,velocity:90}],range:{start:1,end:5}}};await context.prepareKeyTrack(t,100);
+ check('START / END become the pad start and end',()=>{assert.ok(Math.abs(t.start-.6/t.buffer.duration)<1e-9);assert.ok(Math.abs(t.end-3/t.buffer.duration)<1e-9);});
+ t.keyPhrase.range={start:0,end:null};await context.prepareKeyTrack(t,100);check('the whole phrase plays to the end of the tail',()=>{assert.equal(t.start,0);assert.equal(t.end,1);});
+ const q=context.keyPresetPhrase('komuro',0),p=N({bars:q.bars,notes:q.notes,range:{start:4,end:12}});
+ check('CHOP cuts only inside START / END',()=>{assert.equal(JSON.stringify(context.keyChopBeats(p,'chord')),'[4,8]');assert.equal(JSON.stringify(context.keyChopBeats(p,'beat')),'[4,5,6,7,8,9,10,11]');});
+ check('CHOP never overwrites the KEY pad: right side, else left side, else the larger side',()=>{assert.equal(JSON.stringify(context.keyChopLayout(4,4)),'{"anchor":5,"N":4}');assert.equal(JSON.stringify(context.keyChopLayout(14,4)),'{"anchor":10,"N":4}');assert.equal(JSON.stringify(context.keyChopLayout(7,16)),'{"anchor":8,"N":8}');assert.equal(JSON.stringify(context.keyChopLayout(10,16)),'{"anchor":0,"N":10}');});
+ run('_keyLoop={rs:4,beats:8,t0:0,next:99,click:99}');context.AC.currentTime=.6*9.5;check('the loop clock runs from START',()=>assert.ok(Math.abs(run('_keyLoopBeat()')-5.5)<1e-9));run('_keyLoop=null');context.AC.currentTime=0;}
 // v0.3.207 §196：CHORDS＝定番の進行のプリセット。どのキーでも正しいフレーズ・いまの KEY へ移す・SCALE も合わせる・UNDO 1 回で戻る
 check('every chord preset is a valid phrase in every key',()=>{for(const p of run('KEY_PRESETS'))for(const r of [0,2,5,6,11]){const q=context.keyPresetPhrase(p.id,r),n=context.normalizeKeyPhrase({bars:q.bars,notes:q.notes});assert.equal(n.notes.length,q.notes.length,p.id+' '+r);assert.ok(q.notes.every(x=>x.pitch>=28&&x.pitch<=84&&x.beat+x.length<=q.bars*4+1e-9),p.id+' '+r);}});
 check('the preset menu lists every progression',()=>{const groups=el('keyChordPreset').children.filter(c=>c.label!==undefined||c.children.length);assert.equal(groups.reduce((s,g)=>s+g.children.length,0),run('KEY_PRESETS.length'));});

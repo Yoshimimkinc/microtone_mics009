@@ -5,17 +5,20 @@
  <div class="content-tools key-bar"><button id="keyPreview" aria-pressed="false">▶ PLAY</button><button id="keyRec" aria-pressed="false">● REC</button><button id="keyStep" aria-pressed="false">STEP</button><button id="keyUndo">↶ UNDO</button><button id="keyScaleOn" aria-pressed="true">SCALE</button><button id="keyMore" aria-expanded="false" aria-controls="keyExtra">MORE</button></div>
  <!-- v0.3.210 §199：MORE ＝ 4 つのページ（CHORDS / KEY・SCALE / EDIT / VIEW）。選ぶ物は全部大きなボタン（ドロップダウンを使わない）。外側をタップで閉じる -->
  <div id="keyExtra" class="key-extra" hidden>
-  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY · SCALE</button><button data-more-tab="edit" role="tab">CHOP · EDIT</button><button data-more-tab="view" role="tab">VIEW</button></div><button id="keyMoreClose">CLOSE</button></div>
+  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY<br>SCALE</button><button data-more-tab="edit" role="tab">CHOP<br>EDIT</button><button data-more-tab="view" role="tab">VIEW</button></div><button id="keyMoreClose">CLOSE</button></div>
   <div class="key-more-page" data-more-page="chords"><p class="key-more-note">いまの KEY で入って、すぐループで鳴ります（いまのノートは置き換え・UNDO で戻せる）</p><div id="keyChordList" class="key-chord-list"></div></div>
   <div class="key-more-page" data-more-page="key" hidden>
    <b class="key-more-label">KEY（主音）</b><div id="keyRootGrid" class="key-grid key-root-grid"></div>
    <b class="key-more-label">SCALE</b><div class="key-grid key-scale-grid"><button data-scale="major">Major</button><button data-scale="minor">Minor</button><button data-scale="dorian">Dorian</button><button data-scale="mixolydian">Mixolydian</button><button data-scale="pentatonic">Major pentatonic</button><button data-scale="minorPentatonic">Minor pentatonic</button><button data-scale="chromatic">Chromatic</button></div>
    <b class="key-more-label">BARS · GRID</b><div class="key-grid key-bars-grid"><button data-bars="1">1 BAR</button><button data-bars="2">2 BARS</button><button data-bars="3">3 BARS</button><button data-bars="4">4 BARS</button><button id="keySnap" aria-pressed="true">SNAP 1/16 ON</button></div>
+   <b class="key-more-label">START · END（目盛りの START / END をドラッグ）</b><div class="key-range-row"><span id="keyRangeRead" class="key-range-read" role="status"></span><button id="keyRangeReset">RESET（全体）</button></div>
   </div>
   <div class="key-more-page" data-more-page="edit" hidden>
    <!-- v0.3.211 §200：KEY の CHOP。切れ目は打ち込みから（音の立ち上がりを探さない）＝コードの変わり目・小節・2 拍・1 拍 -->
    <b class="key-more-label">CHOP（パッドに分ける）</b><div class="key-grid key-chop-grid"><button data-chop="chord">コードごと</button><button data-chop="bar">1 小節ごと</button><button data-chop="half">2 拍ごと</button><button data-chop="beat">1 拍ごと</button></div>
    <p class="key-more-note" id="keyChopInfo"></p><button id="keyChopApply" class="key-chop-apply">✂ CHOP</button>
+   <!-- v0.3.212 §201：KEY のままでも消せる -->
+   <b class="key-more-label">消す（↩ で戻せる）</b><div class="key-grid"><button id="keyClearNotes">ノートを全部消す</button><button id="keyDeletePad" class="key-del">✕ このパッドを消す</button></div>
    <b class="key-more-label">ドラッグでする事（TOOL）</b><div class="key-grid key-tool-grid"><button data-tool="auto">Auto</button><button data-tool="move">Move</button><button data-tool="right">Length</button><button data-tool="left">Start</button><button data-tool="velocity">Velocity</button></div>
    <b class="key-more-label">選ぶ・動かす</b><div class="key-grid"><button id="keySelectAll">SELECT ALL</button><button id="keyMulti" aria-pressed="false">MULTI OFF</button><button id="keyNav" aria-pressed="false">SCROLL OFF</button></div>
    <b class="key-more-label">読み込み</b><label class="content-import">IMPORT MIDI <input id="keyMidiFile" type="file" accept=".mid,.midi,audio/midi"></label><div id="keyMidiTracks" class="content-tools"></div>

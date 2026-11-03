@@ -1,12 +1,12 @@
 // @module ui/pad-content
 // @provides KEY_SCALES, _keyAudition, _keyAuditionNode, _keyAuditionToken, _keyAutoFit, _keyDeleteSelection,
 //    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
-//    _keyInScale, _keyLanesShow, _keyLeaveDone, _keyLeaveResolve, _keyLow, _keyMidi, _keyMoreShow,
-//    _keyMulti, _keyNavigate, _keyPaint, _keyPhrase, _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows,
+//    _keyInScale, _keyLanesShow, _keyLeaveDone, _keyLeaveResolve, _keyMidi, _keyMoreShow, _keyMulti,
+//    _keyNavigate, _keyPaint, _keyPhrase, _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows,
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
 //    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
 //    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keySetPref, bpmVal, doUndo,
+// @uses AC, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keySetPref, bpmVal, doUndo,
 //    keyEntryClose, keyEntryOpen, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf,
 //    parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
 //    scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
@@ -23,12 +23,12 @@ async function setPadKind(i,kind,leave='restore'){
     const b=(await prepareKeyTrack(t,bpmVal))||(_keyBuffers.has(t.buffer)?t.buffer:null);
     if((t._contentEpoch||0)!==epoch||padKind(t)!=='KEY')return;
     // KEY の音の入れ物とは別の波形にする（KEY の印が付いたままだと SAMPLE として鳴らせない）
-    if(b){baked=AC.createBuffer(1,b.length,b.sampleRate);baked.getChannelData(0).set(b.getChannelData(0));}
+    if(b){baked=AC.createBuffer(1,b.length,b.sampleRate);baked.getChannelData(0).set(b.getChannelData(0));baked._range=[t.start,t.end];}   // START / END も持っていく（v0.3.212）
   }
   pushUndo();stopVoices(t,AC.currentTime);t.loopPlaying=false;t._contentEpoch=(t._contentEpoch||0)+1;
   if(kind==='KEY'&&padKind(t)!=='KEY')t.sampleState=_sampleState(t,i);
   if(padKind(t)==='KEY'&&kind!=='KEY'&&t.sampleState){Object.assign(t,t.sampleState);PADS[i].type=t.sampleState.type;PADS[i].voice=t.sampleState.voice;}
-  if(baked){Object.assign(t,{buffer:baked,rawBuffer:baked,start:0,end:1,loop:false,loopStart:0});PADS[i].type='sample';PADS[i].voice=null;}
+  if(baked){Object.assign(t,{buffer:baked,rawBuffer:baked,start:baked._range[0],end:baked._range[1],loop:false,loopStart:0});PADS[i].type='sample';PADS[i].voice=null;}
   t._keySignature=null; // Restoring SPL replaces buffer: never retain a KEY readiness stamp.
   t.padKind=kind;
   if(kind==='KEY'){
@@ -74,7 +74,7 @@ function syncPadContentEditor(i){
   document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
   if(typeof paintClKind==='function')paintClKind();
 }
-let _keyTarget=-1, _keySelected=-1, _keyLow=48, _keyMidi=null;
+let _keyTarget=-1, _keySelected=-1, _keyMidi=null;
 let _keySelection=new Set(), _keyDraft=null, _keyGesture=null, _keyZoom=128, _keySound=false, _keyAutoFit=true, _keyNavigate=false, _keyMulti=false, _keyAuditionNode=null, _keyAuditionToken=0;
 const KEY_SCALES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixolydian:[0,2,4,5,7,9,10],pentatonic:[0,2,4,7,9],minorPentatonic:[0,3,5,7,10],chromatic:[0,1,2,3,4,5,6,7,8,9,10,11]};
 function _keyPhrase(){return _keyDraft||normalizeKeyPhrase(tracks[_keyTarget]?.keyPhrase);}
@@ -82,7 +82,7 @@ function _keyInScale(pitch,e){return KEY_SCALES[e.scale].includes(((pitch-e.root
 function _keyScalePitch(pitch,e){pitch=Math.max(21,Math.min(108,Math.round(pitch)));if(!e.scaleEnabled)return pitch;for(let d=0;d<12;d++){if(pitch-d>=21&&_keyInScale(pitch-d,e))return pitch-d;if(pitch+d<=108&&_keyInScale(pitch+d,e))return pitch+d;}return pitch;}
 // v0.3.205 §194（C）：スケールがオンなら外の音の行を畳む（7 音なら 1 オクターブ 7 行・行は 40px）。使っている音の行は外の音でも残す。オフは 12 半音・28px
 function _keyRowH(){return _keyPhrase().editor.scaleEnabled?40:28;}
-function _keyRows(){const p=_keyPhrase(),used=new Set(normalizeKeyPhrase(tracks[_keyTarget]?.keyPhrase).notes.map(n=>n.pitch)),rows=[];for(let pitch=_keyLow+35;pitch>=_keyLow;pitch--)if(!p.editor.scaleEnabled||_keyInScale(pitch,p.editor)||used.has(pitch))rows.push(pitch);return rows;}
+function _keyRows(){const p=_keyPhrase(),used=new Set(normalizeKeyPhrase(tracks[_keyTarget]?.keyPhrase).notes.map(n=>n.pitch)),rows=[];for(let pitch=108;pitch>=21;pitch--)if(!p.editor.scaleEnabled||_keyInScale(pitch,p.editor)||used.has(pitch))rows.push(pitch);return rows;}
 function _keyRowY(pitch){const i=_keyRows().findIndex(r=>r<=pitch);return (i<0?_keyRows().length-1:i)*_keyRowH();}
 function _keyPitchAt(y){const rows=_keyRows();return rows[Math.max(0,Math.min(rows.length-1,Math.floor(y/_keyRowH())))];}
 function _keySnapBeat(beat,e,bypass=false){return Math.round(beat*(e.snap&&!bypass?4:96))/(e.snap&&!bypass?4:96);}
@@ -90,7 +90,8 @@ function _keySelect(i,extend=false){if(!extend)_keySelection.clear();if(extend&&
 function _keyFit(){const box=document.getElementById('keyHorizontal'),bars=_keyPhrase().bars;_keyZoom=Math.max(32,Math.min(384,Math.floor((box.clientWidth-58)/(bars*4))));_keyPaint();}
 function keyEditorOpen(i){
   _keyTarget=i;_keySound=false;_keyAutoFit=true;_keySelected=-1;_keySelection.clear();_keyDraft=null;_keyGesture=null;_keyNavigate=false;_keyMulti=false;
-  const notes=normalizeKeyPhrase(tracks[i].keyPhrase).notes;_keyLow=notes.length?Math.max(21,Math.min(73,Math.floor((Math.min(...notes.map(n=>n.pitch))-12)/12)*12)):48;
+  // v0.3.212 §201：ロールは A0〜C8 全部（3 オクターブの窓をやめた＝PC のホイールでもスマホの指でも全部スクロールで届く）。開いた時は最初の音（無ければ C4）を真ん中に
+  const notes=normalizeKeyPhrase(tracks[i].keyPhrase).notes;
   document.getElementById('keyEditor').hidden=false;_keyMoreShow(false);_keyLanesShow();document.getElementById('keyDragMode').value='auto';_keyFit();
   const scroll=document.querySelector('.key-scroll');_keyPaint();scroll.scrollTop=Math.max(0,_keyRowY(notes[0]?.pitch||60)-scroll.clientHeight/2);document.getElementById('keyHorizontal').scrollLeft=0;
   keyEntryOpen();
@@ -146,6 +147,10 @@ function _keyPaint(){
     if(selected&&w>14){c.fillStyle='#68451c';c.fillRect(x+4,y+rh/2-6,2,12);c.fillRect(x+w-6,y+rh/2-6,2,12);}
   });
   const ruler=document.getElementById('keyRuler');if(ruler.width!==width)ruler.width=width;if(ruler.height!==28)ruler.height=28;const rc=ruler.getContext('2d');rc.fillStyle='#67747b';rc.fillRect(0,0,width,28);rc.font='11px sans-serif';rc.fillStyle='#fff';rc.fillText('4/4',10,18);for(let b=0;b<p.bars*4;b++){const x=58+b*_keyZoom;rc.fillText((Math.floor(b/4)+1)+'.'+(b%4+1),x+5,18);}
+  // START / END（v0.3.212 §201）：外側を暗く、目盛りに START / END の印（ドラッグで動かす）
+  const kr=_keyRange(),xs=58+kr.start*_keyZoom,xe=58+kr.end*_keyZoom,shade=(g,h)=>{g.fillStyle='rgba(20,26,30,.45)';if(xs>58)g.fillRect(58,0,xs-58,h);if(xe<width)g.fillRect(xe,0,width-xe,h);};
+  shade(rc,28);shade(c,cv.height);rc.font='bold 9px sans-serif';
+  for(const [x,label,left] of [[xs,'START',false],[xe,'END',true]]){rc.fillStyle='#3dd6c4';rc.fillRect(left?x-3:x,0,3,28);c.fillStyle='#2a9d8f';c.fillRect(left?x-2:x,0,2,cv.height);const w=rc.measureText(label).width+8;rc.fillRect(left?x-3-w:x+3,0,w,13);rc.fillStyle='#10221d';rc.fillText(label,(left?x-3-w:x+3)+4,7);}
   const vel=document.getElementById('keyVelocityRoll');if(vel.width!==width)vel.width=width;if(vel.height!==100)vel.height=100;const vc=vel.getContext('2d');vc.fillStyle='#bdc1c3';vc.fillRect(0,0,width,100);vc.font='10px sans-serif';vc.fillStyle='#334049';vc.fillText('VEL',9,17);vc.fillText('127',9,31);vc.fillText('1',18,90);vc.strokeStyle='#929a9f';for(const y of [16,88]){vc.beginPath();vc.moveTo(58,y+.5);vc.lineTo(width,y+.5);vc.stroke();}
   const drawVelocity=(n,j)=>{const x=58+n.beat*_keyZoom,y=88-(n.velocity-1)/126*72,sel=_keySelection.has(j);vc.strokeStyle=sel?'#9a5514':'#246d61';vc.lineWidth=sel?3:2;vc.beginPath();vc.moveTo(x,88);vc.lineTo(x,y);vc.stroke();vc.fillStyle=sel?'#ffb24a':'#318775';vc.beginPath();vc.arc(x,y,sel?5:4,0,Math.PI*2);vc.fill();if(sel){vc.fillStyle='#243138';vc.fillText(n.velocity,x+7,Math.max(12,y+3));}};
   p.notes.forEach((n,j)=>{if(!_keySelection.has(j))drawVelocity(n,j);});p.notes.forEach((n,j)=>{if(_keySelection.has(j))drawVelocity(n,j);});
@@ -159,7 +164,7 @@ async function _keyUpdate(change){
   if(_keyTarget<0)return;const i=_keyTarget,t=tracks[i],epoch=t._contentEpoch||0;
   const before=normalizeKeyPhrase(t.keyPhrase),p=normalizeKeyPhrase(t.keyPhrase);change(p);const next=normalizeKeyPhrase(p);
   if(JSON.stringify(before)===JSON.stringify(next)){_keyPaint();return;}
-  pushUndo();t.keyPhrase=next;_keyPaint();scheduleAutosave();
+  pushUndo();t.keyPhrase=next;if(before.bars!==next.bars&&_keyAutoFit)_keyFit();else _keyPaint();scheduleAutosave();   // 小節数が変わったら幅を合わせ直す（v0.3.212）
   const status=document.getElementById('keyStatus');status.textContent='音声を生成中…';
   try{const result=await prepareKeyTrack(t,bpmVal);if(result&&(t._contentEpoch||0)===epoch){refreshPadDisplay(i);if(_keyTarget===i)status.textContent='TINE MODEL · 再生できます';}}
   catch(e){if(_keyTarget===i)status.textContent='生成失敗：'+e.message;}
@@ -209,7 +214,9 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   document.getElementById('keyScaleOn').addEventListener('click',()=>_keyUpdate(p=>p.editor.scaleEnabled=!p.editor.scaleEnabled));
   root.addEventListener('change',e=>_keyUpdate(p=>p.editor.root=+e.target.value));document.getElementById('keyScaleType').addEventListener('change',e=>_keyUpdate(p=>p.editor.scale=e.target.value));
   for(const [id,prop] of [['keyPitch','pitch'],['keyBeat','beat'],['keyLength','length'],['keyVelocity','velocity']])document.getElementById(id).addEventListener('change',e=>_keyUpdate(p=>{const n=p.notes[_keySelected];if(!n)return;const value=+e.target.value;if(!Number.isFinite(value))return;n[prop]=prop==='pitch'?_keyScalePitch(value,p.editor):value;}));
-  document.getElementById('keyOctaveDown').addEventListener('click',()=>{_keyLow=Math.max(21,_keyLow-12);_keyPaint();});document.getElementById('keyOctaveUp').addEventListener('click',()=>{_keyLow=Math.min(73,_keyLow+12);_keyPaint();});
+  // 表示のオクターブ ±＝ロールを 1 オクターブぶんスクロール
+  const octScroll=d=>{const sc=document.querySelector('.key-scroll'),top=_keyPitchAt(sc.scrollTop+1);sc.scrollTop=Math.max(0,_keyRowY(Math.max(21,Math.min(108,top+12*d))));};
+  document.getElementById('keyOctaveDown').addEventListener('click',()=>octScroll(-1));document.getElementById('keyOctaveUp').addEventListener('click',()=>octScroll(1));
   document.getElementById('keyDragMode').addEventListener('change',()=>{_keyEndGesture(true);_keySetCursor();document.getElementById('keyStatus').textContent='DRAG · '+document.getElementById('keyDragMode').value;});
   document.getElementById('keyZoom').addEventListener('input',e=>{_keyAutoFit=false;_keyZoom=+e.target.value;_keyPaint();});document.getElementById('keyFit').addEventListener('click',()=>{_keyAutoFit=true;_keyFit();});
   window.addEventListener('resize',()=>{if(_keyTarget>=0&&_keyAutoFit)_keyFit();});
@@ -219,7 +226,7 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
     const canvas=e.currentTarget,point=_keyPoint(e,canvas),p=_keyPhrase(),beat=(point.x-58)/_keyZoom,pitch=_keyPitchAt(point.y);
     const touch=e.pointerType==='touch',pan=tap=>{e.preventDefault();const scroll=document.querySelector('.key-scroll'),h=document.getElementById('keyHorizontal');
       _keyGesture={id:e.pointerId,target:_keyTarget,track:tracks[_keyTarget],canvas,type:'pan',x:e.clientX,y:e.clientY,top:scroll.scrollTop,left:h.scrollLeft,beat,pitch,tap,moved:false};canvas.setPointerCapture(e.pointerId);};
-    if(point.x<58){if(!isVelocity)_keyAudition(pitch);if(touch)pan(false);return;}e.preventDefault();canvas.focus({preventScroll:true});
+    if(point.x<58){if(!isVelocity)_keyAudition(pitch);pan(false);return;}   // 鍵盤の列＝押して試し弾き・動かしてスクロール（v0.3.212：マウスでも）e.preventDefault();canvas.focus({preventScroll:true});
     let index=-1,type='move';
     if(isVelocity){let best=20;for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i],dx=Math.abs((n.beat-beat)*_keyZoom),dy=Math.abs(88-(n.velocity-1)/126*72-point.y),distance=Math.hypot(dx,dy*.2);if(dx<14&&distance<best){index=i;best=distance;}}type='velocity';if(index<0){if(touch)pan(false);return;}}
     else{for(let i=p.notes.length-1;i>=0;i--){const n=p.notes[i];if(n.pitch===pitch&&beat>=n.beat-3/_keyZoom&&beat<=n.beat+n.length+3/_keyZoom){index=i;break;}}}

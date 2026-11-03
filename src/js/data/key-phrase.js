@@ -11,7 +11,10 @@ function normalizeKeyPhrase(src){
   const editor={root:Math.max(0,Math.min(11,Math.round(+e.root||0))),scale:['major','minor','dorian','mixolydian','pentatonic','minorPentatonic','chromatic'].includes(e.scale)?e.scale:'major',scaleEnabled:e.scaleEnabled!==false,snap:e.snap!==false};
   const fx=src?.effects||{}, clamp=(v,lo,hi,def)=>Number.isFinite(+v)?Math.max(lo,Math.min(hi,+v)):def;
   const effects={motion:['off','tremolo','wah'].includes(fx.motion)?fx.motion:'off',motionDepth:clamp(fx.motionDepth,0,1,.5),motionRate:clamp(fx.motionRate,.1,10,3),color:['off','chorus','phaser'].includes(fx.color)?fx.color:'off',colorDepth:clamp(fx.colorDepth,0,1,.5),colorRate:clamp(fx.colorRate,.05,5,.8)};
-  return {bars,instrument:'rhodes-tine-v2',notes,editor,effects};
+  // v0.3.212 §201：START / END（拍）。パッドとループで鳴らす範囲。end:null＝最後（余韻まで）。小節数を減らしたら収まるように詰める
+  const r=src?.range||{}, rs=Math.max(0,Math.min(end-1/96,Math.round((+r.start||0)*96)/96));
+  const re=(r.end==null||!Number.isFinite(+r.end)||+r.end>=end)?null:Math.max(rs+1/96,Math.round(+r.end*96)/96);
+  return {bars,instrument:'rhodes-tine-v2',notes,editor,effects,range:{start:rs,end:re}};
 }
 // SMF format 0/1, PPQ。SMPTE/format 2は明確なエラーにする。
 function parseKeyMidi(bytes){

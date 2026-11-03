@@ -112,7 +112,8 @@ async function prepareKeyTrack(t,bpm){
   const buffer=await renderKeyPhrase(phrase,bpm);
   if(_keyJobs.get(t)!==token||t.padKind!=='KEY'||(t._contentEpoch||0)!==epoch||JSON.stringify([normalizeKeyPhrase(t.keyPhrase),bpm])!==signature)return null;
   _keyBuffers.add(buffer);
-  t.keyPhrase=phrase;t.buffer=buffer;t.rawBuffer=buffer;t.start=0;t.end=1;t.loop=false;t.loopStart=0;t._keySignature=signature;
+  t.keyPhrase=phrase;t.buffer=buffer;t.rawBuffer=buffer;const spb=60/Math.max(40,Math.min(250,+bpm||100));t.start=Math.min(1,phrase.range.start*spb/buffer.duration);t.end=phrase.range.end==null?1:Math.min(1,phrase.range.end*spb/buffer.duration);t.loop=false;   /* START / END（v0.3.212 §201） */
+  t.loopStart=0;t._keySignature=signature;
   return buffer;
 }
 function warmKeyTracks(){
