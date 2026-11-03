@@ -1443,6 +1443,13 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 @media(max-width:760px){.key-fx-rack{gap:10px}.key-fx-unit{padding:12px;gap:12px}}
 @media(max-width:600px){.key-fx-rack{grid-template-columns:1fr}.key-sound-heading{padding:12px 0}.key-fx-unit h3{font-size:11px}.key-fx-switch button{font-size:11px}}
 
+/* KEY → SAMPLE / SCRATCH の確認（v0.3.206 §195） */
+#keyLeaveAsk{z-index:10060}
+.key-leave-panel{width:min(420px,100%)}.key-leave-panel b{font-size:14px;letter-spacing:.06em}
+.key-leave-choices{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.key-leave-choices button{font-weight:700;letter-spacing:.04em}
+.key-leave-choices .key-leave-main{background:var(--teal,#3dd6c4);color:#101719;border-color:var(--teal,#3dd6c4)}
+
 /* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
 #scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}
 .scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand close" "strip gate";gap:10px}
@@ -1481,7 +1488,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.205</div>
+  <div class="s-ver" id="splashVer">v0.3.206</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1744,6 +1751,12 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   </div><p class="key-sound-help">2つのエフェクトを組み合わせて、PREVIEWで試聴できます。設定はこのKEYパッドに保存されます。</p>
  </div> <p id="keyStatus" role="status">TINE MODEL · 4/4</p>
  </section>
+</div>
+<!-- v0.3.206 §195：KEY（音が入っている）から SAMPLE / SCRATCH へ移る時に聞く -->
+<div id="keyLeaveAsk" class="content-overlay key-leave" role="dialog" aria-modal="true" aria-labelledby="keyLeaveTitle" hidden>
+ <section class="content-panel key-leave-panel"><b id="keyLeaveTitle">KEY → <span id="keyLeaveTo">SAMPLE</span></b>
+ <p>打ち込んだフレーズをどうしますか？ KEY に戻せば、打ち込みはいつでもそのままです。</p>
+ <div class="key-leave-choices"><button data-leave="bake" class="key-leave-main">この KEY を波形にする</button><button data-leave="restore" id="keyLeaveRestore">元のサンプルに戻す</button><button data-leave="">やめる</button></div></section>
 </div>
 <div id="scratchEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="scratchTitle" hidden>
  <section class="content-panel scratch-panel">
@@ -7757,24 +7770,34 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
 // @module ui/pad-content
 // @provides KEY_SCALES, _keyAudition, _keyAuditionNode, _keyAuditionToken, _keyAutoFit, _keyDeleteSelection,
 //    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
-//    _keyInScale, _keyLanesShow, _keyLow, _keyMidi, _keyMoreShow, _keyMulti, _keyNavigate, _keyPaint,
-//    _keyPhrase, _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows, _keyScalePitch, _keySelect,
-//    _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound, _keyTapNote, _keyTarget,
-//    _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen, openPadContent, padKind, padKindGo,
-//    setPadKind, syncPadContentEditor
-// @uses AC, NOTE_NAMES, PADS, _keyEntryPaint, _keyPref, _keySetPref, bpmVal, doUndo, keyEntryClose,
-//    keyEntryOpen, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf, parseKeyMidi,
-//    peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl, scheduleAutosave,
-//    scratchClose, scratchOpen, stopVoices, tracks
+//    _keyInScale, _keyLanesShow, _keyLeaveDone, _keyLeaveResolve, _keyLow, _keyMidi, _keyMoreShow,
+//    _keyMulti, _keyNavigate, _keyPaint, _keyPhrase, _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows,
+//    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
+//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
+//    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
+// @uses AC, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keySetPref, bpmVal, doUndo,
+//    keyEntryClose, keyEntryOpen, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf,
+//    parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
+//    scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
-async function setPadKind(i,kind){
+// leave（KEY から移る時だけ）：'restore'＝元のサンプルに戻す（既定）／'bake'＝この KEY の音をそのパッドの波形にする（v0.3.206 §195）
+async function setPadKind(i,kind,leave='restore'){
   if(!['SPL','KEY','SCR'].includes(kind))return;
   const t=tracks[i];if(padKind(t)===kind)return;
+  let baked=null;
+  if(padKind(t)==='KEY'&&kind!=='KEY'&&leave==='bake'){
+    const epoch=t._contentEpoch||0;sampNameEl.textContent='KEY を波形にしています…';
+    const b=(await prepareKeyTrack(t,bpmVal))||(_keyBuffers.has(t.buffer)?t.buffer:null);
+    if((t._contentEpoch||0)!==epoch||padKind(t)!=='KEY')return;
+    // KEY の音の入れ物とは別の波形にする（KEY の印が付いたままだと SAMPLE として鳴らせない）
+    if(b){baked=AC.createBuffer(1,b.length,b.sampleRate);baked.getChannelData(0).set(b.getChannelData(0));}
+  }
   pushUndo();stopVoices(t,AC.currentTime);t.loopPlaying=false;t._contentEpoch=(t._contentEpoch||0)+1;
   if(kind==='KEY'&&padKind(t)!=='KEY')t.sampleState=_sampleState(t,i);
   if(padKind(t)==='KEY'&&kind!=='KEY'&&t.sampleState){Object.assign(t,t.sampleState);PADS[i].type=t.sampleState.type;PADS[i].voice=t.sampleState.voice;}
+  if(baked){Object.assign(t,{buffer:baked,rawBuffer:baked,start:0,end:1,loop:false,loopStart:0});PADS[i].type='sample';PADS[i].voice=null;}
   t._keySignature=null; // Restoring SPL replaces buffer: never retain a KEY readiness stamp.
   t.padKind=kind;
   if(kind==='KEY'){
@@ -7782,7 +7805,7 @@ async function setPadKind(i,kind){
     const epoch=t._contentEpoch;sampNameEl.textContent='KEYを生成中…';const ready=await prepareKeyTrack(t,bpmVal);
     if(t._contentEpoch!==epoch||t.padKind!=='KEY')return;
     if(ready)sampNameEl.textContent=t.keyPhrase.notes.length?'KEY · フレーズを演奏できます':'KEY · 鍵盤で弾いて入れるか、ロールをタップして置いてください';
-  }else sampNameEl.textContent=kind==='SCR'?'SCR · パッドを押すとスクラッチ':'SPL · サンプルを再生';
+  }else sampNameEl.textContent=baked?(kind==='SCR'?'SCRATCH':'SAMPLE')+' · KEY のフレーズを波形にしました（KEY に戻せば打ち込みはそのまま）':kind==='SCR'?'SCRATCH · 窓の SCRATCH か EDIT＋パッドでスクラッチ画面':'SAMPLE · サンプルを再生';
   refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
 }
 // 種類に合った画面を開く（v0.3.203 §192）：KEY＝ピアノロール・SCRATCH＝スクラッチ・SAMPLE＝EDIT（波形・TRIM・CHOP）。EDIT＋パッドのタップもここ
@@ -7793,8 +7816,20 @@ function openPadContent(i){
   else openPadEdit(i);
 }
 // 窓の種類ボタン：その種類にして、すぐその画面へ（同じ種類ならそのまま開く）。SAMPLE は窓の波形のまま（開かない）
+// KEY（音が入っている）から SAMPLE / SCRATCH へ移る時は聞く：この KEY を波形にする／元のサンプルに戻す／やめる（v0.3.206 §195）
+let _keyLeaveResolve=null;
+function keyLeaveChoice(i,kind){
+  const t=tracks[i];
+  if(padKind(t)!=='KEY'||kind==='KEY'||!normalizeKeyPhrase(t.keyPhrase).notes.length)return Promise.resolve('restore');
+  if(_keyLeaveResolve)_keyLeaveResolve(null);
+  document.getElementById('keyLeaveTo').textContent=kind==='SCR'?'SCRATCH':'SAMPLE';
+  document.getElementById('keyLeaveRestore').textContent=t.sampleState?.buffer?'元のサンプルに戻す':'元に戻す（空のパッド）';
+  document.getElementById('keyLeaveAsk').hidden=false;
+  return new Promise(resolve=>{_keyLeaveResolve=resolve;});
+}
+function _keyLeaveDone(v){const r=_keyLeaveResolve;_keyLeaveResolve=null;document.getElementById('keyLeaveAsk').hidden=true;if(r)r(v||null);}
 async function padKindGo(i,kind){
-  if(padKind(tracks[i])!==kind)await setPadKind(i,kind);
+  if(padKind(tracks[i])!==kind){const leave=await keyLeaveChoice(i,kind);if(!leave)return;await setPadKind(i,kind,leave);}
   if(padKind(tracks[i])!==kind)return;
   if(kind==='KEY')keyEditorOpen(i);
   else if(kind==='SCR')await scratchOpen(i);
@@ -7926,7 +7961,8 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
     const control=document.getElementById(id);control.addEventListener('input',e=>_keyFxLabel(id,+e.target.value));control.addEventListener('change',e=>_keyUpdate(p=>p.effects[prop]=+e.target.value));
   }
-  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(b)setPadKind(peTarget,b.dataset.kind).catch(e=>sampNameEl.textContent=e.message);});
+  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
+  document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
   document.getElementById('peKeyOpen').addEventListener('click',()=>keyEditorOpen(peTarget));
   document.getElementById('keyClose').addEventListener('click',keyEditorClose);
   document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
@@ -7998,6 +8034,7 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
     catch(e){document.getElementById('keyStatus').textContent=e.message;}
   });
   window.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&_keyLeaveResolve){_keyLeaveDone(null);return;}
     if(e.key==='Escape'){_keyEndGesture(true);keyEditorClose();scratchClose();return;}
     if(_keyTarget<0||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     const command=e.ctrlKey||e.metaKey;
@@ -8157,7 +8194,7 @@ document.addEventListener('pointerdown',()=>{ if(_audioNeedsRecovery||AC.state!=
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.205";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.206";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

@@ -122,6 +122,18 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     ok_(`${label} 窓の SCRATCH＝SCRATCH にしてスクラッチを開く・タブも SCRATCH`, k2.kind==='SCR'&&k2.scr&&k2.tab==='SCRATCH', JSON.stringify(k2));
     ok_(`${label} EDIT＋KEY のパッド＝ピアノロールを直接（EDIT の画面は出ない）`, k3.roll&&k3.modal==='none', JSON.stringify(k3));
     eq(`${label} 窓の SAMPLE＝サンプルに戻る・タブも SAMPLE`, k4, {kind:'SPL',tab:'SAMPLE'});
+    // v0.3.206 §195：音の入った KEY から窓の SCRATCH／SAMPLE ＝ 聞く。「この KEY を波形にする」＝KEY の音がパッドの波形に・「やめる」＝そのまま・「元に戻す」＝元のサンプル
+    await p.click('#clPage .cl-kind[data-kind="KEY"]'); await p.waitForTimeout(400); await p.evaluate(async()=>{keyEditorClose();tracks[5].keyPhrase={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:100},{pitch:64,beat:1,length:1,velocity:90}]};await prepareKeyTrack(tracks[5],bpmVal);});
+    const keyLen=await p.evaluate(()=>tracks[5].buffer.length);
+    await p.click('#clPage .cl-kind[data-kind="SCR"]'); await p.waitForTimeout(250);
+    const a1=await p.evaluate(()=>({ask:!document.getElementById('keyLeaveAsk').hidden,to:document.getElementById('keyLeaveTo').textContent,kind:padKind(tracks[5])}));
+    await p.click('#keyLeaveAsk [data-leave=""]'); await p.waitForTimeout(150); const a2=await p.evaluate(()=>({ask:!document.getElementById('keyLeaveAsk').hidden,kind:padKind(tracks[5])}));
+    await p.click('#clPage .cl-kind[data-kind="SCR"]'); await p.waitForTimeout(250); await p.click('#keyLeaveAsk [data-leave="bake"]'); await p.waitForTimeout(700);
+    const a3=await p.evaluate(()=>{const d=tracks[5].buffer.getChannelData(0);let peak=0;for(const v of d)peak=Math.max(peak,Math.abs(v));return {kind:padKind(tracks[5]),len:tracks[5].buffer.length,peak:+peak.toFixed(3),scr:!document.getElementById('scratchEditor').hidden,notes:tracks[5].keyPhrase.notes.length};});
+    await p.evaluate(()=>scratchClose());
+    ok_(`${label} 音の入った KEY から SCRATCH＝聞く・やめる＝KEY のまま`, a1.ask&&a1.to==='SCRATCH'&&a1.kind==='KEY'&&!a2.ask&&a2.kind==='KEY', JSON.stringify({a1,a2}));
+    ok_(`${label} 「この KEY を波形にする」＝KEY の音がスクラッチの波形に・打ち込みは残る`, a3.kind==='SCR'&&a3.len===keyLen&&a3.peak>0.01&&a3.scr&&a3.notes===2, JSON.stringify(a3));
+    await p.evaluate(async()=>{await setPadKind(5,'SPL');});
     await p.click('#clKeys .cl-key[data-pg="main"]'); await p.waitForTimeout(150); }
   // v0.3.204 §193：SCRATCH のパッドを押しても画面は開かず、普通に鳴る（案内だけ出る）
   { await p.evaluate(async()=>{await setPadKind(6,'SCR');scratchClose();}); const pr=await p.evaluate(()=>{const b=document.querySelectorAll('#pads .pad')[6].getBoundingClientRect();return [b.left+b.width/2,b.top+b.height*.8];});
