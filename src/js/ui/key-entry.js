@@ -10,8 +10,9 @@
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
-//    keyTineNote, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo, refreshPadDisplay, sampNameEl,
-//    scheduleAutosave, selectPad, stopVoices, syncPadContentEditor, tracks, wakeSync
+//    keyTineNote, keyTranspose, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
+//    refreshPadDisplay, sampNameEl, scheduleAutosave, selectPad, stopVoices, syncPadContentEditor, tracks,
+//    wakeSync
 // @depends data/key-presets, plock-undo
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
@@ -36,7 +37,7 @@ function _keyLiveBuffer(pitch,velocity){
   while(_keyLiveCache.size>48)_keyLiveCache.delete(_keyLiveCache.keys().next().value);
   return buffer;
 }
-function _keyWarmPads(){const list=_keyPadPitches();let k=0;const next=()=>{if(_keyTarget<0||k>=list.length)return;_keyLiveBuffer(list[k++],96);setTimeout(next,20);};setTimeout(next,60);}
+function _keyWarmPads(){const list=_keyPadPitches();let k=0;const next=()=>{if(_keyTarget<0||k>=list.length)return;_keyLiveBuffer(list[k++]+keyTranspose(tracks[_keyTarget]),96);setTimeout(next,20);};setTimeout(next,60);}
 function _keyBeatSec(){return 60/Math.max(40,Math.min(250,+bpmVal||100));}
 // v0.3.212 §201：START / END（拍）。目盛りの START / END をドラッグ（ドラッグ中は下書き）。end は最後なら null（余韻まで）
 let _keyRangeDraft=null,_keyRangeDrag=null;
@@ -51,7 +52,7 @@ function _keyLoopBeat(){
 function _keyNoteOn(pitch,id,velocity=96){
   if(_keyTarget<0||_keyLive.has(id))return;
   try{AC.resume();}catch(_){}
-  const src=AC.createBufferSource(),gain=AC.createGain();src.buffer=_keyLiveBuffer(pitch,velocity);gain.gain.value=.27;src.connect(gain);gain.connect(masterGain);src.start();
+  const src=AC.createBufferSource(),gain=AC.createGain();src.buffer=_keyLiveBuffer(pitch+keyTranspose(tracks[_keyTarget]),velocity);gain.gain.value=.27;src.connect(gain);gain.connect(masterGain);src.start();
   const v={pitch,velocity,src,gain,beat:_keyRecOn&&_keyLoop?_keyLoopBeat():null,step:_keyStepOn};
   _keyLive.set(id,v);
   if(v.step){_keyStepHeld++;_keyStepPut(pitch,velocity);}

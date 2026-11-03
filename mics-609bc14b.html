@@ -1511,7 +1511,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.212</div>
+  <div class="s-ver" id="splashVer">v0.3.213</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -2993,8 +2993,8 @@ function refreshSeqMode(){
 function dbToGain(db){ return Math.pow(10, db/20); }
 
 // @module audio/key-instrument
-// @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyWarmTimer, keyApplyEffects, keyTineNote,
-//    prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
+// @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyShifted, _keyWarmTimer, keyApplyEffects,
+//    keySignatureOf, keyTineNote, keyTranspose, prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
 // @uses bpmVal, normalizeKeyPhrase, sampNameEl, tracks
 // @depends -
 const _keyCache=new Map(), _keyDryCache=new Map(), _keyJobs=new WeakMap(), _keyBuffers=new WeakSet();
@@ -3098,13 +3098,18 @@ function renderKeyPhrase(src,bpm){
   _keyCache.set(key,job);while(_keyCache.size>12)_keyCache.delete(_keyCache.keys().next().value);
   job.catch(()=>{if(_keyCache.get(key)===job)_keyCache.delete(key);});return job;
 }
+// v0.3.213 §202：KEY のパッドの PITCH（t.tune、半音）は音符を移して作る＝テンポは変わらない（サンプルのように引き伸ばさない）。
+// エディタの試し弾き・鍵盤・ループも同じ高さになる。読み込みの印（_keySignature）にも PITCH を入れる
+function keyTranspose(t){return Math.max(-24,Math.min(24,Math.round(+t?.tune||0)));}
+function keySignatureOf(t,bpm){return JSON.stringify([normalizeKeyPhrase(t.keyPhrase),bpm,keyTranspose(t)]);}
+function _keyShifted(phrase,tr){return tr?{...phrase,notes:phrase.notes.map(n=>({...n,pitch:n.pitch+tr}))}:phrase;}
 async function prepareKeyTrack(t,bpm){
-  const phrase=normalizeKeyPhrase(t.keyPhrase), signature=JSON.stringify([phrase,bpm]);
+  const phrase=normalizeKeyPhrase(t.keyPhrase), tr=keyTranspose(t), signature=keySignatureOf(t,bpm);
   if(t.padKind!=='KEY')return null;
   if(t._keySignature===signature&&t.buffer&&_keyBuffers.has(t.buffer))return t.buffer;
   const token={},epoch=t._contentEpoch||0;_keyJobs.set(t,token);
-  const buffer=await renderKeyPhrase(phrase,bpm);
-  if(_keyJobs.get(t)!==token||t.padKind!=='KEY'||(t._contentEpoch||0)!==epoch||JSON.stringify([normalizeKeyPhrase(t.keyPhrase),bpm])!==signature)return null;
+  const buffer=await renderKeyPhrase(_keyShifted(phrase,tr),bpm);
+  if(_keyJobs.get(t)!==token||t.padKind!=='KEY'||(t._contentEpoch||0)!==epoch||keySignatureOf(t,bpm)!==signature)return null;
   _keyBuffers.add(buffer);
   t.keyPhrase=phrase;t.buffer=buffer;t.rawBuffer=buffer;const spb=60/Math.max(40,Math.min(250,+bpm||100));t.start=Math.min(1,phrase.range.start*spb/buffer.duration);t.end=phrase.range.end==null?1:Math.min(1,phrase.range.end*spb/buffer.duration);t.loop=false;   /* START / END（v0.3.212 §201） */
   t.loopStart=0;t._keySignature=signature;
@@ -3121,7 +3126,7 @@ function warmKeyTracks(){
 // @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
 //    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
-//    liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, normalizeKeyPhrase, outBGain, paintSteps,
+//    keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps,
 //    pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording, reverbPre,
 //    sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen, tapeEcho, tracks,
 //    vuHit
@@ -3244,7 +3249,7 @@ function getPitchedRegion(t, semi, aN=0, bN=1){
 const _warmT={};
 function warmPitch(i){
   clearTimeout(_warmT[i]);
-  _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.buffer&&t.tune) try{ const s=t.start||0; getPitchedRegion(t, t.tune, t.loop?Math.min(s, t.loopStart||0):s, t.end??1); }catch(_){ } },150);
+  _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.padKind==="KEY"){ prepareKeyTrack(t,bpmVal).catch(()=>{}); return; } if(t&&t.buffer&&t.tune) try{ const s=t.start||0; getPitchedRegion(t, t.tune, t.loop?Math.min(s, t.loopStart||0):s, t.end??1); }catch(_){ } },150);
 }
 // 1ヒット発音
 // trs：鳴らすセットのトラック列（既定＝いまのセット。SET のミックスで他のセットを鳴らすときは snapshot の列 v0.3.147）
@@ -3252,7 +3257,8 @@ function warmPitch(i){
 function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=null){
   const t = trs[i];
   if(!t) return;
-  if(t.padKind==="KEY"){const k=JSON.stringify([normalizeKeyPhrase(t.keyPhrase),(trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal))]);if(t._keySignature!==k||!_keyBuffers.has(t.buffer)){prepareKeyTrack(t,trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal)).catch(()=>{});if(!fromSeq)sampNameEl.textContent="KEY生成中 — もう一度タップ";return;}}
+  // KEY：PITCH も含めた印で最新かを見る。古くても KEY の音なら鳴らしながら作り直す（PITCH や BPM を動かした直後に音が抜けない、v0.3.213）。KEY の音でなければ鳴らさない
+  if(t.padKind==="KEY"){const kb=trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal);if(t._keySignature!==keySignatureOf(t,kb)||!_keyBuffers.has(t.buffer)){prepareKeyTrack(t,kb).catch(()=>{});if(!_keyBuffers.has(t.buffer)){if(!fromSeq)sampNameEl.textContent="KEY生成中 — もう一度タップ";return;}}}
   if(!t.buffer) return;
   if(!t.activeVoices) t.activeVoices=[];
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
@@ -3264,7 +3270,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
 
   // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
   const lkPitch = 0; // 旧ファイル／呼出元のステップ値では上書きしない
-  const semi = t.tune + (noteSemi||0) + lkPitch;
+  const semi = (t.padKind==="KEY"?0:t.tune) + (noteSemi||0) + lkPitch;   // KEY の PITCH は音符で移してある（v0.3.213）
   const sN = Math.min(0.999, Math.max(0, fromN!=null ? fromN : t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
   const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;
@@ -7746,8 +7752,9 @@ function scratchShow(i){
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
-//    keyTineNote, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo, refreshPadDisplay, sampNameEl,
-//    scheduleAutosave, selectPad, stopVoices, syncPadContentEditor, tracks, wakeSync
+//    keyTineNote, keyTranspose, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
+//    refreshPadDisplay, sampNameEl, scheduleAutosave, selectPad, stopVoices, syncPadContentEditor, tracks,
+//    wakeSync
 // @depends data/key-presets, plock-undo
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
@@ -7772,7 +7779,7 @@ function _keyLiveBuffer(pitch,velocity){
   while(_keyLiveCache.size>48)_keyLiveCache.delete(_keyLiveCache.keys().next().value);
   return buffer;
 }
-function _keyWarmPads(){const list=_keyPadPitches();let k=0;const next=()=>{if(_keyTarget<0||k>=list.length)return;_keyLiveBuffer(list[k++],96);setTimeout(next,20);};setTimeout(next,60);}
+function _keyWarmPads(){const list=_keyPadPitches();let k=0;const next=()=>{if(_keyTarget<0||k>=list.length)return;_keyLiveBuffer(list[k++]+keyTranspose(tracks[_keyTarget]),96);setTimeout(next,20);};setTimeout(next,60);}
 function _keyBeatSec(){return 60/Math.max(40,Math.min(250,+bpmVal||100));}
 // v0.3.212 §201：START / END（拍）。目盛りの START / END をドラッグ（ドラッグ中は下書き）。end は最後なら null（余韻まで）
 let _keyRangeDraft=null,_keyRangeDrag=null;
@@ -7787,7 +7794,7 @@ function _keyLoopBeat(){
 function _keyNoteOn(pitch,id,velocity=96){
   if(_keyTarget<0||_keyLive.has(id))return;
   try{AC.resume();}catch(_){}
-  const src=AC.createBufferSource(),gain=AC.createGain();src.buffer=_keyLiveBuffer(pitch,velocity);gain.gain.value=.27;src.connect(gain);gain.connect(masterGain);src.start();
+  const src=AC.createBufferSource(),gain=AC.createGain();src.buffer=_keyLiveBuffer(pitch+keyTranspose(tracks[_keyTarget]),velocity);gain.gain.value=.27;src.connect(gain);gain.connect(masterGain);src.start();
   const v={pitch,velocity,src,gain,beat:_keyRecOn&&_keyLoop?_keyLoopBeat():null,step:_keyStepOn};
   _keyLive.set(id,v);
   if(v.step){_keyStepHeld++;_keyStepPut(pitch,velocity);}
@@ -8022,9 +8029,9 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
 //    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
 //    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
 // @uses AC, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keySetPref, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf,
-//    parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
-//    scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
+//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
+//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
+//    sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -8142,7 +8149,7 @@ function _keyPaint(){
   document.getElementById('keyTabNotes').setAttribute('aria-selected',String(!_keySound));document.getElementById('keyTabSound').setAttribute('aria-selected',String(_keySound));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
-  document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1));document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
+  const tr=keyTranspose(t);document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1))+(tr?' · PITCH '+(tr>0?'+':'')+tr:'');   // パッドの PITCH はここに出す（音符はそのまま表示、鳴る音は移る v0.3.213）document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
   for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(id==='keyScaleOn'?'':v?' ON':' OFF');}
   document.querySelector('.key-panel').classList.toggle('is-navigating',_keyNavigate);document.getElementById('keyScaleRoot').value=p.editor.root;document.getElementById('keyScaleType').value=p.editor.scale;
   const rows=_keyRows(),rh=_keyRowH(),rowOf=new Map(rows.map((r,k)=>[r,k*rh]));if(cv.width!==width)cv.width=width;if(cv.height!==rows.length*rh)cv.height=rows.length*rh;
@@ -8185,7 +8192,7 @@ async function _keyUpdate(change){
   catch(e){if(_keyTarget===i)status.textContent='生成失敗：'+e.message;}
 }
 async function _keyAudition(pitch,velocity=96){
-  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch,beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
+  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch:pitch+keyTranspose(tracks[target]),beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
 }
 function _keyPoint(e,canvas){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 // スマホ（指）：何も無い所・鍵盤を指で動かす＝スクロール、動かさずに離す＝そこへノート（v0.3.193 §181「スマホでピアノロールがスクロールしない」）
@@ -8470,7 +8477,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.212";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.213";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

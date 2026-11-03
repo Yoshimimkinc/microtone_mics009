@@ -1,6 +1,6 @@
 // @module audio/key-instrument
-// @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyWarmTimer, keyApplyEffects, keyTineNote,
-//    prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
+// @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyShifted, _keyWarmTimer, keyApplyEffects,
+//    keySignatureOf, keyTineNote, keyTranspose, prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
 // @uses bpmVal, normalizeKeyPhrase, sampNameEl, tracks
 // @depends -
 const _keyCache=new Map(), _keyDryCache=new Map(), _keyJobs=new WeakMap(), _keyBuffers=new WeakSet();
@@ -104,13 +104,18 @@ function renderKeyPhrase(src,bpm){
   _keyCache.set(key,job);while(_keyCache.size>12)_keyCache.delete(_keyCache.keys().next().value);
   job.catch(()=>{if(_keyCache.get(key)===job)_keyCache.delete(key);});return job;
 }
+// v0.3.213 §202：KEY のパッドの PITCH（t.tune、半音）は音符を移して作る＝テンポは変わらない（サンプルのように引き伸ばさない）。
+// エディタの試し弾き・鍵盤・ループも同じ高さになる。読み込みの印（_keySignature）にも PITCH を入れる
+function keyTranspose(t){return Math.max(-24,Math.min(24,Math.round(+t?.tune||0)));}
+function keySignatureOf(t,bpm){return JSON.stringify([normalizeKeyPhrase(t.keyPhrase),bpm,keyTranspose(t)]);}
+function _keyShifted(phrase,tr){return tr?{...phrase,notes:phrase.notes.map(n=>({...n,pitch:n.pitch+tr}))}:phrase;}
 async function prepareKeyTrack(t,bpm){
-  const phrase=normalizeKeyPhrase(t.keyPhrase), signature=JSON.stringify([phrase,bpm]);
+  const phrase=normalizeKeyPhrase(t.keyPhrase), tr=keyTranspose(t), signature=keySignatureOf(t,bpm);
   if(t.padKind!=='KEY')return null;
   if(t._keySignature===signature&&t.buffer&&_keyBuffers.has(t.buffer))return t.buffer;
   const token={},epoch=t._contentEpoch||0;_keyJobs.set(t,token);
-  const buffer=await renderKeyPhrase(phrase,bpm);
-  if(_keyJobs.get(t)!==token||t.padKind!=='KEY'||(t._contentEpoch||0)!==epoch||JSON.stringify([normalizeKeyPhrase(t.keyPhrase),bpm])!==signature)return null;
+  const buffer=await renderKeyPhrase(_keyShifted(phrase,tr),bpm);
+  if(_keyJobs.get(t)!==token||t.padKind!=='KEY'||(t._contentEpoch||0)!==epoch||keySignatureOf(t,bpm)!==signature)return null;
   _keyBuffers.add(buffer);
   t.keyPhrase=phrase;t.buffer=buffer;t.rawBuffer=buffer;const spb=60/Math.max(40,Math.min(250,+bpm||100));t.start=Math.min(1,phrase.range.start*spb/buffer.duration);t.end=phrase.range.end==null?1:Math.min(1,phrase.range.end*spb/buffer.duration);t.loop=false;   /* START / END（v0.3.212 §201） */
   t.loopStart=0;t._keySignature=signature;

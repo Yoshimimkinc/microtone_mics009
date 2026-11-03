@@ -2,7 +2,7 @@
 // @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
 //    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
-//    liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, normalizeKeyPhrase, outBGain, paintSteps,
+//    keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps,
 //    pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording, reverbPre,
 //    sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen, tapeEcho, tracks,
 //    vuHit
@@ -125,7 +125,7 @@ function getPitchedRegion(t, semi, aN=0, bN=1){
 const _warmT={};
 function warmPitch(i){
   clearTimeout(_warmT[i]);
-  _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.buffer&&t.tune) try{ const s=t.start||0; getPitchedRegion(t, t.tune, t.loop?Math.min(s, t.loopStart||0):s, t.end??1); }catch(_){ } },150);
+  _warmT[i]=setTimeout(()=>{ const t=tracks[i]; if(t&&t.padKind==="KEY"){ prepareKeyTrack(t,bpmVal).catch(()=>{}); return; } if(t&&t.buffer&&t.tune) try{ const s=t.start||0; getPitchedRegion(t, t.tune, t.loop?Math.min(s, t.loopStart||0):s, t.end??1); }catch(_){ } },150);
 }
 // 1ヒット発音
 // trs：鳴らすセットのトラック列（既定＝いまのセット。SET のミックスで他のセットを鳴らすときは snapshot の列 v0.3.147）
@@ -133,7 +133,8 @@ function warmPitch(i){
 function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=null){
   const t = trs[i];
   if(!t) return;
-  if(t.padKind==="KEY"){const k=JSON.stringify([normalizeKeyPhrase(t.keyPhrase),(trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal))]);if(t._keySignature!==k||!_keyBuffers.has(t.buffer)){prepareKeyTrack(t,trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal)).catch(()=>{});if(!fromSeq)sampNameEl.textContent="KEY生成中 — もう一度タップ";return;}}
+  // KEY：PITCH も含めた印で最新かを見る。古くても KEY の音なら鳴らしながら作り直す（PITCH や BPM を動かした直後に音が抜けない、v0.3.213）。KEY の音でなければ鳴らさない
+  if(t.padKind==="KEY"){const kb=trs===tracks?bpmVal:((setSlots[setIndexOfTrs(trs)]||{}).bpm||bpmVal);if(t._keySignature!==keySignatureOf(t,kb)||!_keyBuffers.has(t.buffer)){prepareKeyTrack(t,kb).catch(()=>{});if(!_keyBuffers.has(t.buffer)){if(!fromSeq)sampNameEl.textContent="KEY生成中 — もう一度タップ";return;}}}
   if(!t.buffer) return;
   if(!t.activeVoices) t.activeVoices=[];
   // シーケンサー由来はmute/soloを尊重。手叩き（fromSeq=false）は常に鳴らす＝演奏感
@@ -145,7 +146,7 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
 
   // p-lock: pitch(半音)を加算 → ドロップサンプル(最近傍)でピッチをバッファに焼き込み、再生は等倍（補間ゼロ）
   const lkPitch = 0; // 旧ファイル／呼出元のステップ値では上書きしない
-  const semi = t.tune + (noteSemi||0) + lkPitch;
+  const semi = (t.padKind==="KEY"?0:t.tune) + (noteSemi||0) + lkPitch;   // KEY の PITCH は音符で移してある（v0.3.213）
   const sN = Math.min(0.999, Math.max(0, fromN!=null ? fromN : t.start));
   const eN = Math.min(1, Math.max(sN+0.001, t.end));
   const lsN = t.loop ? Math.min(eN-0.001, Math.max(0, t.loopStart)) : sN;

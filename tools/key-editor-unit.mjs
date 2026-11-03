@@ -185,6 +185,11 @@ el('keyPreview').click();check('pressing PLAY again stops the loop',()=>assert.e
  check('CHOP cuts only inside START / END',()=>{assert.equal(JSON.stringify(context.keyChopBeats(p,'chord')),'[4,8]');assert.equal(JSON.stringify(context.keyChopBeats(p,'beat')),'[4,5,6,7,8,9,10,11]');});
  check('CHOP never overwrites the KEY pad: right side, else left side, else the larger side',()=>{assert.equal(JSON.stringify(context.keyChopLayout(4,4)),'{"anchor":5,"N":4}');assert.equal(JSON.stringify(context.keyChopLayout(14,4)),'{"anchor":10,"N":4}');assert.equal(JSON.stringify(context.keyChopLayout(7,16)),'{"anchor":8,"N":8}');assert.equal(JSON.stringify(context.keyChopLayout(10,16)),'{"anchor":0,"N":10}');});
  run('_keyLoop={rs:4,beats:8,t0:0,next:99,click:99}');context.AC.currentTime=.6*9.5;check('the loop clock runs from START',()=>assert.ok(Math.abs(run('_keyLoopBeat()')-5.5)<1e-9));run('_keyLoop=null');context.AC.currentTime=0;}
+// v0.3.213 §202：KEY のパッドの PITCH は音符で移す＝テンポ（長さ）は変わらない・印に PITCH が入る・エディタの試し弾きも同じ高さ
+{const ph={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:100}]},t0={padKind:'KEY',tune:0,keyPhrase:ph},t5={padKind:'KEY',tune:5,keyPhrase:ph};
+ const b0=await context.prepareKeyTrack(t0,100),b5=await context.prepareKeyTrack(t5,100),ref=await context.renderKeyPhrase({bars:1,notes:[{pitch:65,beat:0,length:1,velocity:100}]},100);
+ check('KEY PITCH moves the notes and keeps the tempo',()=>{assert.equal(b5.length,b0.length);assert.deepEqual([...b5.getChannelData(0).slice(0,3000)],[...ref.getChannelData(0).slice(0,3000)]);});
+ check('the KEY readiness stamp includes PITCH',()=>{assert.notEqual(t0._keySignature,t5._keySignature);t5.tune=7;assert.notEqual(context.keySignatureOf(t5,100),t5._keySignature);});}
 // v0.3.207 §196：CHORDS＝定番の進行のプリセット。どのキーでも正しいフレーズ・いまの KEY へ移す・SCALE も合わせる・UNDO 1 回で戻る
 check('every chord preset is a valid phrase in every key',()=>{for(const p of run('KEY_PRESETS'))for(const r of [0,2,5,6,11]){const q=context.keyPresetPhrase(p.id,r),n=context.normalizeKeyPhrase({bars:q.bars,notes:q.notes});assert.equal(n.notes.length,q.notes.length,p.id+' '+r);assert.ok(q.notes.every(x=>x.pitch>=28&&x.pitch<=84&&x.beat+x.length<=q.bars*4+1e-9),p.id+' '+r);}});
 check('the preset menu lists every progression',()=>{const groups=el('keyChordPreset').children.filter(c=>c.label!==undefined||c.children.length);assert.equal(groups.reduce((s,g)=>s+g.children.length,0),run('KEY_PRESETS.length'));});
@@ -231,6 +236,6 @@ check('KEY pad drawing bypasses waveform sampling',()=>context.drawPadWave(0));
 // The rest of the voice graph must never be reached for an old SPL buffer.
 const voiceText=fs.readFileSync(new URL('21-voice.js',base),'utf8'),voiceGuard=voiceText.slice(voiceText.indexOf('function playVoice('),voiceText.indexOf('function hitVoice('));
 let repairRequests=0;const badTrack={padKind:'KEY',buffer:sample,keyPhrase:context.normalizeKeyPhrase({notes:[]})};badTrack._keySignature=JSON.stringify([badTrack.keyPhrase,100]);
-const guardContext={tracks:[badTrack],bpmVal:100,normalizeKeyPhrase:context.normalizeKeyPhrase,_keyBuffers:new WeakSet(),prepareKeyTrack:()=>{repairRequests++;return Promise.resolve(null);},sampNameEl:{textContent:''},liveCompDuck:()=>{throw Error('stale SPL reached voice playback');}};vm.createContext(guardContext);vm.runInContext(voiceGuard,guardContext);
+const guardContext={tracks:[badTrack],bpmVal:100,normalizeKeyPhrase:context.normalizeKeyPhrase,keySignatureOf:context.keySignatureOf,_keyBuffers:new WeakSet(),prepareKeyTrack:()=>{repairRequests++;return Promise.resolve(null);},sampNameEl:{textContent:''},liveCompDuck:()=>{throw Error('stale SPL reached voice playback');}};vm.createContext(guardContext);vm.runInContext(voiceGuard,guardContext);
 check('live and sequenced playback reject SPL with a stale KEY signature',()=>{guardContext.playVoice(0,0,false,false);guardContext.playVoice(0,0,false,true);assert.equal(repairRequests,2);});
 console.log('All '+passed+' checks passed.');
