@@ -6,7 +6,7 @@
 // @uses AC, PADS, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar, getPlayPattern,
 //    isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot, patSwitchMode, playBar, playPat,
 //    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, stepIdx, stopAllVoices, stopVoices,
-//    swingPct, switchSetNow, tracks
+//    swingPct, switchSetNow, tracks, wakeSync
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -104,6 +104,7 @@ function startTransport(){
   barStartTime=AC.currentTime+0.005;
   schedTimer=setInterval(scheduler, INTERVAL);
   scheduler();
+  wakeSync();   // 再生中は画面をスリープさせない（audio/lifecycle、v0.3.209）
 }
 // keepVoices：SET のミックスで、いまのセットを「他のセットの再生」へ引き継ぐとき（audio/set-players の sideTakeCurrent）は音を止めない
 function stopTransport(keepVoices){

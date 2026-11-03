@@ -6,7 +6,7 @@
 //    _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
-//    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks
+//    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks, wakeSync
 // @depends data/key-presets
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
@@ -106,6 +106,7 @@ async function _keyLoopStart(){
   const beats=_keyPhrase().bars*4;
   _keyLoop={target:i,t0:AC.currentTime+.06,beats,len:beats*_keyBeatSec(),out,next:0,click:0,nodes:new Set(),timer:0,raf:0};
   _keyLoopTick();_keyLoop.timer=setInterval(_keyLoopTick,25);_keyLoop.raf=requestAnimationFrame(_keyPlayheadFrame);_keyEntryPaint();
+  if(typeof wakeSync==='function')wakeSync();   // ループ中も画面をスリープさせない（v0.3.209）
 }
 function _keyLoopStop(keepRec=false){
   const L=_keyLoop;if(!L)return;_keyLoop=null;clearInterval(L.timer);cancelAnimationFrame(L.raf);
