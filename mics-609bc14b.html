@@ -1385,11 +1385,26 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 #keyNotePanel{position:relative}
 .key-extra{position:absolute;top:50px;left:0;right:0;z-index:6;max-height:calc(100% - 56px);overflow:auto;border:1px solid var(--line);border-radius:6px;padding:6px;background:var(--bg,#14181d);box-shadow:0 10px 24px #0008}
 .key-extra[hidden]{display:none}
-.key-panel .key-preset{flex:1 1 100%}.key-panel .key-preset select{max-width:none;width:100%}
-.key-extra .content-tools{align-items:end;margin:4px 0}
+/* v0.3.210 §199：MORE ＝ ページのタブ＋大きなボタンの格子（ドロップダウンを使わない） */
+.key-extra:not([hidden]){display:flex;flex-direction:column;gap:6px;padding:8px}
+.key-more-head{flex:0 0 auto;display:flex;gap:6px;align-items:stretch}
+.key-more-tabs{flex:1 1 auto;min-width:0;display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.key-panel .key-more-tabs button{flex:1 1 0;min-width:0;border:0;border-radius:0;padding:6px 2px;font-size:11px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
+.key-more-tabs [aria-selected=true]{background:var(--teal,#3dd6c4);color:#101719}
+.key-panel #keyMoreClose{flex:0 0 auto;font-size:11px}
+.key-more-page{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
+.key-more-page[hidden],.key-native[hidden]{display:none}
+.key-more-label{font-size:10px;letter-spacing:.08em;opacity:.8;margin-top:4px}
+.key-panel .key-more-note{font-size:11px;margin:0;opacity:.8;line-height:1.4}
+.key-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+.key-root-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+.key-chord-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.key-panel .key-grid button{min-height:44px;min-width:0;padding:6px 4px;font-weight:700}
+.key-panel .key-chord-grid button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:6px 8px;text-align:left}
+.key-chord-grid small{font-size:10px;font-weight:400;opacity:.8;letter-spacing:0}
+.key-fields button{flex:0 0 auto;align-self:end}
+.key-extra .content-tools{align-items:end;margin:0}
 .key-extra label{display:flex;flex-direction:column;gap:3px;font-size:10px;letter-spacing:.05em}
-.key-panel input#keyBars{width:64px}
-.key-extra #keyDragMode{width:125px}
 .key-panel .key-zoom{flex:1;min-width:100px;max-width:200px}.key-zoom input{width:100%;padding:0}
 .key-panel .content-import{margin:0}.key-panel .content-import input{max-width:100%;width:260px}
 .key-work{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px}
@@ -1425,12 +1440,13 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
  .key-pads{width:min(340px,34%);min-height:0}
  .key-pad-grid{flex:1 1 auto;min-height:0;grid-template-rows:repeat(4,minmax(40px,1fr))}
 }
-@media(max-width:380px){.key-panel .key-bar button{font-size:10px;letter-spacing:0;padding:6px 2px}}
+@media(max-width:380px){.key-panel .key-bar button,.key-panel .key-more-tabs button{font-size:10px;letter-spacing:0;padding:6px 2px}}
 @media(max-width:600px){
  #keyEditor{padding:max(6px,env(safe-area-inset-top)) 6px max(6px,env(safe-area-inset-bottom))}#keyEditor .key-panel{padding:8px;border-radius:8px;gap:5px}   /* v0.3.207：ノッチ／ダイナミックアイランドの下に上端が潜らない（6px だけにするとセーフエリアが消えていた） */
  .key-panel button{font-size:11px;padding:6px 8px}.key-panel select{max-width:154px}
  .key-panel .key-tabs button{min-width:64px;padding:6px 8px}
  .key-panel #keySelectionInfo{display:none}
+ .key-panel .key-fields{gap:4px}.key-panel .key-fields button{font-size:10px;padding:6px 5px}.key-panel .key-fields label{font-size:9px;letter-spacing:0}
 }
 /* SOUND ページ */
 .key-sound-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:16px 2px;font-size:12px;letter-spacing:.04em}
@@ -1492,7 +1508,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.209</div>
+  <div class="s-ver" id="splashVer">v0.3.210</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1735,15 +1751,30 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
  <div id="keyNotePanel" role="tabpanel" aria-labelledby="keyTabNotes">
  <!-- v0.3.205 §194（B）：道具は 1 段だけ。他は MORE の中、説明文は無し（一言は下の状態表示）。ロールが残りの高さを全部使う -->
  <div class="content-tools key-bar"><button id="keyPreview" aria-pressed="false">▶ PLAY</button><button id="keyRec" aria-pressed="false">● REC</button><button id="keyStep" aria-pressed="false">STEP</button><button id="keyUndo">↶ UNDO</button><button id="keyScaleOn" aria-pressed="true">SCALE</button><button id="keyMore" aria-expanded="false" aria-controls="keyExtra">MORE</button></div>
+ <!-- v0.3.210 §199：MORE ＝ 4 つのページ（CHORDS / KEY・SCALE / EDIT / VIEW）。選ぶ物は全部大きなボタン（ドロップダウンを使わない）。外側をタップで閉じる -->
  <div id="keyExtra" class="key-extra" hidden>
-  <div class="content-tools key-preset-row"><label class="key-preset">CHORDS · 定番の進行を入れる（いまの KEY で・UNDO で戻せる）<select id="keyChordPreset" aria-label="コード進行のプリセット"><option value="">進行を選ぶ…</option></select></label></div>
-  <div class="content-tools"><label>KEY<select id="keyScaleRoot" aria-label="スケールのルート"></select></label><label>SCALE<select id="keyScaleType" aria-label="スケールの種類"><option value="major">Major</option><option value="minor">Minor</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="pentatonic">Major pentatonic</option><option value="minorPentatonic">Minor pentatonic</option><option value="chromatic">Chromatic</option></select></label><label>BARS <input id="keyBars" type="number" min="1" max="4" value="1"></label><button id="keySnap" aria-pressed="true">SNAP 1/16 ON</button><button id="keyVelShow" aria-pressed="false">VELOCITY OFF</button><button id="keyPadsShow" aria-pressed="true">KEYBOARD ON</button></div>
-  <div class="content-tools"><label>TOOL<select id="keyDragMode" aria-label="ノートのドラッグ操作"><option value="auto">Auto</option><option value="move">Move</option><option value="right">Length / End</option><option value="left">Start</option><option value="velocity">Velocity</option></select></label><button id="keyNav" aria-pressed="false">SCROLL OFF</button><button id="keyMulti" aria-pressed="false">MULTI OFF</button><button id="keySelectAll">SELECT ALL</button><button id="keyDuplicate">DUPLICATE</button><button id="keyDelete">DELETE</button></div>
-  <div class="content-tools"><button id="keyOctaveDown" aria-label="ロールの表示を1オクターブ下へ">ROLL OCTAVE −</button><button id="keyOctaveUp" aria-label="ロールの表示を1オクターブ上へ">ROLL OCTAVE ＋</button><button id="keyFit">FIT</button><label class="key-zoom">ZOOM <input id="keyZoom" type="range" min="32" max="384" step="1" value="128"></label><label class="content-import">IMPORT MIDI <input id="keyMidiFile" type="file" accept=".mid,.midi,audio/midi"></label></div><div id="keyMidiTracks" class="content-tools"></div>
+  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY · SCALE</button><button data-more-tab="edit" role="tab">EDIT</button><button data-more-tab="view" role="tab">VIEW</button></div><button id="keyMoreClose">CLOSE</button></div>
+  <div class="key-more-page" data-more-page="chords"><p class="key-more-note">いまの KEY で入って、すぐループで鳴ります（いまのノートは置き換え・UNDO で戻せる）</p><div id="keyChordList" class="key-chord-list"></div></div>
+  <div class="key-more-page" data-more-page="key" hidden>
+   <b class="key-more-label">KEY（主音）</b><div id="keyRootGrid" class="key-grid key-root-grid"></div>
+   <b class="key-more-label">SCALE</b><div class="key-grid key-scale-grid"><button data-scale="major">Major</button><button data-scale="minor">Minor</button><button data-scale="dorian">Dorian</button><button data-scale="mixolydian">Mixolydian</button><button data-scale="pentatonic">Major pentatonic</button><button data-scale="minorPentatonic">Minor pentatonic</button><button data-scale="chromatic">Chromatic</button></div>
+   <b class="key-more-label">BARS · GRID</b><div class="key-grid key-bars-grid"><button data-bars="1">1 BAR</button><button data-bars="2">2 BARS</button><button data-bars="3">3 BARS</button><button data-bars="4">4 BARS</button><button id="keySnap" aria-pressed="true">SNAP 1/16 ON</button></div>
+  </div>
+  <div class="key-more-page" data-more-page="edit" hidden>
+   <b class="key-more-label">ドラッグでする事（TOOL）</b><div class="key-grid key-tool-grid"><button data-tool="auto">Auto</button><button data-tool="move">Move</button><button data-tool="right">Length</button><button data-tool="left">Start</button><button data-tool="velocity">Velocity</button></div>
+   <b class="key-more-label">選ぶ・動かす</b><div class="key-grid"><button id="keySelectAll">SELECT ALL</button><button id="keyMulti" aria-pressed="false">MULTI OFF</button><button id="keyNav" aria-pressed="false">SCROLL OFF</button></div>
+   <b class="key-more-label">読み込み</b><label class="content-import">IMPORT MIDI <input id="keyMidiFile" type="file" accept=".mid,.midi,audio/midi"></label><div id="keyMidiTracks" class="content-tools"></div>
+  </div>
+  <div class="key-more-page" data-more-page="view" hidden>
+   <b class="key-more-label">出す・しまう</b><div class="key-grid"><button id="keyVelShow" aria-pressed="false">VELOCITY OFF</button><button id="keyPadsShow" aria-pressed="true">KEYBOARD ON</button></div>
+   <b class="key-more-label">ロールの表示</b><div class="key-grid"><button id="keyOctaveDown" aria-label="ロールの表示を1オクターブ下へ">OCTAVE −</button><button id="keyOctaveUp" aria-label="ロールの表示を1オクターブ上へ">OCTAVE ＋</button><button id="keyFit">FIT</button></div>
+   <label class="key-zoom">ZOOM <input id="keyZoom" type="range" min="32" max="384" step="1" value="128"></label>
+  </div>
+  <div class="key-native" hidden><select id="keyChordPreset" aria-label="コード進行のプリセット"><option value="">進行を選ぶ…</option></select><select id="keyScaleRoot" aria-label="スケールのルート"></select><select id="keyScaleType" aria-label="スケールの種類"><option value="major">Major</option><option value="minor">Minor</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="pentatonic">Major pentatonic</option><option value="minorPentatonic">Minor pentatonic</option><option value="chromatic">Chromatic</option></select><input id="keyBars" type="number" min="1" max="4" value="1"><select id="keyDragMode" aria-label="ノートのドラッグ操作"><option value="auto">Auto</option><option value="move">Move</option><option value="right">Length / End</option><option value="left">Start</option><option value="velocity">Velocity</option></select></div>
  </div>
  <div class="key-work"><div class="key-left">
  <div id="keyHorizontal" class="key-horizontal"><div class="key-inner"><canvas id="keyRuler" aria-label="小節と拍。STEP のときはタップで入れる位置"></canvas><div class="key-scroll"><canvas id="keyRoll" tabindex="0" aria-label="ピアノロール。ノートの移動と両端の長さ変更"></canvas></div><canvas id="keyVelocityRoll" tabindex="0" aria-label="ベロシティ。マーカーを上下にドラッグして強弱を編集" hidden></canvas><span id="keyPlayhead" class="key-playhead" hidden></span><span id="keyStepCursor" class="key-stepcursor" hidden></span></div></div>
- <div class="content-tools key-fields" id="keyFields" hidden><span id="keySelectionInfo" role="status">ノートを追加</span><label>NOTE <input id="keyPitch" type="number" min="21" max="108"></label><label>START (beats)<input id="keyBeat" type="number" min="0" max="15.99" step="0.0104166667"></label><label>LENGTH (beats)<input id="keyLength" type="number" min="0.0104166667" max="16" step="0.0104166667"></label><label>VELOCITY <input id="keyVelocity" type="number" min="1" max="127"></label></div>
+ <div class="content-tools key-fields" id="keyFields" hidden><span id="keySelectionInfo" role="status">ノートを追加</span><button id="keyDuplicate">DUPLICATE</button><button id="keyDelete">DELETE</button><label>NOTE <input id="keyPitch" type="number" min="21" max="108"></label><label>START (beats)<input id="keyBeat" type="number" min="0" max="15.99" step="0.0104166667"></label><label>LENGTH (beats)<input id="keyLength" type="number" min="0.0104166667" max="16" step="0.0104166667"></label><label>VELOCITY <input id="keyVelocity" type="number" min="1" max="127"></label></div>
  </div>
  <!-- v0.3.205 §194（A）：スケールの鍵盤 4×4（左下が一番低い）。弾く＝試し弾き、REC＝ループしながら録音、STEP＝カーソルの位置へ入れて 1 マス進む -->
  <div id="keyPads" class="key-pads"><div class="key-pads-head"><button id="keyPadsDown" aria-label="鍵盤を1オクターブ下へ">OCTAVE −</button><span id="keyPadsRange">C3–D5</span><button id="keyPadsUp" aria-label="鍵盤を1オクターブ上へ">OCTAVE ＋</button><button id="keyStepBack" class="key-step-only">◀ BACK</button><button id="keyStepRest" class="key-step-only">REST ▶</button></div><div id="keyPadGrid" class="key-pad-grid" role="group" aria-label="スケールの鍵盤"></div></div>
@@ -7671,14 +7702,15 @@ function scratchShow(i){
 })();
 // @module ui/key-entry
 // @provides _keyAllNotesOff, _keyBeatSec, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer,
-//    _keyLiveCache, _keyLoop, _keyLoopBeat, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyNoteName,
-//    _keyNoteOff, _keyNoteOn, _keyPadLow, _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame,
-//    _keyPref, _keyPutNote, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove,
-//    _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyEntryClose, keyEntryOpen
+//    _keyLiveCache, _keyLoop, _keyLoopBeat, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
+//    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
+//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRecCommit,
+//    _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads,
+//    keyApplyPreset, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks, wakeSync
-// @depends data/key-presets
+// @depends data/key-presets, plock-undo
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
 // STEP＝鍵盤を押すたびにカーソルの位置へ 1/16 の音を入れ、全部離したら 1 マス進む（同時に押せば和音）。
@@ -7797,8 +7829,19 @@ function _keyEntryPaint(){
   document.getElementById('keyPadsRange').textContent=pads.length?_keyNoteName(pads[0])+'–'+_keyNoteName(pads.at(-1))+(e.scaleEnabled?' · '+NOTE_NAMES[e.root]+' '+document.querySelector('#keyScaleType option[value="'+e.scale+'"]')?.textContent:''):'';
   document.getElementById('keyPads').classList.toggle('stepping',_keyStepOn);
   const cur=document.getElementById('keyStepCursor');cur.hidden=!_keyStepOn;cur.style.transform='translateX('+(58+_keyStepAt*_keyZoom)+'px)';cur.style.width=Math.max(3,_keyZoom/4)+'px';
-  _keyPadsLit();
+  _keyPadsLit();_keyMorePaint();
 }
+// v0.3.210 §199：MORE のページ（CHORDS / KEY・SCALE / EDIT / VIEW）。最後に開いたページを端末ごとに覚える。押されている物＝いまの値
+let _keyMoreTab=(()=>{try{return localStorage.getItem('mics.keyMoreTab')||'chords';}catch(_){return 'chords';}})();
+function _keyMoreTabSet(tab){_keyMoreTab=tab;try{localStorage.setItem('mics.keyMoreTab',tab);}catch(_){}_keyMorePaint();}
+function _keyMorePaint(){
+  if(_keyTarget<0)return;const p=_keyPhrase(),e=p.editor,tool=document.getElementById('keyDragMode').value||'auto';
+  document.querySelectorAll('#keyExtra [data-more-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.moreTab===_keyMoreTab)));
+  document.querySelectorAll('#keyExtra [data-more-page]').forEach(pg=>pg.hidden=pg.dataset.morePage!==_keyMoreTab);
+  for(const [sel,key,val] of [['[data-root]','root',String(e.root)],['[data-scale]','scale',e.scale],['[data-bars]','bars',String(p.bars)],['[data-tool]','tool',tool]])
+    document.querySelectorAll('#keyExtra '+sel).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[key]===val)));
+}
+function _keyNativeSet(id,value){const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('change'));}
 function _keyPadsLit(){const held=new Set([..._keyLive.values()].map(v=>v.pitch));document.querySelectorAll('#keyPadGrid .key-pad').forEach(b=>b.classList.toggle('on',held.has(+b.dataset.pitch)&&b.dataset.pitch!==''));}
 function keyEntryOpen(){
   _keyAllNotesOff();_keyRecOn=false;_keyStepOn=false;_keyStepAt=0;
@@ -7819,6 +7862,24 @@ async function keyApplyPreset(id){
 }
 function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keyStepOn=false;}
 (function(){
+  // MORE：進行のボタン（グループごと）・主音 12 個。押した物は隠れた入力（KEY / SCALE / BARS / TOOL）へ渡す＝処理は 1 か所
+  const list=document.getElementById('keyChordList'),roots=document.getElementById('keyRootGrid');
+  for(const g of [...new Set(KEY_PRESETS.map(p=>p.group))]){const h=document.createElement('b');h.className='key-more-label';h.textContent=g;list.appendChild(h);const box=document.createElement('div');box.className='key-grid key-chord-grid';
+    for(const p of KEY_PRESETS.filter(x=>x.group===g)){const b=document.createElement('button');b.type='button';b.dataset.preset=p.id;const nm=document.createElement('span'),dg=document.createElement('small');nm.textContent=p.name;dg.textContent=p.degrees;b.appendChild(nm);b.appendChild(dg);box.appendChild(b);}list.appendChild(box);}
+  NOTE_NAMES.forEach((n,k)=>{const b=document.createElement('button');b.type='button';b.dataset.root=k;b.textContent=n;roots.appendChild(b);});
+  document.getElementById('keyExtra').addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+    if(d.moreTab)_keyMoreTabSet(d.moreTab);
+    else if(d.preset){_keyMoreShow(false);keyApplyPreset(d.preset);}
+    else if(d.root!==undefined)_keyNativeSet('keyScaleRoot',d.root);
+    else if(d.scale)_keyNativeSet('keyScaleType',d.scale);
+    else if(d.bars)_keyNativeSet('keyBars',d.bars);
+    else if(d.tool){_keyNativeSet('keyDragMode',d.tool);_keyMorePaint();}
+  });
+  document.getElementById('keyMoreClose').addEventListener('click',()=>_keyMoreShow(false));
+  // MORE が開いている間に外側を触った＝閉じる。ロール・鍵盤なら閉じるだけ（その場所にノートを置かない・鳴らさない）
+  // （名前の段・道具の段のボタンはそのまま働く。ロールと鍵盤への指は閉じるだけに使う）
+  document.querySelector('#keyEditor .key-panel').addEventListener('pointerdown',e=>{if(document.getElementById('keyExtra').hidden||e.target.closest('#keyExtra,#keyMore'))return;_keyMoreShow(false);if(e.target.closest('#keyHorizontal,#keyPads')){e.preventDefault();e.stopPropagation();}},true);
   const preset=document.getElementById('keyChordPreset');
   for(const g of [...new Set(KEY_PRESETS.map(p=>p.group))]){const og=document.createElement('optgroup');og.label=g;for(const p of KEY_PRESETS.filter(x=>x.group===g)){const o=document.createElement('option');o.value=p.id;o.textContent=p.name+' · '+p.degrees;og.appendChild(o);}preset.appendChild(og);}
   preset.addEventListener('change',()=>{const id=preset.value;preset.value='';if(!id)return;_keyMoreShow(false);keyApplyPreset(id);});
@@ -8294,7 +8355,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.209";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.210";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
