@@ -1,5 +1,5 @@
 // @module data/pads
-// @provides chopBaseName, clearPadSound, copyPadSound, nextChokeGroup, swapPads
+// @provides chopBaseName, chopKeyToPads, clearPadSound, copyPadSound, nextChokeGroup, swapPads
 // @uses AC, PADS, normalizeKeyPhrase, patSync, pushUndo, stopVoices, tracks
 // @depends -
 // ---------- パッドのデータ更新：コピー・スライス名・チョークグループの発行 ----------
@@ -8,6 +8,20 @@
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
 // CHOPPYスライスの基準名（末尾の連番は剥がす＝再チョップでも増殖しない）
 function chopBaseName(i){ return (tracks[i].name||PADS[i].name||"").replace(/\s*\d+$/,"").trim()||"SLICE"; }
+// v0.3.211 §200：KEY のフレーズを切ってパッドへ（SAMPLE の CHOP と同じ並べ方＝KEY のパッドから右へ、収まらなければ左へずらす。全スライス同じチョーク）。
+// buffer は KEY の音を写した波形、bounds は 0..1 の切れ目（N+1 個）。データだけ書く。KEY のパッドも SAMPLE になるが打ち込み（keyPhrase）は残す＝窓の KEY で戻せる
+function chopKeyToPads(i,buffer,bounds){
+  const N=bounds.length-1, anchor=Math.max(0,Math.min(i,16-N)), src=tracks[i], base=chopBaseName(i), grp=nextChokeGroup;
+  nextChokeGroup = nextChokeGroup>=8 ? 2 : nextChokeGroup+1;
+  const snap={tune:src.tune,filter:src.filter,cutoff:src.cutoff,reso:src.reso,vol:src.vol};
+  for(let k=0;k<N;k++){
+    const idx=anchor+k, d=tracks[idx];
+    d.padKind="SPL"; d._keySignature=null; d._contentEpoch=(d._contentEpoch||0)+1; d.loopPlaying=false;
+    Object.assign(d,snap,{buffer,rawBuffer:buffer,loop:false,loopStart:0,start:bounds[k],end:Math.max(bounds[k]+0.0005,bounds[k+1]),choke:grp,name:base+" "+(k+1)});
+    PADS[idx].type="sample"; PADS[idx].voice=null;
+  }
+  return {anchor,N};
+}
 function copyPadSound(src,dst){
   pushUndo();
   if(typeof patSync==="function") patSync();   // 写す前に live を今のパターンへ書き戻す（エフェクトは A B C D ごと v0.3.150）

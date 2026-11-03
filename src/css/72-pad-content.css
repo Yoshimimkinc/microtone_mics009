@@ -48,6 +48,7 @@
 .key-panel .key-chord-grid button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:6px 8px;text-align:left}
 .key-chord-grid small{font-size:10px;font-weight:400;opacity:.8;letter-spacing:0}
 .key-fields button{flex:0 0 auto;align-self:end}
+.key-panel .key-chop-apply{min-height:48px;font-weight:800;color:var(--amber,#f0a030);border-color:var(--amber,#f0a030)}.key-panel .key-chop-apply:disabled{opacity:.4}
 .key-extra .content-tools{align-items:end;margin:0}
 .key-extra label{display:flex;flex-direction:column;gap:3px;font-size:10px;letter-spacing:.05em}
 .key-panel .key-zoom{flex:1;min-width:100px;max-width:200px}.key-zoom input{width:100%;padding:0}
