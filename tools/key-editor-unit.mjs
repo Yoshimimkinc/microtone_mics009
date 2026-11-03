@@ -18,7 +18,7 @@ const context={console,Float32Array,Uint8Array,DataView,TextDecoder,Math,Number,
  refreshPadDisplay:noop,scheduleAutosave:noop,scratchClose:noop,sampNameEl:{},paintPerf:noop,stopVoices:noop,previewVoiceFrom:noop,trigger:noop};
 vm.createContext(context);
 const base=new URL('../src/js/',import.meta.url);
-for(const file of ['data/key-phrase.js','audio/key-instrument.js','ui/key-entry.js','ui/pad-content.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
+for(const file of ['data/key-phrase.js','data/key-presets.js','audio/key-instrument.js','ui/key-entry.js','ui/pad-content.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
 const run=code=>vm.runInContext(code,context),flush=async()=>{await new Promise(r=>setTimeout(r,0));};
 const phrase=()=>context.tracks[0].keyPhrase;
 const ev=(id,type,x,y,extra={})=>{const e={currentTarget:el(id),target:el(id),clientX:x,clientY:y,pointerId:1,pointerType:'mouse',button:0,preventDefault:noop,stopImmediatePropagation:noop,...extra};for(const f of el(id).listeners[type]||[])f(e);};
@@ -155,6 +155,15 @@ el('keyPreview').click();check('pressing PLAY again stops the loop',()=>assert.e
  check('REC wraps a note pressed at the very end to the loop start',()=>assert.ok(phrase().notes.some(n=>n.pitch===52&&n.beat===0&&n.length===.75),JSON.stringify(phrase().notes)));
  run('_keyLoopStop()');check('stopping the loop also ends REC',()=>{assert.equal(run('_keyLoop'),null);assert.equal(run('_keyRecOn'),false);});
  context.AC.currentTime=0;run('keyEditorClose()');check('closing the editor releases held keys and stops entry modes',()=>{assert.equal(run('_keyLive.size'),0);assert.equal(run('_keyStepOn'),false);});
+ run('keyEditorOpen(0)');}
+// v0.3.207 §196：CHORDS＝定番の進行のプリセット。どのキーでも正しいフレーズ・いまの KEY へ移す・SCALE も合わせる・UNDO 1 回で戻る
+check('every chord preset is a valid phrase in every key',()=>{for(const p of run('KEY_PRESETS'))for(const r of [0,2,5,6,11]){const q=context.keyPresetPhrase(p.id,r),n=context.normalizeKeyPhrase({bars:q.bars,notes:q.notes});assert.equal(n.notes.length,q.notes.length,p.id+' '+r);assert.ok(q.notes.every(x=>x.pitch>=28&&x.pitch<=84&&x.beat+x.length<=q.bars*4+1e-9),p.id+' '+r);}});
+check('the preset menu lists every progression',()=>{const groups=el('keyChordPreset').children.filter(c=>c.label!==undefined||c.children.length);assert.equal(groups.reduce((s,g)=>s+g.children.length,0),run('KEY_PRESETS.length'));});
+{context.tracks[0].keyPhrase={bars:1,notes:[{pitch:72,beat:0,length:1,velocity:90}],editor:{root:2,scale:'minor'}};run('keyEditorOpen(0)');const u0=history.length;
+ await run('keyApplyPreset("twofive")');
+ check('a preset replaces the notes in the current key and sets its scale',()=>{const p=phrase();assert.equal(p.bars,4);assert.equal(p.editor.root,2);assert.equal(p.editor.scale,'major');assert.equal(p.editor.scaleEnabled,true);assert.equal(Math.min(...p.notes.map(n=>n.pitch)),38);assert.ok(!p.notes.some(n=>n.pitch===72&&n.beat===0));assert.equal(history.length,u0+1);});
+ check('applying a preset starts the loop so it is heard',()=>assert.ok(run('_keyLoop')));run('_keyLoopStop()');
+ el('keyUndo').click();await flush();check('one UNDO brings back the previous notes',()=>assert.deepEqual(phrase().notes.map(n=>n.pitch),[72]));
  run('keyEditorOpen(0)');}
 // Regression: returning to KEY after restoring its original sample must not
 // accept that SPL buffer just because the old KEY signature is still present.
