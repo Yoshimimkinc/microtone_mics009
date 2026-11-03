@@ -67,7 +67,7 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   // Actual pointer selection and numeric note edit, then the editor's accessible UNDO button.
   const note=await p.evaluate(()=>{const c=document.getElementById('keyRoll'),r=c.getBoundingClientRect();return {x:r.left+58+_keyZoom*.4,y:r.top+_keyRowY(60)+_keyRowH()/2};});
   await p.mouse.click(note.x,note.y);await p.fill('#keyLength','2');await p.locator('#keyLength').dispatchEvent('change');
-  await p.waitForFunction(()=>tracks[8]._keySignature===JSON.stringify([normalizeKeyPhrase(tracks[8].keyPhrase),bpmVal]));
+  await p.waitForFunction(()=>tracks[8]._keySignature===keySignatureOf(tracks[8],bpmVal));
   eq(`${label} ピアノロールから音の長さを編集`,await p.evaluate(()=>tracks[8].keyPhrase.notes[0].length),2);
   await p.click('#keyUndo');eq(`${label} ピアノロールのUNDO`,await p.evaluate(()=>tracks[8].keyPhrase.notes[0].length),1);
 
@@ -123,11 +123,17 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     await p.evaluate(async()=>{keyEditorOpen(12);_keyAutoFit=true;_keyFit();});await p.waitForTimeout(200);
     const rr=await p.evaluate(()=>{const b=document.getElementById('keyRuler').getBoundingClientRect(),h=document.getElementById('keyHorizontal');h.scrollLeft=h.scrollWidth;const b2=document.getElementById('keyRuler').getBoundingClientRect();return {x1:b2.left+58+16*_keyZoom-2,x2:b2.left+58+4*_keyZoom,y:b2.top+14,vis:b2.left+58+16*_keyZoom<=innerWidth};});
     if(rr.x1>0){await p.mouse.move(rr.x1,rr.y);await p.mouse.down();await p.mouse.move((rr.x1+rr.x2)/2,rr.y,{steps:3});await p.mouse.move(rr.x2,rr.y,{steps:3});await p.mouse.up();}
-    await p.waitForFunction(()=>tracks[12]._keySignature===JSON.stringify([normalizeKeyPhrase(tracks[12].keyPhrase),bpmVal]),null,{timeout:8000});
+    await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});
     const rg=await p.evaluate(()=>({range:tracks[12].keyPhrase.range,end:tracks[12].end,want:4*60/bpmVal/tracks[12].buffer.duration,read:document.getElementById('keyRangeRead').textContent}));
     ok_(`${label} KEY の END を目盛りでドラッグ → パッドは START〜END だけ鳴る`,rg.range.start===0&&rg.range.end===4&&Math.abs(rg.end-rg.want)<1e-6&&rg.read.includes('END 2.1'),JSON.stringify(rg));
     await p.click('#keyMore');await p.click('#keyExtra [data-more-tab="key"]');await p.click('#keyRangeReset');await p.waitForTimeout(200);
     eq(`${label} KEY の START / END の RESET＝全体`,await p.evaluate(()=>tracks[12].keyPhrase.range),{start:0,end:null});
+    // v0.3.213 §202：KEY のパッドの PITCH は音符で移す＝長さ（テンポ）は同じ・エディタの名前に PITCH
+    { const len0=await p.evaluate(()=>tracks[12].buffer.length);
+      await p.evaluate(()=>{tracks[12].tune=5;warmPitch(12);});await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});
+      const pt=await p.evaluate(()=>{_keyPaint();trigger(12);const v=tracks[12].activeVoices||[];return {len:tracks[12].buffer.length,title:document.getElementById('keyTitle').textContent,voices:v.length};});
+      ok_(`${label} KEY のパッドの PITCH は音符を移す（長さ＝テンポが変わらない）・エディタの名前に PITCH`,pt.len===len0&&pt.title.includes('PITCH +5'),JSON.stringify({len0,pt}));
+      await p.evaluate(()=>{tracks[12].tune=0;warmPitch(12);});await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000}); }
     // 消す：ノートを全部消す（1 回）／このパッドを消す（2 回）。どちらも UNDO で戻る
     await p.click('#keyExtra [data-more-tab="edit"]');await p.click('#keyClearNotes');await p.waitForTimeout(200);
     const cl=await p.evaluate(()=>tracks[12].keyPhrase.notes.length);await p.click('#keyUndo');await p.waitForTimeout(200);const cl2=await p.evaluate(()=>tracks[12].keyPhrase.notes.length);

@@ -7,9 +7,9 @@
 //    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
 //    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
 // @uses AC, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keySetPref, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf,
-//    parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, sampNameEl,
-//    scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
+//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
+//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
+//    sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -127,7 +127,7 @@ function _keyPaint(){
   document.getElementById('keyTabNotes').setAttribute('aria-selected',String(!_keySound));document.getElementById('keyTabSound').setAttribute('aria-selected',String(_keySound));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
-  document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1));document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
+  const tr=keyTranspose(t);document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1))+(tr?' · PITCH '+(tr>0?'+':'')+tr:'');   // パッドの PITCH はここに出す（音符はそのまま表示、鳴る音は移る v0.3.213）document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
   for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(id==='keyScaleOn'?'':v?' ON':' OFF');}
   document.querySelector('.key-panel').classList.toggle('is-navigating',_keyNavigate);document.getElementById('keyScaleRoot').value=p.editor.root;document.getElementById('keyScaleType').value=p.editor.scale;
   const rows=_keyRows(),rh=_keyRowH(),rowOf=new Map(rows.map((r,k)=>[r,k*rh]));if(cv.width!==width)cv.width=width;if(cv.height!==rows.length*rh)cv.height=rows.length*rh;
@@ -170,7 +170,7 @@ async function _keyUpdate(change){
   catch(e){if(_keyTarget===i)status.textContent='生成失敗：'+e.message;}
 }
 async function _keyAudition(pitch,velocity=96){
-  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch,beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
+  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch:pitch+keyTranspose(tracks[target]),beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
 }
 function _keyPoint(e,canvas){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 // スマホ（指）：何も無い所・鍵盤を指で動かす＝スクロール、動かさずに離す＝そこへノート（v0.3.193 §181「スマホでピアノロールがスクロールしない」）
