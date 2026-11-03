@@ -165,6 +165,21 @@ await context.setPadKind(0,'SPL');check('KEY→SPL restores the original sample'
 await context.setPadKind(0,'KEY');check('KEY→SPL→KEY reuses KEY audio, never SPL',()=>{assert.notEqual(context.tracks[0].buffer,sample);assert.equal(context.tracks[0].buffer,keyAudio);});
 for(const kind of ['SCR','SPL','SCR']){await context.setPadKind(0,kind);await context.setPadKind(0,'KEY');}
 check('repeated KEY/SCR/SPL changes retain the KEY phrase and voice',()=>{assert.equal(context.tracks[0].buffer,keyAudio);assert.equal(context.tracks[0].keyPhrase.notes[0].pitch,60);});
+// v0.3.206 §195：KEY → SAMPLE / SCRATCH で「この KEY を波形にする」＝KEY の音がそのパッドの波形に（KEY の印は付けない）。KEY に戻せば打ち込みはそのまま
+for(const kind of ['SPL','SCR']){await context.setPadKind(0,kind,'bake');const t=context.tracks[0];
+ check('KEY→'+kind+' bake turns the KEY audio into this pad\'s waveform',()=>{assert.equal(t.padKind,kind);assert.notEqual(t.buffer,keyAudio);assert.notEqual(t.buffer,sample);assert.equal(t.buffer.length,keyAudio.length);assert.deepEqual([...t.buffer.getChannelData(0).slice(0,4000)],[...keyAudio.getChannelData(0).slice(0,4000)]);assert.equal(t.rawBuffer,t.buffer);assert.equal(run('_keyBuffers.has(tracks[0].buffer)'),false);assert.equal(t._keySignature,null);});
+ await context.setPadKind(0,'KEY');check('KEY after a '+kind+' bake still has the phrase',()=>assert.equal(context.tracks[0].keyPhrase.notes[0].pitch,60));}
+await context.setPadKind(0,'SPL','restore');check('restore still brings back the sample saved before KEY',()=>assert.equal(context.tracks[0].buffer.length,context.tracks[0].sampleState.buffer.length));
+await context.setPadKind(0,'KEY');
+const asked=[];el('keyLeaveAsk').hidden=true;context.keyLeaveChoice(0,'SPL').then(v=>asked.push(v));
+check('leaving a KEY with notes asks first',()=>{assert.equal(el('keyLeaveAsk').hidden,false);assert.equal(el('keyLeaveTo').textContent,'SAMPLE');});
+el('keyLeaveAsk').listeners.click[0]({target:{closest:()=>({dataset:{leave:'bake'}})},currentTarget:el('keyLeaveAsk')});await flush();
+check('choosing in the dialog answers and closes it',()=>{assert.deepEqual(asked,['bake']);assert.equal(el('keyLeaveAsk').hidden,true);});
+context.keyLeaveChoice(0,'SCR').then(v=>asked.push(v));el('keyLeaveAsk').listeners.click[0]({target:{closest:()=>({dataset:{leave:''}})},currentTarget:el('keyLeaveAsk')});await flush();
+check('CANCEL keeps the pad as it was',()=>{assert.deepEqual(asked,['bake',null]);assert.equal(context.tracks[0].padKind,'KEY');});
+context.tracks[0].keyPhrase={bars:1,notes:[]};let quiet=null;await context.keyLeaveChoice(0,'SPL').then(v=>quiet=v);context.tracks[0].keyPhrase={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:96}]};
+check('an empty KEY does not ask',()=>assert.equal(quiet,'restore'));
+await context.prepareKeyTrack(context.tracks[0],100);
 context.tracks[0].buffer=sample;context.tracks[0].rawBuffer=sample;await context.prepareKeyTrack(context.tracks[0],100);
 check('stale matching signature cannot authorize a sample buffer as KEY',()=>assert.equal(context.tracks[0].buffer,keyAudio));
 // Thumbnail uses pitch and note duration; rendered samples must never be read.
