@@ -3,11 +3,11 @@
 //    _keyLiveCache, _keyLoop, _keyLoopBeat, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyNoteName,
 //    _keyNoteOff, _keyNoteOn, _keyPadLow, _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame,
 //    _keyPref, _keyPutNote, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove,
-//    _keyStepOn, _keyStepPut, _keyWarmPads, keyEntryClose, keyEntryOpen
-// @uses AC, KEYMAP, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyPhrase, _keyPoint, _keySound,
-//    _keyTarget, _keyUpdate, _keyZoom, bpmVal, keyApplyEffects, keyTineNote, masterGain, prepareKeyTrack,
-//    tracks
-// @depends -
+//    _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyEntryClose, keyEntryOpen
+// @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow,
+//    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
+//    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks
+// @depends data/key-presets
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
 // STEP＝鍵盤を押すたびにカーソルの位置へ 1/16 の音を入れ、全部離したら 1 マス進む（同時に押せば和音）。
@@ -133,10 +133,23 @@ function keyEntryOpen(){
   const e=_keyPhrase().editor,notes=_keyPhrase().notes;_keyPadRoot=e.root;
   _keyPadLow=Math.max(21,Math.min(84,(notes.length?Math.floor(Math.min(...notes.map(n=>n.pitch))/12)*12:48)+e.root));
   _keyEntryPaint();_keyWarmPads();
-  document.getElementById('keyStatus').textContent='鍵盤＝試し弾き · REC＝ループしながら録音 · STEP＝1 マスずつ入れる · ロールをタップ＝その場所に置く';
+  document.getElementById('keyStatus').textContent=notes.length?'鍵盤＝試し弾き · REC＝ループしながら録音 · STEP＝1 マスずつ入れる · ロールをタップ＝その場所に置く':'空のフレーズ · MORE → CHORDS で定番の進行を入れられます · 鍵盤＝試し弾き · REC / STEP で入れる';
+}
+// v0.3.207 §196：CHORDS＝定番の進行をいまの KEY（ルート）で入れる。いまのノートは置き換え（UNDO で戻せる）、SCALE もその進行に合わせ、すぐループで鳴らす
+async function keyApplyPreset(id){
+  if(_keyTarget<0)return;const e=_keyPhrase().editor,q=keyPresetPhrase(id,e.root);if(!q)return;
+  const p0=KEY_PRESETS.find(x=>x.id===id);
+  if(_keyLoop)_keyLoopStop();_keySelection.clear();_keySelected=-1;
+  await _keyUpdate(p=>{p.bars=q.bars;p.notes=q.notes;p.editor.scale=q.scale;p.editor.scaleEnabled=true;});
+  if(_keyTarget<0)return;
+  document.getElementById('keyStatus').textContent='CHORDS · '+NOTE_NAMES[e.root]+' · '+p0.name+'（'+p0.degrees+'）· UNDO で元に戻せます';
+  await _keyLoopStart();
 }
 function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keyStepOn=false;}
 (function(){
+  const preset=document.getElementById('keyChordPreset');
+  for(const g of [...new Set(KEY_PRESETS.map(p=>p.group))]){const og=document.createElement('optgroup');og.label=g;for(const p of KEY_PRESETS.filter(x=>x.group===g)){const o=document.createElement('option');o.value=p.id;o.textContent=p.name+' · '+p.degrees;og.appendChild(o);}preset.appendChild(og);}
+  preset.addEventListener('change',()=>{const id=preset.value;preset.value='';if(!id)return;_keyMoreShow(false);keyApplyPreset(id);});
   const grid=document.getElementById('keyPadGrid');
   grid.addEventListener('pointerdown',e=>{const b=e.target.closest('.key-pad');if(!b||b.disabled||b.dataset.pitch==='')return;e.preventDefault();try{b.setPointerCapture(e.pointerId);}catch(_){}_keyNoteOn(+b.dataset.pitch,'p'+e.pointerId);});
   for(const type of ['pointerup','pointercancel','lostpointercapture'])grid.addEventListener(type,e=>_keyNoteOff('p'+e.pointerId));

@@ -83,7 +83,16 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     ok_(`${label} KEY の鍵盤を押すと STEP でカーソルの位置へ入って進む`,st.n===n0+2&&st.at===2.5&&st.cursor,JSON.stringify(st));
     await p.click('#keyStep');await p.click('#keyUndo');await p.click('#keyUndo');
     await p.click('#keyPreview');await p.waitForTimeout(400);const pl=await p.evaluate(()=>({loop:!!_keyLoop,head:!document.getElementById('keyPlayhead').hidden}));await p.click('#keyPreview');
-    ok_(`${label} KEY の PLAY はループ再生とプレイヘッド`,pl.loop&&pl.head,JSON.stringify(pl)); }
+    ok_(`${label} KEY の PLAY はループ再生とプレイヘッド`,pl.loop&&pl.head,JSON.stringify(pl));
+    // v0.3.207 §196：MORE はロールの上に重なるシート（鍵盤を押し出さない）・CHORDS で定番の進行が入ってループで鳴る・UNDO で戻る
+    const before=await p.evaluate(()=>({n:tracks[8].keyPhrase.notes.length,pads:document.getElementById('keyPads').getBoundingClientRect().bottom}));
+    await p.click('#keyMore');await p.waitForTimeout(150);
+    const sheet=await p.evaluate(()=>{const r=s=>document.querySelector(s).getBoundingClientRect();return {pads:r('#keyPads').bottom,bar:r('#keyPreview').bottom,more:r('#keyExtra').top,panel:r('#keyEditor .key-panel').bottom};});
+    ok_(`${label} KEY の MORE は道具の段の下に重なり、鍵盤ははみ出さない`,Math.abs(sheet.pads-before.pads)<1&&sheet.more>=sheet.bar&&sheet.pads<=sheet.panel+1,JSON.stringify({before,sheet}));
+    await p.selectOption('#keyChordPreset','komuro');await p.waitForFunction(()=>!!_keyLoop,null,{timeout:8000});
+    const pr=await p.evaluate(()=>({n:tracks[8].keyPhrase.notes.length,bars:tracks[8].keyPhrase.bars,more:!document.getElementById('keyExtra').hidden,status:document.getElementById('keyStatus').textContent}));
+    ok_(`${label} KEY の CHORDS で小室進行が入り、MORE を閉じてループで鳴る`,pr.n===16&&pr.bars===4&&!pr.more&&pr.status.includes('小室進行'),JSON.stringify(pr));
+    await p.click('#keyPreview');await p.click('#keyUndo');eq(`${label} KEY の CHORDS は UNDO 1 回で戻る`,await p.evaluate(()=>tracks[8].keyPhrase.notes.length),before.n); }
   await p.evaluate(()=>keyEditorClose());
   const round=await p.evaluate(async()=>{const project=JSON.parse(JSON.stringify(buildProject()));await applyProject(project);await prepareKeyTrack(tracks[8],bpmVal);const a=[tracks[8].padKind,tracks[8].keyPhrase.notes.length,tracks[8].keyPhrase.bars];copyPadSound(8,9);const b=[tracks[9].padKind,tracks[9].keyPhrase.notes.length];tracks[9].keyPhrase.notes[0].pitch=72;const isolated=tracks[8].keyPhrase.notes[0].pitch;doUndo();const undone=padKind(tracks[9]);await setPadKind(8,'SPL');return {a,b,isolated,undone,source:tracks[8].buffer.length};});
   eq(`${label} KEY保存読込・コピー深複製・UNDO・SPL復帰`,round,{a:['KEY',3,4],b:['KEY',3],isolated:60,undone:'SPL',source:initial.source});

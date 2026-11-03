@@ -33,6 +33,7 @@
   "js/12-engine-bus.js",
   "js/13-engine-fx.js",
   "js/data/key-phrase.js",
+  "js/data/key-presets.js",
   "js/20-plock-undo.js",
   "js/audio/key-instrument.js",
   "js/21-voice.js",
