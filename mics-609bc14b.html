@@ -1403,6 +1403,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 .key-panel .key-chord-grid button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:6px 8px;text-align:left}
 .key-chord-grid small{font-size:10px;font-weight:400;opacity:.8;letter-spacing:0}
 .key-fields button{flex:0 0 auto;align-self:end}
+.key-panel .key-chop-apply{min-height:48px;font-weight:800;color:var(--amber,#f0a030);border-color:var(--amber,#f0a030)}.key-panel .key-chop-apply:disabled{opacity:.4}
 .key-extra .content-tools{align-items:end;margin:0}
 .key-extra label{display:flex;flex-direction:column;gap:3px;font-size:10px;letter-spacing:.05em}
 .key-panel .key-zoom{flex:1;min-width:100px;max-width:200px}.key-zoom input{width:100%;padding:0}
@@ -1508,7 +1509,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.210</div>
+  <div class="s-ver" id="splashVer">v0.3.211</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1753,7 +1754,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
  <div class="content-tools key-bar"><button id="keyPreview" aria-pressed="false">▶ PLAY</button><button id="keyRec" aria-pressed="false">● REC</button><button id="keyStep" aria-pressed="false">STEP</button><button id="keyUndo">↶ UNDO</button><button id="keyScaleOn" aria-pressed="true">SCALE</button><button id="keyMore" aria-expanded="false" aria-controls="keyExtra">MORE</button></div>
  <!-- v0.3.210 §199：MORE ＝ 4 つのページ（CHORDS / KEY・SCALE / EDIT / VIEW）。選ぶ物は全部大きなボタン（ドロップダウンを使わない）。外側をタップで閉じる -->
  <div id="keyExtra" class="key-extra" hidden>
-  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY · SCALE</button><button data-more-tab="edit" role="tab">EDIT</button><button data-more-tab="view" role="tab">VIEW</button></div><button id="keyMoreClose">CLOSE</button></div>
+  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY · SCALE</button><button data-more-tab="edit" role="tab">CHOP · EDIT</button><button data-more-tab="view" role="tab">VIEW</button></div><button id="keyMoreClose">CLOSE</button></div>
   <div class="key-more-page" data-more-page="chords"><p class="key-more-note">いまの KEY で入って、すぐループで鳴ります（いまのノートは置き換え・UNDO で戻せる）</p><div id="keyChordList" class="key-chord-list"></div></div>
   <div class="key-more-page" data-more-page="key" hidden>
    <b class="key-more-label">KEY（主音）</b><div id="keyRootGrid" class="key-grid key-root-grid"></div>
@@ -1761,6 +1762,9 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
    <b class="key-more-label">BARS · GRID</b><div class="key-grid key-bars-grid"><button data-bars="1">1 BAR</button><button data-bars="2">2 BARS</button><button data-bars="3">3 BARS</button><button data-bars="4">4 BARS</button><button id="keySnap" aria-pressed="true">SNAP 1/16 ON</button></div>
   </div>
   <div class="key-more-page" data-more-page="edit" hidden>
+   <!-- v0.3.211 §200：KEY の CHOP。切れ目は打ち込みから（音の立ち上がりを探さない）＝コードの変わり目・小節・2 拍・1 拍 -->
+   <b class="key-more-label">CHOP（パッドに分ける）</b><div class="key-grid key-chop-grid"><button data-chop="chord">コードごと</button><button data-chop="bar">1 小節ごと</button><button data-chop="half">2 拍ごと</button><button data-chop="beat">1 拍ごと</button></div>
+   <p class="key-more-note" id="keyChopInfo"></p><button id="keyChopApply" class="key-chop-apply">✂ CHOP</button>
    <b class="key-more-label">ドラッグでする事（TOOL）</b><div class="key-grid key-tool-grid"><button data-tool="auto">Auto</button><button data-tool="move">Move</button><button data-tool="right">Length</button><button data-tool="left">Start</button><button data-tool="velocity">Velocity</button></div>
    <b class="key-more-label">選ぶ・動かす</b><div class="key-grid"><button id="keySelectAll">SELECT ALL</button><button id="keyMulti" aria-pressed="false">MULTI OFF</button><button id="keyNav" aria-pressed="false">SCROLL OFF</button></div>
    <b class="key-more-label">読み込み</b><label class="content-import">IMPORT MIDI <input id="keyMidiFile" type="file" accept=".mid,.midi,audio/midi"></label><div id="keyMidiTracks" class="content-tools"></div>
@@ -3966,7 +3970,7 @@ function moveCursors(){
   }
 }
 // @module data/pads
-// @provides chopBaseName, clearPadSound, copyPadSound, nextChokeGroup, swapPads
+// @provides chopBaseName, chopKeyToPads, clearPadSound, copyPadSound, nextChokeGroup, swapPads
 // @uses AC, PADS, normalizeKeyPhrase, patSync, pushUndo, stopVoices, tracks
 // @depends -
 // ---------- パッドのデータ更新：コピー・スライス名・チョークグループの発行 ----------
@@ -3975,6 +3979,20 @@ function moveCursors(){
 let nextChokeGroup = 2;  // 1はHH用。チョッピーのスライス群は2以降を自動発行
 // CHOPPYスライスの基準名（末尾の連番は剥がす＝再チョップでも増殖しない）
 function chopBaseName(i){ return (tracks[i].name||PADS[i].name||"").replace(/\s*\d+$/,"").trim()||"SLICE"; }
+// v0.3.211 §200：KEY のフレーズを切ってパッドへ（SAMPLE の CHOP と同じ並べ方＝KEY のパッドから右へ、収まらなければ左へずらす。全スライス同じチョーク）。
+// buffer は KEY の音を写した波形、bounds は 0..1 の切れ目（N+1 個）。データだけ書く。KEY のパッドも SAMPLE になるが打ち込み（keyPhrase）は残す＝窓の KEY で戻せる
+function chopKeyToPads(i,buffer,bounds){
+  const N=bounds.length-1, anchor=Math.max(0,Math.min(i,16-N)), src=tracks[i], base=chopBaseName(i), grp=nextChokeGroup;
+  nextChokeGroup = nextChokeGroup>=8 ? 2 : nextChokeGroup+1;
+  const snap={tune:src.tune,filter:src.filter,cutoff:src.cutoff,reso:src.reso,vol:src.vol};
+  for(let k=0;k<N;k++){
+    const idx=anchor+k, d=tracks[idx];
+    d.padKind="SPL"; d._keySignature=null; d._contentEpoch=(d._contentEpoch||0)+1; d.loopPlaying=false;
+    Object.assign(d,snap,{buffer,rawBuffer:buffer,loop:false,loopStart:0,start:bounds[k],end:Math.max(bounds[k]+0.0005,bounds[k+1]),choke:grp,name:base+" "+(k+1)});
+    PADS[idx].type="sample"; PADS[idx].voice=null;
+  }
+  return {anchor,N};
+}
 function copyPadSound(src,dst){
   pushUndo();
   if(typeof patSync==="function") patSync();   // 写す前に live を今のパターンへ書き戻す（エフェクトは A B C D ごと v0.3.150）
@@ -7701,15 +7719,18 @@ function scratchShow(i){
  document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});
 })();
 // @module ui/key-entry
-// @provides _keyAllNotesOff, _keyBeatSec, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer,
-//    _keyLiveCache, _keyLoop, _keyLoopBeat, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
-//    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
-//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRecCommit,
-//    _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads,
-//    keyApplyPreset, keyEntryClose, keyEntryOpen
+// @provides _keyAllNotesOff, _keyBeatSec, _keyChopMode, _keyChopPaint, _keyChopPlan, _keyClick,
+//    _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache, _keyLoop, _keyLoopBeat,
+//    _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint, _keyMoreTab, _keyMoreTabSet, _keyNativeSet,
+//    _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow, _keyPadPitches, _keyPadRoot, _keyPadsLit,
+//    _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt,
+//    _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop,
+//    keyChopBeats, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
-//    bpmVal, keyApplyEffects, keyPresetPhrase, keyTineNote, masterGain, prepareKeyTrack, tracks, wakeSync
+//    bpmVal, chopKeyToPads, keyApplyEffects, keyEditorClose, keyPresetPhrase, keyTineNote, masterGain,
+//    padKind, paintPerf, prepareKeyTrack, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave,
+//    selectPad, stopVoices, syncPadContentEditor, tracks, wakeSync
 // @depends data/key-presets, plock-undo
 // v0.3.205 §194（A）：KEY を弾いて入れる。スケールの鍵盤 4×4（左下が一番低い・スケールの音だけ）、
 // PLAY＝ループ再生とプレイヘッド、REC＝ループしながら弾いた音を記録（クリック付き・SNAP の細かさに揃える）、
@@ -7840,6 +7861,37 @@ function _keyMorePaint(){
   document.querySelectorAll('#keyExtra [data-more-page]').forEach(pg=>pg.hidden=pg.dataset.morePage!==_keyMoreTab);
   for(const [sel,key,val] of [['[data-root]','root',String(e.root)],['[data-scale]','scale',e.scale],['[data-bars]','bars',String(p.bars)],['[data-tool]','tool',tool]])
     document.querySelectorAll('#keyExtra '+sel).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[key]===val)));
+  _keyChopPaint();
+}
+// v0.3.211 §200：KEY の CHOP。切れ目（拍）は打ち込みから：chord＝音の出だしごと（和音は 1 つ）、bar / half / beat＝小節・2 拍・1 拍ごと。最大 16
+let _keyChopMode='chord';
+function keyChopBeats(p,mode){
+  const end=p.bars*4;let b;
+  if(mode==='chord')b=[...new Set(p.notes.map(n=>Math.round(n.beat*96)/96))].sort((x,y)=>x-y);
+  else{const step={bar:4,half:2,beat:1}[mode]||4;b=[];for(let x=0;x<end-1e-9;x+=step)b.push(x);}
+  return b.filter(x=>x>=0&&x<end).slice(0,16);
+}
+function _keyChopPlan(){const p=_keyPhrase(),beats=keyChopBeats(p,_keyChopMode),N=beats.length;return {beats,N,anchor:Math.max(0,Math.min(_keyTarget,16-N))};}
+async function keyChop(){
+  if(_keyTarget<0)return;const i=_keyTarget,t=tracks[i],plan=_keyChopPlan();if(!plan.N)return;
+  if(_keyLoop)_keyLoopStop();
+  const b=(await prepareKeyTrack(t,bpmVal))||(_keyBuffers.has(t.buffer)?t.buffer:null);
+  if(!b||_keyTarget!==i||padKind(t)!=='KEY')return;
+  // KEY の印が付かない別の波形へ写す（v0.3.206 の「波形にする」と同じ）
+  const buf=AC.createBuffer(1,b.length,b.sampleRate);buf.getChannelData(0).set(b.getChannelData(0));
+  const spb=60/Math.max(40,Math.min(250,+bpmVal||100)),bounds=plan.beats.map(x=>Math.min(1,x*spb/b.duration)).concat([1]);
+  pushUndo();for(let k=0;k<plan.N;k++)stopVoices(tracks[plan.anchor+k],AC.currentTime);
+  const r=chopKeyToPads(i,buf,bounds);
+  keyEditorClose();
+  for(let k=0;k<r.N;k++)refreshPadDisplay(r.anchor+k);
+  syncPadContentEditor(i);selectPad(r.anchor);paintPerf();scheduleAutosave();
+  sampNameEl.textContent='KEY の CHOP → PAD '+String(r.anchor+1).padStart(2,'0')+'–'+String(r.anchor+r.N).padStart(2,'0')+'  ↩で戻せる · 打ち込みは窓の KEY で戻せる';
+}
+function _keyChopPaint(){
+  const plan=_keyChopPlan(),info=document.getElementById('keyChopInfo'),btn=document.getElementById('keyChopApply'),pad=n=>String(n+1).padStart(2,'0');
+  document.querySelectorAll('#keyExtra [data-chop]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.chop===_keyChopMode)));
+  btn.disabled=!plan.N;btn.textContent=plan.N?'✂ CHOP → PAD '+pad(plan.anchor)+'–'+pad(plan.anchor+plan.N-1):'✂ CHOP';
+  info.textContent=plan.N?plan.N+' つに分けて PAD '+pad(plan.anchor)+'–'+pad(plan.anchor+plan.N-1)+' へ（そのパッドの音は置き換え・UNDO で戻せる）。このパッドは SAMPLE になり、打ち込みは窓の KEY で戻せます':'分けるノートがありません';
 }
 function _keyNativeSet(id,value){const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('change'));}
 function _keyPadsLit(){const held=new Set([..._keyLive.values()].map(v=>v.pitch));document.querySelectorAll('#keyPadGrid .key-pad').forEach(b=>b.classList.toggle('on',held.has(+b.dataset.pitch)&&b.dataset.pitch!==''));}
@@ -7875,6 +7927,8 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
     else if(d.scale)_keyNativeSet('keyScaleType',d.scale);
     else if(d.bars)_keyNativeSet('keyBars',d.bars);
     else if(d.tool){_keyNativeSet('keyDragMode',d.tool);_keyMorePaint();}
+    else if(d.chop){_keyChopMode=d.chop;_keyChopPaint();}
+    else if(b.id==='keyChopApply')keyChop().catch(err=>{document.getElementById('keyStatus').textContent=err.message;});
   });
   document.getElementById('keyMoreClose').addEventListener('click',()=>_keyMoreShow(false));
   // MORE が開いている間に外側を触った＝閉じる。ロール・鍵盤なら閉じるだけ（その場所にノートを置かない・鳴らさない）
@@ -8355,7 +8409,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.210";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.211";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
