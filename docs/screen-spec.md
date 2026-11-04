@@ -2557,3 +2557,10 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
   STEP でないときは目盛りのどこを押しても近いほうの印がそこへ来て、そのままドラッグ（画面の外の END にも届く）。STEP のときは今まで通り札以外のタップ＝STEP の位置。
   掴んでいる間は `_keyPlayheadFrame` が画面を追わない。掴んでいる印の札は明るく。離したら 1 回の UNDO で決まるのは同じ。
 検査：`pad-content-check`（390 / 1280：START の札を掴んで 2 拍目へ・目盛りを押すと近いほうの END がそこへ来る）。
+
+## 204. EDIT の KEY を押したらピアノロールが開く（v0.3.215）
+「PAD の EDIT の中で、KEY と PIANO ROLL のボタンは一緒じゃないのかね？」「KEY を押しても Pad が KEY 属性になるだけで何もアクション起きない」。
+- EDIT の種類ボタン（`#peKinds`）の KEY は種類を変えるだけで、ピアノロールは KEY の時だけ出る別ボタン `#peKeyOpen`（PIANO ROLL）から開いていた。窓の種類ボタン（`padKindGo`、§192）は「その種類にしてすぐその画面へ」なので、二つの入口で動きが違っていた。
+- 直し：EDIT の KEY も `padKindGo(i,'KEY')`＝KEY にしてそのままピアノロール（もう KEY なら開くだけ）。`#peKeyOpen` は撤去（`tools/removals-ok.txt`）。
+- SAMPLE / SCRATCH は今まで通り種類を変えるだけ（EDIT の中で波形の START / END などを触れるので、画面を切り替えない）。音の入った KEY から移る時に聞くのも同じ（§195）。
+検査：`pad-content-check`（390 / 1280：EDIT の KEY を押すと KEY になってピアノロールが開く・PIANO ROLL ボタンが無い）。EDIT は開いて 0.45 秒は誤タップよけでクリックを受けないので、テストは 0.6 秒待ってから押す。

@@ -71,7 +71,6 @@ function syncPadContentEditor(i){
   const kind=padKind(tracks[i]);
   document.getElementById('padEditModal').dataset.padKind=kind;
   document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
-  document.getElementById('peKeyOpen').hidden=kind!=='KEY';
   document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
   if(typeof paintClKind==='function')paintClKind();
 }
@@ -200,9 +199,9 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
     const control=document.getElementById(id);control.addEventListener('input',e=>_keyFxLabel(id,+e.target.value));control.addEventListener('change',e=>_keyUpdate(p=>p.effects[prop]=+e.target.value));
   }
-  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
+  // v0.3.215 §204「KEY と PIANO ROLL のボタンは一緒では」：KEY を押す＝KEY にしてそのままピアノロールを開く（窓の種類ボタンと同じ padKindGo）。PIANO ROLL ボタンは撤去
+  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;if(kind==='KEY'){padKindGo(i,'KEY').catch(e=>sampNameEl.textContent=e.message);return;}keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
   document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
-  document.getElementById('peKeyOpen').addEventListener('click',()=>keyEditorOpen(peTarget));
   document.getElementById('keyClose').addEventListener('click',keyEditorClose);
   document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
   // ▶ PLAY（keyPreview）は v0.3.205 §194 でループ再生に（ui/key-entry）。MORE・強弱の欄・鍵盤の出し入れ

@@ -112,3 +112,5 @@ viewSeqEl
 # v0.3.185 §173 SCR のレコード盤（円周で擦る）を djay 型の横一直線の波形面に置き換え（ユーザー判断：「実物を模したインターフェースはタッチスクリーンに向かない」）
 scratchAngleDelta
 scratchDrawPlatter
+# v0.3.215 §204 EDIT の PIANO ROLL ボタンを撤去。EDIT の KEY を押すと KEY にしてそのままピアノロールを開く（padKindGo）ので二重だった
+document.getElementById('peKeyOpen') [click]
