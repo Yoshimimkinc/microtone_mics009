@@ -1499,6 +1499,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 @media(max-width:650px){#scratchEditor .scratch-panel{padding:10px;width:100%;height:100%}.scratch-controls button{min-width:0;padding:6px 8px}.scratch-readout{display:none}}
 #scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
 #scratchEditor .scratch-panel #scratchHand[aria-pressed=true]{color:#c0c875;border-color:#c0c875}
+.key-instruments{margin:0 0 12px}.key-instruments button{min-height:48px;font-size:13px;font-weight:700}   /* 音色（v0.3.216 §205） */
 </style>
 </head>
 <body>
@@ -1511,7 +1512,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.215</div>
+  <div class="s-ver" id="splashVer">v0.3.216</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1789,12 +1790,13 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
  <div id="keyPads" class="key-pads"><div class="key-pads-head"><button id="keyPadsDown" aria-label="鍵盤を1オクターブ下へ">OCTAVE −</button><span id="keyPadsRange">C3–D5</span><button id="keyPadsUp" aria-label="鍵盤を1オクターブ上へ">OCTAVE ＋</button><button id="keyStepBack" class="key-step-only">◀ BACK</button><button id="keyStepRest" class="key-step-only">REST ▶</button></div><div id="keyPadGrid" class="key-pad-grid" role="group" aria-label="スケールの鍵盤"></div></div>
  </div></div>
  <div id="keySoundPanel" role="tabpanel" aria-labelledby="keyTabSound" hidden>
-  <div class="key-sound-heading"><b>TINE ELECTRIC PIANO</b><span>このパッドのエレピを調整</span></div>
+  <div class="key-sound-heading"><b id="keySoundName">TINE ELECTRIC PIANO</b><span>このパッドの音色とエフェクト</span></div>
+  <div class="key-fx-switch key-instruments" role="group" aria-label="音色"><button data-key-instrument="rhodes-tine-v2" aria-pressed="true">ELECTRIC PIANO</button><button data-key-instrument="sine-bass" aria-pressed="false">SIN BASS</button></div>
   <div class="key-fx-rack">
    <section class="key-fx-unit"><h3>TREMOLO / WAH</h3><div class="key-fx-switch" role="group" aria-label="トレモロ・ワウ選択"><button data-key-motion="tremolo" aria-pressed="false">TREMOLO</button><button data-key-motion="off" aria-pressed="true">OFF</button><button data-key-motion="wah" aria-pressed="false">WAH</button></div><label>DEPTH <output id="keyMotionDepthRead" for="keyMotionDepth">50%</output><input id="keyMotionDepth" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="トレモロ・ワウの深さ"></label><label>RATE <output id="keyMotionRateRead" for="keyMotionRate">3.0 Hz</output><input id="keyMotionRate" type="range" min="0.1" max="10" step="0.1" value="3" aria-label="トレモロ・ワウの速さ"></label></section>
    <section class="key-fx-unit"><h3>CHORUS / PHASER</h3><div class="key-fx-switch" role="group" aria-label="コーラス・フェイザー選択"><button data-key-color="chorus" aria-pressed="false">CHORUS</button><button data-key-color="off" aria-pressed="true">OFF</button><button data-key-color="phaser" aria-pressed="false">PHASER</button></div><label>DEPTH <output id="keyColorDepthRead" for="keyColorDepth">50%</output><input id="keyColorDepth" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="コーラス・フェイザーの深さ"></label><label>RATE <output id="keyColorRateRead" for="keyColorRate">0.80 Hz</output><input id="keyColorRate" type="range" min="0.05" max="5" step="0.05" value="0.8" aria-label="コーラス・フェイザーの速さ"></label></section>
-  </div><p class="key-sound-help">2つのエフェクトを組み合わせて、PREVIEWで試聴できます。設定はこのKEYパッドに保存されます。</p>
- </div> <p id="keyStatus" role="status">TINE MODEL · 4/4</p>
+  </div><p class="key-sound-help">音色と 2 つのエフェクトを組み合わせて、NOTES の PLAY で試聴できます。設定はこの KEY パッドに保存されます。</p>
+ </div> <p id="keyStatus" role="status">KEY · 4/4</p>
  </section>
 </div>
 <!-- v0.3.206 §195：KEY（音が入っている）から SAMPLE / SCRATCH へ移る時に聞く -->
@@ -2736,9 +2738,11 @@ function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar
 function getPlayPattern(trackIdx){ return tracks[trackIdx].patterns[playPat][playBar]; }
 
 // @module data/key-phrase
-// @provides normalizeKeyPhrase, parseKeyMidi
+// @provides KEY_INSTRUMENTS, normalizeKeyPhrase, parseKeyMidi
 // @uses -
 // @depends -
+// v0.3.216 §205：KEY の音色。エレピ（既定）と SIN BASS。名前は画面の見出しに出す
+const KEY_INSTRUMENTS={'rhodes-tine-v2':'TINE ELECTRIC PIANO','sine-bass':'SIN BASS'};
 // 演奏位置は拍単位。サンプルやBPMを含めず再編集可能な正データを保存する。
 function normalizeKeyPhrase(src){
   const bars=Math.max(1,Math.min(4,Math.round(+src?.bars||1))), end=bars*4;
@@ -2751,7 +2755,7 @@ function normalizeKeyPhrase(src){
   // v0.3.212 §201：START / END（拍）。パッドとループで鳴らす範囲。end:null＝最後（余韻まで）。小節数を減らしたら収まるように詰める
   const r=src?.range||{}, rs=Math.max(0,Math.min(end-1/96,Math.round((+r.start||0)*96)/96));
   const re=(r.end==null||!Number.isFinite(+r.end)||+r.end>=end)?null:Math.max(rs+1/96,Math.round(+r.end*96)/96);
-  return {bars,instrument:'rhodes-tine-v2',notes,editor,effects,range:{start:rs,end:re}};
+  return {bars,instrument:KEY_INSTRUMENTS[src?.instrument]?src.instrument:'rhodes-tine-v2',notes,editor,effects,range:{start:rs,end:re}};
 }
 // SMF format 0/1, PPQ。SMPTE/format 2は明確なエラーにする。
 function parseKeyMidi(bytes){
@@ -2994,7 +2998,8 @@ function dbToGain(db){ return Math.pow(10, db/20); }
 
 // @module audio/key-instrument
 // @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyShifted, _keyWarmTimer, keyApplyEffects,
-//    keySignatureOf, keyTineNote, keyTranspose, prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
+//    keySignatureOf, keySineBassNote, keyTineNote, keyTranspose, keyVoiceGain, keyVoiceNote,
+//    prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
 // @uses bpmVal, normalizeKeyPhrase, sampNameEl, tracks
 // @depends -
 const _keyCache=new Map(), _keyDryCache=new Map(), _keyJobs=new WeakMap(), _keyBuffers=new WeakSet();
@@ -3031,6 +3036,20 @@ function keyTineNote(pitch,velocity,hold,rate=26000){
   }
   return output;
 }
+// v0.3.216 §205：SIN BASS。サイン波 1 本（倍音を足さない）。押した瞬間のプチを消す 4ms の立ち上がり、押している間は少しだけ下がって伸び、
+// 離して 60ms で消える。強さは音量と、ほんの少しの丸い歪み（tanh）＝小さいスピーカーでも低音の輪郭が聞こえる程度
+function keySineBassNote(pitch,velocity,hold,rate=26000){
+  const freq=440*2**((pitch-69)/12),v=Math.max(1,Math.min(127,velocity))/127,attack=.004,release=.06;
+  const length=Math.ceil((hold+release+.01)*rate),out=new Float32Array(length),drive=1+1.2*v,norm=Math.tanh(drive),amp=(.25+.75*v)*.62;
+  const w=2*Math.PI*freq/rate,off=hold*rate;
+  for(let i=0;i<length;i++){const t=i/rate;let env=t<attack?Math.sin(.5*Math.PI*t/attack)**2:.82+.18*Math.exp(-(t-attack)/.35);
+    if(i>=off)env*=Math.max(0,Math.cos(.5*Math.PI*Math.min(1,(i-off)/(release*rate))));
+    out[i]=amp*env*Math.tanh(drive*Math.sin(w*i))/norm;}
+  return out;
+}
+// 音色ごとの 1 音（KEY_INSTRUMENTS の名前）。ミックスの重さも音色ごと（エレピ .42 は v0.3.205 までと同じ）
+function keyVoiceNote(instrument,pitch,velocity,hold,rate=26000){return instrument==='sine-bass'?keySineBassNote(pitch,velocity,hold,rate):keyTineNote(pitch,velocity,hold,rate);}
+function keyVoiceGain(instrument){return instrument==='sine-bass'?.55:.42;}
 function renderKeyDry(src,bpm){
   const p=normalizeKeyPhrase(src),tempo=Math.max(40,Math.min(250,+bpm||100));
   // Editor preferences cannot change the sound or create duplicate render jobs.
@@ -3039,8 +3058,8 @@ function renderKeyDry(src,bpm){
     const rate=26000,beat=60/tempo,duration=p.bars*4*beat+1.2;
     const ctx=new OfflineAudioContext(1,Math.ceil(duration*rate),rate),buf=ctx.createBuffer(1,Math.ceil(duration*rate),rate),a=buf.getChannelData(0);
     for(let ni=0;ni<p.notes.length;ni++){
-      const n=p.notes[ni],note=keyTineNote(n.pitch,n.velocity,n.length*beat,rate),start=Math.round(n.beat*beat*rate);
-      for(let j=0;j<note.length&&start+j<a.length;j++)a[start+j]+=note[j]*.42;
+      const n=p.notes[ni],note=keyVoiceNote(p.instrument,n.pitch,n.velocity,n.length*beat,rate),start=Math.round(n.beat*beat*rate),g=keyVoiceGain(p.instrument);
+      for(let j=0;j<note.length&&start+j<a.length;j++)a[start+j]+=note[j]*g;
       // Yield between small batches so mobile editing can still respond.
       if(ni%4===3)await new Promise(resolve=>setTimeout(resolve,0));
     }
@@ -7752,7 +7771,7 @@ function scratchShow(i){
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
-//    keyTineNote, keyTranspose, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
+//    keyTranspose, keyVoiceNote, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
 //    refreshPadDisplay, sampNameEl, scheduleAutosave, selectPad, stopVoices, syncPadContentEditor, tracks,
 //    wakeSync
 // @depends data/key-presets, plock-undo
@@ -7772,9 +7791,9 @@ function _keySetPref(name,on){try{localStorage.setItem('mics.key'+name,on?'1':'0
 // 鍵盤の 1 音（試し弾き）：エレピの物理モデルをその場で 1 音だけ作り（2.5 秒押さえた形・1 音 30ms ほど）、押している間鳴らす。
 // 鍵盤の 16 音は開いた時に少しずつ先に作っておく（押した瞬間に作らない）
 function _keyLiveBuffer(pitch,velocity){
-  const fx=_keyPhrase().effects,key=pitch+'|'+velocity+'|'+JSON.stringify(fx);
+  const ph=_keyPhrase(),fx=ph.effects,key=ph.instrument+'|'+pitch+'|'+velocity+'|'+JSON.stringify(fx);
   if(_keyLiveCache.has(key))return _keyLiveCache.get(key);
-  const rate=26000,data=keyApplyEffects(keyTineNote(pitch,velocity,2.5,rate),rate,fx),buffer=AC.createBuffer(1,data.length,rate);
+  const rate=26000,data=keyApplyEffects(keyVoiceNote(ph.instrument,pitch,velocity,2.5,rate),rate,fx),buffer=AC.createBuffer(1,data.length,rate);
   buffer.getChannelData(0).set(data);_keyLiveCache.set(key,buffer);
   while(_keyLiveCache.size>48)_keyLiveCache.delete(_keyLiveCache.keys().next().value);
   return buffer;
@@ -8038,11 +8057,11 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
 //    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
 //    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, KEY_FLAG_W, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keyRangeDrag,
-//    _keySetPref, bpmVal, doUndo, keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase,
-//    openPadEdit, paintClKind, paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo,
-//    refreshPadDisplay, renderKeyPhrase, sampNameEl, scheduleAutosave, scratchClose, scratchOpen,
-//    stopVoices, tracks
+// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPadLow,
+//    _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
+//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
+//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
+//    sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -8158,6 +8177,7 @@ function _keyPaint(){
   document.getElementById('keyNotePanel').hidden=_keySound;document.getElementById('keySoundPanel').hidden=!_keySound;
   document.getElementById('keyTabNotes').setAttribute('aria-selected',String(!_keySound));document.getElementById('keyTabSound').setAttribute('aria-selected',String(_keySound));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
+  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyInstrument===p.instrument)));for(const el of document.querySelectorAll('.key-voice,#keySoundName'))el.textContent=KEY_INSTRUMENTS[p.instrument];   // 音色（v0.3.216 §205）
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
   const tr=keyTranspose(t);document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1))+(tr?' · PITCH '+(tr>0?'+':'')+tr:'');   // パッドの PITCH はここに出す（音符はそのまま表示、鳴る音は移る v0.3.213）document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
   for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(id==='keyScaleOn'?'':v?' ON':' OFF');}
@@ -8200,11 +8220,11 @@ async function _keyUpdate(change){
   if(JSON.stringify(before)===JSON.stringify(next)){_keyPaint();return;}
   pushUndo();t.keyPhrase=next;if(before.bars!==next.bars&&_keyAutoFit)_keyFit();else _keyPaint();scheduleAutosave();   // 小節数が変わったら幅を合わせ直す（v0.3.212）
   const status=document.getElementById('keyStatus');status.textContent='音声を生成中…';
-  try{const result=await prepareKeyTrack(t,bpmVal);if(result&&(t._contentEpoch||0)===epoch){refreshPadDisplay(i);if(_keyTarget===i)status.textContent='TINE MODEL · 再生できます';}}
+  try{const result=await prepareKeyTrack(t,bpmVal);if(result&&(t._contentEpoch||0)===epoch){refreshPadDisplay(i);if(_keyTarget===i)status.textContent=KEY_INSTRUMENTS[normalizeKeyPhrase(t.keyPhrase).instrument]+' · 再生できます';}}
   catch(e){if(_keyTarget===i)status.textContent='生成失敗：'+e.message;}
 }
 async function _keyAudition(pitch,velocity=96){
-  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch:pitch+keyTranspose(tracks[target]),beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
+  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch:pitch+keyTranspose(tracks[target]),beat:0,length:.5,velocity}],effects:_keyPhrase().effects,instrument:_keyPhrase().instrument},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
 }
 function _keyPoint(e,canvas){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 // スマホ（指）：何も無い所・鍵盤を指で動かす＝スクロール、動かさずに離す＝そこへノート（v0.3.193 §181「スマホでピアノロールがスクロールしない」）
@@ -8226,6 +8246,8 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   const root=document.getElementById('keyScaleRoot');NOTE_NAMES.forEach((name,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=name;root.appendChild(opt);});
   document.getElementById('keyTabNotes').addEventListener('click',()=>{_keyEndGesture(true);_keySound=false;_keyPaint();if(_keyAutoFit)_keyFit();});
   document.getElementById('keyTabSound').addEventListener('click',()=>{_keyEndGesture(true);_keySound=true;_keyPaint();});
+  // 音色（v0.3.216 §205）：SIN BASS にしたら鍵盤を低い所（C2〜）へ。試し弾きの作り置きも作り直す
+  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.keyInstrument;if(_keyPhrase().instrument===v)return;_keyUpdate(p=>p.instrument=v);if(v==='sine-bass'&&_keyPadLow>36+_keyPadRoot)_keyPadLow=36+_keyPadRoot;else if(v!=='sine-bass'&&_keyPadLow<48+_keyPadRoot)_keyPadLow=48+_keyPadRoot;_keyEntryPaint();_keyWarmPads();}));
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.motion=b.dataset.keyMotion)));
   document.querySelectorAll('[data-key-color]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.color=b.dataset.keyColor)));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
@@ -8489,7 +8511,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.215";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.216";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
