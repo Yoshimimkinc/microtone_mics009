@@ -1118,6 +1118,9 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 
   .pe-transport button{min-width:0;}
   @media(max-width:600px){ .pe-transport{gap:6px;} .pe-transport button{padding:10px 4px;letter-spacing:.06em;gap:5px;} }
+  /* v0.3.218 §207：共通の頭を 3 画面で同じ位置に。EDIT も KEY / SCRATCH と同じく上寄せ・同じ余白（SCRATCH と同じ幅 560px） */
+  #padEditModal{align-items:flex-start;padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));}
+  .modal.pe{width:min(560px,100%);padding-top:14px;}
   /* responsive */
   @media(max-width:767px){   /* 積み上げレイアウトを767pxまで＝splitの開始点と隙間なく接続 */
     /* セーフエリア（ノッチ/ステータスバー/ホームバー）を避ける＝ロゴが時刻に重ならない */
@@ -1475,10 +1478,9 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 
 /* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
 #scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}
-.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand close" "strip gate";gap:10px}
-.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"close hand" "gate strip"}
+.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand hand" "strip gate";gap:10px}
+.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"hand hand" "gate strip"}
 #scratchEditor .scratch-panel .scratch-hand{grid-area:hand;justify-self:center;width:min(60%,160px);font-size:22px;line-height:1}
-#scratchEditor .scratch-panel .scratch-close{grid-area:close;justify-self:end;font-size:12px}
 .scratch-strip{grid-area:strip;position:relative;min-height:0}
 #scratchDeck{display:block;width:100%;height:100%;min-height:200px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
 #scratchDeck:active{cursor:grabbing}
@@ -1500,6 +1502,24 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 #scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
 #scratchEditor .scratch-panel #scratchHand[aria-pressed=true]{color:#c0c875;border-color:#c0c875}
 .key-instruments{margin:0 0 12px}.key-instruments button{min-height:48px;font-size:13px;font-weight:700}   /* 音色（v0.3.216 §205） */
+/* v0.3.218 §207：3 つの画面（EDIT / KEY / SCRATCH）に共通の頭。左＝PAD 番号と名前、まん中＝種類、右＝CLOSE。どの画面でも同じ高さ・同じ並び */
+.pad-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;margin:0 0 8px;flex:0 0 auto}
+.pad-head-name{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.pad-head-name b{font-size:13px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pad-head-sub{font-size:10px;letter-spacing:.08em;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pad-head-kinds{display:flex;border:1px solid currentColor;border-radius:8px;overflow:hidden}
+.pad-head .pad-head-kinds button{min-height:44px;min-width:0;padding:0 9px;border:0;border-radius:0;font-size:12px;font-weight:700;letter-spacing:.04em;background:transparent;color:inherit}
+.pad-head .pad-head-kinds button+button{border-left:1px solid currentColor}
+.pad-head .pad-head-kinds button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#10221d}
+.pad-head .pad-head-close{min-height:44px;padding:0 10px;font-size:12px;font-weight:700;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit}
+@media(max-width:400px){.pad-head{gap:5px}.pad-head .pad-head-kinds button{padding:0 6px;font-size:11px;letter-spacing:0}.pad-head .pad-head-close{padding:0 7px;font-size:11px}}
+.key-sound-heading #keyTabNotes{min-height:44px;font-weight:700}
+.key-more-tabs .key-more-sound{font-weight:700}
+/* v0.3.218 §207：共通の頭（CLOSE）が 3 画面で同じ位置に来るよう、外側と内側の余白を揃える。スマホ＝KEY と同じ（外 6px・内 8px）、PC＝内 12px */
+@media(max-width:600px){#scratchEditor,#padEditModal{padding:max(6px,env(safe-area-inset-top)) 6px max(6px,env(safe-area-inset-bottom))}#scratchEditor .scratch-panel,#padEditModal .modal.pe{padding:8px;border-radius:8px;width:100%}}
+@media(min-width:601px){#padEditModal .modal.pe{padding:12px}#padEditModal{padding-top:12px}}
+#scratchEditor .scratch-panel .pad-head .pad-head-kinds button{background:transparent;border-color:currentColor;border-width:0 0 0 1px}#scratchEditor .scratch-panel .pad-head .pad-head-kinds button:first-child{border-left:0}
+#scratchEditor .scratch-panel .pad-head .pad-head-kinds button[aria-pressed=true],#padEditModal .pad-head .pad-head-kinds button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#10221d}   /* 画面ごとのボタンの色より強く（選んでいる種類＝teal） */
 </style>
 </head>
 <body>
@@ -1512,7 +1532,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.217</div>
+  <div class="s-ver" id="splashVer">v0.3.219</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1672,8 +1692,9 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 
     <!-- サンプル編集モーダル（EDIT＋パッドで対象を開く / モック） -->
     <div class="modal-backdrop" id="padEditModal" style="display:none;">
-      <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
-        <div class="modal-head"><span id="peTitle">TRIM · CHOP</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+      <div class="modal pe" role="dialog" aria-modal="true" aria-label="パッドの EDIT（SAMPLE）">
+        <!-- v0.3.218 §207：3 つの画面（EDIT / KEY / SCRATCH）に共通の頭。PAD 番号・SAMPLE | KEY | SCRATCH・CLOSE が同じ場所（ui/pad-kind が中身を作る） -->
+        <div class="pad-head" data-screen="edit"></div>
         <!-- 名前：唯一の変更入口（v0.3.120）。✎ を押すと入力箱が出る -->
         <div class="pe-name">
           <span class="pe-name-txt" id="peName">—</span>
@@ -1682,8 +1703,6 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
                  spellcheck="false" aria-label="パッドの名前" hidden>
         </div>
         <!-- v0.3.199 §188：見出しで区切り、値に名前と単位（参考 UI の TRIM 画面）。略さない（SPL→SAMPLE・SCR→SCRATCH・REV→REVERSE・ATK→ATTACK） -->
-        <div class="pe-sec">SOUND TYPE<small>音の種類</small></div>
-        <div id="peKinds"><button class="t" data-kind="SPL">SAMPLE</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCRATCH</button></div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
         <div class="pe-sec pe-sec-wave">SOURCE<small>音を入れる</small></div>
         <div class="pe-sample">
@@ -1751,13 +1770,13 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
       </div>
     </div>
 <div id="keyEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="keyTitle" hidden>
- <section class="content-panel key-panel"><header class="key-head"><div class="key-name"><b id="keyTitle">KEY</b><span class="key-voice">TINE ELECTRIC PIANO</span></div><div class="key-tabs" role="tablist" aria-label="KEY編集ページ"><button id="keyTabNotes" role="tab" aria-selected="true" aria-controls="keyNotePanel">NOTES</button><button id="keyTabSound" role="tab" aria-selected="false" aria-controls="keySoundPanel">SOUND</button></div><button id="keyClose">CLOSE</button></header>
+ <section class="content-panel key-panel"><div class="pad-head" data-screen="key"></div>
  <div id="keyNotePanel" role="tabpanel" aria-labelledby="keyTabNotes">
  <!-- v0.3.205 §194（B）：道具は 1 段だけ。他は MORE の中、説明文は無し（一言は下の状態表示）。ロールが残りの高さを全部使う -->
  <div class="content-tools key-bar"><button id="keyPreview" aria-pressed="false">▶ PLAY</button><button id="keyRec" aria-pressed="false">● REC</button><button id="keyStep" aria-pressed="false">STEP</button><button id="keyUndo">↶ UNDO</button><button id="keyScaleOn" aria-pressed="true">SCALE</button><button id="keyMore" aria-expanded="false" aria-controls="keyExtra">MORE</button></div>
  <!-- v0.3.210 §199：MORE ＝ 4 つのページ（CHORDS / KEY・SCALE / EDIT / VIEW）。選ぶ物は全部大きなボタン（ドロップダウンを使わない）。外側をタップで閉じる -->
  <div id="keyExtra" class="key-extra" hidden>
-  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY<br>SCALE</button><button data-more-tab="edit" role="tab">CHOP<br>EDIT</button><button data-more-tab="view" role="tab">VIEW</button></div><button id="keyMoreClose">CLOSE</button></div>
+  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY<br>SCALE</button><button data-more-tab="edit" role="tab">CHOP<br>EDIT</button><button data-more-tab="view" role="tab">VIEW</button><button id="keyTabSound" class="key-more-sound" aria-controls="keySoundPanel">SOUND<br>音色</button></div><button id="keyMoreClose">CLOSE</button></div>
   <div class="key-more-page" data-more-page="chords"><p class="key-more-note">いまの KEY で入って、すぐループで鳴ります（いまのノートは置き換え・UNDO で戻せる）</p><div id="keyChordList" class="key-chord-list"></div></div>
   <div class="key-more-page" data-more-page="key" hidden>
    <b class="key-more-label">KEY（主音）</b><div id="keyRootGrid" class="key-grid key-root-grid"></div>
@@ -1790,7 +1809,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
  <div id="keyPads" class="key-pads"><div class="key-pads-head"><button id="keyPadsDown" aria-label="鍵盤を1オクターブ下へ">OCTAVE −</button><span id="keyPadsRange">C3–D5</span><button id="keyPadsUp" aria-label="鍵盤を1オクターブ上へ">OCTAVE ＋</button><button id="keyStepBack" class="key-step-only">◀ BACK</button><button id="keyStepRest" class="key-step-only">REST ▶</button></div><div id="keyPadGrid" class="key-pad-grid" role="group" aria-label="スケールの鍵盤"></div></div>
  </div></div>
  <div id="keySoundPanel" role="tabpanel" aria-labelledby="keyTabSound" hidden>
-  <div class="key-sound-heading"><b id="keySoundName">TINE ELECTRIC PIANO</b><span>このパッドの音色とエフェクト</span></div>
+  <div class="key-sound-heading"><button id="keyTabNotes" aria-controls="keyNotePanel">← NOTES</button><b id="keySoundName">TINE ELECTRIC PIANO</b><span>このパッドの音色とエフェクト</span></div>
   <div class="key-fx-switch key-instruments" role="group" aria-label="音色"><button data-key-instrument="rhodes-tine-v2" aria-pressed="true">ELECTRIC PIANO</button><button data-key-instrument="sine-bass" aria-pressed="false">SIN BASS</button></div>
   <div class="key-fx-rack">
    <section class="key-fx-unit"><h3>TREMOLO / WAH</h3><div class="key-fx-switch" role="group" aria-label="トレモロ・ワウ選択"><button data-key-motion="tremolo" aria-pressed="false">TREMOLO</button><button data-key-motion="off" aria-pressed="true">OFF</button><button data-key-motion="wah" aria-pressed="false">WAH</button></div><label>DEPTH <output id="keyMotionDepthRead" for="keyMotionDepth">50%</output><input id="keyMotionDepth" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="トレモロ・ワウの深さ"></label><label>RATE <output id="keyMotionRateRead" for="keyMotionRate">3.0 Hz</output><input id="keyMotionRate" type="range" min="0.1" max="10" step="0.1" value="3" aria-label="トレモロ・ワウの速さ"></label></section>
@@ -1807,7 +1826,8 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 </div>
 <div id="scratchEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="scratchTitle" hidden>
  <section class="content-panel scratch-panel">
- <div class="scratch-surface" id="scratchSurface"><button id="scratchHand" class="scratch-hand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄</button><button id="scratchClose" class="scratch-close">✕ CLOSE</button>
+ <div class="pad-head" data-screen="scr"></div>
+ <div class="scratch-surface" id="scratchSurface"><button id="scratchHand" class="scratch-hand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄</button>
  <div class="scratch-strip"><canvas id="scratchDeck" tabindex="0" aria-label="スクラッチ面。奥へ送るとフォワード、手前でバック"></canvas><span class="scratch-strip-label" aria-hidden="true">▲ FWD · BACK ▼</span></div>
  <div id="scratchFader" class="scratch-fader" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="フェーダー。触った所まで開き、離すと閉じる"><span class="scratch-fader-fill"></span><span class="scratch-fader-hint" aria-hidden="true">TOUCH ↓ VOL</span><output id="scratchFaderRead">CLOSED</output></div></div>
  <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas><div class="scratch-readout"><b id="scratchTitle">SCR</b><span><b id="scratchMotion">PLAY</b> <span id="scratchPosition">0.00 s</span></span></div></div>
@@ -3560,8 +3580,8 @@ new MutationObserver(()=>{
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, selected,
-//    swapPads, syncEditor, tracks, trigger
+//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
+//    selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -3641,9 +3661,10 @@ PADS.forEach((p,i)=>{
       if(Math.hypot(dx,dy)<=rad){ selectPad(i); flashPad(i); openPadEdit(i); return; }
     }
     if(tracks[i].padKind==="KEY"){const target=tracks[i],epoch=target._contentEpoch||0;await prepareKeyTrack(target,bpmVal);if((target._contentEpoch||0)!==epoch||target.padKind!=="KEY")return;}
+    // v0.3.219 §208：SCRATCH のパッドは押すとスクラッチ画面が開いて、そこで擦って演奏する（v0.3.204 §193 の「押すと普通に鳴るだけ」から戻した。
+    // 共通の頭で SAMPLE / KEY へその場で行けるようになったので、開いても迷わない）。SEQ に打ち込んだ音は今まで通り鳴る。音が無ければ普通の扱い
+    if(tracks[i].padKind==="SCR"&&tracks[i].buffer){ selectPad(i,true); scratchOpen(i).catch(err=>{ sampNameEl.textContent=err.message; }); return; }
     trigger(i);selectPad(i,true);
-    // SCRATCH のパッドは押しても普通に鳴るだけ（v0.3.204 §193「Pad 押してすぐスクラッチになるのはやめたい」）。スクラッチ画面への入口を一言で
-    if(tracks[i].padKind==="SCR") sampNameEl.textContent=String(i+1).padStart(2,"0")+" SCRATCH · スクラッチ画面は窓の SAMPLE ページの SCRATCH か、EDIT＋パッド";
   });
   // --- EDIT中のドラッグ並べ替え（移動/コピー）---
   d.addEventListener("pointermove",(e)=>{
@@ -5286,13 +5307,14 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 })();
 
 // @module edit-modal
-// @provides _ovCache, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor, peCueFrom, peCueT,
-//    peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue, peWaveVisible,
-//    refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+// @provides _ovCache, closePadEdit, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor,
+//    peCueFrom, peCueT, peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue,
+//    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
-//    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
-//    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
-//    scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, syncPadContentEditor, tracks, trigger
+//    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadHeads,
+//    paintPadName, paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo,
+//    refreshPadDisplay, sampNameEl, scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor,
+//    syncPadContentEditor, tracks, trigger
 // @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
@@ -5492,6 +5514,7 @@ function renameTrack(i, name){
 function peNameSync(){
   const el=document.getElementById("peName"); if(!el) return;
   el.textContent=String(peTarget+1).padStart(2,"0")+" "+(tracks[peTarget].name||PADS[peTarget].name||"");
+  if(typeof paintPadHeads==="function") paintPadHeads();   // 名前を変えたら共通の頭も（v0.3.218）
 }
 // ✎ を押す＝入力箱を出す / Enter＝確定 / Escape＝取消（モーダルは閉じない）
 (function(){
@@ -5517,7 +5540,6 @@ function openPadEdit(i){
   const t=tracks[i];
   if(typeof syncPadContentEditor==="function") syncPadContentEditor(i);
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="EDIT";   // ボタンと同じ名前（v0.3.128）
   if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む
   peNameSync();   // 名前はこの行に出す＝変える入口がここにしか無い（v0.3.120）
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
@@ -5537,15 +5559,17 @@ function openPadEdit(i){
   modal.style.display="flex";
   requestAnimationFrame(()=>renderPeWave(i));   // 表示後に正しい幅で描画
 }
+// EDIT を閉じる（v0.3.218 §207：共通の頭の CLOSE・背景のタップから。ui/pad-kind の padScreenClose が呼ぶ）
+function closePadEdit(){ const modal=document.getElementById("padEditModal"); modal.style.display="none"; document.body.classList.remove("pe-open"); if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
+    if(typeof clWaveTo==="function" && typeof clPage!=="undefined" && clPage==="smpl"){ clWaveTo("screen"); clSyncWave(); } }
 (function(){
   const modal=document.getElementById("padEditModal");
-  const close=()=>{ modal.style.display="none"; document.body.classList.remove("pe-open"); if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
-    if(typeof clWaveTo==="function" && typeof clPage!=="undefined" && clPage==="smpl"){ clWaveTo("screen"); clSyncWave(); } };
+  const close=closePadEdit;
   // タッチ端末では、パッドの pointerup でモーダルを開いた直後に、ブラウザが touchend から合成する click が
   // 「指の位置で再ヒットテスト」されてモーダルの上に落ちる（ゴーストクリック）。背景なら即閉じ、
   // ✂TRIM の上なら勝手に切り詰める（実測：70560→35280フレーム）。開いてから450msはクリックを飲む。
   modal.addEventListener("click",e=>{ if(performance.now()-peOpenedAt<450){ e.stopPropagation(); e.preventDefault(); } },true);
-  document.getElementById("peClose").addEventListener("click",close);
+  // ✕（#peClose）は v0.3.218 §207 で撤去。閉じるのは共通の頭の CLOSE
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
   // DELETE（v0.3.160）：「EDIT メニューの中に、サンプルを消す DELETE がないといけない」。2 回押す（2.5 秒以内）＝消す。↩ で戻せる
   let peDelT=-1e9;   // 起動直後（performance.now() が 2.5 秒未満）の 1 回目を 2 回目と取り違えない
@@ -7620,9 +7644,9 @@ async function scratchOpen(i){
 //    scratchGatePaint, scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide,
 //    scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchSlingKick,
 //    scratchStripTime, scratchWindAt
-// @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
+// @uses paintPadHeads, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState, tracks
-// @depends audio/scratch-pad
+// @depends -
 // Vertical waveform strip (v0.3.186 §174, djay-like linear scratch) and a swipe fader. Pointer capture permits a
 // second finger on the fader while the first finger holds/drags the waveform. The hands can swap sides.
 // 向きは指の自然な動き：スクラッチ＝奥（上）へ送るとフォワード・手前（下）でバック。フェーダー＝触った場所まで開く（手前ほど開く）・離すと全閉。
@@ -7643,11 +7667,10 @@ function scratchFaderAt(el,y){const r=el.getBoundingClientRect();return r.height
 function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();if(_scratchFaderDrag){_scratchFaderDrag=null;_scratchLevel=0;}_scratchGateKey=false;scratchGatePaint();}
 // Preserve held sources across asynchronous audio startup; Note Off/key up can
 // arrive before the worklet finishes loading and must keep the gate closed.
-// v0.3.204 §193：スクラッチ画面が開いていない時は、SCRATCH のパッドも PC キー／MIDI では普通に鳴るだけ（画面を開かない）。
-// 開いている間だけ、押している間フェーダーが開く（別の SCRATCH パッドならその盤に替える）
+// v0.3.219 §208：SCRATCH のパッドの PC キー／MIDI はパッドを押すのと同じ＝スクラッチ画面を開いて、押している間フェーダーが開く
+// （別の SCRATCH パッドならその盤に替える）。v0.3.204 §193 の「画面が閉じていれば普通に鳴るだけ」から戻した
 function scratchPadInputDown(i,id){
  if(tracks[i]?.padKind!=='SCR')return false;
- if(document.getElementById('scratchEditor').hidden&&!_scratchPadInputs.size)return false;
  if(_scratchPadInputs.has(id))return true;
  const opening=(_scratchPad===i&&!document.getElementById('scratchEditor').hidden)||[..._scratchPadInputs.values()].includes(i)?null:scratchOpen(i);
  _scratchPadInputs.set(id,i);scratchGatePaint();
@@ -7709,7 +7732,7 @@ function scratchHandPaint(swap){const surface=document.getElementById('scratchSu
 function scratchHide(){_scratchPad=-1;_scratchLevel=0;scratchGateRelease();cancelAnimationFrame(_scratchRAF);_scratchRAF=0;_scratchGesture=null;const cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview');cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=null;ov.onpointerdown=ov.onpointermove=ov.onpointerup=ov.onpointercancel=null;document.getElementById('scratchEditor').hidden=true;}
 function scratchShow(i){
  const editor=document.getElementById('scratchEditor'),cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview'),strip=cv.parentElement;document.getElementById('scratchTitle').textContent='SCR · '+(tracks[i].name||'PAD '+(i+1));editor.hidden=false;
- _scratchPad=i;_scratchLevel=0;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());
+ _scratchPad=i;_scratchLevel=0;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());if(typeof paintPadHeads==="function")paintPadHeads();   // 共通の頭（v0.3.218。単体テストの vm には無い）
  const draw=()=>{if(editor.hidden)return;const state=scratchState();scratchDrawStrip(cv,state,!!_scratchGesture);scratchDrawOverview(ov,state);strip?.classList?.toggle('on',!!_scratchGesture);document.getElementById('scratchMotion').textContent=state.dragging?'HOLD':state.motor?'PLAY':'PAUSE';document.getElementById('scratchPosition').textContent=(state.position*state.duration).toFixed(2)+' / '+state.duration.toFixed(2)+' s';const button=document.getElementById('scratchPlay');button.textContent=state.motor?'Ⅱ PAUSE':'▶ PLAY';button.setAttribute('aria-pressed',String(state.motor));_scratchRAF=requestAnimationFrame(draw);};draw();
  // 面のどこを押しても掴む。指を奥（上）へ＝波形も上へ＝フォワード、手前（下）へ＝バック（音が指の下の波形に付いてくる）。横の動きは使わない。
  // 動いた量は高さごとの感度で数える（上ほど敏感）＝掴んだ所の時刻がそのまま指の下に来る
@@ -7727,7 +7750,6 @@ function scratchShow(i){
  ov.onpointerup=ov.onpointercancel=e=>{if(seeking===e.pointerId)seeking=null;};
 }
 (function(){
- document.getElementById('scratchClose').addEventListener('click',scratchClose);
  document.getElementById('scratchPlay').addEventListener('click',()=>scratchMotor(!scratchState().motor));
  document.getElementById('scratchCue').addEventListener('click',()=>{_scratchGesture=null;scratchCue();});
  // 左手でスクラッチ・右手でフェーダーが基本。⇄ で入れ替え（この端末に覚える）
@@ -7743,11 +7765,12 @@ function scratchShow(i){
  document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});
 })();
 // @module ui/pad-kind
-// @provides _keyLeaveDone, _keyLeaveResolve, _sampleState, keyLeaveChoice, openPadContent, padKind,
-//    padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, PADS, _keyBuffers, bpmVal, keyEditorOpen, normalizeKeyPhrase, openPadEdit, paintClKind,
-//    paintPerf, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave,
-//    scratchOpen, stopVoices, tracks
+// @provides PAD_SCREEN_OF, _keyLeaveDone, _keyLeaveResolve, _sampleState, keyLeaveChoice, openPadContent,
+//    padHeadGo, padHeadSub, padKind, padKindGo, padScreenClose, padScreenOpen, padScreenTarget,
+//    paintPadHeads, setPadKind, syncPadContentEditor
+// @uses AC, PADS, _keyBuffers, _keyTarget, _scratchPad, bpmVal, closePadEdit, keyEditorClose, keyEditorOpen,
+//    normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf, peTarget, prepareKeyTrack, pushUndo,
+//    refreshPadDisplay, sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends -
 // パッドの種類（SAMPLE / KEY / SCRATCH）を切り替える所（v0.3.217 §206 で ui/pad-content から分けた）。
 // 種類の切替（setPadKind）・種類に合った画面を開く（openPadContent / padKindGo）・KEY から移る時に聞く（keyLeaveChoice）・EDIT の種類ボタンの表示（syncPadContentEditor）。
@@ -7811,13 +7834,47 @@ async function padKindGo(i,kind){
 function syncPadContentEditor(i){
   const kind=padKind(tracks[i]);
   document.getElementById('padEditModal').dataset.padKind=kind;
-  document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
+  paintPadHeads();
   document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
   if(typeof paintClKind==='function')paintClKind();   // 単体テスト（vm）には窓が無い
 }
+// ---- 共通の頭（v0.3.218 §207「EDIT のヘッドに Pad MODE を示すボタンを置いてシームレスに行き来」「共通操作は場所を同じに」）----
+// EDIT（SAMPLE）・KEY（ピアノロール）・SCRATCH の 3 つの画面の一番上に同じ物：左＝PAD 番号と名前、まん中＝SAMPLE | KEY | SCRATCH、右＝CLOSE。
+// 種類を押す＝その種類にして、その画面へその場で切り替わる（KEY から移る時は §195 の確認）。いまの種類をもう一度押しても何もしない
+const PAD_SCREEN_OF={SPL:'edit',KEY:'key',SCR:'scr'};
+function padScreenTarget(screen){return screen==='edit'?peTarget:screen==='key'?_keyTarget:_scratchPad;}
+function padScreenOpen(screen){return screen==='edit'?document.getElementById('padEditModal').style.display==='flex':screen==='key'?!document.getElementById('keyEditor').hidden:!document.getElementById('scratchEditor').hidden;}
+function padScreenClose(screen){if(screen==='edit')closePadEdit();else if(screen==='key')keyEditorClose();else scratchClose();}
+// 頭の中身（番号・名前・種類のボタン）。sub＝その画面だけの一言（KEY：音色と PITCH）
+function paintPadHeads(){
+  for(const h of document.querySelectorAll('.pad-head')){
+    const screen=h.dataset.screen,i=padScreenTarget(screen);if(!(i>=0)||!tracks[i])continue;
+    const t=tracks[i],kind=padKind(t);
+    h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0')+(t.name||PADS[i].name?' · '+(t.name||PADS[i].name):'');
+    h.querySelectorAll('[data-head-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.headKind===kind)));
+  }
+}
+function padHeadSub(screen,text){const el=document.querySelector('.pad-head[data-screen="'+screen+'"] .pad-head-sub');if(el)el.textContent=text||'';}
+async function padHeadGo(screen,kind){
+  const i=padScreenTarget(screen);if(!(i>=0)||!tracks[i])return;
+  const cur=padKind(tracks[i]);if(cur===kind&&PAD_SCREEN_OF[kind]===screen)return;
+  let leave='restore';if(cur!==kind){leave=await keyLeaveChoice(i,kind);if(!leave)return;}
+  padScreenClose(screen);
+  if(cur!==kind)await setPadKind(i,kind,leave);
+  if(padKind(tracks[i])!==kind)return;
+  // 音の無いパッドを SCRATCH にした時は擦る物が無いので EDIT（音を入れる所）を開く
+  if(kind==='SCR'&&!tracks[i].buffer){openPadEdit(i);sampNameEl.textContent='SCRATCH · 先に音を入れてください';return;}
+  openPadContent(i);
+}
 (function(){
-  // v0.3.215 §204「KEY と PIANO ROLL のボタンは一緒では」：KEY を押す＝KEY にしてそのままピアノロールを開く（窓の種類ボタンと同じ padKindGo）。PIANO ROLL ボタンは撤去
-  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;if(kind==='KEY'){padKindGo(i,'KEY').catch(e=>sampNameEl.textContent=e.message);return;}keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
+  for(const h of document.querySelectorAll('.pad-head')){
+    h.innerHTML='<div class="pad-head-name"><b class="pad-head-no">PAD</b><span class="pad-head-sub"></span></div>'+
+      '<div class="pad-head-kinds" role="group" aria-label="パッドの種類（押すとその画面へ）"><button data-head-kind="SPL">SAMPLE</button><button data-head-kind="KEY">KEY</button><button data-head-kind="SCR">SCRATCH</button></div>'+
+      '<button class="pad-head-close">CLOSE</button>';
+    h.addEventListener('click',e=>{const b=e.target.closest('[data-head-kind]');if(b){padHeadGo(h.dataset.screen,b.dataset.headKind).catch(err=>sampNameEl.textContent=err.message);return;}
+      if(e.target.closest('.pad-head-close'))padScreenClose(h.dataset.screen);});
+  }
+  // v0.3.215 §204：EDIT の KEY を押す＝KEY にしてそのままピアノロール → v0.3.218 §207 で共通の頭（padHeadGo）に置き換え。EDIT の種類ボタン（#peKinds）は撤去
   document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
 })();
 // @module ui/key-entry
@@ -8119,8 +8176,9 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
 //    keyEditorClose, keyEditorOpen
 // @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, _keyEntryPaint, _keyLeaveDone, _keyLeaveResolve,
 //    _keyPadLow, _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, padKind, parseKeyMidi,
-//    prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, scheduleAutosave, scratchClose, tracks
+//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, padHeadSub, padKind,
+//    paintPadHeads, parseKeyMidi, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
+//    scheduleAutosave, scratchClose, tracks
 // @depends plock-undo
 // KEY のピアノロール（v0.3.217 §206 で ui/pad-content から改名。パッドの種類の切替は ui/pad-kind へ分けた）：
 // 開く・閉じる（keyEditorOpen / keyEditorClose）・ロールと強弱の欄の描画（_keyPaint）・ノートのドラッグ・SOUND タブ・MIDI 読み込み。
@@ -8139,7 +8197,7 @@ function _keySnapBeat(beat,e,bypass=false){return Math.round(beat*(e.snap&&!bypa
 function _keySelect(i,extend=false){if(!extend)_keySelection.clear();if(extend&&_keySelection.has(i))_keySelection.delete(i);else _keySelection.add(i);_keySelected=_keySelection.has(i)?i:([..._keySelection].at(-1)??-1);}
 function _keyFit(){const box=document.getElementById('keyHorizontal'),bars=_keyPhrase().bars;_keyZoom=Math.max(32,Math.min(384,Math.floor((box.clientWidth-58)/(bars*4))));_keyPaint();}
 function keyEditorOpen(i){
-  _keyTarget=i;_keySound=false;_keyAutoFit=true;_keySelected=-1;_keySelection.clear();_keyDraft=null;_keyGesture=null;_keyNavigate=false;_keyMulti=false;
+  _keyTarget=i;_keySound=false;_keyAutoFit=true;_keySelected=-1;_keySelection.clear();_keyDraft=null;_keyGesture=null;_keyNavigate=false;_keyMulti=false;paintPadHeads();
   // v0.3.212 §201：ロールは A0〜C8 全部（3 オクターブの窓をやめた＝PC のホイールでもスマホの指でも全部スクロールで届く）。開いた時は最初の音（無ければ C4）を真ん中に
   const notes=normalizeKeyPhrase(tracks[i].keyPhrase).notes;
   document.getElementById('keyEditor').hidden=false;_keyMoreShow(false);_keyLanesShow();document.getElementById('keyDragMode').value='auto';_keyFit();
@@ -8176,9 +8234,11 @@ function _keyPaint(){
   document.getElementById('keyNotePanel').hidden=_keySound;document.getElementById('keySoundPanel').hidden=!_keySound;
   document.getElementById('keyTabNotes').setAttribute('aria-selected',String(!_keySound));document.getElementById('keyTabSound').setAttribute('aria-selected',String(_keySound));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
-  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyInstrument===p.instrument)));for(const el of document.querySelectorAll('.key-voice,#keySoundName'))el.textContent=KEY_INSTRUMENTS[p.instrument];   // 音色（v0.3.216 §205）
+  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyInstrument===p.instrument)));document.getElementById('keySoundName').textContent=KEY_INSTRUMENTS[p.instrument];   // 音色（v0.3.216 §205）
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
-  const tr=keyTranspose(t);document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1))+(tr?' · PITCH '+(tr>0?'+':'')+tr:'');   // パッドの PITCH はここに出す（音符はそのまま表示、鳴る音は移る v0.3.213）document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
+  // 頭の一言＝音色とパッドの PITCH（音符はそのまま表示、鳴る音は移る v0.3.213）。v0.3.218 §207：名前は共通の頭へ。
+  // 小節数・ズームの入力欄の同期は v0.3.213 からコメントの中に入って動いていなかったのを戻した
+  const tr=keyTranspose(t);padHeadSub('key',KEY_INSTRUMENTS[p.instrument]+(tr?' · PITCH '+(tr>0?'+':'')+tr:''));document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
   for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(id==='keyScaleOn'?'':v?' ON':' OFF');}
   document.querySelector('.key-panel').classList.toggle('is-navigating',_keyNavigate);document.getElementById('keyScaleRoot').value=p.editor.root;document.getElementById('keyScaleType').value=p.editor.scale;
   const rows=_keyRows(),rh=_keyRowH(),rowOf=new Map(rows.map((r,k)=>[r,k*rh]));if(cv.width!==width)cv.width=width;if(cv.height!==rows.length*rh)cv.height=rows.length*rh;
@@ -8244,7 +8304,7 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
 (function(){
   const root=document.getElementById('keyScaleRoot');NOTE_NAMES.forEach((name,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=name;root.appendChild(opt);});
   document.getElementById('keyTabNotes').addEventListener('click',()=>{_keyEndGesture(true);_keySound=false;_keyPaint();if(_keyAutoFit)_keyFit();});
-  document.getElementById('keyTabSound').addEventListener('click',()=>{_keyEndGesture(true);_keySound=true;_keyPaint();});
+  document.getElementById('keyTabSound').addEventListener('click',()=>{_keyEndGesture(true);_keySound=true;_keyMoreShow(false);_keyPaint();});   // v0.3.218：SOUND は MORE の中から（頭を 3 画面で同じにしたので）。戻るのは SOUND の上の ← NOTES
   // 音色（v0.3.216 §205）：SIN BASS にしたら鍵盤を低い所（C2〜）へ。試し弾きの作り置きも作り直す
   document.querySelectorAll('[data-key-instrument]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.keyInstrument;if(_keyPhrase().instrument===v)return;_keyUpdate(p=>p.instrument=v);if(v==='sine-bass'&&_keyPadLow>36+_keyPadRoot)_keyPadLow=36+_keyPadRoot;else if(v!=='sine-bass'&&_keyPadLow<48+_keyPadRoot)_keyPadLow=48+_keyPadRoot;_keyEntryPaint();_keyWarmPads();}));
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.motion=b.dataset.keyMotion)));
@@ -8252,7 +8312,6 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
     const control=document.getElementById(id);control.addEventListener('input',e=>_keyFxLabel(id,+e.target.value));control.addEventListener('change',e=>_keyUpdate(p=>p.effects[prop]=+e.target.value));
   }
-  document.getElementById('keyClose').addEventListener('click',keyEditorClose);
   document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
   // ▶ PLAY（keyPreview）は v0.3.205 §194 でループ再生に（ui/key-entry）。MORE・強弱の欄・鍵盤の出し入れ
   document.getElementById('keyMore').addEventListener('click',()=>{_keyMoreShow(document.getElementById('keyExtra').hidden);if(_keyAutoFit)requestAnimationFrame(()=>{if(_keyTarget>=0)_keyFit();});});
@@ -8507,7 +8566,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.217";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.219";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
