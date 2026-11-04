@@ -120,8 +120,8 @@
 
 /* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
 #scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}
-.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand hand" "strip gate";gap:10px}
-.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"hand hand" "gate strip"}
+.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand atk" "strip gate";gap:10px}
+.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"atk hand" "gate strip"}
 #scratchEditor .scratch-panel .scratch-hand{grid-area:hand;justify-self:center;width:min(60%,160px);font-size:22px;line-height:1}
 .scratch-strip{grid-area:strip;position:relative;min-height:0}
 #scratchDeck{display:block;width:100%;height:100%;min-height:200px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
@@ -162,3 +162,4 @@
 @media(min-width:601px){#padEditModal .modal.pe{padding:12px}#padEditModal{padding-top:12px}}
 #scratchEditor .scratch-panel .pad-head .pad-head-kinds button{background:transparent;border-color:currentColor;border-width:0 0 0 1px}#scratchEditor .scratch-panel .pad-head .pad-head-kinds button:first-child{border-left:0}
 #scratchEditor .scratch-panel .pad-head .pad-head-kinds button[aria-pressed=true],#padEditModal .pad-head .pad-head-kinds button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#10221d}   /* 画面ごとのボタンの色より強く（選んでいる種類＝teal） */
+#scratchEditor .scratch-panel .scratch-attack{grid-area:atk;font-size:11px;font-weight:700;letter-spacing:.06em;line-height:1.25;min-height:44px}   /* v0.3.221 §210：フェーダーの真上＝そのフェーダーの開く速さ */

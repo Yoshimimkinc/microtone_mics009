@@ -231,6 +231,13 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   await p.evaluate(async()=>{await setPadKind(8,'SCR');await scratchOpen(8);});
   eq(`${label} SCRは対象パッドから起動`,await p.evaluate(()=>[document.getElementById('scratchEditor').hidden,!!_scratchNode]),[false,true]);
   await p.screenshot({path:`tools/_shots/content-scr-${w}.png`});
+  // v0.3.221 §210：フェーダーの上の ATTACK＝開く速さ。押すたびに 120 → 0 → 30 → 60 → 120 ms、端末ごとに覚える
+  { const at=async()=>p.evaluate(()=>({label:document.getElementById('scratchAttack').textContent,v:_scratchAttack,saved:localStorage.getItem('mics.scrAttack')}));
+    const a0=await at();await p.click('#scratchAttack');const a1=await at();
+    const box=await p.locator('#scratchAttack').boundingBox(),gate=await p.locator('#scratchFader').boundingBox();
+    const open=await p.evaluate(()=>{scratchSetFader(0,.003);return null;});await p.waitForTimeout(50);const d=await p.evaluate(()=>scratchSetFader(1));await p.evaluate(()=>scratchSetFader(0,.003));
+    for(let k=0;k<3;k++)await p.click('#scratchAttack');const a4=await at();
+    ok_(`${label} SCR の ATTACK：既定 120 ms → 押すと 0 ms（3ms で開く）・覚える・一周で 120 ms・フェーダーの真上`,a0.v===.12&&/120 ms/.test(a0.label)&&a1.v===0&&/0 ms/.test(a1.label)&&a1.saved==='0'&&Math.abs(d-.003)<1e-6&&a4.v===.12&&box.y+box.height<=gate.y+1&&Math.abs((box.x+box.width/2)-(gate.x+gate.width/2))<gate.width/2,JSON.stringify({a0,a1,a4,d,box,gate})); }
   // v0.3.186 §174：縦一直線の波形面（奥へ＝フォワード）・奥から手前へスワイプで開くフェーダー・⇄ で左右入替（覚える）
   {const deck=await p.locator('#scratchDeck').boundingBox(),gate=await p.locator('#scratchFader').boundingBox(),hand=await p.locator('#scratchHand').boundingBox(),close=await p.locator('.pad-head[data-screen=scr] .pad-head-close').boundingBox();
    ok_(`${label} SCR 面とフェーダーが縦長で画面内・既定はフェーダー右・⇄ は面の上・CLOSE は共通の頭（⇄ より上）`,deck.height>=300&&deck.height>deck.width&&gate.height>=300&&gate.x>deck.x&&deck.y+deck.height<=h&&hand.y+hand.height<=deck.y&&hand.x>=deck.x&&close.y+close.height<=hand.y,JSON.stringify({deck,gate,hand,close}));
