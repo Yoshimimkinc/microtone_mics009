@@ -1355,11 +1355,11 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   }
 .content-overlay[hidden]{display:none!important}.content-overlay{position:fixed;inset:0;z-index:10050;background:#090c10d9;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));color:var(--ink,#eee)}
 .content-panel{background:var(--bg,#14181d);border:1px solid var(--line,#444);border-radius:12px;padding:14px;width:min(900px,100%);max-height:100%;overflow:auto;font-size:13px;touch-action:pan-y}
-.content-panel header{display:flex;justify-content:space-between;align-items:center;gap:12px}.content-panel button,.content-panel input{min-height:44px;background:var(--panel,#242a30);color:inherit;border:1px solid var(--line,#555);border-radius:5px;padding:6px 10px}.content-panel input[type=number]{width:90px}.content-panel p{line-height:1.5;margin:10px 0}.content-tools{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin:10px 0}.content-tools label{display:flex;flex-direction:column;gap:4px}.content-import{display:block;margin:12px 0}.key-scroll{overflow:auto;max-height:42vh;touch-action:pan-x pan-y;border:1px solid #555}.key-scroll canvas{display:block;max-width:none;touch-action:pan-x pan-y}.pad .pad-kind{position:absolute;right:5px;top:4px;font-size:9px;pointer-events:none;opacity:.65}#peKinds{display:flex;gap:6px;margin:8px 0}#peKinds button,#peKeyOpen{min-height:44px;padding:4px 12px}#peKinds .on{color:var(--teal,#3dd6c4);border-color:currentColor}
+.content-panel header{display:flex;justify-content:space-between;align-items:center;gap:12px}.content-panel button,.content-panel input{min-height:44px;background:var(--panel,#242a30);color:inherit;border:1px solid var(--line,#555);border-radius:5px;padding:6px 10px}.content-panel input[type=number]{width:90px}.content-panel p{line-height:1.5;margin:10px 0}.content-tools{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin:10px 0}.content-tools label{display:flex;flex-direction:column;gap:4px}.content-import{display:block;margin:12px 0}.key-scroll{overflow:auto;max-height:42vh;touch-action:pan-x pan-y;border:1px solid #555}.key-scroll canvas{display:block;max-width:none;touch-action:pan-x pan-y}.pad .pad-kind{position:absolute;right:5px;top:4px;font-size:9px;pointer-events:none;opacity:.65}#peKinds{display:flex;gap:6px;margin:8px 0}#peKinds button{min-height:44px;padding:4px 12px}#peKinds .on{color:var(--teal,#3dd6c4);border-color:currentColor}
 
 #dropboxPanel{width:100%;padding:8px;border:1px solid var(--line);text-align:left}#dropboxPanel summary{cursor:pointer;min-height:36px}#dropboxPanel label{display:block;margin:8px 0}#dropboxPanel input{display:block;max-width:100%;min-height:40px}#dropboxPanel button{min-height:40px;margin:4px;white-space:normal}#dbFiles{max-height:240px;overflow:auto}#dbStatus{overflow-wrap:anywhere}
 
-#padEditModal[data-pad-kind=KEY] .pe-sample,#padEditModal[data-pad-kind=KEY] #peWaveHome,#padEditModal[data-pad-kind=KEY] .pe-transport,#padEditModal[data-pad-kind=KEY] .pe-chop{display:none}#peKeyOpen[hidden]{display:none}
+#padEditModal[data-pad-kind=KEY] .pe-sample,#padEditModal[data-pad-kind=KEY] #peWaveHome,#padEditModal[data-pad-kind=KEY] .pe-transport,#padEditModal[data-pad-kind=KEY] .pe-chop{display:none}
 
 /* KEY（v0.3.205 §194 B）：上から 名前・NOTES｜SOUND・CLOSE ／ 道具 1 段 ／（MORE）／ ロール＝残りの高さ全部 ／ 選んだ音の数値 ／ 鍵盤 4×4（A）。
    広い画面（900px〜）は ロール｜鍵盤 の横並び。説明文は置かず、一言は下の状態表示に */
@@ -1511,7 +1511,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.214</div>
+  <div class="s-ver" id="splashVer">v0.3.215</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1682,7 +1682,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
         </div>
         <!-- v0.3.199 §188：見出しで区切り、値に名前と単位（参考 UI の TRIM 画面）。略さない（SPL→SAMPLE・SCR→SCRATCH・REV→REVERSE・ATK→ATTACK） -->
         <div class="pe-sec">SOUND TYPE<small>音の種類</small></div>
-        <div id="peKinds"><button class="t" data-kind="SPL">SAMPLE</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCRATCH</button><button class="t" id="peKeyOpen" hidden>PIANO ROLL</button></div>
+        <div id="peKinds"><button class="t" data-kind="SPL">SAMPLE</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCRATCH</button></div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
         <div class="pe-sec pe-sec-wave">SOURCE<small>音を入れる</small></div>
         <div class="pe-sample">
@@ -8103,7 +8103,6 @@ function syncPadContentEditor(i){
   const kind=padKind(tracks[i]);
   document.getElementById('padEditModal').dataset.padKind=kind;
   document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
-  document.getElementById('peKeyOpen').hidden=kind!=='KEY';
   document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
   if(typeof paintClKind==='function')paintClKind();
 }
@@ -8232,9 +8231,9 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
     const control=document.getElementById(id);control.addEventListener('input',e=>_keyFxLabel(id,+e.target.value));control.addEventListener('change',e=>_keyUpdate(p=>p.effects[prop]=+e.target.value));
   }
-  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
+  // v0.3.215 §204「KEY と PIANO ROLL のボタンは一緒では」：KEY を押す＝KEY にしてそのままピアノロールを開く（窓の種類ボタンと同じ padKindGo）。PIANO ROLL ボタンは撤去
+  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;if(kind==='KEY'){padKindGo(i,'KEY').catch(e=>sampNameEl.textContent=e.message);return;}keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
   document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
-  document.getElementById('peKeyOpen').addEventListener('click',()=>keyEditorOpen(peTarget));
   document.getElementById('keyClose').addEventListener('click',keyEditorClose);
   document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
   // ▶ PLAY（keyPreview）は v0.3.205 §194 でループ再生に（ui/key-entry）。MORE・強弱の欄・鍵盤の出し入れ
@@ -8490,7 +8489,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.214";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.215";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

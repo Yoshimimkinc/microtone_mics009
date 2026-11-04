@@ -15,6 +15,11 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     focusSet(back);await new Promise(r=>setTimeout(r,50));out.back=tracks[7].name;return out;});
   ok_(`${label} 新しいセットの 8 番は C3 のサイン波の SCR パッド（約 2 秒・ループの継ぎ目で途切れない）`,Math.abs(sine.hz-130.81)<1.5&&sine.seam<=sine.step*1.01&&sine.dur>1.9&&sine.dur<2.1&&JSON.stringify(sine.set)==='["SCR","SCR SINE",true,true,"SCR"]',JSON.stringify(sine));
   eq(`${label} 保存に音を同梱しない・起動デモの 8 番はそのまま`,[sine.saved,sine.back===sine.demo[0]],[['SCR','synth','scrsine',null],true]);
+  // v0.3.215 §204「KEY を押してもパッドが KEY になるだけで何も起きない」：EDIT の KEY＝KEY にしてそのままピアノロールを開く（PIANO ROLL ボタンは撤去）
+  { await p.evaluate(()=>openPadEdit(9));await p.waitForTimeout(600);await p.click('#peKinds [data-kind="KEY"]');await p.waitForTimeout(400);
+    const ek=await p.evaluate(()=>({kind:padKind(tracks[9]),target:_keyTarget,shown:getComputedStyle(document.getElementById('keyEditor')).display!=='none'&&!document.getElementById('keyEditor').hidden,old:!!document.getElementById('peKeyOpen')}));
+    ok_(`${label} EDIT の KEY を押すと KEY になってそのままピアノロールが開く（PIANO ROLL ボタンは無い）`,ek.kind==='KEY'&&ek.target===9&&ek.shown&&!ek.old,JSON.stringify(ek));
+    await p.evaluate(async()=>{keyEditorClose();document.getElementById('peClose').click();await setPadKind(9,'SPL','restore');});await p.waitForTimeout(150); }
   // Real pointer swipes use the same row on phone and desktop. No FX/modal
   // or pattern tap may leak through the gesture; explicit pattern tap still works.
   const fxRow=mobile?'.msbar':'#perfPlk';
