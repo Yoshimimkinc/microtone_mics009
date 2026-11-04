@@ -123,3 +123,6 @@ document.getElementById("peClose") [click]
 document.getElementById('keyClose') [click]
 document.getElementById('peKinds') [click]
 document.getElementById('scratchClose') [click]
+# v0.3.220 §209 KEY ⇄ 波形は聞かずに往復（音の入った KEY から移る＝必ず波形にする）。§195 の確認ダイアログとその処理を撤去
+document.getElementById('keyLeaveAsk') [click]
+_keyLeaveDone

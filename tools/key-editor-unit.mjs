@@ -220,14 +220,10 @@ for(const kind of ['SPL','SCR']){await context.setPadKind(0,kind,'bake');const t
  await context.setPadKind(0,'KEY');check('KEY after a '+kind+' bake still has the phrase',()=>assert.equal(context.tracks[0].keyPhrase.notes[0].pitch,60));}
 await context.setPadKind(0,'SPL','restore');check('restore still brings back the sample saved before KEY',()=>assert.equal(context.tracks[0].buffer.length,context.tracks[0].sampleState.buffer.length));
 await context.setPadKind(0,'KEY');
-const asked=[];el('keyLeaveAsk').hidden=true;context.keyLeaveChoice(0,'SPL').then(v=>asked.push(v));
-check('leaving a KEY with notes asks first',()=>{assert.equal(el('keyLeaveAsk').hidden,false);assert.equal(el('keyLeaveTo').textContent,'SAMPLE');});
-el('keyLeaveAsk').listeners.click[0]({target:{closest:()=>({dataset:{leave:'bake'}})},currentTarget:el('keyLeaveAsk')});await flush();
-check('choosing in the dialog answers and closes it',()=>{assert.deepEqual(asked,['bake']);assert.equal(el('keyLeaveAsk').hidden,true);});
-context.keyLeaveChoice(0,'SCR').then(v=>asked.push(v));el('keyLeaveAsk').listeners.click[0]({target:{closest:()=>({dataset:{leave:''}})},currentTarget:el('keyLeaveAsk')});await flush();
-check('CANCEL keeps the pad as it was',()=>{assert.deepEqual(asked,['bake',null]);assert.equal(context.tracks[0].padKind,'KEY');});
+let leaveAns=null;await context.keyLeaveChoice(0,'SPL').then(v=>leaveAns=v);
+check('v0.3.220: leaving a KEY with notes bakes without asking',()=>assert.equal(leaveAns,'bake'));
 context.tracks[0].keyPhrase={bars:1,notes:[]};let quiet=null;await context.keyLeaveChoice(0,'SPL').then(v=>quiet=v);context.tracks[0].keyPhrase={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:96}]};
-check('an empty KEY does not ask',()=>assert.equal(quiet,'restore'));
+check('an empty KEY goes back to the sample from before KEY',()=>assert.equal(quiet,'restore'));
 await context.prepareKeyTrack(context.tracks[0],100);
 context.tracks[0].buffer=sample;context.tracks[0].rawBuffer=sample;await context.prepareKeyTrack(context.tracks[0],100);
 check('stale matching signature cannot authorize a sample buffer as KEY',()=>assert.equal(context.tracks[0].buffer,keyAudio));
@@ -235,6 +231,8 @@ check('stale matching signature cannot authorize a sample buffer as KEY',()=>ass
 context.getComputedStyle=()=>({getPropertyValue:()=> '#fff'});vm.runInContext(fs.readFileSync(new URL('32-ui-wave.js',base),'utf8'),context);
 const thumbnail=context.keyPadGeometry({bars:2,notes:[{pitch:60,beat:0,length:1,velocity:40},{pitch:72,beat:4,length:2,velocity:127}]},120,100);
 check('KEY thumbnail preserves pitch, start and duration',()=>{const [a,b]=thumbnail.notes;assert.ok(a.y>b.y);assert.ok(b.x>a.x);assert.ok(b.width>a.width);assert.ok(thumbnail.notes.every(n=>n.x>=thumbnail.left&&n.x+n.width<=thumbnail.left+thumbnail.width));});
+{const ph={bars:2,notes:[{pitch:48,beat:0,length:1,velocity:90},{pitch:60,beat:4,length:1,velocity:90},{pitch:62,beat:6,length:2,velocity:90}],range:{start:4,end:null}},g=context.keyPadGeometry(ph,200,100);
+ check('v0.3.220: the KEY pad thumbnail shows only START..END (notes before START are left out, START is the left edge)',()=>{assert.equal(g.notes.length,2);assert.ok(Math.abs(g.notes[0].x-g.left)<1e-9);assert.ok(Math.abs(g.notes[1].x-(g.left+g.width/2))<1e-9);assert.equal(g.from,4);assert.equal(g.to,8);});}
 check('empty KEY thumbnail is an empty note grid',()=>assert.equal(context.keyPadGeometry({notes:[]},80,64).notes.length,0));
 context.padsEl={children:[{clientWidth:120,clientHeight:100,querySelector:()=>el('padThumbnail')}]};context.tracks[0].padKind='KEY';context.tracks[0].buffer={getChannelData(){throw Error('KEY must not read audio for its thumbnail');}};
 check('KEY pad drawing bypasses waveform sampling',()=>context.drawPadWave(0));

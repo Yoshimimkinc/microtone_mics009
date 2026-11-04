@@ -1,13 +1,13 @@
 // @module ui/pad-kind
-// @provides PAD_SCREEN_OF, _keyLeaveDone, _keyLeaveResolve, _sampleState, keyLeaveChoice, openPadContent,
-//    padHeadGo, padHeadSub, padKind, padKindGo, padScreenClose, padScreenOpen, padScreenTarget,
-//    paintPadHeads, setPadKind, syncPadContentEditor
+// @provides PAD_SCREEN_OF, _sampleState, keyLeaveChoice, openPadContent, padHeadGo, padHeadSub, padKind,
+//    padKindGo, padScreenClose, padScreenOpen, padScreenTarget, paintPadHeads, setPadKind,
+//    syncPadContentEditor
 // @uses AC, PADS, _keyBuffers, _keyTarget, _scratchPad, bpmVal, closePadEdit, keyEditorClose, keyEditorOpen,
 //    normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf, peTarget, prepareKeyTrack, pushUndo,
 //    refreshPadDisplay, sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends -
 // パッドの種類（SAMPLE / KEY / SCRATCH）を切り替える所（v0.3.217 §206 で ui/pad-content から分けた）。
-// 種類の切替（setPadKind）・種類に合った画面を開く（openPadContent / padKindGo）・KEY から移る時に聞く（keyLeaveChoice）・EDIT の種類ボタンの表示（syncPadContentEditor）。
+// 種類の切替（setPadKind）・種類に合った画面を開く（openPadContent / padKindGo）・KEY から移る時は波形にする（keyLeaveChoice）・EDIT の種類ボタンの表示（syncPadContentEditor）。
 // ピアノロールは ui/key-roll、鍵盤・REC・STEP・ループ・MORE は ui/key-entry、スクラッチは ui/scratch-view。
 // SAMPLE / KEY / SCRATCH（保存の値）。起動中（このファイルより前の部品の読み込み時）にも呼ばれるので、並びは定数にせず関数の中に書く
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
@@ -35,7 +35,7 @@ async function setPadKind(i,kind,leave='restore'){
     const epoch=t._contentEpoch;sampNameEl.textContent='KEYを生成中…';const ready=await prepareKeyTrack(t,bpmVal);
     if(t._contentEpoch!==epoch||t.padKind!=='KEY')return;
     if(ready)sampNameEl.textContent=t.keyPhrase.notes.length?'KEY · フレーズを演奏できます':'KEY · 鍵盤で弾いて入れるか、ロールをタップして置いてください';
-  }else sampNameEl.textContent=baked?(kind==='SCR'?'SCRATCH':'SAMPLE')+' · KEY のフレーズを波形にしました（KEY に戻せば打ち込みはそのまま）':kind==='SCR'?'SCRATCH · 窓の SCRATCH か EDIT＋パッドでスクラッチ画面':'SAMPLE · サンプルを再生';
+  }else sampNameEl.textContent=baked?(kind==='SCR'?'SCRATCH':'SAMPLE')+' · KEY のフレーズを波形にしました（KEY を押せば打ち込みに戻る）':kind==='SCR'?'SCRATCH · 窓の SCRATCH か EDIT＋パッドでスクラッチ画面':'SAMPLE · サンプルを再生';
   refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
 }
 // 種類に合った画面を開く（v0.3.203 §192）：KEY＝ピアノロール・SCRATCH＝スクラッチ・SAMPLE＝EDIT（波形・TRIM・CHOP）。EDIT＋パッドのタップもここ
@@ -47,17 +47,13 @@ function openPadContent(i){
 }
 // 窓の種類ボタン：その種類にして、すぐその画面へ（同じ種類ならそのまま開く）。SAMPLE は窓の波形のまま（開かない）
 // KEY（音が入っている）から SAMPLE / SCRATCH へ移る時は聞く：この KEY を波形にする／元のサンプルに戻す／やめる（v0.3.206 §195）
-let _keyLeaveResolve=null;
+// v0.3.220 §209「KEY と波形は行き来できる様に」：聞かない。音の入った KEY から SAMPLE / SCRATCH へ＝必ず「いまのフレーズを波形にする」（START〜END ごと、
+// 打ち込みは残る）、波形から KEY へ＝打ち込みに戻る。何度でも往復できる。音の無い KEY は KEY にする前のサンプルに戻す。
+// v0.3.206 §195 の確認（波形にする／元のサンプルに戻す／やめる）は撤去。KEY にする前のサンプルへは UNDO で戻る
 function keyLeaveChoice(i,kind){
   const t=tracks[i];
-  if(padKind(t)!=='KEY'||kind==='KEY'||!normalizeKeyPhrase(t.keyPhrase).notes.length)return Promise.resolve('restore');
-  if(_keyLeaveResolve)_keyLeaveResolve(null);
-  document.getElementById('keyLeaveTo').textContent=kind==='SCR'?'SCRATCH':'SAMPLE';
-  document.getElementById('keyLeaveRestore').textContent=t.sampleState?.buffer?'元のサンプルに戻す':'元に戻す（空のパッド）';
-  document.getElementById('keyLeaveAsk').hidden=false;
-  return new Promise(resolve=>{_keyLeaveResolve=resolve;});
+  return Promise.resolve(padKind(t)==='KEY'&&kind!=='KEY'&&normalizeKeyPhrase(t.keyPhrase).notes.length?'bake':'restore');
 }
-function _keyLeaveDone(v){const r=_keyLeaveResolve;_keyLeaveResolve=null;document.getElementById('keyLeaveAsk').hidden=true;if(r)r(v||null);}
 async function padKindGo(i,kind){
   if(padKind(tracks[i])!==kind){const leave=await keyLeaveChoice(i,kind);if(!leave)return;await setPadKind(i,kind,leave);}
   if(padKind(tracks[i])!==kind)return;
@@ -109,5 +105,4 @@ async function padHeadGo(screen,kind){
       if(e.target.closest('.pad-head-close'))padScreenClose(h.dataset.screen);});
   }
   // v0.3.215 §204：EDIT の KEY を押す＝KEY にしてそのままピアノロール → v0.3.218 §207 で共通の頭（padHeadGo）に置き換え。EDIT の種類ボタン（#peKinds）は撤去
-  document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
 })();
