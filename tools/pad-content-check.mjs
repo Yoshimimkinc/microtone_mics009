@@ -143,6 +143,14 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
       const afterJump=await p.evaluate(()=>tracks[12].keyPhrase.range);
       ok_(`${label} KEY の START は札を掴んで動く・目盛りを押すと近いほうの印（END）が来る`,afterLabel.start===2&&afterLabel.end==null&&afterJump.start===2&&afterJump.end===9.5,JSON.stringify({afterLabel,afterJump}));
       await p.evaluate(()=>_keyUpdate(ph=>{ph.range={start:0,end:null};}));await p.click('#keyMore'); }
+    // v0.3.216 §205：音色 SIN BASS（SOUND タブ）。押すと保存され・名前が出て・鍵盤が低い所へ。ELECTRIC PIANO で戻る
+    { await p.evaluate(()=>_keyMoreShow(false));await p.click('#keyTabSound');await p.click('[data-key-instrument="sine-bass"]');await p.waitForTimeout(150);
+      const sb=await p.evaluate(()=>({ins:tracks[12].keyPhrase.instrument,name:document.querySelector('.key-voice').textContent,low:_keyPadLow,pressed:document.querySelector('[data-key-instrument="sine-bass"]').getAttribute('aria-pressed')}));
+      await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});
+      await p.click('[data-key-instrument="rhodes-tine-v2"]');await p.click('#keyTabNotes');await p.waitForTimeout(150);
+      const back=await p.evaluate(()=>({ins:tracks[12].keyPhrase.instrument,low:_keyPadLow}));
+      ok_(`${label} KEY の音色 SIN BASS：保存・名前・鍵盤が C2 から／ELECTRIC PIANO で戻る`,sb.ins==='sine-bass'&&sb.name==='SIN BASS'&&sb.pressed==='true'&&sb.low<=36&&back.ins==='rhodes-tine-v2'&&back.low>=48,JSON.stringify({sb,back}));
+      await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});await p.click('#keyMore'); }
     // v0.3.213 §202：KEY のパッドの PITCH は音符で移す＝長さ（テンポ）は同じ・エディタの名前に PITCH
     { const len0=await p.evaluate(()=>tracks[12].buffer.length);
       await p.evaluate(()=>{tracks[12].tune=5;warmPitch(12);});await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});

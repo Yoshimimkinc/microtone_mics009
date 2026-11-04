@@ -144,3 +144,4 @@
 @media(max-width:650px){#scratchEditor .scratch-panel{padding:10px;width:100%;height:100%}.scratch-controls button{min-width:0;padding:6px 8px}.scratch-readout{display:none}}
 #scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
 #scratchEditor .scratch-panel #scratchHand[aria-pressed=true]{color:#c0c875;border-color:#c0c875}
+.key-instruments{margin:0 0 12px}.key-instruments button{min-height:48px;font-size:13px;font-weight:700}   /* 音色（v0.3.216 §205） */
