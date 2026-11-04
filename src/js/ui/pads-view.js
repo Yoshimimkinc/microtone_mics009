@@ -4,8 +4,8 @@
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, selected,
-//    swapPads, syncEditor, tracks, trigger
+//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
+//    selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -85,9 +85,10 @@ PADS.forEach((p,i)=>{
       if(Math.hypot(dx,dy)<=rad){ selectPad(i); flashPad(i); openPadEdit(i); return; }
     }
     if(tracks[i].padKind==="KEY"){const target=tracks[i],epoch=target._contentEpoch||0;await prepareKeyTrack(target,bpmVal);if((target._contentEpoch||0)!==epoch||target.padKind!=="KEY")return;}
+    // v0.3.219 §208：SCRATCH のパッドは押すとスクラッチ画面が開いて、そこで擦って演奏する（v0.3.204 §193 の「押すと普通に鳴るだけ」から戻した。
+    // 共通の頭で SAMPLE / KEY へその場で行けるようになったので、開いても迷わない）。SEQ に打ち込んだ音は今まで通り鳴る。音が無ければ普通の扱い
+    if(tracks[i].padKind==="SCR"&&tracks[i].buffer){ selectPad(i,true); scratchOpen(i).catch(err=>{ sampNameEl.textContent=err.message; }); return; }
     trigger(i);selectPad(i,true);
-    // SCRATCH のパッドは押しても普通に鳴るだけ（v0.3.204 §193「Pad 押してすぐスクラッチになるのはやめたい」）。スクラッチ画面への入口を一言で
-    if(tracks[i].padKind==="SCR") sampNameEl.textContent=String(i+1).padStart(2,"0")+" SCRATCH · スクラッチ画面は窓の SAMPLE ページの SCRATCH か、EDIT＋パッド";
   });
   // --- EDIT中のドラッグ並べ替え（移動/コピー）---
   d.addEventListener("pointermove",(e)=>{

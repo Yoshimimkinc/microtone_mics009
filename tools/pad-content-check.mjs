@@ -220,11 +220,12 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     ok_(`${label} 「この KEY を波形にする」＝KEY の音がスクラッチの波形に・打ち込みは残る`, a3.kind==='SCR'&&a3.len===keyLen&&a3.peak>0.01&&a3.scr&&a3.notes===2, JSON.stringify(a3));
     await p.evaluate(async()=>{await setPadKind(5,'SPL');});
     await p.click('#clKeys .cl-key[data-pg="main"]'); await p.waitForTimeout(150); }
-  // v0.3.204 §193：SCRATCH のパッドを押しても画面は開かず、普通に鳴る（案内だけ出る）
+  // v0.3.219 §208：SCRATCH のパッドを押すとスクラッチ画面が開く（普通には鳴らさない。v0.3.204 §193 から戻した）
   { await p.evaluate(async()=>{await setPadKind(6,'SCR');scratchClose();}); const pr=await p.evaluate(()=>{const b=document.querySelectorAll('#pads .pad')[6].getBoundingClientRect();return [b.left+b.width/2,b.top+b.height*.8];});
-    await p.mouse.click(pr[0],pr[1]); await p.waitForTimeout(300);
-    const s6=await p.evaluate(()=>({scr:!document.getElementById('scratchEditor').hidden,node:!!_scratchNode,voices:(tracks[6].activeVoices||[]).length,msg:sampNameEl.textContent,sel:selected}));
-    ok_(`${label} SCRATCH のパッドを押しても画面は開かず普通に鳴る`, !s6.scr && !s6.node && s6.voices>0 && /SCRATCH/.test(s6.msg) && s6.sel===6, JSON.stringify(s6));
+    await p.mouse.click(pr[0],pr[1]); await p.waitForFunction(()=>!!_scratchNode,null,{timeout:5000}).catch(()=>{}); await p.waitForTimeout(150);
+    const s6=await p.evaluate(()=>({scr:!document.getElementById('scratchEditor').hidden,node:!!_scratchNode,voices:(tracks[6].activeVoices||[]).length,msg:sampNameEl.textContent,sel:selected,pad:_scratchPad}));
+    ok_(`${label} SCRATCH のパッドを押すとスクラッチ画面が開く（パッドとしては鳴らさない）`, s6.scr && s6.node && s6.voices===0 && s6.sel===6 && s6.pad===6, JSON.stringify(s6));
+    await p.evaluate(()=>scratchClose());
     await p.evaluate(async()=>{await setPadKind(6,'SPL');}); }
   await p.evaluate(async()=>{await setPadKind(8,'SCR');await scratchOpen(8);});
   eq(`${label} SCRは対象パッドから起動`,await p.evaluate(()=>[document.getElementById('scratchEditor').hidden,!!_scratchNode]),[false,true]);

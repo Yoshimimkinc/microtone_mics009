@@ -29,11 +29,10 @@ function scratchFaderAt(el,y){const r=el.getBoundingClientRect();return r.height
 function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();if(_scratchFaderDrag){_scratchFaderDrag=null;_scratchLevel=0;}_scratchGateKey=false;scratchGatePaint();}
 // Preserve held sources across asynchronous audio startup; Note Off/key up can
 // arrive before the worklet finishes loading and must keep the gate closed.
-// v0.3.204 §193：スクラッチ画面が開いていない時は、SCRATCH のパッドも PC キー／MIDI では普通に鳴るだけ（画面を開かない）。
-// 開いている間だけ、押している間フェーダーが開く（別の SCRATCH パッドならその盤に替える）
+// v0.3.219 §208：SCRATCH のパッドの PC キー／MIDI はパッドを押すのと同じ＝スクラッチ画面を開いて、押している間フェーダーが開く
+// （別の SCRATCH パッドならその盤に替える）。v0.3.204 §193 の「画面が閉じていれば普通に鳴るだけ」から戻した
 function scratchPadInputDown(i,id){
  if(tracks[i]?.padKind!=='SCR')return false;
- if(document.getElementById('scratchEditor').hidden&&!_scratchPadInputs.size)return false;
  if(_scratchPadInputs.has(id))return true;
  const opening=(_scratchPad===i&&!document.getElementById('scratchEditor').hidden)||[..._scratchPadInputs.values()].includes(i)?null:scratchOpen(i);
  _scratchPadInputs.set(id,i);scratchGatePaint();

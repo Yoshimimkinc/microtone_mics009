@@ -99,7 +99,7 @@ const app=fs.readFileSync(new URL('../mics-609bc14b.html',import.meta.url),'utf8
 ui.tracks[0].padKind='SCR';let resolveOpen,openCount=0;
 ui.scratchOpen=i=>{openCount++;ui.scratchHide();return new Promise(resolve=>{resolveOpen=()=>{ui.scratchShow(i);resolve();};});};
 check('SPL pads remain on the normal trigger path',()=>{ui.tracks.push({padKind:'SPL'});assert.equal(ui.scratchPadInputDown(1,'key:Digit2'),false);});
-ui.scratchHide();check('v0.3.204: with the scratch screen closed, an SCR pad key / note just plays the pad (the screen does not open)',()=>{assert.equal(ui.scratchPadInputDown(0,'key:Digit1'),false);assert.equal(openCount,0);assert.equal(el('scratchEditor').hidden,true);});ui.scratchPadInputUp('key:Digit1');
+ui.scratchHide();check('v0.3.219: with the scratch screen closed, an SCR pad key / note opens the screen (like tapping the pad)',()=>{assert.equal(ui.scratchPadInputDown(0,'key:Digit1'),true);assert.equal(openCount,1);});resolveOpen();ui.scratchPadInputUp('key:Digit1');openCount=0;
 ui.scratchShow(0);ui.scratchPadInputDown(0,'key:Digit1');check('with the screen open, the pad key opens the fader while held, without restarting the record',()=>{assert.equal(state.fader,1);assert.equal(openCount,0);});
 ui.scratchPadInputDown(0,'key:Digit1');check('repeated Note On/key down does not restart the platter',()=>assert.equal(openCount,0));
 ui.scratchPadInputDown(0,'midi:0:60');ui.scratchPadInputUp('key:Digit1');check('one released source does not cut another held source',()=>assert.equal(state.fader,1));
