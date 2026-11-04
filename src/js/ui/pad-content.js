@@ -6,10 +6,11 @@
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
 //    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
 //    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keySetPref, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
-//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
-//    sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
+// @uses AC, KEY_FLAG_W, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keyRangeDrag,
+//    _keySetPref, bpmVal, doUndo, keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase,
+//    openPadEdit, paintClKind, paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo,
+//    refreshPadDisplay, renderKeyPhrase, sampNameEl, scheduleAutosave, scratchClose, scratchOpen,
+//    stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -149,8 +150,10 @@ function _keyPaint(){
   const ruler=document.getElementById('keyRuler');if(ruler.width!==width)ruler.width=width;if(ruler.height!==28)ruler.height=28;const rc=ruler.getContext('2d');rc.fillStyle='#67747b';rc.fillRect(0,0,width,28);rc.font='11px sans-serif';rc.fillStyle='#fff';rc.fillText('4/4',10,18);for(let b=0;b<p.bars*4;b++){const x=58+b*_keyZoom;rc.fillText((Math.floor(b/4)+1)+'.'+(b%4+1),x+5,18);}
   // START / END（v0.3.212 §201）：外側を暗く、目盛りに START / END の印（ドラッグで動かす）
   const kr=_keyRange(),xs=58+kr.start*_keyZoom,xe=58+kr.end*_keyZoom,shade=(g,h)=>{g.fillStyle='rgba(20,26,30,.45)';if(xs>58)g.fillRect(58,0,xs-58,h);if(xe<width)g.fillRect(xe,0,width-xe,h);};
-  shade(rc,28);shade(c,cv.height);rc.font='bold 9px sans-serif';
-  for(const [x,label,left] of [[xs,'START',false],[xe,'END',true]]){rc.fillStyle='#3dd6c4';rc.fillRect(left?x-3:x,0,3,28);c.fillStyle='#2a9d8f';c.fillRect(left?x-2:x,0,2,cv.height);const w=rc.measureText(label).width+8;rc.fillRect(left?x-3-w:x+3,0,w,13);rc.fillStyle='#10221d';rc.fillText(label,(left?x-3-w:x+3)+4,7);}
+  shade(rc,28);shade(c,cv.height);rc.font='bold 10px sans-serif';rc.textBaseline='middle';
+  // 札（v0.3.214）：掴める範囲と同じ幅 KEY_FLAG_W・高さ 14px。掴んでいる印は明るく
+  for(const [x,label,left] of [[xs,'START',false],[xe,'END',true]]){const held=_keyRangeDrag&&_keyRangeDrag.which===(left?'end':'start'),w=KEY_FLAG_W-3,fx=left?x-3-w:x+3;rc.fillStyle=held?'#9ff3e8':'#3dd6c4';rc.fillRect(left?x-3:x,0,3,28);c.fillStyle='#2a9d8f';c.fillRect(left?x-2:x,0,2,cv.height);rc.fillRect(fx,0,w,14);rc.fillStyle='#10221d';rc.fillText(label,fx+5,7.5);}
+  rc.textBaseline='alphabetic';
   const vel=document.getElementById('keyVelocityRoll');if(vel.width!==width)vel.width=width;if(vel.height!==100)vel.height=100;const vc=vel.getContext('2d');vc.fillStyle='#bdc1c3';vc.fillRect(0,0,width,100);vc.font='10px sans-serif';vc.fillStyle='#334049';vc.fillText('VEL',9,17);vc.fillText('127',9,31);vc.fillText('1',18,90);vc.strokeStyle='#929a9f';for(const y of [16,88]){vc.beginPath();vc.moveTo(58,y+.5);vc.lineTo(width,y+.5);vc.stroke();}
   const drawVelocity=(n,j)=>{const x=58+n.beat*_keyZoom,y=88-(n.velocity-1)/126*72,sel=_keySelection.has(j);vc.strokeStyle=sel?'#9a5514':'#246d61';vc.lineWidth=sel?3:2;vc.beginPath();vc.moveTo(x,88);vc.lineTo(x,y);vc.stroke();vc.fillStyle=sel?'#ffb24a':'#318775';vc.beginPath();vc.arc(x,y,sel?5:4,0,Math.PI*2);vc.fill();if(sel){vc.fillStyle='#243138';vc.fillText(n.velocity,x+7,Math.max(12,y+3));}};
   p.notes.forEach((n,j)=>{if(!_keySelection.has(j))drawVelocity(n,j);});p.notes.forEach((n,j)=>{if(_keySelection.has(j))drawVelocity(n,j);});

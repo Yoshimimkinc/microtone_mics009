@@ -1,12 +1,12 @@
 // @module ui/key-entry
-// @provides _keyAllNotesOff, _keyBeatName, _keyBeatSec, _keyChopMode, _keyChopPaint, _keyChopPlan,
-//    _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache, _keyLoop,
-//    _keyLoopBeat, _keyLoopKey, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint, _keyMoreTab,
-//    _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow, _keyPadPitches,
-//    _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRange, _keyRangeDraft,
-//    _keyRangeDrag, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove,
-//    _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop, keyChopBeats, keyEntryClose,
-//    keyEntryOpen
+// @provides KEY_FLAG_W, _keyAllNotesOff, _keyBeatName, _keyBeatSec, _keyChopMode, _keyChopPaint,
+//    _keyChopPlan, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache,
+//    _keyLoop, _keyLoopBeat, _keyLoopKey, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
+//    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
+//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRange,
+//    _keyRangeDraft, _keyRangeDrag, _keyRangeHit, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt,
+//    _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop,
+//    keyChopBeats, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
@@ -43,6 +43,12 @@ function _keyBeatSec(){return 60/Math.max(40,Math.min(250,+bpmVal||100));}
 let _keyRangeDraft=null,_keyRangeDrag=null;
 function _keyRange(useDraft=true){const p=_keyPhrase(),r=(useDraft&&_keyRangeDraft)||p.range||{start:0,end:null},end=p.bars*4;return {start:r.start||0,end:r.end==null?end:r.end,full:r.end==null};}
 function _keyBeatName(b){const bar=Math.floor(b/4)+1,beat=Math.floor(b%4)+1,six=Math.round((b%1)*4);return bar+'.'+beat+(six?'.'+(six+1):'');}
+// 目盛りの x（canvas px）が START / END の印（線＋札）に当たるか。札は START＝線の右、END＝線の左（_keyPaint と同じ寸法 KEY_FLAG_W）
+const KEY_FLAG_W=46;
+function _keyRangeHit(x,xs,xe,reach){
+  const onS=x>=xs-reach&&x<=xs+KEY_FLAG_W+reach/2,onE=x>=xe-KEY_FLAG_W-reach/2&&x<=xe+reach;
+  if(onS&&onE)return Math.abs(x-xs)<=Math.abs(x-xe)?'start':'end';return onS?'start':onE?'end':null;
+}
 function _keyGridBeat(){return _keyPhrase().editor.snap?.25:1/96;}
 // ループの中の今の拍。耳に届く遅れ（出力の遅れ）だけ前に戻す＝聞こえた拍に合わせて弾いた所に入る
 function _keyLoopBeat(){
@@ -105,7 +111,7 @@ function _keyLoopTick(){
 function _keyPlayheadFrame(){
   const L=_keyLoop,ph=document.getElementById('keyPlayhead');if(!L){ph.hidden=true;return;}
   const x=58+_keyLoopBeat()*_keyZoom;ph.hidden=false;ph.style.transform='translateX('+x+'px)';
-  const h=document.getElementById('keyHorizontal');if(!_keyGesture&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);
+  const h=document.getElementById('keyHorizontal');if(!_keyGesture&&!_keyRangeDrag&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);
   L.raf=requestAnimationFrame(_keyPlayheadFrame);
 }
 function _keyLoopKey(){const r=_keyRange(false);return JSON.stringify([r.start,r.end,r.full,_keyBeatSec()]);}
@@ -238,20 +244,24 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
   document.getElementById('keyStepRest').addEventListener('click',()=>_keyStepMove(1));
   document.getElementById('keyPadsDown').addEventListener('click',()=>{_keyPadLow=Math.max(21,_keyPadLow-12);_keyEntryPaint();_keyWarmPads();});
   document.getElementById('keyPadsUp').addEventListener('click',()=>{_keyPadLow=Math.min(96,_keyPadLow+12);_keyEntryPaint();_keyWarmPads();});
-  // START / END：目盛りの印の近くを掴んでドラッグ（SNAP の細かさで）。離したら 1 回の UNDO で決まる
+  // START / END：目盛りの印（線と札）を掴んでドラッグ（SNAP の細かさで）。離したら 1 回の UNDO で決まる
+  // v0.3.214 §203「START / END のマーカーが動かない」：掴めるのが線の左右 20px だけで、目に付く札（START / END の文字）を押しても動かなかった。
+  // 札ごと掴める。STEP でないときは目盛りのどこを押しても近いほうの印がそこへ来てそのままドラッグ（画面の外の END にも届く）
   const ruler=document.getElementById('keyRuler');
+  const rangeMove=(g,x)=>{const p=_keyPhrase(),end=p.bars*4,q=_keyGridBeat(),b=Math.round(((x-58)/_keyZoom)/q)*q,d=_keyRangeDraft,curEnd=d.end==null?end:d.end;
+    if(g.which==='start')d.start=Math.max(0,Math.min(curEnd-q,b));
+    else{const v=Math.max(d.start+q,Math.min(end,b));d.end=v>=end-1e-9?null:v;}
+    _keyPaint();};
   ruler.addEventListener('pointerdown',e=>{
-    if(_keyTarget<0)return;const pt=_keyPoint(e,ruler),r=_keyRange(),reach=e.pointerType==='touch'?20:10,xs=58+r.start*_keyZoom,xe=58+r.end*_keyZoom;
-    const which=Math.abs(pt.x-xe)<=reach?'end':Math.abs(pt.x-xs)<=reach?'start':null;if(!which)return;
+    if(_keyTarget<0||e.button>0)return;const pt=_keyPoint(e,ruler),r=_keyRange(),xs=58+r.start*_keyZoom,xe=58+r.end*_keyZoom;
+    let which=_keyRangeHit(pt.x,xs,xe,e.pointerType==='touch'?24:12),jump=false;
+    if(!which){if(_keyStepOn)return;which=Math.abs(pt.x-xs)<Math.abs(pt.x-xe)?'start':'end';jump=true;}
     e.preventDefault();e.stopImmediatePropagation();try{ruler.setPointerCapture(e.pointerId);}catch(_){}
     _keyRangeDrag={which,id:e.pointerId};_keyRangeDraft={start:r.start,end:r.full?null:r.end};
+    if(jump)rangeMove(_keyRangeDrag,pt.x);else _keyPaint();
   });
   ruler.addEventListener('pointermove',e=>{
-    const g=_keyRangeDrag;if(!g||g.id!==e.pointerId||_keyTarget<0)return;e.preventDefault();
-    const p=_keyPhrase(),end=p.bars*4,q=_keyGridBeat(),x=Math.round(((_keyPoint(e,ruler).x-58)/_keyZoom)/q)*q,d=_keyRangeDraft,curEnd=d.end==null?end:d.end;
-    if(g.which==='start')d.start=Math.max(0,Math.min(curEnd-q,x));
-    else{const v=Math.max(d.start+q,Math.min(end,x));d.end=v>=end-1e-9?null:v;}
-    _keyPaint();
+    const g=_keyRangeDrag;if(!g||g.id!==e.pointerId||_keyTarget<0)return;e.preventDefault();rangeMove(g,_keyPoint(e,ruler).x);
   });
   const rangeEnd=e=>{const g=_keyRangeDrag;if(!g||g.id!==e.pointerId)return;_keyRangeDrag=null;const d=_keyRangeDraft;_keyRangeDraft=null;
     if(e.type==='pointercancel'){_keyPaint();return;}_keyUpdate(p=>{p.range={start:d.start,end:d.end};});};
