@@ -1,9 +1,10 @@
 // @module audio/scratch-pad
-// @provides SCR_FADER_TRAVEL, _scratchCode, _scratchCut, _scratchDragging, _scratchDuration, _scratchFadeAt,
-//    _scratchFadeDur, _scratchFadeFrom, _scratchFader, _scratchFrame, _scratchFrameAt, _scratchGraph,
-//    _scratchModule, _scratchMotor, _scratchNode, _scratchPos, _scratchSpeed, _scratchToken, _scratchWave,
-//    createScratchHead, scratchClose, scratchCue, scratchDrag, scratchFaderNow, scratchFallbackNode,
-//    scratchHold, scratchLevels, scratchMotor, scratchOpen, scratchSeek, scratchSetFader, scratchState
+// @provides SCR_ATTACKS, SCR_FADER_TRAVEL, _scratchAttack, _scratchCode, _scratchCut, _scratchDragging,
+//    _scratchDuration, _scratchFadeAt, _scratchFadeDur, _scratchFadeFrom, _scratchFader, _scratchFrame,
+//    _scratchFrameAt, _scratchGraph, _scratchModule, _scratchMotor, _scratchNode, _scratchPos,
+//    _scratchSpeed, _scratchToken, _scratchWave, createScratchHead, scratchClose, scratchCue, scratchDrag,
+//    scratchFaderNow, scratchFallbackNode, scratchHold, scratchLevels, scratchMotor, scratchOpen,
+//    scratchSeek, scratchSetAttack, scratchSetFader, scratchState
 // @uses AC, GROUP_OF, dbToGain, groupBus, multiOut, outBGain, reverbPre, sampNameEl, scratchHide,
 //    scratchShow, setCur, setLevelLin, stopVoices, tapeEcho, tracks
 // @depends -
@@ -99,10 +100,16 @@ function scratchSeek(frame){if(!_scratchNode||_scratchDragging||!Number.isFinite
 // フェーダーの動き（v0.3.189 §177「上に近い程立ち上がりが早く、下は遅くなる」）：実物のつまみのように一定の速さで動く＝全閉から全開まで travel 秒。
 // 近い所（上＝少し開く）へはすぐ、遠い所（下＝大きく開く）へはゆっくり開く。離して全閉へ戻るのも同じ速さ。§176 の「一瞬で切り替えない」はそのまま
 const SCR_FADER_TRAVEL=.12;
+// v0.3.221 §210「スクラッチのフェーダーのアタックを調整したい」：開く速さ（ATTACK＝全閉→全開の秒）だけ選べる。0 / 30 / 60 / 120 ms（既定 120＝今まで通り）。
+// 閉じる速さは SCR_FADER_TRAVEL のまま。0 でも 3ms で開く（プチ音を出さない下限）
+const SCR_ATTACKS=[0,.03,.06,.12];
+let _scratchAttack=SCR_FADER_TRAVEL;
+function scratchSetAttack(sec){_scratchAttack=SCR_ATTACKS.includes(+sec)?+sec:SCR_FADER_TRAVEL;return _scratchAttack;}
 let _scratchFadeFrom=0,_scratchFadeAt=0,_scratchFadeDur=0;
 function scratchFaderNow(){const k=_scratchFadeDur>0?Math.min(1,Math.max(0,(AC.currentTime-_scratchFadeAt)/_scratchFadeDur)):1;return _scratchFadeFrom+(_scratchFader-_scratchFadeFrom)*k;}   // いまのつまみの位置
-function scratchSetFader(value,travel=SCR_FADER_TRAVEL){
+function scratchSetFader(value,travel){
  const now=AC.currentTime,from=scratchFaderNow();_scratchFader=Math.max(0,Math.min(1,+value||0));
+ if(travel===undefined)travel=_scratchFader>from?_scratchAttack:SCR_FADER_TRAVEL;   // 開く＝ATTACK、閉じる＝今まで通り
  const dur=Math.max(.003,Math.abs(_scratchFader-from)*travel);_scratchFadeFrom=from;_scratchFadeAt=now;_scratchFadeDur=dur;
  if(_scratchCut){const g=_scratchCut.gain;if(g.cancelScheduledValues)g.cancelScheduledValues(now);g.setValueAtTime(from,now);g.linearRampToValueAtTime(_scratchFader,now+dur);}
  return dur;}

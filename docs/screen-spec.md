@@ -2612,3 +2612,11 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - §195（v0.3.206）の確認ダイアログ `#keyLeaveAsk`（波形にする／元のサンプルに戻す／やめる）と、その処理（`_keyLeaveDone` `_keyLeaveResolve`・Esc）・CSS を撤去。KEY にする前のサンプルへは UNDO（`setPadKind` が `pushUndo`）。
 - パッドの見た目（`keyPadGeometry`、32-ui-wave）：`range` の START〜END だけを描く。範囲の外の音符は描かず、音の高さの幅は範囲の中の音符で決める。小節の線も範囲の中だけ。SAMPLE のパッドが START〜END の波形を描くのと同じ考え方。範囲を動かして離すと作り直し → パッドの見た目も変わる。
 検査：`key-editor-unit`（音の入った KEY は聞かずに bake・空の KEY は restore・パッドの図が START〜END だけ）、`pad-content-check`（390 / 1280：KEY → SCRATCH が聞かずに START〜END の波形・打ち込みは残る → KEY で打ち込みに戻る → また SCRATCH で同じ波形）。
+
+## 210. スクラッチのフェーダーの ATTACK（v0.3.221）
+「スクラッチのフェーダーのアタックを調整したい」。
+- §177（v0.3.189）からフェーダーは一定の速さで動く＝全閉→全開 120ms（`SCR_FADER_TRAVEL`）、開くのも閉じるのも同じ。カットイン（チャープ・トランスフォーマー）には遅いことがある。
+- 開く速さだけを選べる：`SCR_ATTACKS`＝0 / 30 / 60 / 120 ms（全閉→全開の時間。近い所はその割合で早い）、既定 120（今まで通り）。`scratchSetFader` は向きで分ける：開く＝`_scratchAttack`、閉じる＝`SCR_FADER_TRAVEL`。0 でも下限 3ms（プチ音を出さない）。
+- 置き場所：⇄ の行の、フェーダーの真上（`#scratchAttack`、grid の `atk`。⇄ で左右を入れ替えると一緒に移る）。押すたびに 120 → 0 → 30 → 60 → 120。ボタンに値（ATTACK / 120 ms）。端末ごとに覚える（localStorage `mics.scrAttack`。⇄ と同じ扱い）。
+- PC キー／MIDI で押している間だけ全開（§174〜、20ms）も、ATTACK がそれより速ければ ATTACK で開く。
+検査：`scratch-unit`（0＝3ms で開く・60ms・閉じるのは 120ms のまま・知らない値は 120ms）、`pad-content-check`（390 / 1280：既定 120 → 押すと 0・覚える・一周で 120・フェーダーの真上）。

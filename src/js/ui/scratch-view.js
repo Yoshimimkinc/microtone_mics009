@@ -1,13 +1,14 @@
 // @module ui/scratch-view
-// @provides SCR_FADER_KEY_TRAVEL, SCR_FADER_ZERO, SCR_HAND_KEY, SCR_PEAK_BLOCK, SCR_PX_PER_SEC,
-//    SCR_SENS_RANGE, SCR_SLING_MAX, SCR_SLING_PER_SEC, SCR_WIND_RANGE, SCR_WIND_TOP, _scratchFaderDrag,
-//    _scratchGateKey, _scratchGesture, _scratchHeldWas, _scratchLevel, _scratchPad, _scratchPadInputs,
-//    _scratchPeaks, _scratchRAF, scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt,
-//    scratchGatePaint, scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide,
-//    scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchSlingKick,
-//    scratchStripTime, scratchWindAt
-// @uses paintPadHeads, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
-//    scratchSetFader, scratchState, tracks
+// @provides SCR_ATTACK_KEY, SCR_FADER_KEY_TRAVEL, SCR_FADER_ZERO, SCR_HAND_KEY, SCR_PEAK_BLOCK,
+//    SCR_PX_PER_SEC, SCR_SENS_RANGE, SCR_SLING_MAX, SCR_SLING_PER_SEC, SCR_WIND_RANGE, SCR_WIND_TOP,
+//    _scratchFaderDrag, _scratchGateKey, _scratchGesture, _scratchHeldWas, _scratchLevel, _scratchPad,
+//    _scratchPadInputs, _scratchPeaks, _scratchRAF, scratchAttackLoad, scratchAttackPaint,
+//    scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt, scratchGatePaint,
+//    scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide, scratchPadInputDown,
+//    scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchSlingKick, scratchStripTime,
+//    scratchWindAt
+// @uses SCR_ATTACKS, SCR_FADER_TRAVEL, _scratchAttack, paintPadHeads, scratchCue, scratchDrag, scratchHold,
+//    scratchMotor, scratchOpen, scratchSeek, scratchSetAttack, scratchSetFader, scratchState, tracks
 // @depends -
 // Vertical waveform strip (v0.3.186 §174, djay-like linear scratch) and a swipe fader. Pointer capture permits a
 // second finger on the fader while the first finger holds/drags the waveform. The hands can swap sides.
@@ -20,7 +21,7 @@ const _scratchPadInputs=new Map();
 const SCR_FADER_ZERO=.18,SCR_FADER_KEY_TRAVEL=.02;
 let _scratchLevel=0,_scratchFaderDrag=null,_scratchGateKey=false,_scratchHeldWas=false;
 function scratchGatePaint(){const held=_scratchGateKey||[..._scratchPadInputs.values()].includes(_scratchPad),v=held?1:_scratchLevel,keyMove=held||held!==_scratchHeldWas;_scratchHeldWas=held;
- const dur=keyMove?scratchSetFader(v,SCR_FADER_KEY_TRAVEL):scratchSetFader(v);
+ const dur=keyMove?scratchSetFader(v,v>0?Math.min(SCR_FADER_KEY_TRAVEL,_scratchAttack):SCR_FADER_KEY_TRAVEL):scratchSetFader(v);   // キーで開く時も ATTACK より遅くしない
  const fader=document.getElementById('scratchFader'),pct=Math.round(v*100);fader.style.setProperty('--lv',String(v));if(Number.isFinite(dur))fader.style.setProperty('--fade-ms',Math.round(dur*1000)+'ms');fader.setAttribute('aria-valuenow',String(pct));fader.classList.toggle('open',v>0);
  document.getElementById('scratchFaderRead').textContent=v>0?'VOL '+pct+'%':'CLOSED';}
 function scratchSetLevel(v){_scratchLevel=Math.max(0,Math.min(1,+v||0));scratchGatePaint();}
@@ -89,12 +90,16 @@ function scratchDrawOverview(canvas,state){
  if(span<W){c.strokeStyle='#e8edc1';c.lineWidth=dpr;c.strokeRect(px-span/2,1,span,H-2);}   // 短いサンプルは全部が見えているので枠なし
  c.fillStyle='#f0904a';c.fillRect(Math.round(px-dpr),0,Math.max(2,Math.round(2*dpr)),H);
 }
+// ATTACK（v0.3.221 §210）：フェーダーの上のボタンで 0 → 30 → 60 → 120 ms と回す。端末ごとに覚える
+const SCR_ATTACK_KEY='mics.scrAttack';
+function scratchAttackLoad(){let v=SCR_FADER_TRAVEL;try{const s=localStorage.getItem(SCR_ATTACK_KEY);if(s!==null)v=+s;}catch(_){}return scratchSetAttack(v);}
+function scratchAttackPaint(){const b=document.getElementById('scratchAttack');if(b)b.innerHTML='ATTACK<br>'+Math.round(_scratchAttack*1000)+' ms';}
 function scratchHandSwap(){try{return localStorage.getItem(SCR_HAND_KEY)==='R';}catch(_){return false;}}
 function scratchHandPaint(swap){const surface=document.getElementById('scratchSurface');surface.classList.toggle('swap',swap);const button=document.getElementById('scratchHand');button.setAttribute('aria-pressed',String(swap));button.setAttribute('aria-label',swap?'左右入替（いま：右手でスクラッチ・左手でフェーダー）':'左右入替（いま：左手でスクラッチ・右手でフェーダー）');}
 function scratchHide(){_scratchPad=-1;_scratchLevel=0;scratchGateRelease();cancelAnimationFrame(_scratchRAF);_scratchRAF=0;_scratchGesture=null;const cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview');cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=null;ov.onpointerdown=ov.onpointermove=ov.onpointerup=ov.onpointercancel=null;document.getElementById('scratchEditor').hidden=true;}
 function scratchShow(i){
  const editor=document.getElementById('scratchEditor'),cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview'),strip=cv.parentElement;document.getElementById('scratchTitle').textContent='SCR · '+(tracks[i].name||'PAD '+(i+1));editor.hidden=false;
- _scratchPad=i;_scratchLevel=0;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());if(typeof paintPadHeads==="function")paintPadHeads();   // 共通の頭（v0.3.218。単体テストの vm には無い）
+ _scratchPad=i;_scratchLevel=0;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());scratchAttackLoad();scratchAttackPaint();if(typeof paintPadHeads==="function")paintPadHeads();   // 共通の頭（v0.3.218。単体テストの vm には無い）
  const draw=()=>{if(editor.hidden)return;const state=scratchState();scratchDrawStrip(cv,state,!!_scratchGesture);scratchDrawOverview(ov,state);strip?.classList?.toggle('on',!!_scratchGesture);document.getElementById('scratchMotion').textContent=state.dragging?'HOLD':state.motor?'PLAY':'PAUSE';document.getElementById('scratchPosition').textContent=(state.position*state.duration).toFixed(2)+' / '+state.duration.toFixed(2)+' s';const button=document.getElementById('scratchPlay');button.textContent=state.motor?'Ⅱ PAUSE':'▶ PLAY';button.setAttribute('aria-pressed',String(state.motor));_scratchRAF=requestAnimationFrame(draw);};draw();
  // 面のどこを押しても掴む。指を奥（上）へ＝波形も上へ＝フォワード、手前（下）へ＝バック（音が指の下の波形に付いてくる）。横の動きは使わない。
  // 動いた量は高さごとの感度で数える（上ほど敏感）＝掴んだ所の時刻がそのまま指の下に来る
@@ -115,6 +120,7 @@ function scratchShow(i){
  document.getElementById('scratchPlay').addEventListener('click',()=>scratchMotor(!scratchState().motor));
  document.getElementById('scratchCue').addEventListener('click',()=>{_scratchGesture=null;scratchCue();});
  // 左手でスクラッチ・右手でフェーダーが基本。⇄ で入れ替え（この端末に覚える）
+ document.getElementById('scratchAttack').addEventListener('click',()=>{const k=SCR_ATTACKS.indexOf(_scratchAttack),v=scratchSetAttack(SCR_ATTACKS[(k+1)%SCR_ATTACKS.length]);try{localStorage.setItem(SCR_ATTACK_KEY,String(v));}catch(_){}scratchAttackPaint();});
  document.getElementById('scratchHand').addEventListener('click',()=>{const swap=!document.getElementById('scratchSurface').classList.contains('swap');try{localStorage.setItem(SCR_HAND_KEY,swap?'R':'L');}catch(_){}scratchHandPaint(swap);});
  const gate=document.getElementById('scratchFader');
  gate.addEventListener('pointerdown',e=>{if(_scratchFaderDrag)return;e.preventDefault();_scratchFaderDrag={id:e.pointerId};gate.setPointerCapture(e.pointerId);scratchSetLevel(scratchFaderAt(gate,e.clientY));});
