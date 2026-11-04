@@ -7,8 +7,9 @@
 //    keyEditorClose, keyEditorOpen
 // @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, _keyEntryPaint, _keyLeaveDone, _keyLeaveResolve,
 //    _keyPadLow, _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, padKind, parseKeyMidi,
-//    prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, scheduleAutosave, scratchClose, tracks
+//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, padHeadSub, padKind,
+//    paintPadHeads, parseKeyMidi, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
+//    scheduleAutosave, scratchClose, tracks
 // @depends plock-undo
 // KEY のピアノロール（v0.3.217 §206 で ui/pad-content から改名。パッドの種類の切替は ui/pad-kind へ分けた）：
 // 開く・閉じる（keyEditorOpen / keyEditorClose）・ロールと強弱の欄の描画（_keyPaint）・ノートのドラッグ・SOUND タブ・MIDI 読み込み。
@@ -27,7 +28,7 @@ function _keySnapBeat(beat,e,bypass=false){return Math.round(beat*(e.snap&&!bypa
 function _keySelect(i,extend=false){if(!extend)_keySelection.clear();if(extend&&_keySelection.has(i))_keySelection.delete(i);else _keySelection.add(i);_keySelected=_keySelection.has(i)?i:([..._keySelection].at(-1)??-1);}
 function _keyFit(){const box=document.getElementById('keyHorizontal'),bars=_keyPhrase().bars;_keyZoom=Math.max(32,Math.min(384,Math.floor((box.clientWidth-58)/(bars*4))));_keyPaint();}
 function keyEditorOpen(i){
-  _keyTarget=i;_keySound=false;_keyAutoFit=true;_keySelected=-1;_keySelection.clear();_keyDraft=null;_keyGesture=null;_keyNavigate=false;_keyMulti=false;
+  _keyTarget=i;_keySound=false;_keyAutoFit=true;_keySelected=-1;_keySelection.clear();_keyDraft=null;_keyGesture=null;_keyNavigate=false;_keyMulti=false;paintPadHeads();
   // v0.3.212 §201：ロールは A0〜C8 全部（3 オクターブの窓をやめた＝PC のホイールでもスマホの指でも全部スクロールで届く）。開いた時は最初の音（無ければ C4）を真ん中に
   const notes=normalizeKeyPhrase(tracks[i].keyPhrase).notes;
   document.getElementById('keyEditor').hidden=false;_keyMoreShow(false);_keyLanesShow();document.getElementById('keyDragMode').value='auto';_keyFit();
@@ -64,9 +65,11 @@ function _keyPaint(){
   document.getElementById('keyNotePanel').hidden=_keySound;document.getElementById('keySoundPanel').hidden=!_keySound;
   document.getElementById('keyTabNotes').setAttribute('aria-selected',String(!_keySound));document.getElementById('keyTabSound').setAttribute('aria-selected',String(_keySound));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
-  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyInstrument===p.instrument)));for(const el of document.querySelectorAll('.key-voice,#keySoundName'))el.textContent=KEY_INSTRUMENTS[p.instrument];   // 音色（v0.3.216 §205）
+  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyInstrument===p.instrument)));document.getElementById('keySoundName').textContent=KEY_INSTRUMENTS[p.instrument];   // 音色（v0.3.216 §205）
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
-  const tr=keyTranspose(t);document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1))+(tr?' · PITCH '+(tr>0?'+':'')+tr:'');   // パッドの PITCH はここに出す（音符はそのまま表示、鳴る音は移る v0.3.213）document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
+  // 頭の一言＝音色とパッドの PITCH（音符はそのまま表示、鳴る音は移る v0.3.213）。v0.3.218 §207：名前は共通の頭へ。
+  // 小節数・ズームの入力欄の同期は v0.3.213 からコメントの中に入って動いていなかったのを戻した
+  const tr=keyTranspose(t);padHeadSub('key',KEY_INSTRUMENTS[p.instrument]+(tr?' · PITCH '+(tr>0?'+':'')+tr:''));document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
   for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(id==='keyScaleOn'?'':v?' ON':' OFF');}
   document.querySelector('.key-panel').classList.toggle('is-navigating',_keyNavigate);document.getElementById('keyScaleRoot').value=p.editor.root;document.getElementById('keyScaleType').value=p.editor.scale;
   const rows=_keyRows(),rh=_keyRowH(),rowOf=new Map(rows.map((r,k)=>[r,k*rh]));if(cv.width!==width)cv.width=width;if(cv.height!==rows.length*rh)cv.height=rows.length*rh;
@@ -132,7 +135,7 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
 (function(){
   const root=document.getElementById('keyScaleRoot');NOTE_NAMES.forEach((name,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=name;root.appendChild(opt);});
   document.getElementById('keyTabNotes').addEventListener('click',()=>{_keyEndGesture(true);_keySound=false;_keyPaint();if(_keyAutoFit)_keyFit();});
-  document.getElementById('keyTabSound').addEventListener('click',()=>{_keyEndGesture(true);_keySound=true;_keyPaint();});
+  document.getElementById('keyTabSound').addEventListener('click',()=>{_keyEndGesture(true);_keySound=true;_keyMoreShow(false);_keyPaint();});   // v0.3.218：SOUND は MORE の中から（頭を 3 画面で同じにしたので）。戻るのは SOUND の上の ← NOTES
   // 音色（v0.3.216 §205）：SIN BASS にしたら鍵盤を低い所（C2〜）へ。試し弾きの作り置きも作り直す
   document.querySelectorAll('[data-key-instrument]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.keyInstrument;if(_keyPhrase().instrument===v)return;_keyUpdate(p=>p.instrument=v);if(v==='sine-bass'&&_keyPadLow>36+_keyPadRoot)_keyPadLow=36+_keyPadRoot;else if(v!=='sine-bass'&&_keyPadLow<48+_keyPadRoot)_keyPadLow=48+_keyPadRoot;_keyEntryPaint();_keyWarmPads();}));
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.motion=b.dataset.keyMotion)));
@@ -140,7 +143,6 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
     const control=document.getElementById(id);control.addEventListener('input',e=>_keyFxLabel(id,+e.target.value));control.addEventListener('change',e=>_keyUpdate(p=>p.effects[prop]=+e.target.value));
   }
-  document.getElementById('keyClose').addEventListener('click',keyEditorClose);
   document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
   // ▶ PLAY（keyPreview）は v0.3.205 §194 でループ再生に（ui/key-entry）。MORE・強弱の欄・鍵盤の出し入れ
   document.getElementById('keyMore').addEventListener('click',()=>{_keyMoreShow(document.getElementById('keyExtra').hidden);if(_keyAutoFit)requestAnimationFrame(()=>{if(_keyTarget>=0)_keyFit();});});

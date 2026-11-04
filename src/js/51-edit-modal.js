@@ -1,11 +1,12 @@
 // @module edit-modal
-// @provides _ovCache, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor, peCueFrom, peCueT,
-//    peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue, peWaveVisible,
-//    refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+// @provides _ovCache, closePadEdit, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor,
+//    peCueFrom, peCueT, peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue,
+//    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
-//    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadName,
-//    paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo, refreshPadDisplay, sampNameEl,
-//    scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor, syncPadContentEditor, tracks, trigger
+//    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadHeads,
+//    paintPadName, paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo,
+//    refreshPadDisplay, sampNameEl, scheduleAutosave, snapStartToOnset, syncChopSeg, syncEditor,
+//    syncPadContentEditor, tracks, trigger
 // @depends -
 // ---------- サンプル編集モーダル（EDIT＋パッド） ----------
 // 対象パッドの編集をモーダルへ集約。波形ドラッグ＝START/END/LOOP、各ノブはtracksへ即反映。
@@ -205,6 +206,7 @@ function renameTrack(i, name){
 function peNameSync(){
   const el=document.getElementById("peName"); if(!el) return;
   el.textContent=String(peTarget+1).padStart(2,"0")+" "+(tracks[peTarget].name||PADS[peTarget].name||"");
+  if(typeof paintPadHeads==="function") paintPadHeads();   // 名前を変えたら共通の頭も（v0.3.218）
 }
 // ✎ を押す＝入力箱を出す / Enter＝確定 / Escape＝取消（モーダルは閉じない）
 (function(){
@@ -230,7 +232,6 @@ function openPadEdit(i){
   const t=tracks[i];
   if(typeof syncPadContentEditor==="function") syncPadContentEditor(i);
   cancelAnimationFrame(pePlayRAF); document.getElementById("pePlayhead").style.opacity="0";   // 前回のトレースを消す
-  document.getElementById("peTitle").textContent="EDIT";   // ボタンと同じ名前（v0.3.128）
   if(typeof window.peNameCloseBox==="function") window.peNameCloseBox();   // 前回開いたままの入力箱を畳む
   peNameSync();   // 名前はこの行に出す＝変える入口がここにしか無い（v0.3.120）
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
@@ -250,15 +251,17 @@ function openPadEdit(i){
   modal.style.display="flex";
   requestAnimationFrame(()=>renderPeWave(i));   // 表示後に正しい幅で描画
 }
+// EDIT を閉じる（v0.3.218 §207：共通の頭の CLOSE・背景のタップから。ui/pad-kind の padScreenClose が呼ぶ）
+function closePadEdit(){ const modal=document.getElementById("padEditModal"); modal.style.display="none"; document.body.classList.remove("pe-open"); if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
+    if(typeof clWaveTo==="function" && typeof clPage!=="undefined" && clPage==="smpl"){ clWaveTo("screen"); clSyncWave(); } }
 (function(){
   const modal=document.getElementById("padEditModal");
-  const close=()=>{ modal.style.display="none"; document.body.classList.remove("pe-open"); if(typeof drawPadWave==="function") drawPadWave(peTarget); if(typeof syncEditor==="function") syncEditor();
-    if(typeof clWaveTo==="function" && typeof clPage!=="undefined" && clPage==="smpl"){ clWaveTo("screen"); clSyncWave(); } };
+  const close=closePadEdit;
   // タッチ端末では、パッドの pointerup でモーダルを開いた直後に、ブラウザが touchend から合成する click が
   // 「指の位置で再ヒットテスト」されてモーダルの上に落ちる（ゴーストクリック）。背景なら即閉じ、
   // ✂TRIM の上なら勝手に切り詰める（実測：70560→35280フレーム）。開いてから450msはクリックを飲む。
   modal.addEventListener("click",e=>{ if(performance.now()-peOpenedAt<450){ e.stopPropagation(); e.preventDefault(); } },true);
-  document.getElementById("peClose").addEventListener("click",close);
+  // ✕（#peClose）は v0.3.218 §207 で撤去。閉じるのは共通の頭の CLOSE
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
   // DELETE（v0.3.160）：「EDIT メニューの中に、サンプルを消す DELETE がないといけない」。2 回押す（2.5 秒以内）＝消す。↩ で戻せる
   let peDelT=-1e9;   // 起動直後（performance.now() が 2.5 秒未満）の 1 回目を 2 回目と取り違えない

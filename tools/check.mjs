@@ -233,7 +233,7 @@ async function run(w,h,mobile){
       await p.evaluate(()=>{ selectPad(0); openPadEdit(0); }); await p.waitForTimeout(600);
       const pe=await p.evaluate(()=>{ const g=id=>{ const e=document.getElementById(id); const r=e.getBoundingClientRect(); return getComputedStyle(e).display!=='none' && r.height>0 && r.width>0; }; return {load:g('peLoadBtn'), smpl:g('peSmplBtn')}; });
       ok_(`${V} EDIT モーダルに LOAD と SMPL が出る`, pe.load && pe.smpl, JSON.stringify(pe));
-      await p.click('#peClose'); await p.waitForTimeout(300); }
+      await p.click('.pad-head[data-screen=edit] .pad-head-close'); await p.waitForTimeout(300); }
     eq(`${V} 古いステップロックはすべて読み込みで捨てる`, await p.evaluate(()=>stripLegacyLocks({a:{level:-10},b:{level:-10,pitch:2},c:null})), {});
     ok_(`${V} LEVEL の P-LOCK はどこにも無い（v0.3.124 §135）`, vis.levelBtns===0 && !(await p.evaluate(()=>('level' in PERF_BASE)||('level' in PLOCKS))), JSON.stringify(vis));
     // 6つが1行に収まり、幅44px以上・文字が溢れない（幅を2/3以下に詰めた分の検査）
@@ -269,11 +269,11 @@ async function run(w,h,mobile){
       const v=id=>document.getElementById(id).textContent,before=[v('peStartVal'),v('peEndVal'),v('peLenVal')];
       const s0=t.start,e0=t.end;t.start=0.25;t.end=0.75;renderPeWave(peTarget);const after=[v('peStartVal'),v('peEndVal'),v('peLenVal')];t.start=s0;t.end=e0;renderPeWave(peTarget);
       const fmt=x=>x<1?Math.round(x*1000)+' ms':x.toFixed(2)+' s';
-      return {secs,before,after,want:[fmt(.25*d),fmt(.75*d),fmt(.5*d)],kinds:[...m.querySelectorAll('#peKinds [data-kind]')].map(b=>b.textContent),rev:v('peRev')};});
-    eq(`${V} EDIT の見出し`, ed.secs, ['SOUND TYPE','SOURCE','TRIM','PROCESS','CHOP']);
+      return {secs,before,after,want:[fmt(.25*d),fmt(.75*d),fmt(.5*d)],kinds:[...m.querySelectorAll('.pad-head [data-head-kind]')].map(b=>b.textContent),rev:v('peRev')};});
+    eq(`${V} EDIT の見出し（音の種類は v0.3.218 から共通の頭）`, ed.secs, ['SOURCE','TRIM','PROCESS','CHOP']);
     ok_(`${V} EDIT の START / END / LENGTH が数字と単位で、動かすと追従`, ed.before.every(x=>/ ms$| s$/.test(x)) && JSON.stringify(ed.after)===JSON.stringify(ed.want), JSON.stringify(ed));
     ok_(`${V} EDIT の種類・加工は略さない`, ed.kinds.join()==='SAMPLE,KEY,SCRATCH' && /REVERSE/.test(ed.rev), JSON.stringify(ed)); }
-  await p.click('#peClose'); await p.waitForTimeout(400);
+  await p.click('.pad-head[data-screen=edit] .pad-head-close'); await p.waitForTimeout(400);
   eq(`${V} 閉じたら窓へ戻る`, await where(), 'clWaveSlot');
 
   // 7b) ★SEQ/GRIDのパターンA-D・小節1-4が「押して選べる」
@@ -300,7 +300,7 @@ async function run(w,h,mobile){
     ok_(`${V} タッチでEDIT→パッド：モーダルが開いたまま`, g.modal==='flex', g.modal);
     ok_(`${V} タッチでEDIT→パッド：TRIMが誤発動しない`, g.len===before, `${before}→${g.len}`);
     await p.waitForTimeout(500);   // 開いてから450msはクリックを飲む（ゴーストクリック対策）ので、その後に閉じる
-    await p.evaluate(()=>{ document.getElementById('peClose').click(); if(armMode) arm('edit',false); });
+    await p.evaluate(()=>{ document.querySelector('.pad-head[data-screen=edit] .pad-head-close').click(); if(armMode) arm('edit',false); });
     await p.waitForTimeout(200);
   }
   // 7h) ★情報窓：ドラッグ直後に掴み直しても0に飛ばない／ASSIGNで奪った割当がUndoで戻る（W3・v0.3.98）
@@ -661,7 +661,7 @@ async function copyPaint(){
   ok_(`LOAD 名前・パッド表示（8 文字で切らない v0.3.198）・SEQ 行名が揃う`, l.name==='ZEBRA.wav' && l.nm==='ZEBRA.WAV' && /ZEBRA\.wav/.test(l.rn) && l.type==='sample', JSON.stringify(l));
   ok_(`LOAD 新しい音は PITCH 0 から（前の +2 を引き継がない v0.3.170）`, l.tune===0, JSON.stringify(l));
   // Phase 3：EDIT モーダルの ● SMPL / LOAD は selected を直書きせず selectPad（入口）を通る＝エディタ側の選択表示も追従
-  await p.evaluate(()=>{ document.getElementById('peClose').click(); selectPad(0); openPadEdit(4); });
+  await p.evaluate(()=>{ document.querySelector('.pad-head[data-screen=edit] .pad-head-close').click(); selectPad(0); openPadEdit(4); });
   await p.waitForTimeout(600);
   const sm=await p.evaluate(()=>{ document.getElementById('peSmplBtn').click();
     const r={ sel:selected, pe:peTarget, selCls:document.querySelectorAll('#pads .pad')[4].classList.contains('sel'), ov:document.getElementById('recOverlay').classList.contains('show') };

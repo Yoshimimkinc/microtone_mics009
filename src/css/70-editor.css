@@ -154,3 +154,6 @@
 
   .pe-transport button{min-width:0;}
   @media(max-width:600px){ .pe-transport{gap:6px;} .pe-transport button{padding:10px 4px;letter-spacing:.06em;gap:5px;} }
+  /* v0.3.218 §207：共通の頭を 3 画面で同じ位置に。EDIT も KEY / SCRATCH と同じく上寄せ・同じ余白（SCRATCH と同じ幅 560px） */
+  #padEditModal{align-items:flex-start;padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));}
+  .modal.pe{width:min(560px,100%);padding-top:14px;}

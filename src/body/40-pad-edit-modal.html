@@ -1,6 +1,7 @@
     <div class="modal-backdrop" id="padEditModal" style="display:none;">
-      <div class="modal pe" role="dialog" aria-modal="true" aria-labelledby="peTitle">
-        <div class="modal-head"><span id="peTitle">TRIM · CHOP</span><button class="t" id="peClose" aria-label="Close">✕</button></div>
+      <div class="modal pe" role="dialog" aria-modal="true" aria-label="パッドの EDIT（SAMPLE）">
+        <!-- v0.3.218 §207：3 つの画面（EDIT / KEY / SCRATCH）に共通の頭。PAD 番号・SAMPLE | KEY | SCRATCH・CLOSE が同じ場所（ui/pad-kind が中身を作る） -->
+        <div class="pad-head" data-screen="edit"></div>
         <!-- 名前：唯一の変更入口（v0.3.120）。✎ を押すと入力箱が出る -->
         <div class="pe-name">
           <span class="pe-name-txt" id="peName">—</span>
@@ -9,8 +10,6 @@
                  spellcheck="false" aria-label="パッドの名前" hidden>
         </div>
         <!-- v0.3.199 §188：見出しで区切り、値に名前と単位（参考 UI の TRIM 画面）。略さない（SPL→SAMPLE・SCR→SCRATCH・REV→REVERSE・ATK→ATTACK） -->
-        <div class="pe-sec">SOUND TYPE<small>音の種類</small></div>
-        <div id="peKinds"><button class="t" data-kind="SPL">SAMPLE</button><button class="t" data-kind="KEY">KEY</button><button class="t" data-kind="SCR">SCRATCH</button></div>
         <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
         <div class="pe-sec pe-sec-wave">SOURCE<small>音を入れる</small></div>
         <div class="pe-sample">

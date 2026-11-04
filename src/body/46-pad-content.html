@@ -1,11 +1,11 @@
 <div id="keyEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="keyTitle" hidden>
- <section class="content-panel key-panel"><header class="key-head"><div class="key-name"><b id="keyTitle">KEY</b><span class="key-voice">TINE ELECTRIC PIANO</span></div><div class="key-tabs" role="tablist" aria-label="KEY編集ページ"><button id="keyTabNotes" role="tab" aria-selected="true" aria-controls="keyNotePanel">NOTES</button><button id="keyTabSound" role="tab" aria-selected="false" aria-controls="keySoundPanel">SOUND</button></div><button id="keyClose">CLOSE</button></header>
+ <section class="content-panel key-panel"><div class="pad-head" data-screen="key"></div>
  <div id="keyNotePanel" role="tabpanel" aria-labelledby="keyTabNotes">
  <!-- v0.3.205 §194（B）：道具は 1 段だけ。他は MORE の中、説明文は無し（一言は下の状態表示）。ロールが残りの高さを全部使う -->
  <div class="content-tools key-bar"><button id="keyPreview" aria-pressed="false">▶ PLAY</button><button id="keyRec" aria-pressed="false">● REC</button><button id="keyStep" aria-pressed="false">STEP</button><button id="keyUndo">↶ UNDO</button><button id="keyScaleOn" aria-pressed="true">SCALE</button><button id="keyMore" aria-expanded="false" aria-controls="keyExtra">MORE</button></div>
  <!-- v0.3.210 §199：MORE ＝ 4 つのページ（CHORDS / KEY・SCALE / EDIT / VIEW）。選ぶ物は全部大きなボタン（ドロップダウンを使わない）。外側をタップで閉じる -->
  <div id="keyExtra" class="key-extra" hidden>
-  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY<br>SCALE</button><button data-more-tab="edit" role="tab">CHOP<br>EDIT</button><button data-more-tab="view" role="tab">VIEW</button></div><button id="keyMoreClose">CLOSE</button></div>
+  <div class="key-more-head"><div class="key-more-tabs" role="tablist" aria-label="MORE のページ"><button data-more-tab="chords" role="tab">CHORDS</button><button data-more-tab="key" role="tab">KEY<br>SCALE</button><button data-more-tab="edit" role="tab">CHOP<br>EDIT</button><button data-more-tab="view" role="tab">VIEW</button><button id="keyTabSound" class="key-more-sound" aria-controls="keySoundPanel">SOUND<br>音色</button></div><button id="keyMoreClose">CLOSE</button></div>
   <div class="key-more-page" data-more-page="chords"><p class="key-more-note">いまの KEY で入って、すぐループで鳴ります（いまのノートは置き換え・UNDO で戻せる）</p><div id="keyChordList" class="key-chord-list"></div></div>
   <div class="key-more-page" data-more-page="key" hidden>
    <b class="key-more-label">KEY（主音）</b><div id="keyRootGrid" class="key-grid key-root-grid"></div>
@@ -38,7 +38,7 @@
  <div id="keyPads" class="key-pads"><div class="key-pads-head"><button id="keyPadsDown" aria-label="鍵盤を1オクターブ下へ">OCTAVE −</button><span id="keyPadsRange">C3–D5</span><button id="keyPadsUp" aria-label="鍵盤を1オクターブ上へ">OCTAVE ＋</button><button id="keyStepBack" class="key-step-only">◀ BACK</button><button id="keyStepRest" class="key-step-only">REST ▶</button></div><div id="keyPadGrid" class="key-pad-grid" role="group" aria-label="スケールの鍵盤"></div></div>
  </div></div>
  <div id="keySoundPanel" role="tabpanel" aria-labelledby="keyTabSound" hidden>
-  <div class="key-sound-heading"><b id="keySoundName">TINE ELECTRIC PIANO</b><span>このパッドの音色とエフェクト</span></div>
+  <div class="key-sound-heading"><button id="keyTabNotes" aria-controls="keyNotePanel">← NOTES</button><b id="keySoundName">TINE ELECTRIC PIANO</b><span>このパッドの音色とエフェクト</span></div>
   <div class="key-fx-switch key-instruments" role="group" aria-label="音色"><button data-key-instrument="rhodes-tine-v2" aria-pressed="true">ELECTRIC PIANO</button><button data-key-instrument="sine-bass" aria-pressed="false">SIN BASS</button></div>
   <div class="key-fx-rack">
    <section class="key-fx-unit"><h3>TREMOLO / WAH</h3><div class="key-fx-switch" role="group" aria-label="トレモロ・ワウ選択"><button data-key-motion="tremolo" aria-pressed="false">TREMOLO</button><button data-key-motion="off" aria-pressed="true">OFF</button><button data-key-motion="wah" aria-pressed="false">WAH</button></div><label>DEPTH <output id="keyMotionDepthRead" for="keyMotionDepth">50%</output><input id="keyMotionDepth" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="トレモロ・ワウの深さ"></label><label>RATE <output id="keyMotionRateRead" for="keyMotionRate">3.0 Hz</output><input id="keyMotionRate" type="range" min="0.1" max="10" step="0.1" value="3" aria-label="トレモロ・ワウの速さ"></label></section>
@@ -55,7 +55,8 @@
 </div>
 <div id="scratchEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="scratchTitle" hidden>
  <section class="content-panel scratch-panel">
- <div class="scratch-surface" id="scratchSurface"><button id="scratchHand" class="scratch-hand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄</button><button id="scratchClose" class="scratch-close">✕ CLOSE</button>
+ <div class="pad-head" data-screen="scr"></div>
+ <div class="scratch-surface" id="scratchSurface"><button id="scratchHand" class="scratch-hand" aria-pressed="false" aria-label="スクラッチとフェーダーの左右を入れ替える">⇄</button>
  <div class="scratch-strip"><canvas id="scratchDeck" tabindex="0" aria-label="スクラッチ面。奥へ送るとフォワード、手前でバック"></canvas><span class="scratch-strip-label" aria-hidden="true">▲ FWD · BACK ▼</span></div>
  <div id="scratchFader" class="scratch-fader" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="フェーダー。触った所まで開き、離すと閉じる"><span class="scratch-fader-fill"></span><span class="scratch-fader-hint" aria-hidden="true">TOUCH ↓ VOL</span><output id="scratchFaderRead">CLOSED</output></div></div>
  <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas><div class="scratch-readout"><b id="scratchTitle">SCR</b><span><b id="scratchMotion">PLAY</b> <span id="scratchPosition">0.00 s</span></span></div></div>

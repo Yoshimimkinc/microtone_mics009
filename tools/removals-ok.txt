@@ -118,3 +118,8 @@ document.getElementById('peKeyOpen') [click]
 perfResetPad
 queueSet
 resetSet
+# v0.3.218 §207 3 つの画面の閉じる・種類のボタンを共通の頭（.pad-head、ui/pad-kind の padHeadGo / padScreenClose）にまとめた
+document.getElementById("peClose") [click]
+document.getElementById('keyClose') [click]
+document.getElementById('peKinds') [click]
+document.getElementById('scratchClose') [click]
