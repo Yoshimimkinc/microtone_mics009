@@ -1533,7 +1533,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.221</div>
+  <div class="s-ver" id="splashVer">v0.3.222</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -7641,14 +7641,14 @@ async function scratchOpen(i){
  document.getElementById('scratchStatus').textContent='フェーダーは触った所まで開き、離すと閉じる（PADキー／MIDIは押している間だけ全開）'+(useWorklet?'':'（互換再生）');
 }
 // @module ui/scratch-view
-// @provides SCR_ATTACK_KEY, SCR_FADER_KEY_TRAVEL, SCR_FADER_ZERO, SCR_HAND_KEY, SCR_PEAK_BLOCK,
-//    SCR_PX_PER_SEC, SCR_SENS_RANGE, SCR_SLING_MAX, SCR_SLING_PER_SEC, SCR_WIND_RANGE, SCR_WIND_TOP,
-//    _scratchFaderDrag, _scratchGateKey, _scratchGesture, _scratchHeldWas, _scratchLevel, _scratchPad,
-//    _scratchPadInputs, _scratchPeaks, _scratchRAF, scratchAttackLoad, scratchAttackPaint,
-//    scratchCanvasSize, scratchDrawOverview, scratchDrawStrip, scratchFaderAt, scratchGatePaint,
-//    scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide, scratchPadInputDown,
-//    scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchSlingKick, scratchStripTime,
-//    scratchWindAt
+// @provides SCR_ATTACK_KEY, SCR_FADER_KEY_TRAVEL, SCR_FADER_ZERO, SCR_HAND_KEY, SCR_MAT_LOGO, SCR_MAT_RIB,
+//    SCR_MAT_SPINUP, SCR_PEAK_BLOCK, SCR_PX_PER_SEC, SCR_SENS_RANGE, SCR_SLING_MAX, SCR_SLING_PER_SEC,
+//    SCR_WIND_RANGE, SCR_WIND_TOP, _scratchFaderDrag, _scratchGateKey, _scratchGesture, _scratchHeldWas,
+//    _scratchLevel, _scratchMat, _scratchPad, _scratchPadInputs, _scratchPeaks, _scratchRAF,
+//    scratchAttackLoad, scratchAttackPaint, scratchCanvasSize, scratchDrawMat, scratchDrawOverview,
+//    scratchDrawStrip, scratchFaderAt, scratchGatePaint, scratchGateRelease, scratchHandPaint,
+//    scratchHandSwap, scratchHide, scratchMatStep, scratchPadInputDown, scratchPadInputUp, scratchPeaks,
+//    scratchSetLevel, scratchShow, scratchSlingKick, scratchStripTime, scratchWindAt
 // @uses SCR_ATTACKS, SCR_FADER_TRAVEL, _scratchAttack, paintPadHeads, scratchCue, scratchDrag, scratchHold,
 //    scratchMotor, scratchOpen, scratchSeek, scratchSetAttack, scratchSetFader, scratchState, tracks
 // @depends -
@@ -7706,8 +7706,27 @@ function scratchPeaks(wave){
 }
 function scratchCanvasSize(canvas,fallbackH){const dpr=window.devicePixelRatio||1,w=Math.max(1,canvas.clientWidth||300),h=Math.max(1,canvas.clientHeight||fallbackH),W=Math.round(w*dpr),H=Math.round(h*dpr);if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}return {dpr,w,h,W,H};}
 // 縦一直線のスクラッチ面：まん中の横線＝いま鳴っている所。波形は上へ進む＝下が先、上が鳴った後（ループするので端はつながる）。上は詰まって、下は伸びて見える（感度の目盛り）
+// v0.3.222 §211「波形の裏にスリップマットが走ってるグラフィック」：マットはターンテーブルと一緒に回り続ける＝モーターが回っていれば等速（1×）で流れ、
+// レコード（波形）を指で押さえていても止まらない（本物のスリップマットの上でレコードが滑る絵）。離して普通に再生している時は波形と同じ速さで一緒に動く。
+// PAUSE（モーター停止）でマットも 0.25 秒ほどで止まり、PLAY で同じく立ち上がる。縦の縮尺は波形と同じ（scratchStripTime）
+const SCR_MAT_SPINUP=.25,SCR_MAT_RIB=.125,SCR_MAT_LOGO=1;
+const _scratchMat={pos:0,rate:1,at:0};
+function scratchMatStep(motor,nowMs){
+  const m=_scratchMat,dt=m.at?Math.max(0,Math.min(.1,(nowMs-m.at)/1000)):0;m.at=nowMs;
+  const target=motor?1:0,step=dt/SCR_MAT_SPINUP;m.rate=m.rate<target?Math.min(target,m.rate+step):Math.max(target,m.rate-step);m.pos+=m.rate*dt;return m.pos;   // モーターのトルクは一定＝直線で立ち上がり・止まる
+}
+function scratchDrawMat(c,W,H,dpr,pos){
+  const hc=H/dpr,at=y=>pos+scratchStripTime(y/dpr,hc);
+  c.fillStyle='#181e1f';c.fillRect(0,0,W,H);
+  c.fillStyle='rgba(232,237,193,.06)';   // フェルトの筋（1/8 秒ごと）
+  for(let y=0;y<H;y++){if(Math.floor(at(y)/SCR_MAT_RIB)!==Math.floor(at(y+1)/SCR_MAT_RIB))c.fillRect(0,y,W,Math.max(1,dpr));}
+  c.save();c.fillStyle='rgba(232,237,193,.13)';c.font='700 '+Math.round(13*dpr)+'px sans-serif';c.textAlign='center';c.textBaseline='middle';   // マットの印刷（1 秒ごと）
+  for(let y=0;y<H;y++){if(Math.floor(at(y)/SCR_MAT_LOGO)!==Math.floor(at(y+1)/SCR_MAT_LOGO)){c.fillText('MICS009',W*.18,y);c.fillText('MICS009',W*.82,y);}}
+  c.restore();
+}
 function scratchDrawStrip(canvas,state,active){
- const {W,H,dpr}=scratchCanvasSize(canvas,320),c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.fillStyle='#111617';c.fillRect(0,0,W,H);
+ const {W,H,dpr}=scratchCanvasSize(canvas,320),c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);
+ scratchDrawMat(c,W,H,dpr,scratchMatStep(state.motor!==false,(typeof performance!=='undefined'?performance:Date).now()));
  const P=state.wave?scratchPeaks(state.wave):null,mid=H/2,cx=W/2;
  if(P){const N=P.length,cur=((state.frame%N)+N)%N,nb=P.peak.length,hc=H/dpr,at=y=>cur+scratchStripTime(y/dpr,hc)*state.rate,seams=[];
   for(let pass=0;pass<2;pass++){c.fillStyle=pass?'#c0c875':'#5d6a5f';c.beginPath();
@@ -8569,7 +8588,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.221";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.222";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
