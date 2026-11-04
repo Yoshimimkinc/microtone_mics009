@@ -2603,3 +2603,12 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - PC キー（1-8 / Q-I）・MIDI も同じ（`scratchPadInputDown` の「画面が閉じていれば普通に鳴らす」を外した）：押すと画面が開き、押している間フェーダーが開く。別の SCRATCH パッドならその盤に替わる。
 - SEQ に打ち込んだ SCRATCH のパッドの音、音の無い SCRATCH のパッド（普通の空パッドと同じ扱い）は今まで通り。
 検査：`pad-content-check`（390 / 1280：SCRATCH のパッドを押すと画面が開き、パッドとしては鳴らない）、`scratch-unit`（画面が閉じていても PC キー／MIDI で開く）。
+
+## 209. KEY と波形を聞かずに往復・パッドの見た目に START / END（v0.3.220）
+「KEY と波形は行き来できる様に」「KEY のスタートエンドが Pad の見た目に反映される様にして」。
+- 解釈（確認の質問はキャンセルされたので、こちらで決めた）：KEY ⇄ 波形を「聞かずに何度でも往復」。音程の読み取り（波形 → 音符）は別の話として残す。
+- `keyLeaveChoice` は聞かない：音の入った KEY から SAMPLE / SCRATCH ＝必ず `'bake'`（いまのフレーズを START〜END ごと波形に。打ち込みは `keyPhrase` に残る）。音の無い KEY ＝ `'restore'`（KEY にする前のサンプル）。
+  波形から KEY へは今まで通り打ち込みに戻る（KEY にした時の波形は `sampleState` に退避）。KEY → 波形 → KEY → 波形… と往復できる。
+- §195（v0.3.206）の確認ダイアログ `#keyLeaveAsk`（波形にする／元のサンプルに戻す／やめる）と、その処理（`_keyLeaveDone` `_keyLeaveResolve`・Esc）・CSS を撤去。KEY にする前のサンプルへは UNDO（`setPadKind` が `pushUndo`）。
+- パッドの見た目（`keyPadGeometry`、32-ui-wave）：`range` の START〜END だけを描く。範囲の外の音符は描かず、音の高さの幅は範囲の中の音符で決める。小節の線も範囲の中だけ。SAMPLE のパッドが START〜END の波形を描くのと同じ考え方。範囲を動かして離すと作り直し → パッドの見た目も変わる。
+検査：`key-editor-unit`（音の入った KEY は聞かずに bake・空の KEY は restore・パッドの図が START〜END だけ）、`pad-content-check`（390 / 1280：KEY → SCRATCH が聞かずに START〜END の波形・打ち込みは残る → KEY で打ち込みに戻る → また SCRATCH で同じ波形）。

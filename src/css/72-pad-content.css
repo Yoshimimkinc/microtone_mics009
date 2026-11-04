@@ -112,11 +112,11 @@
 @media(max-width:600px){.key-fx-rack{grid-template-columns:1fr}.key-sound-heading{padding:12px 0}.key-fx-unit h3{font-size:11px}.key-fx-switch button{font-size:11px}}
 
 /* KEY → SAMPLE / SCRATCH の確認（v0.3.206 §195） */
-#keyLeaveAsk{z-index:10060}
-.key-leave-panel{width:min(420px,100%)}.key-leave-panel b{font-size:14px;letter-spacing:.06em}
-.key-leave-choices{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-.key-leave-choices button{font-weight:700;letter-spacing:.04em}
-.key-leave-choices .key-leave-main{background:var(--teal,#3dd6c4);color:#101719;border-color:var(--teal,#3dd6c4)}
+
+
+
+
+
 
 /* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
 #scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}

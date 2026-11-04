@@ -5,11 +5,10 @@
 //    _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows, _keyScalePitch, _keySelect, _keySelected,
 //    _keySelection, _keySetCursor, _keySnapBeat, _keySound, _keyTapNote, _keyTarget, _keyUpdate, _keyZoom,
 //    keyEditorClose, keyEditorOpen
-// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, _keyEntryPaint, _keyLeaveDone, _keyLeaveResolve,
-//    _keyPadLow, _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, padHeadSub, padKind,
-//    paintPadHeads, parseKeyMidi, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
-//    scheduleAutosave, scratchClose, tracks
+// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, _keyEntryPaint, _keyPadLow, _keyPadRoot, _keyPref,
+//    _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo, keyEntryClose, keyEntryOpen,
+//    keyTranspose, masterGain, normalizeKeyPhrase, padHeadSub, padKind, paintPadHeads, parseKeyMidi,
+//    prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, scheduleAutosave, scratchClose, tracks
 // @depends plock-undo
 // KEY のピアノロール（v0.3.217 §206 で ui/pad-content から改名。パッドの種類の切替は ui/pad-kind へ分けた）：
 // 開く・閉じる（keyEditorOpen / keyEditorClose）・ロールと強弱の欄の描画（_keyPaint）・ノートのドラッグ・SOUND タブ・MIDI 読み込み。
@@ -214,7 +213,6 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
     catch(e){document.getElementById('keyStatus').textContent=e.message;}
   });
   window.addEventListener('keydown',e=>{
-    if(e.key==='Escape'&&_keyLeaveResolve){_keyLeaveDone(null);return;}
     if(e.key==='Escape'){_keyEndGesture(true);keyEditorClose();scratchClose();return;}
     if(_keyTarget<0||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     const command=e.ctrlKey||e.metaKey;

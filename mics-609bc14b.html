@@ -1470,11 +1470,11 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 @media(max-width:600px){.key-fx-rack{grid-template-columns:1fr}.key-sound-heading{padding:12px 0}.key-fx-unit h3{font-size:11px}.key-fx-switch button{font-size:11px}}
 
 /* KEY → SAMPLE / SCRATCH の確認（v0.3.206 §195） */
-#keyLeaveAsk{z-index:10060}
-.key-leave-panel{width:min(420px,100%)}.key-leave-panel b{font-size:14px;letter-spacing:.06em}
-.key-leave-choices{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-.key-leave-choices button{font-weight:700;letter-spacing:.04em}
-.key-leave-choices .key-leave-main{background:var(--teal,#3dd6c4);color:#101719;border-color:var(--teal,#3dd6c4)}
+
+
+
+
+
 
 /* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
 #scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}
@@ -1532,7 +1532,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.219</div>
+  <div class="s-ver" id="splashVer">v0.3.220</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1817,12 +1817,6 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   </div><p class="key-sound-help">音色と 2 つのエフェクトを組み合わせて、NOTES の PLAY で試聴できます。設定はこの KEY パッドに保存されます。</p>
  </div> <p id="keyStatus" role="status">KEY · 4/4</p>
  </section>
-</div>
-<!-- v0.3.206 §195：KEY（音が入っている）から SAMPLE / SCRATCH へ移る時に聞く -->
-<div id="keyLeaveAsk" class="content-overlay key-leave" role="dialog" aria-modal="true" aria-labelledby="keyLeaveTitle" hidden>
- <section class="content-panel key-leave-panel"><b id="keyLeaveTitle">KEY → <span id="keyLeaveTo">SAMPLE</span></b>
- <p>打ち込んだフレーズをどうしますか？ KEY に戻せば、打ち込みはいつでもそのままです。</p>
- <div class="key-leave-choices"><button data-leave="bake" class="key-leave-main">この KEY を波形にする</button><button data-leave="restore" id="keyLeaveRestore">元のサンプルに戻す</button><button data-leave="">やめる</button></div></section>
 </div>
 <div id="scratchEditor" class="content-overlay" role="dialog" aria-modal="true" aria-labelledby="scratchTitle" hidden>
  <section class="content-panel scratch-panel">
@@ -4435,15 +4429,17 @@ window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&armMode) arm(armMode
 // Koala風：各パッドに小さな波形を描く
 function padWaveInk(){ return (getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8"); }
 // Pad thumbnails show phrase geometry, never the rendered KEY audio waveform.
+// v0.3.220 §209：START / END があればその間だけを描く（SAMPLE のパッドが START〜END の波形を描くのと同じ。範囲の外の音符は描かない・音の高さの幅も範囲の中の音符で決める）
 function keyPadGeometry(src,w,h){
   const p=normalizeKeyPhrase(src),left=8,top=Math.min(25,h*.24),width=Math.max(1,w-16),height=Math.max(8,h-top-Math.min(20,h*.2));
-  const pitches=p.notes.map(n=>n.pitch),low=pitches.length?Math.min(...pitches)-2:48,high=pitches.length?Math.max(...pitches)+2:72,span=Math.max(12,high-low),base=(low+high-span)/2;
-  return {left,top,width,height,bars:p.bars,notes:p.notes.map(n=>({x:left+n.beat/(p.bars*4)*width,y:top+(1-(n.pitch-base)/span)*height,width:Math.max(2,n.length/(p.bars*4)*width-1),height:Math.max(2,Math.min(5,height/span*.72)),velocity:n.velocity}))};
+  const from=p.range.start,to=p.range.end==null?p.bars*4:p.range.end,len=Math.max(1/96,to-from),inside=p.notes.filter(n=>n.beat<to&&n.beat+n.length>from);
+  const pitches=inside.map(n=>n.pitch),low=pitches.length?Math.min(...pitches)-2:48,high=pitches.length?Math.max(...pitches)+2:72,span=Math.max(12,high-low),base=(low+high-span)/2;
+  return {left,top,width,height,bars:p.bars,from,to,notes:inside.map(n=>({x:left+(n.beat-from)/len*width,y:top+(1-(n.pitch-base)/span)*height,width:Math.max(2,n.length/len*width-1),height:Math.max(2,Math.min(5,height/span*.72)),velocity:n.velocity}))};
 }
 function drawKeyPadNotes(ctx,src,w,h,ink){
   const g=keyPadGeometry(src,w,h);ctx.save();ctx.fillStyle='#14262d';ctx.fillRect(g.left,g.top,g.width,g.height);
   ctx.beginPath();ctx.rect(g.left,g.top,g.width,g.height);ctx.clip();
-  for(let b=0;b<=g.bars*4;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+b/(g.bars*4)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
+  for(let b=Math.ceil(g.from);b<=g.to;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+(b-g.from)/(g.to-g.from)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
   ctx.fillStyle=ink||'#48d9de';for(const n of g.notes){ctx.globalAlpha=.4+.6*n.velocity/127;ctx.fillRect(n.x,n.y-n.height/2,n.width,n.height);}ctx.restore();
 }
 function drawPadWave(i, ink){
@@ -7765,15 +7761,15 @@ function scratchShow(i){
  document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});
 })();
 // @module ui/pad-kind
-// @provides PAD_SCREEN_OF, _keyLeaveDone, _keyLeaveResolve, _sampleState, keyLeaveChoice, openPadContent,
-//    padHeadGo, padHeadSub, padKind, padKindGo, padScreenClose, padScreenOpen, padScreenTarget,
-//    paintPadHeads, setPadKind, syncPadContentEditor
+// @provides PAD_SCREEN_OF, _sampleState, keyLeaveChoice, openPadContent, padHeadGo, padHeadSub, padKind,
+//    padKindGo, padScreenClose, padScreenOpen, padScreenTarget, paintPadHeads, setPadKind,
+//    syncPadContentEditor
 // @uses AC, PADS, _keyBuffers, _keyTarget, _scratchPad, bpmVal, closePadEdit, keyEditorClose, keyEditorOpen,
 //    normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf, peTarget, prepareKeyTrack, pushUndo,
 //    refreshPadDisplay, sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends -
 // パッドの種類（SAMPLE / KEY / SCRATCH）を切り替える所（v0.3.217 §206 で ui/pad-content から分けた）。
-// 種類の切替（setPadKind）・種類に合った画面を開く（openPadContent / padKindGo）・KEY から移る時に聞く（keyLeaveChoice）・EDIT の種類ボタンの表示（syncPadContentEditor）。
+// 種類の切替（setPadKind）・種類に合った画面を開く（openPadContent / padKindGo）・KEY から移る時は波形にする（keyLeaveChoice）・EDIT の種類ボタンの表示（syncPadContentEditor）。
 // ピアノロールは ui/key-roll、鍵盤・REC・STEP・ループ・MORE は ui/key-entry、スクラッチは ui/scratch-view。
 // SAMPLE / KEY / SCRATCH（保存の値）。起動中（このファイルより前の部品の読み込み時）にも呼ばれるので、並びは定数にせず関数の中に書く
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
@@ -7801,7 +7797,7 @@ async function setPadKind(i,kind,leave='restore'){
     const epoch=t._contentEpoch;sampNameEl.textContent='KEYを生成中…';const ready=await prepareKeyTrack(t,bpmVal);
     if(t._contentEpoch!==epoch||t.padKind!=='KEY')return;
     if(ready)sampNameEl.textContent=t.keyPhrase.notes.length?'KEY · フレーズを演奏できます':'KEY · 鍵盤で弾いて入れるか、ロールをタップして置いてください';
-  }else sampNameEl.textContent=baked?(kind==='SCR'?'SCRATCH':'SAMPLE')+' · KEY のフレーズを波形にしました（KEY に戻せば打ち込みはそのまま）':kind==='SCR'?'SCRATCH · 窓の SCRATCH か EDIT＋パッドでスクラッチ画面':'SAMPLE · サンプルを再生';
+  }else sampNameEl.textContent=baked?(kind==='SCR'?'SCRATCH':'SAMPLE')+' · KEY のフレーズを波形にしました（KEY を押せば打ち込みに戻る）':kind==='SCR'?'SCRATCH · 窓の SCRATCH か EDIT＋パッドでスクラッチ画面':'SAMPLE · サンプルを再生';
   refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
 }
 // 種類に合った画面を開く（v0.3.203 §192）：KEY＝ピアノロール・SCRATCH＝スクラッチ・SAMPLE＝EDIT（波形・TRIM・CHOP）。EDIT＋パッドのタップもここ
@@ -7813,17 +7809,13 @@ function openPadContent(i){
 }
 // 窓の種類ボタン：その種類にして、すぐその画面へ（同じ種類ならそのまま開く）。SAMPLE は窓の波形のまま（開かない）
 // KEY（音が入っている）から SAMPLE / SCRATCH へ移る時は聞く：この KEY を波形にする／元のサンプルに戻す／やめる（v0.3.206 §195）
-let _keyLeaveResolve=null;
+// v0.3.220 §209「KEY と波形は行き来できる様に」：聞かない。音の入った KEY から SAMPLE / SCRATCH へ＝必ず「いまのフレーズを波形にする」（START〜END ごと、
+// 打ち込みは残る）、波形から KEY へ＝打ち込みに戻る。何度でも往復できる。音の無い KEY は KEY にする前のサンプルに戻す。
+// v0.3.206 §195 の確認（波形にする／元のサンプルに戻す／やめる）は撤去。KEY にする前のサンプルへは UNDO で戻る
 function keyLeaveChoice(i,kind){
   const t=tracks[i];
-  if(padKind(t)!=='KEY'||kind==='KEY'||!normalizeKeyPhrase(t.keyPhrase).notes.length)return Promise.resolve('restore');
-  if(_keyLeaveResolve)_keyLeaveResolve(null);
-  document.getElementById('keyLeaveTo').textContent=kind==='SCR'?'SCRATCH':'SAMPLE';
-  document.getElementById('keyLeaveRestore').textContent=t.sampleState?.buffer?'元のサンプルに戻す':'元に戻す（空のパッド）';
-  document.getElementById('keyLeaveAsk').hidden=false;
-  return new Promise(resolve=>{_keyLeaveResolve=resolve;});
+  return Promise.resolve(padKind(t)==='KEY'&&kind!=='KEY'&&normalizeKeyPhrase(t.keyPhrase).notes.length?'bake':'restore');
 }
-function _keyLeaveDone(v){const r=_keyLeaveResolve;_keyLeaveResolve=null;document.getElementById('keyLeaveAsk').hidden=true;if(r)r(v||null);}
 async function padKindGo(i,kind){
   if(padKind(tracks[i])!==kind){const leave=await keyLeaveChoice(i,kind);if(!leave)return;await setPadKind(i,kind,leave);}
   if(padKind(tracks[i])!==kind)return;
@@ -7875,7 +7867,6 @@ async function padHeadGo(screen,kind){
       if(e.target.closest('.pad-head-close'))padScreenClose(h.dataset.screen);});
   }
   // v0.3.215 §204：EDIT の KEY を押す＝KEY にしてそのままピアノロール → v0.3.218 §207 で共通の頭（padHeadGo）に置き換え。EDIT の種類ボタン（#peKinds）は撤去
-  document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
 })();
 // @module ui/key-entry
 // @provides KEY_FLAG_W, _keyAllNotesOff, _keyBeatName, _keyBeatSec, _keyChopMode, _keyChopPaint,
@@ -8174,11 +8165,10 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
 //    _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows, _keyScalePitch, _keySelect, _keySelected,
 //    _keySelection, _keySetCursor, _keySnapBeat, _keySound, _keyTapNote, _keyTarget, _keyUpdate, _keyZoom,
 //    keyEditorClose, keyEditorOpen
-// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, _keyEntryPaint, _keyLeaveDone, _keyLeaveResolve,
-//    _keyPadLow, _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, padHeadSub, padKind,
-//    paintPadHeads, parseKeyMidi, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
-//    scheduleAutosave, scratchClose, tracks
+// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, _keyEntryPaint, _keyPadLow, _keyPadRoot, _keyPref,
+//    _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo, keyEntryClose, keyEntryOpen,
+//    keyTranspose, masterGain, normalizeKeyPhrase, padHeadSub, padKind, paintPadHeads, parseKeyMidi,
+//    prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, scheduleAutosave, scratchClose, tracks
 // @depends plock-undo
 // KEY のピアノロール（v0.3.217 §206 で ui/pad-content から改名。パッドの種類の切替は ui/pad-kind へ分けた）：
 // 開く・閉じる（keyEditorOpen / keyEditorClose）・ロールと強弱の欄の描画（_keyPaint）・ノートのドラッグ・SOUND タブ・MIDI 読み込み。
@@ -8383,7 +8373,6 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
     catch(e){document.getElementById('keyStatus').textContent=e.message;}
   });
   window.addEventListener('keydown',e=>{
-    if(e.key==='Escape'&&_keyLeaveResolve){_keyLeaveDone(null);return;}
     if(e.key==='Escape'){_keyEndGesture(true);keyEditorClose();scratchClose();return;}
     if(_keyTarget<0||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     const command=e.ctrlKey||e.metaKey;
@@ -8566,7 +8555,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.219";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.220";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

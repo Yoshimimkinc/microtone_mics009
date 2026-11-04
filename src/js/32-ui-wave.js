@@ -10,15 +10,17 @@
 // Koala風：各パッドに小さな波形を描く
 function padWaveInk(){ return (getComputedStyle(document.body).getPropertyValue("--ink").trim()||"#e8e4d8"); }
 // Pad thumbnails show phrase geometry, never the rendered KEY audio waveform.
+// v0.3.220 §209：START / END があればその間だけを描く（SAMPLE のパッドが START〜END の波形を描くのと同じ。範囲の外の音符は描かない・音の高さの幅も範囲の中の音符で決める）
 function keyPadGeometry(src,w,h){
   const p=normalizeKeyPhrase(src),left=8,top=Math.min(25,h*.24),width=Math.max(1,w-16),height=Math.max(8,h-top-Math.min(20,h*.2));
-  const pitches=p.notes.map(n=>n.pitch),low=pitches.length?Math.min(...pitches)-2:48,high=pitches.length?Math.max(...pitches)+2:72,span=Math.max(12,high-low),base=(low+high-span)/2;
-  return {left,top,width,height,bars:p.bars,notes:p.notes.map(n=>({x:left+n.beat/(p.bars*4)*width,y:top+(1-(n.pitch-base)/span)*height,width:Math.max(2,n.length/(p.bars*4)*width-1),height:Math.max(2,Math.min(5,height/span*.72)),velocity:n.velocity}))};
+  const from=p.range.start,to=p.range.end==null?p.bars*4:p.range.end,len=Math.max(1/96,to-from),inside=p.notes.filter(n=>n.beat<to&&n.beat+n.length>from);
+  const pitches=inside.map(n=>n.pitch),low=pitches.length?Math.min(...pitches)-2:48,high=pitches.length?Math.max(...pitches)+2:72,span=Math.max(12,high-low),base=(low+high-span)/2;
+  return {left,top,width,height,bars:p.bars,from,to,notes:inside.map(n=>({x:left+(n.beat-from)/len*width,y:top+(1-(n.pitch-base)/span)*height,width:Math.max(2,n.length/len*width-1),height:Math.max(2,Math.min(5,height/span*.72)),velocity:n.velocity}))};
 }
 function drawKeyPadNotes(ctx,src,w,h,ink){
   const g=keyPadGeometry(src,w,h);ctx.save();ctx.fillStyle='#14262d';ctx.fillRect(g.left,g.top,g.width,g.height);
   ctx.beginPath();ctx.rect(g.left,g.top,g.width,g.height);ctx.clip();
-  for(let b=0;b<=g.bars*4;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+b/(g.bars*4)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
+  for(let b=Math.ceil(g.from);b<=g.to;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+(b-g.from)/(g.to-g.from)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
   ctx.fillStyle=ink||'#48d9de';for(const n of g.notes){ctx.globalAlpha=.4+.6*n.velocity/127;ctx.fillRect(n.x,n.y-n.height/2,n.width,n.height);}ctx.restore();
 }
 function drawPadWave(i, ink){
