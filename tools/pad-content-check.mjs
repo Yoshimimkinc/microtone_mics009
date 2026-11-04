@@ -128,6 +128,16 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     ok_(`${label} KEY の END を目盛りでドラッグ → パッドは START〜END だけ鳴る`,rg.range.start===0&&rg.range.end===4&&Math.abs(rg.end-rg.want)<1e-6&&rg.read.includes('END 2.1'),JSON.stringify(rg));
     await p.click('#keyMore');await p.click('#keyExtra [data-more-tab="key"]');await p.click('#keyRangeReset');await p.waitForTimeout(200);
     eq(`${label} KEY の START / END の RESET＝全体`,await p.evaluate(()=>tracks[12].keyPhrase.range),{start:0,end:null});
+    // v0.3.214 §203「START / END のマーカーが動かない」：札（START の文字）を掴んでも動く・目盛りを押すと近いほうの印がそこへ来る
+    { await p.evaluate(()=>{_keyMoreShow(false);_keyAutoFit=true;_keyFit();document.getElementById('keyHorizontal').scrollLeft=0;});await p.waitForTimeout(150);
+      const q=await p.evaluate(()=>{const b=document.getElementById('keyRuler').getBoundingClientRect();return {l:b.left,y:b.top+7,z:_keyZoom};});
+      await p.mouse.move(q.l+58+30,q.y);await p.mouse.down();await p.mouse.move(q.l+58+2*q.z,q.y,{steps:4});await p.mouse.up();await p.waitForTimeout(100);
+      const afterLabel=await p.evaluate(()=>tracks[12].keyPhrase.range);
+      const q2=await p.evaluate(()=>{document.getElementById('keyHorizontal').scrollLeft=120;const b=document.getElementById('keyRuler').getBoundingClientRect();return {l:b.left,y:b.top+20,z:_keyZoom};});
+      await p.mouse.click(q2.l+58+9.5*q2.z,q2.y);await p.waitForTimeout(100);
+      const afterJump=await p.evaluate(()=>tracks[12].keyPhrase.range);
+      ok_(`${label} KEY の START は札を掴んで動く・目盛りを押すと近いほうの印（END）が来る`,afterLabel.start===2&&afterLabel.end==null&&afterJump.start===2&&afterJump.end===9.5,JSON.stringify({afterLabel,afterJump}));
+      await p.evaluate(()=>_keyUpdate(ph=>{ph.range={start:0,end:null};}));await p.click('#keyMore'); }
     // v0.3.213 §202：KEY のパッドの PITCH は音符で移す＝長さ（テンポ）は同じ・エディタの名前に PITCH
     { const len0=await p.evaluate(()=>tracks[12].buffer.length);
       await p.evaluate(()=>{tracks[12].tune=5;warmPitch(12);});await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});
