@@ -1,9 +1,8 @@
 // @module engine-fx
 // @provides LOFI, PERF_BASE, _ledT, applyFx, delaySend, echoFb, echoFbHP, echoFbLP, echoLfo, echoLfoDepth,
-//    echoSat, echoWet, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern,
-//    perfResetPad, reverb, reverbLP, reverbPre, reverbSend, reverbWet, setDelayTempo, tapeEcho, tracks
-// @uses AC, PADS, STEPS, bpmVal, editBar, editPat, finalClip, fxClearPad, paintFxDots, perfFillPad, playBar,
-//    playPat, pushUndo, syncEditor, tapeDelay
+//    echoSat, echoWet, fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, getPattern, getPlayPattern, reverb,
+//    reverbLP, reverbPre, reverbSend, reverbWet, setDelayTempo, tapeEcho, tracks
+// @uses AC, PADS, STEPS, bpmVal, editBar, editPat, finalClip, playBar, playPat, tapeDelay
 // @depends boot, engine-core, engine-master
 // ===== センドFX：RE-101風テープディレイ ＋ ホールリバーブ（マスター最終段からパラレル送り）=====
 // --- テープディレイ（RE-101風：リピートが徐々に暗くもこもこ＋テープ飽和＋僅かな揺れ） ---
@@ -92,15 +91,6 @@ const LOFI = { bits:12, targetRate:26040 }; // SP-1200 ≒ 26kHz
 // UI・再生・編集・演奏の状態（selected / playing / editPat / activeLock / perf* …）は app/state.js へ移した（v0.3.133）
 let _ledT=null;   // ASSIGN の LED 点滅タイマ
 const PERF_BASE = {pitch:"tune", filter:"cutoff", delay:"delaySend", reverb:"reverbSend"};  // 4つとも演奏のパラメータ・ページで同等に扱う（LEVEL は v0.3.124 で P-LOCK から廃止 §135）
-// 演奏P-LOCK：パッドのダブルタップ＝そのパッドからこのエフェクトを外す（v0.3.168 から「押した時の値」ではなく掛かっていない値。PITCH は 0）
-function perfResetPad(i, param){
-  if(!param || !PERF_BASE[param]) return;
-  pushUndo();
-  if(param==="pitch") tracks[i].tune=0; else fxClearPad(i, param);
-  perfFillPad(i, param);
-  paintFxDots();
-  if(typeof syncEditor==="function") syncEditor();
-}
 
 // 編集中（パターン×小節）へのアクセサ
 function getPattern(trackIdx){ return tracks[trackIdx].patterns[editPat][editBar]; }

@@ -18,7 +18,7 @@ const context={Event:class{constructor(type){this.type=type;}},Float32Array,Uint
  refreshPadDisplay:noop,scheduleAutosave:noop,scratchClose:noop,sampNameEl:{},paintPerf:noop,stopVoices:noop,previewVoiceFrom:noop,trigger:noop};
 vm.createContext(context);
 const base=new URL('../src/js/',import.meta.url);
-for(const file of ['data/key-phrase.js','data/key-presets.js','data/pads.js','audio/key-instrument.js','ui/key-entry.js','ui/pad-content.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
+for(const file of ['data/key-phrase.js','data/key-presets.js','data/pads.js','audio/key-instrument.js','ui/pad-kind.js','ui/key-entry.js','ui/key-roll.js'])vm.runInContext(fs.readFileSync(new URL(file,base),'utf8'),context,{filename:file});
 const run=code=>vm.runInContext(code,context),flush=async()=>{await new Promise(r=>setTimeout(r,0));};
 const phrase=()=>context.tracks[0].keyPhrase;
 const ev=(id,type,x,y,extra={})=>{const e={currentTarget:el(id),target:el(id),clientX:x,clientY:y,pointerId:1,pointerType:'mouse',button:0,preventDefault:noop,stopImmediatePropagation:noop,...extra};for(const f of el(id).listeners[type]||[])f(e);};

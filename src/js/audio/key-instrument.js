@@ -1,6 +1,6 @@
 // @module audio/key-instrument
 // @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyShifted, _keyWarmTimer, keyApplyEffects,
-//    keySignatureOf, keySineBassNote, keyTineNote, keyTranspose, keyVoiceGain, keyVoiceNote,
+//    keySignatureOf, keySineBassNote, keyTempo, keyTineNote, keyTranspose, keyVoiceGain, keyVoiceNote,
 //    prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
 // @uses bpmVal, normalizeKeyPhrase, sampNameEl, tracks
 // @depends -
@@ -52,8 +52,10 @@ function keySineBassNote(pitch,velocity,hold,rate=26000){
 // 音色ごとの 1 音（KEY_INSTRUMENTS の名前）。ミックスの重さも音色ごと（エレピ .42 は v0.3.205 までと同じ）
 function keyVoiceNote(instrument,pitch,velocity,hold,rate=26000){return instrument==='sine-bass'?keySineBassNote(pitch,velocity,hold,rate):keyTineNote(pitch,velocity,hold,rate);}
 function keyVoiceGain(instrument){return instrument==='sine-bass'?.55:.42;}
+// KEY のテンポ（BPM を 40〜250 に収める。未設定は 100）。書き出し・ループ・START / END の秒換算が同じ値を使う（v0.3.217 §206 で 5 か所の同じ式をまとめた）
+function keyTempo(bpm){return Math.max(40,Math.min(250,+bpm||100));}
 function renderKeyDry(src,bpm){
-  const p=normalizeKeyPhrase(src),tempo=Math.max(40,Math.min(250,+bpm||100));
+  const p=normalizeKeyPhrase(src),tempo=keyTempo(bpm);
   // Editor preferences cannot change the sound or create duplicate render jobs.
   const key=JSON.stringify([p.bars,p.instrument,p.notes,tempo]);if(_keyDryCache.has(key))return _keyDryCache.get(key);
   const job=(async()=>{
@@ -107,7 +109,7 @@ function keyApplyEffects(input,rate,effects){
   return out;
 }
 function renderKeyPhrase(src,bpm){
-  const p=normalizeKeyPhrase(src),tempo=Math.max(40,Math.min(250,+bpm||100)),key=JSON.stringify([p.bars,p.instrument,p.notes,p.effects,tempo]);
+  const p=normalizeKeyPhrase(src),tempo=keyTempo(bpm),key=JSON.stringify([p.bars,p.instrument,p.notes,p.effects,tempo]);
   if(_keyCache.has(key))return _keyCache.get(key);
   const job=(async()=>{
     const dry=await renderKeyDry(p,tempo),processed=keyApplyEffects(dry.getChannelData(0),dry.sampleRate,p.effects);
@@ -132,7 +134,7 @@ async function prepareKeyTrack(t,bpm){
   const buffer=await renderKeyPhrase(_keyShifted(phrase,tr),bpm);
   if(_keyJobs.get(t)!==token||t.padKind!=='KEY'||(t._contentEpoch||0)!==epoch||keySignatureOf(t,bpm)!==signature)return null;
   _keyBuffers.add(buffer);
-  t.keyPhrase=phrase;t.buffer=buffer;t.rawBuffer=buffer;const spb=60/Math.max(40,Math.min(250,+bpm||100));t.start=Math.min(1,phrase.range.start*spb/buffer.duration);t.end=phrase.range.end==null?1:Math.min(1,phrase.range.end*spb/buffer.duration);t.loop=false;   /* START / END（v0.3.212 §201） */
+  t.keyPhrase=phrase;t.buffer=buffer;t.rawBuffer=buffer;const spb=60/keyTempo(bpm);t.start=Math.min(1,phrase.range.start*spb/buffer.duration);t.end=phrase.range.end==null?1:Math.min(1,phrase.range.end*spb/buffer.duration);t.loop=false;   /* START / END（v0.3.212 §201） */
   t.loopStart=0;t._keySignature=signature;
   return buffer;
 }

@@ -1,13 +1,13 @@
 // @module data/set
 // @provides DEFAULT_KIT, SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart,
-//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, queueSet,
-//    resetSet, setElapsed, setName, setRename, setsFromProject, snapshotSet, switchSetNow
+//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, setElapsed,
+//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
-//    playing, prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur,
-//    setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
-//    stripLegacyLocks, swingPct, tracks, warmKeyTracks
+//    prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo,
+//    setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct,
+//    tracks, warmKeyTracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -132,17 +132,8 @@ function focusSet(k){
   clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();
 }
-// セットを叩く：止まっていれば今すぐ差し替え、鳴っていれば次の小節頭で（同じセットをもう一度＝予約取消）。NOW を叩いても何もしない（false）
-function queueSet(k){
-  if(!(k>=0&&k<16)) return false;
-  if(playing){ if(k===setCur&&queuedSet===null) return false; queuedSet = (queuedSet===k) ? null : k; return true; }
-  if(k===setCur) return false;
-  switchSetNow(k, AC.currentTime); return true;
-}
 // いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
 function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof setSetLevel==="function") setSetLevel(k, setLevels[setCur]); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
-// セットを既定のキットに戻す（長押し 2 回）。NOW には使わない
-function resetSet(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); setSlots[k]=defaultSetSnapshot(k); if(typeof setSetLevel==="function") setSetLevel(k, 0); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
 function setRename(k,name){ const nm=(name||"").trim(); if(!nm||!(k>=0&&k<16)) return; if(!setSlots[k]) setSlots[k]=defaultSetSnapshot(k); setSlots[k].name=nm.slice(0,24); if(typeof scheduleAutosave==="function") scheduleAutosave(); }
 function setName(k){ return (setSlots[k]&&setSlots[k].name)||("SET "+(k+1)); }
 function setElapsed(){ return (performance.now()-_setStart)/1000; }
