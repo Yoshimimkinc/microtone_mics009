@@ -2584,3 +2584,14 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - **同じ式をまとめた**：KEY のテンポ `Math.max(40,Math.min(250,bpm||100))` 5 か所 → `keyTempo`（audio/key-instrument）。
 - 試して戻したもの：種類の並びを定数 `PAD_KINDS` にまとめる → `padKind` は起動中（定数より前の部品の読み込み時）にも呼ばれて TDZ で止まった。`paintClKind` の `typeof` 確認を外す → 単体テスト（vm、窓が無い）で止まった。どちらも理由のある書き方なので、理由をコメントに書いて元に戻した。
 検査：関門（check / key-editor-unit / pad-content-check / lost-listeners / module-check）が全部そのまま通ること＝動きが変わっていないこと。
+
+## 207. パッドの 3 つの画面に共通の頭（v0.3.218）
+「EDIT のモーダルのヘッドに、Pad MODE を示すボタンを置いてシームレスに行き来できればいい」「共通操作は場所を同じにして」。
+- `.pad-head`（ui/pad-kind が中身を作る。HTML は置き場所 `<div class="pad-head" data-screen="edit|key|scr">` だけ）：左＝`PAD 10 · 名前`（KEY は下に音色と PITCH＝`padHeadSub`）、まん中＝SAMPLE | KEY | SCRATCH（いまの種類が `aria-pressed`＝teal）、右＝CLOSE。
+- 種類を押す（`padHeadGo`）：いまの種類で、いまの画面なら何もしない。違えば §195 の確認（KEY に音があって他へ移る時）→ いまの画面を閉じる（`padScreenClose`：`closePadEdit` / `keyEditorClose` / `scratchClose`）→ `setPadKind` → その種類の画面（`openPadContent`）。音の無いパッドを SCRATCH にした時は EDIT（音を入れる所）を開く。
+- まとめたもの（撤去は removals-ok に理由）：EDIT の SOUND TYPE の段（`#peKinds`）と ✕（`#peClose`、閉じる処理は `closePadEdit` という名前の関数にした）、KEY の頭（`#keyTitle` `.key-voice` NOTES / SOUND のタブ・`#keyClose`）、SCRATCH の `#scratchClose`。
+- KEY の SOUND：頭のタブを無くしたので MORE のタブの並びの最後に「SOUND 音色」（`#keyTabSound`、押すと MORE を閉じて SOUND のページ）。SOUND の見出しの左に「← NOTES」（`#keyTabNotes`）。
+- 位置を揃える：スマホ（600px まで）は 3 画面とも外 6px・内 8px（KEY と同じ）→ CLOSE の位置が同じ。PC は 3 画面とも上寄せ・内 12px で高さが同じ、EDIT と SCRATCH は同じ幅 560px（KEY はロールのため広い）。
+- 頭のボタンの色：SCRATCH と EDIT の画面のボタンの色指定が強かったので、選んでいる種類の teal が負けていた → 強い指定を足した。
+- 見つけて直した：KEY の `_keyPaint` で、小節数（`#keyBars`）とズーム（`#keyZoom`）の入力欄の同期が v0.3.213 の PITCH 表示のコメントの後ろ（同じ行）に入っていて実行されていなかった。
+検査：`pad-content-check`（390 / 1280：EDIT の KEY → ピアノロール・KEY → SCRATCH → SAMPLE をその場で行き来・PAD 番号・CLOSE の位置（スマホは 3 画面とも同じ、PC は高さが同じ）・CLOSE で閉じる・SIN BASS は MORE → SOUND から・PITCH は頭の下）、`check`（EDIT の見出しから SOUND TYPE が消えた・種類の名前は頭のボタン）。

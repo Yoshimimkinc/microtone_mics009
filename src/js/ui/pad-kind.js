@@ -1,9 +1,10 @@
 // @module ui/pad-kind
-// @provides _keyLeaveDone, _keyLeaveResolve, _sampleState, keyLeaveChoice, openPadContent, padKind,
-//    padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, PADS, _keyBuffers, bpmVal, keyEditorOpen, normalizeKeyPhrase, openPadEdit, paintClKind,
-//    paintPerf, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave,
-//    scratchOpen, stopVoices, tracks
+// @provides PAD_SCREEN_OF, _keyLeaveDone, _keyLeaveResolve, _sampleState, keyLeaveChoice, openPadContent,
+//    padHeadGo, padHeadSub, padKind, padKindGo, padScreenClose, padScreenOpen, padScreenTarget,
+//    paintPadHeads, setPadKind, syncPadContentEditor
+// @uses AC, PADS, _keyBuffers, _keyTarget, _scratchPad, bpmVal, closePadEdit, keyEditorClose, keyEditorOpen,
+//    normalizeKeyPhrase, openPadEdit, paintClKind, paintPerf, peTarget, prepareKeyTrack, pushUndo,
+//    refreshPadDisplay, sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends -
 // パッドの種類（SAMPLE / KEY / SCRATCH）を切り替える所（v0.3.217 §206 で ui/pad-content から分けた）。
 // 種類の切替（setPadKind）・種類に合った画面を開く（openPadContent / padKindGo）・KEY から移る時に聞く（keyLeaveChoice）・EDIT の種類ボタンの表示（syncPadContentEditor）。
@@ -67,12 +68,46 @@ async function padKindGo(i,kind){
 function syncPadContentEditor(i){
   const kind=padKind(tracks[i]);
   document.getElementById('padEditModal').dataset.padKind=kind;
-  document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
+  paintPadHeads();
   document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
   if(typeof paintClKind==='function')paintClKind();   // 単体テスト（vm）には窓が無い
 }
+// ---- 共通の頭（v0.3.218 §207「EDIT のヘッドに Pad MODE を示すボタンを置いてシームレスに行き来」「共通操作は場所を同じに」）----
+// EDIT（SAMPLE）・KEY（ピアノロール）・SCRATCH の 3 つの画面の一番上に同じ物：左＝PAD 番号と名前、まん中＝SAMPLE | KEY | SCRATCH、右＝CLOSE。
+// 種類を押す＝その種類にして、その画面へその場で切り替わる（KEY から移る時は §195 の確認）。いまの種類をもう一度押しても何もしない
+const PAD_SCREEN_OF={SPL:'edit',KEY:'key',SCR:'scr'};
+function padScreenTarget(screen){return screen==='edit'?peTarget:screen==='key'?_keyTarget:_scratchPad;}
+function padScreenOpen(screen){return screen==='edit'?document.getElementById('padEditModal').style.display==='flex':screen==='key'?!document.getElementById('keyEditor').hidden:!document.getElementById('scratchEditor').hidden;}
+function padScreenClose(screen){if(screen==='edit')closePadEdit();else if(screen==='key')keyEditorClose();else scratchClose();}
+// 頭の中身（番号・名前・種類のボタン）。sub＝その画面だけの一言（KEY：音色と PITCH）
+function paintPadHeads(){
+  for(const h of document.querySelectorAll('.pad-head')){
+    const screen=h.dataset.screen,i=padScreenTarget(screen);if(!(i>=0)||!tracks[i])continue;
+    const t=tracks[i],kind=padKind(t);
+    h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0')+(t.name||PADS[i].name?' · '+(t.name||PADS[i].name):'');
+    h.querySelectorAll('[data-head-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.headKind===kind)));
+  }
+}
+function padHeadSub(screen,text){const el=document.querySelector('.pad-head[data-screen="'+screen+'"] .pad-head-sub');if(el)el.textContent=text||'';}
+async function padHeadGo(screen,kind){
+  const i=padScreenTarget(screen);if(!(i>=0)||!tracks[i])return;
+  const cur=padKind(tracks[i]);if(cur===kind&&PAD_SCREEN_OF[kind]===screen)return;
+  let leave='restore';if(cur!==kind){leave=await keyLeaveChoice(i,kind);if(!leave)return;}
+  padScreenClose(screen);
+  if(cur!==kind)await setPadKind(i,kind,leave);
+  if(padKind(tracks[i])!==kind)return;
+  // 音の無いパッドを SCRATCH にした時は擦る物が無いので EDIT（音を入れる所）を開く
+  if(kind==='SCR'&&!tracks[i].buffer){openPadEdit(i);sampNameEl.textContent='SCRATCH · 先に音を入れてください';return;}
+  openPadContent(i);
+}
 (function(){
-  // v0.3.215 §204「KEY と PIANO ROLL のボタンは一緒では」：KEY を押す＝KEY にしてそのままピアノロールを開く（窓の種類ボタンと同じ padKindGo）。PIANO ROLL ボタンは撤去
-  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;if(kind==='KEY'){padKindGo(i,'KEY').catch(e=>sampNameEl.textContent=e.message);return;}keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
+  for(const h of document.querySelectorAll('.pad-head')){
+    h.innerHTML='<div class="pad-head-name"><b class="pad-head-no">PAD</b><span class="pad-head-sub"></span></div>'+
+      '<div class="pad-head-kinds" role="group" aria-label="パッドの種類（押すとその画面へ）"><button data-head-kind="SPL">SAMPLE</button><button data-head-kind="KEY">KEY</button><button data-head-kind="SCR">SCRATCH</button></div>'+
+      '<button class="pad-head-close">CLOSE</button>';
+    h.addEventListener('click',e=>{const b=e.target.closest('[data-head-kind]');if(b){padHeadGo(h.dataset.screen,b.dataset.headKind).catch(err=>sampNameEl.textContent=err.message);return;}
+      if(e.target.closest('.pad-head-close'))padScreenClose(h.dataset.screen);});
+  }
+  // v0.3.215 §204：EDIT の KEY を押す＝KEY にしてそのままピアノロール → v0.3.218 §207 で共通の頭（padHeadGo）に置き換え。EDIT の種類ボタン（#peKinds）は撤去
   document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
 })();

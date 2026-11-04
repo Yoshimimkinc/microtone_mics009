@@ -16,10 +16,19 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   ok_(`${label} 新しいセットの 8 番は C3 のサイン波の SCR パッド（約 2 秒・ループの継ぎ目で途切れない）`,Math.abs(sine.hz-130.81)<1.5&&sine.seam<=sine.step*1.01&&sine.dur>1.9&&sine.dur<2.1&&JSON.stringify(sine.set)==='["SCR","SCR SINE",true,true,"SCR"]',JSON.stringify(sine));
   eq(`${label} 保存に音を同梱しない・起動デモの 8 番はそのまま`,[sine.saved,sine.back===sine.demo[0]],[['SCR','synth','scrsine',null],true]);
   // v0.3.215 §204「KEY を押してもパッドが KEY になるだけで何も起きない」：EDIT の KEY＝KEY にしてそのままピアノロールを開く（PIANO ROLL ボタンは撤去）
-  { await p.evaluate(()=>openPadEdit(9));await p.waitForTimeout(600);await p.click('#peKinds [data-kind="KEY"]');await p.waitForTimeout(400);
+  { await p.evaluate(()=>openPadEdit(9));await p.waitForTimeout(600);await p.click('.pad-head[data-screen=edit] [data-head-kind="KEY"]');await p.waitForTimeout(400);
     const ek=await p.evaluate(()=>({kind:padKind(tracks[9]),target:_keyTarget,shown:getComputedStyle(document.getElementById('keyEditor')).display!=='none'&&!document.getElementById('keyEditor').hidden,old:!!document.getElementById('peKeyOpen')}));
     ok_(`${label} EDIT の KEY を押すと KEY になってそのままピアノロールが開く（PIANO ROLL ボタンは無い）`,ek.kind==='KEY'&&ek.target===9&&ek.shown&&!ek.old,JSON.stringify(ek));
-    await p.evaluate(async()=>{keyEditorClose();document.getElementById('peClose').click();await setPadKind(9,'SPL','restore');});await p.waitForTimeout(150); }
+    // v0.3.218 §207：共通の頭で 3 つの画面をその場で行き来（KEY → SCRATCH → SAMPLE）・CLOSE は同じ場所
+    const headBox=async sc=>p.locator(`.pad-head[data-screen=${sc}] .pad-head-close`).boundingBox();const kBox=await headBox('key');
+    await p.click('.pad-head[data-screen=key] [data-head-kind="SCR"]');await p.waitForFunction(()=>!document.getElementById('scratchEditor').hidden,null,{timeout:5000});
+    const toScr=await p.evaluate(()=>({kind:padKind(tracks[9]),key:document.getElementById('keyEditor').hidden,pad:_scratchPad,head:document.querySelector('.pad-head[data-screen=scr] .pad-head-no').textContent}));const sBox=await headBox('scr');
+    await p.click('.pad-head[data-screen=scr] [data-head-kind="SPL"]');await p.waitForTimeout(700);
+    const toSpl=await p.evaluate(()=>({kind:padKind(tracks[9]),scr:document.getElementById('scratchEditor').hidden,edit:document.getElementById('padEditModal').style.display,pressed:document.querySelector('.pad-head[data-screen=edit] [data-head-kind="SPL"]').getAttribute('aria-pressed')}));const eBox=await headBox('edit');
+    ok_(`${label} 共通の頭：KEY → SCRATCH → SAMPLE をその場で行き来・PAD 番号が出る`,toScr.kind==='SCR'&&toScr.key&&toScr.pad===9&&/^PAD 10/.test(toScr.head)&&toSpl.kind==='SPL'&&toSpl.scr&&toSpl.edit==='flex'&&toSpl.pressed==='true',JSON.stringify({toScr,toSpl}));
+    ok_(`${label} 共通の頭の CLOSE は 3 つの画面で同じ高さ・SAMPLE と SCRATCH は同じ位置（スマホは 3 つとも同じ位置）`,[kBox,sBox,eBox].every(b=>b&&Math.abs(b.y-kBox.y)<=6)&&Math.abs(sBox.x-eBox.x)<=6&&(!mobile||Math.abs(kBox.x-sBox.x)<=6),JSON.stringify({kBox,sBox,eBox}));
+    await p.click('.pad-head[data-screen=edit] .pad-head-close');await p.waitForTimeout(150);
+    eq(`${label} 共通の頭の CLOSE で閉じる`,await p.evaluate(()=>document.getElementById('padEditModal').style.display),'none'); }
   // Real pointer swipes use the same row on phone and desktop. No FX/modal
   // or pattern tap may leak through the gesture; explicit pattern tap still works.
   const fxRow=mobile?'.msbar':'#perfPlk';
@@ -144,8 +153,8 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
       ok_(`${label} KEY の START は札を掴んで動く・目盛りを押すと近いほうの印（END）が来る`,afterLabel.start===2&&afterLabel.end==null&&afterJump.start===2&&afterJump.end===9.5,JSON.stringify({afterLabel,afterJump}));
       await p.evaluate(()=>_keyUpdate(ph=>{ph.range={start:0,end:null};}));await p.click('#keyMore'); }
     // v0.3.216 §205：音色 SIN BASS（SOUND タブ）。押すと保存され・名前が出て・鍵盤が低い所へ。ELECTRIC PIANO で戻る
-    { await p.evaluate(()=>_keyMoreShow(false));await p.click('#keyTabSound');await p.click('[data-key-instrument="sine-bass"]');await p.waitForTimeout(150);
-      const sb=await p.evaluate(()=>({ins:tracks[12].keyPhrase.instrument,name:document.querySelector('.key-voice').textContent,low:_keyPadLow,pressed:document.querySelector('[data-key-instrument="sine-bass"]').getAttribute('aria-pressed')}));
+    { await p.evaluate(()=>_keyMoreShow(true));await p.click('#keyTabSound');await p.click('[data-key-instrument="sine-bass"]');await p.waitForTimeout(150);
+      const sb=await p.evaluate(()=>({ins:tracks[12].keyPhrase.instrument,name:document.querySelector('.pad-head[data-screen=key] .pad-head-sub').textContent,low:_keyPadLow,pressed:document.querySelector('[data-key-instrument="sine-bass"]').getAttribute('aria-pressed')}));
       await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});
       await p.click('[data-key-instrument="rhodes-tine-v2"]');await p.click('#keyTabNotes');await p.waitForTimeout(150);
       const back=await p.evaluate(()=>({ins:tracks[12].keyPhrase.instrument,low:_keyPadLow}));
@@ -154,7 +163,7 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     // v0.3.213 §202：KEY のパッドの PITCH は音符で移す＝長さ（テンポ）は同じ・エディタの名前に PITCH
     { const len0=await p.evaluate(()=>tracks[12].buffer.length);
       await p.evaluate(()=>{tracks[12].tune=5;warmPitch(12);});await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000});
-      const pt=await p.evaluate(()=>{_keyPaint();trigger(12);const v=tracks[12].activeVoices||[];return {len:tracks[12].buffer.length,title:document.getElementById('keyTitle').textContent,voices:v.length};});
+      const pt=await p.evaluate(()=>{_keyPaint();trigger(12);const v=tracks[12].activeVoices||[];return {len:tracks[12].buffer.length,title:document.querySelector('.pad-head[data-screen=key] .pad-head-sub').textContent,voices:v.length};});
       ok_(`${label} KEY のパッドの PITCH は音符を移す（長さ＝テンポが変わらない）・エディタの名前に PITCH`,pt.len===len0&&pt.title.includes('PITCH +5'),JSON.stringify({len0,pt}));
       await p.evaluate(()=>{tracks[12].tune=0;warmPitch(12);});await p.waitForFunction(()=>tracks[12]._keySignature===keySignatureOf(tracks[12],bpmVal),null,{timeout:8000}); }
     // 消す：ノートを全部消す（1 回）／このパッドを消す（2 回）。どちらも UNDO で戻る
@@ -221,8 +230,8 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
   eq(`${label} SCRは対象パッドから起動`,await p.evaluate(()=>[document.getElementById('scratchEditor').hidden,!!_scratchNode]),[false,true]);
   await p.screenshot({path:`tools/_shots/content-scr-${w}.png`});
   // v0.3.186 §174：縦一直線の波形面（奥へ＝フォワード）・奥から手前へスワイプで開くフェーダー・⇄ で左右入替（覚える）
-  {const deck=await p.locator('#scratchDeck').boundingBox(),gate=await p.locator('#scratchFader').boundingBox(),hand=await p.locator('#scratchHand').boundingBox(),close=await p.locator('#scratchClose').boundingBox();
-   ok_(`${label} SCR 面とフェーダーが縦長で画面内・既定はフェーダー右・⇄ は面の上・CLOSE はフェーダーの上`,deck.height>=300&&deck.height>deck.width&&gate.height>=300&&gate.x>deck.x&&deck.y+deck.height<=h&&hand.y+hand.height<=deck.y&&hand.x>=deck.x&&close.x>=gate.x-1&&close.y+close.height<=gate.y,JSON.stringify({deck,gate,hand,close}));
+  {const deck=await p.locator('#scratchDeck').boundingBox(),gate=await p.locator('#scratchFader').boundingBox(),hand=await p.locator('#scratchHand').boundingBox(),close=await p.locator('.pad-head[data-screen=scr] .pad-head-close').boundingBox();
+   ok_(`${label} SCR 面とフェーダーが縦長で画面内・既定はフェーダー右・⇄ は面の上・CLOSE は共通の頭（⇄ より上）`,deck.height>=300&&deck.height>deck.width&&gate.height>=300&&gate.x>deck.x&&deck.y+deck.height<=h&&hand.y+hand.height<=deck.y&&hand.x>=deck.x&&close.y+close.height<=hand.y,JSON.stringify({deck,gate,hand,close}));
    await p.mouse.move(deck.x+deck.width-20,deck.y+deck.height/2);await p.mouse.down();await p.waitForTimeout(80);const f0=await p.evaluate(()=>scratchState().frame);
    for(let k=1;k<=8;k++){await p.mouse.move(deck.x+deck.width-20,deck.y+deck.height/2+k*12);await p.waitForTimeout(16);}await p.waitForTimeout(150);
    const f1=await p.evaluate(()=>[scratchState().frame,scratchState().dragging]);await p.mouse.up();

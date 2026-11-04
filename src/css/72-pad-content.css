@@ -120,10 +120,9 @@
 
 /* SCR (v0.3.186 §174): 縦一直線のスクラッチ面（奥へ＝フォワード）＋奥から手前へスワイプで開くフェーダー。⇄ で左右入替（§173）。 */
 #scratchEditor .scratch-panel{display:flex;flex-direction:column;width:min(560px,100%);height:min(860px,100%);background:#252e30;color:#eef1e5;padding:12px;touch-action:none;overflow:hidden}
-.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand close" "strip gate";gap:10px}
-.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"close hand" "gate strip"}
+.scratch-surface{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hand hand" "strip gate";gap:10px}
+.scratch-surface.swap{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-areas:"hand hand" "gate strip"}
 #scratchEditor .scratch-panel .scratch-hand{grid-area:hand;justify-self:center;width:min(60%,160px);font-size:22px;line-height:1}
-#scratchEditor .scratch-panel .scratch-close{grid-area:close;justify-self:end;font-size:12px}
 .scratch-strip{grid-area:strip;position:relative;min-height:0}
 #scratchDeck{display:block;width:100%;height:100%;min-height:200px;background:#111617;border:2px solid #83926e;border-radius:10px;cursor:grab;touch-action:none;box-sizing:border-box}
 #scratchDeck:active{cursor:grabbing}
@@ -145,3 +144,21 @@
 #scratchEditor .scratch-panel button{background:#465052;color:#eef1e5;border-color:#718078}
 #scratchEditor .scratch-panel #scratchHand[aria-pressed=true]{color:#c0c875;border-color:#c0c875}
 .key-instruments{margin:0 0 12px}.key-instruments button{min-height:48px;font-size:13px;font-weight:700}   /* 音色（v0.3.216 §205） */
+/* v0.3.218 §207：3 つの画面（EDIT / KEY / SCRATCH）に共通の頭。左＝PAD 番号と名前、まん中＝種類、右＝CLOSE。どの画面でも同じ高さ・同じ並び */
+.pad-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;margin:0 0 8px;flex:0 0 auto}
+.pad-head-name{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.pad-head-name b{font-size:13px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pad-head-sub{font-size:10px;letter-spacing:.08em;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pad-head-kinds{display:flex;border:1px solid currentColor;border-radius:8px;overflow:hidden}
+.pad-head .pad-head-kinds button{min-height:44px;min-width:0;padding:0 9px;border:0;border-radius:0;font-size:12px;font-weight:700;letter-spacing:.04em;background:transparent;color:inherit}
+.pad-head .pad-head-kinds button+button{border-left:1px solid currentColor}
+.pad-head .pad-head-kinds button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#10221d}
+.pad-head .pad-head-close{min-height:44px;padding:0 10px;font-size:12px;font-weight:700;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit}
+@media(max-width:400px){.pad-head{gap:5px}.pad-head .pad-head-kinds button{padding:0 6px;font-size:11px;letter-spacing:0}.pad-head .pad-head-close{padding:0 7px;font-size:11px}}
+.key-sound-heading #keyTabNotes{min-height:44px;font-weight:700}
+.key-more-tabs .key-more-sound{font-weight:700}
+/* v0.3.218 §207：共通の頭（CLOSE）が 3 画面で同じ位置に来るよう、外側と内側の余白を揃える。スマホ＝KEY と同じ（外 6px・内 8px）、PC＝内 12px */
+@media(max-width:600px){#scratchEditor,#padEditModal{padding:max(6px,env(safe-area-inset-top)) 6px max(6px,env(safe-area-inset-bottom))}#scratchEditor .scratch-panel,#padEditModal .modal.pe{padding:8px;border-radius:8px;width:100%}}
+@media(min-width:601px){#padEditModal .modal.pe{padding:12px}#padEditModal{padding-top:12px}}
+#scratchEditor .scratch-panel .pad-head .pad-head-kinds button{background:transparent;border-color:currentColor;border-width:0 0 0 1px}#scratchEditor .scratch-panel .pad-head .pad-head-kinds button:first-child{border-left:0}
+#scratchEditor .scratch-panel .pad-head .pad-head-kinds button[aria-pressed=true],#padEditModal .pad-head .pad-head-kinds button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#10221d}   /* 画面ごとのボタンの色より強く（選んでいる種類＝teal） */

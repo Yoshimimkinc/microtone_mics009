@@ -9,7 +9,7 @@ const PORT=process.argv[2]||8137;
 // 押しても状態が変わらないのが正しいもの（理由を必ず書く）
 const EXPECT=new Set([
   '#modePads',      // すでにPADSに居るので変化なしが正しい
-  '#menuClose','#peClose',   // 閉じるボタン（開いていない状態では何も起きない）
+  '#menuClose',   // 閉じるボタン（開いていない状態では何も起きない）。EDIT の ✕ は v0.3.218 で共通の頭の CLOSE に
   '#loadProjBtn','#loadBtn','#peLoadBtn',  // ファイル選択ダイアログ＝DOMに出ない
   '#samp','#projFile',
   '#saveBtn','#exportWavBtn',              // ダウンロード＝DOMに出ない

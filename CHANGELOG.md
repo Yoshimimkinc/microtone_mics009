@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.218 (2026-11-04)
+- パッドの 3 つの画面（EDIT＝SAMPLE・KEY のピアノロール・SCRATCH）の一番上を同じ「頭」にした：左に PAD 番号と名前、まん中に SAMPLE | KEY | SCRATCH、右に CLOSE。どの画面でも同じ場所にある。種類を押すとその種類になって、その画面へその場で切り替わる（KEY から移る時は今まで通り「波形にする / 元に戻す」を聞く）。いまの種類は緑。
+- それに合わせて：EDIT の「SOUND TYPE」の段と ✕、KEY の NOTES / SOUND のタブと CLOSE、SCRATCH の ✕ CLOSE をこの頭にまとめた。KEY の SOUND（音色とエフェクト）は MORE の中の「SOUND 音色」から開き、上の「← NOTES」で戻る。KEY の音色と PITCH は頭の名前の下に出る。
+- 3 つの画面の余白を揃え、スマホでは CLOSE がどの画面でもぴったり同じ位置に来る（PC は高さが同じ。KEY はロールのために横に広い）。EDIT も上寄せに。
+- 直した：KEY のロールの小節数とズームの入力欄の同期が、v0.3.213 からコメントの中に入っていて動いていなかった。
+
 ## v0.3.217 (2026-11-04)
 - 整理整頓（動きは変えない）：パッドの種類の切替と KEY のピアノロールが 1 つのファイル（ui/pad-content）に同居していたのを、ui/pad-kind（SAMPLE / KEY / SCRATCH の切替・画面を開く・KEY から移る時の確認）と ui/key-roll（ピアノロール）に分けた。どこからも呼ばれていない関数 3 つ（perfResetPad / queueSet / resetSet）を撤去。KEY のテンポの式（5 か所）を keyTempo にまとめた。
 

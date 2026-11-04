@@ -6,9 +6,9 @@
 //    scratchGatePaint, scratchGateRelease, scratchHandPaint, scratchHandSwap, scratchHide,
 //    scratchPadInputDown, scratchPadInputUp, scratchPeaks, scratchSetLevel, scratchShow, scratchSlingKick,
 //    scratchStripTime, scratchWindAt
-// @uses scratchClose, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
+// @uses paintPadHeads, scratchCue, scratchDrag, scratchHold, scratchMotor, scratchOpen, scratchSeek,
 //    scratchSetFader, scratchState, tracks
-// @depends audio/scratch-pad
+// @depends -
 // Vertical waveform strip (v0.3.186 §174, djay-like linear scratch) and a swipe fader. Pointer capture permits a
 // second finger on the fader while the first finger holds/drags the waveform. The hands can swap sides.
 // 向きは指の自然な動き：スクラッチ＝奥（上）へ送るとフォワード・手前（下）でバック。フェーダー＝触った場所まで開く（手前ほど開く）・離すと全閉。
@@ -95,7 +95,7 @@ function scratchHandPaint(swap){const surface=document.getElementById('scratchSu
 function scratchHide(){_scratchPad=-1;_scratchLevel=0;scratchGateRelease();cancelAnimationFrame(_scratchRAF);_scratchRAF=0;_scratchGesture=null;const cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview');cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=null;ov.onpointerdown=ov.onpointermove=ov.onpointerup=ov.onpointercancel=null;document.getElementById('scratchEditor').hidden=true;}
 function scratchShow(i){
  const editor=document.getElementById('scratchEditor'),cv=document.getElementById('scratchDeck'),ov=document.getElementById('scratchOverview'),strip=cv.parentElement;document.getElementById('scratchTitle').textContent='SCR · '+(tracks[i].name||'PAD '+(i+1));editor.hidden=false;
- _scratchPad=i;_scratchLevel=0;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());
+ _scratchPad=i;_scratchLevel=0;scratchGateRelease(false);_scratchGesture=null;scratchHandPaint(scratchHandSwap());if(typeof paintPadHeads==="function")paintPadHeads();   // 共通の頭（v0.3.218。単体テストの vm には無い）
  const draw=()=>{if(editor.hidden)return;const state=scratchState();scratchDrawStrip(cv,state,!!_scratchGesture);scratchDrawOverview(ov,state);strip?.classList?.toggle('on',!!_scratchGesture);document.getElementById('scratchMotion').textContent=state.dragging?'HOLD':state.motor?'PLAY':'PAUSE';document.getElementById('scratchPosition').textContent=(state.position*state.duration).toFixed(2)+' / '+state.duration.toFixed(2)+' s';const button=document.getElementById('scratchPlay');button.textContent=state.motor?'Ⅱ PAUSE':'▶ PLAY';button.setAttribute('aria-pressed',String(state.motor));_scratchRAF=requestAnimationFrame(draw);};draw();
  // 面のどこを押しても掴む。指を奥（上）へ＝波形も上へ＝フォワード、手前（下）へ＝バック（音が指の下の波形に付いてくる）。横の動きは使わない。
  // 動いた量は高さごとの感度で数える（上ほど敏感）＝掴んだ所の時刻がそのまま指の下に来る
@@ -113,7 +113,6 @@ function scratchShow(i){
  ov.onpointerup=ov.onpointercancel=e=>{if(seeking===e.pointerId)seeking=null;};
 }
 (function(){
- document.getElementById('scratchClose').addEventListener('click',scratchClose);
  document.getElementById('scratchPlay').addEventListener('click',()=>scratchMotor(!scratchState().motor));
  document.getElementById('scratchCue').addEventListener('click',()=>{_scratchGesture=null;scratchCue();});
  // 左手でスクラッチ・右手でフェーダーが基本。⇄ で入れ替え（この端末に覚える）
