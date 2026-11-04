@@ -1532,7 +1532,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.218</div>
+  <div class="s-ver" id="splashVer">v0.3.219</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -3580,8 +3580,8 @@ new MutationObserver(()=>{
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
 //    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, selected,
-//    swapPads, syncEditor, tracks, trigger
+//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
+//    selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -3661,9 +3661,10 @@ PADS.forEach((p,i)=>{
       if(Math.hypot(dx,dy)<=rad){ selectPad(i); flashPad(i); openPadEdit(i); return; }
     }
     if(tracks[i].padKind==="KEY"){const target=tracks[i],epoch=target._contentEpoch||0;await prepareKeyTrack(target,bpmVal);if((target._contentEpoch||0)!==epoch||target.padKind!=="KEY")return;}
+    // v0.3.219 §208：SCRATCH のパッドは押すとスクラッチ画面が開いて、そこで擦って演奏する（v0.3.204 §193 の「押すと普通に鳴るだけ」から戻した。
+    // 共通の頭で SAMPLE / KEY へその場で行けるようになったので、開いても迷わない）。SEQ に打ち込んだ音は今まで通り鳴る。音が無ければ普通の扱い
+    if(tracks[i].padKind==="SCR"&&tracks[i].buffer){ selectPad(i,true); scratchOpen(i).catch(err=>{ sampNameEl.textContent=err.message; }); return; }
     trigger(i);selectPad(i,true);
-    // SCRATCH のパッドは押しても普通に鳴るだけ（v0.3.204 §193「Pad 押してすぐスクラッチになるのはやめたい」）。スクラッチ画面への入口を一言で
-    if(tracks[i].padKind==="SCR") sampNameEl.textContent=String(i+1).padStart(2,"0")+" SCRATCH · スクラッチ画面は窓の SAMPLE ページの SCRATCH か、EDIT＋パッド";
   });
   // --- EDIT中のドラッグ並べ替え（移動/コピー）---
   d.addEventListener("pointermove",(e)=>{
@@ -7666,11 +7667,10 @@ function scratchFaderAt(el,y){const r=el.getBoundingClientRect();return r.height
 function scratchGateRelease(clearInputs=true){if(clearInputs)_scratchPadInputs.clear();if(_scratchFaderDrag){_scratchFaderDrag=null;_scratchLevel=0;}_scratchGateKey=false;scratchGatePaint();}
 // Preserve held sources across asynchronous audio startup; Note Off/key up can
 // arrive before the worklet finishes loading and must keep the gate closed.
-// v0.3.204 §193：スクラッチ画面が開いていない時は、SCRATCH のパッドも PC キー／MIDI では普通に鳴るだけ（画面を開かない）。
-// 開いている間だけ、押している間フェーダーが開く（別の SCRATCH パッドならその盤に替える）
+// v0.3.219 §208：SCRATCH のパッドの PC キー／MIDI はパッドを押すのと同じ＝スクラッチ画面を開いて、押している間フェーダーが開く
+// （別の SCRATCH パッドならその盤に替える）。v0.3.204 §193 の「画面が閉じていれば普通に鳴るだけ」から戻した
 function scratchPadInputDown(i,id){
  if(tracks[i]?.padKind!=='SCR')return false;
- if(document.getElementById('scratchEditor').hidden&&!_scratchPadInputs.size)return false;
  if(_scratchPadInputs.has(id))return true;
  const opening=(_scratchPad===i&&!document.getElementById('scratchEditor').hidden)||[..._scratchPadInputs.values()].includes(i)?null:scratchOpen(i);
  _scratchPadInputs.set(id,i);scratchGatePaint();
@@ -8566,7 +8566,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.218";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.219";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
