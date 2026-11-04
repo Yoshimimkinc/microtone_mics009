@@ -1511,7 +1511,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.213</div>
+  <div class="s-ver" id="splashVer">v0.3.214</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1762,7 +1762,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
    <b class="key-more-label">KEY（主音）</b><div id="keyRootGrid" class="key-grid key-root-grid"></div>
    <b class="key-more-label">SCALE</b><div class="key-grid key-scale-grid"><button data-scale="major">Major</button><button data-scale="minor">Minor</button><button data-scale="dorian">Dorian</button><button data-scale="mixolydian">Mixolydian</button><button data-scale="pentatonic">Major pentatonic</button><button data-scale="minorPentatonic">Minor pentatonic</button><button data-scale="chromatic">Chromatic</button></div>
    <b class="key-more-label">BARS · GRID</b><div class="key-grid key-bars-grid"><button data-bars="1">1 BAR</button><button data-bars="2">2 BARS</button><button data-bars="3">3 BARS</button><button data-bars="4">4 BARS</button><button id="keySnap" aria-pressed="true">SNAP 1/16 ON</button></div>
-   <b class="key-more-label">START · END（目盛りの START / END をドラッグ）</b><div class="key-range-row"><span id="keyRangeRead" class="key-range-read" role="status"></span><button id="keyRangeReset">RESET（全体）</button></div>
+   <b class="key-more-label">START · END（目盛りの印をドラッグ・目盛りを押すと近いほうの印が来る）</b><div class="key-range-row"><span id="keyRangeRead" class="key-range-read" role="status"></span><button id="keyRangeReset">RESET（全体）</button></div>
   </div>
   <div class="key-more-page" data-more-page="edit" hidden>
    <!-- v0.3.211 §200：KEY の CHOP。切れ目は打ち込みから（音の立ち上がりを探さない）＝コードの変わり目・小節・2 拍・1 拍 -->
@@ -1782,7 +1782,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <div class="key-native" hidden><select id="keyChordPreset" aria-label="コード進行のプリセット"><option value="">進行を選ぶ…</option></select><select id="keyScaleRoot" aria-label="スケールのルート"></select><select id="keyScaleType" aria-label="スケールの種類"><option value="major">Major</option><option value="minor">Minor</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="pentatonic">Major pentatonic</option><option value="minorPentatonic">Minor pentatonic</option><option value="chromatic">Chromatic</option></select><input id="keyBars" type="number" min="1" max="4" value="1"><select id="keyDragMode" aria-label="ノートのドラッグ操作"><option value="auto">Auto</option><option value="move">Move</option><option value="right">Length / End</option><option value="left">Start</option><option value="velocity">Velocity</option></select></div>
  </div>
  <div class="key-work"><div class="key-left">
- <div id="keyHorizontal" class="key-horizontal"><div class="key-inner"><canvas id="keyRuler" aria-label="小節と拍。STEP のときはタップで入れる位置"></canvas><div class="key-scroll"><canvas id="keyRoll" tabindex="0" aria-label="ピアノロール。ノートの移動と両端の長さ変更"></canvas></div><canvas id="keyVelocityRoll" tabindex="0" aria-label="ベロシティ。マーカーを上下にドラッグして強弱を編集" hidden></canvas><span id="keyPlayhead" class="key-playhead" hidden></span><span id="keyStepCursor" class="key-stepcursor" hidden></span></div></div>
+ <div id="keyHorizontal" class="key-horizontal"><div class="key-inner"><canvas id="keyRuler" aria-label="小節と拍。START / END の印をドラッグ（押した所へ近いほうの印が来る）。STEP のときはタップで入れる位置"></canvas><div class="key-scroll"><canvas id="keyRoll" tabindex="0" aria-label="ピアノロール。ノートの移動と両端の長さ変更"></canvas></div><canvas id="keyVelocityRoll" tabindex="0" aria-label="ベロシティ。マーカーを上下にドラッグして強弱を編集" hidden></canvas><span id="keyPlayhead" class="key-playhead" hidden></span><span id="keyStepCursor" class="key-stepcursor" hidden></span></div></div>
  <div class="content-tools key-fields" id="keyFields" hidden><span id="keySelectionInfo" role="status">ノートを追加</span><button id="keyDuplicate">DUPLICATE</button><button id="keyDelete">DELETE</button><label>NOTE <input id="keyPitch" type="number" min="21" max="108"></label><label>START (beats)<input id="keyBeat" type="number" min="0" max="15.99" step="0.0104166667"></label><label>LENGTH (beats)<input id="keyLength" type="number" min="0.0104166667" max="16" step="0.0104166667"></label><label>VELOCITY <input id="keyVelocity" type="number" min="1" max="127"></label></div>
  </div>
  <!-- v0.3.205 §194（A）：スケールの鍵盤 4×4（左下が一番低い）。弾く＝試し弾き、REC＝ループしながら録音、STEP＝カーソルの位置へ入れて 1 マス進む -->
@@ -7741,14 +7741,14 @@ function scratchShow(i){
  document.getElementById('scratchDeck').addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();e.stopPropagation();scratchMotor(!scratchState().motor);}});
 })();
 // @module ui/key-entry
-// @provides _keyAllNotesOff, _keyBeatName, _keyBeatSec, _keyChopMode, _keyChopPaint, _keyChopPlan,
-//    _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache, _keyLoop,
-//    _keyLoopBeat, _keyLoopKey, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint, _keyMoreTab,
-//    _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow, _keyPadPitches,
-//    _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRange, _keyRangeDraft,
-//    _keyRangeDrag, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove,
-//    _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop, keyChopBeats, keyEntryClose,
-//    keyEntryOpen
+// @provides KEY_FLAG_W, _keyAllNotesOff, _keyBeatName, _keyBeatSec, _keyChopMode, _keyChopPaint,
+//    _keyChopPlan, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache,
+//    _keyLoop, _keyLoopBeat, _keyLoopKey, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
+//    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
+//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRange,
+//    _keyRangeDraft, _keyRangeDrag, _keyRangeHit, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt,
+//    _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop,
+//    keyChopBeats, keyEntryClose, keyEntryOpen
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
@@ -7785,6 +7785,12 @@ function _keyBeatSec(){return 60/Math.max(40,Math.min(250,+bpmVal||100));}
 let _keyRangeDraft=null,_keyRangeDrag=null;
 function _keyRange(useDraft=true){const p=_keyPhrase(),r=(useDraft&&_keyRangeDraft)||p.range||{start:0,end:null},end=p.bars*4;return {start:r.start||0,end:r.end==null?end:r.end,full:r.end==null};}
 function _keyBeatName(b){const bar=Math.floor(b/4)+1,beat=Math.floor(b%4)+1,six=Math.round((b%1)*4);return bar+'.'+beat+(six?'.'+(six+1):'');}
+// 目盛りの x（canvas px）が START / END の印（線＋札）に当たるか。札は START＝線の右、END＝線の左（_keyPaint と同じ寸法 KEY_FLAG_W）
+const KEY_FLAG_W=46;
+function _keyRangeHit(x,xs,xe,reach){
+  const onS=x>=xs-reach&&x<=xs+KEY_FLAG_W+reach/2,onE=x>=xe-KEY_FLAG_W-reach/2&&x<=xe+reach;
+  if(onS&&onE)return Math.abs(x-xs)<=Math.abs(x-xe)?'start':'end';return onS?'start':onE?'end':null;
+}
 function _keyGridBeat(){return _keyPhrase().editor.snap?.25:1/96;}
 // ループの中の今の拍。耳に届く遅れ（出力の遅れ）だけ前に戻す＝聞こえた拍に合わせて弾いた所に入る
 function _keyLoopBeat(){
@@ -7847,7 +7853,7 @@ function _keyLoopTick(){
 function _keyPlayheadFrame(){
   const L=_keyLoop,ph=document.getElementById('keyPlayhead');if(!L){ph.hidden=true;return;}
   const x=58+_keyLoopBeat()*_keyZoom;ph.hidden=false;ph.style.transform='translateX('+x+'px)';
-  const h=document.getElementById('keyHorizontal');if(!_keyGesture&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);
+  const h=document.getElementById('keyHorizontal');if(!_keyGesture&&!_keyRangeDrag&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);
   L.raf=requestAnimationFrame(_keyPlayheadFrame);
 }
 function _keyLoopKey(){const r=_keyRange(false);return JSON.stringify([r.start,r.end,r.full,_keyBeatSec()]);}
@@ -7980,20 +7986,24 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
   document.getElementById('keyStepRest').addEventListener('click',()=>_keyStepMove(1));
   document.getElementById('keyPadsDown').addEventListener('click',()=>{_keyPadLow=Math.max(21,_keyPadLow-12);_keyEntryPaint();_keyWarmPads();});
   document.getElementById('keyPadsUp').addEventListener('click',()=>{_keyPadLow=Math.min(96,_keyPadLow+12);_keyEntryPaint();_keyWarmPads();});
-  // START / END：目盛りの印の近くを掴んでドラッグ（SNAP の細かさで）。離したら 1 回の UNDO で決まる
+  // START / END：目盛りの印（線と札）を掴んでドラッグ（SNAP の細かさで）。離したら 1 回の UNDO で決まる
+  // v0.3.214 §203「START / END のマーカーが動かない」：掴めるのが線の左右 20px だけで、目に付く札（START / END の文字）を押しても動かなかった。
+  // 札ごと掴める。STEP でないときは目盛りのどこを押しても近いほうの印がそこへ来てそのままドラッグ（画面の外の END にも届く）
   const ruler=document.getElementById('keyRuler');
+  const rangeMove=(g,x)=>{const p=_keyPhrase(),end=p.bars*4,q=_keyGridBeat(),b=Math.round(((x-58)/_keyZoom)/q)*q,d=_keyRangeDraft,curEnd=d.end==null?end:d.end;
+    if(g.which==='start')d.start=Math.max(0,Math.min(curEnd-q,b));
+    else{const v=Math.max(d.start+q,Math.min(end,b));d.end=v>=end-1e-9?null:v;}
+    _keyPaint();};
   ruler.addEventListener('pointerdown',e=>{
-    if(_keyTarget<0)return;const pt=_keyPoint(e,ruler),r=_keyRange(),reach=e.pointerType==='touch'?20:10,xs=58+r.start*_keyZoom,xe=58+r.end*_keyZoom;
-    const which=Math.abs(pt.x-xe)<=reach?'end':Math.abs(pt.x-xs)<=reach?'start':null;if(!which)return;
+    if(_keyTarget<0||e.button>0)return;const pt=_keyPoint(e,ruler),r=_keyRange(),xs=58+r.start*_keyZoom,xe=58+r.end*_keyZoom;
+    let which=_keyRangeHit(pt.x,xs,xe,e.pointerType==='touch'?24:12),jump=false;
+    if(!which){if(_keyStepOn)return;which=Math.abs(pt.x-xs)<Math.abs(pt.x-xe)?'start':'end';jump=true;}
     e.preventDefault();e.stopImmediatePropagation();try{ruler.setPointerCapture(e.pointerId);}catch(_){}
     _keyRangeDrag={which,id:e.pointerId};_keyRangeDraft={start:r.start,end:r.full?null:r.end};
+    if(jump)rangeMove(_keyRangeDrag,pt.x);else _keyPaint();
   });
   ruler.addEventListener('pointermove',e=>{
-    const g=_keyRangeDrag;if(!g||g.id!==e.pointerId||_keyTarget<0)return;e.preventDefault();
-    const p=_keyPhrase(),end=p.bars*4,q=_keyGridBeat(),x=Math.round(((_keyPoint(e,ruler).x-58)/_keyZoom)/q)*q,d=_keyRangeDraft,curEnd=d.end==null?end:d.end;
-    if(g.which==='start')d.start=Math.max(0,Math.min(curEnd-q,x));
-    else{const v=Math.max(d.start+q,Math.min(end,x));d.end=v>=end-1e-9?null:v;}
-    _keyPaint();
+    const g=_keyRangeDrag;if(!g||g.id!==e.pointerId||_keyTarget<0)return;e.preventDefault();rangeMove(g,_keyPoint(e,ruler).x);
   });
   const rangeEnd=e=>{const g=_keyRangeDrag;if(!g||g.id!==e.pointerId)return;_keyRangeDrag=null;const d=_keyRangeDraft;_keyRangeDraft=null;
     if(e.type==='pointercancel'){_keyPaint();return;}_keyUpdate(p=>{p.range={start:d.start,end:d.end};});};
@@ -8028,10 +8038,11 @@ function keyEntryClose(){_keyAllNotesOff();_keyLoopStop();_keyRecOn=false;_keySt
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
 //    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
 //    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keySetPref, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
-//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
-//    sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
+// @uses AC, KEY_FLAG_W, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keyRangeDrag,
+//    _keySetPref, bpmVal, doUndo, keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase,
+//    openPadEdit, paintClKind, paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo,
+//    refreshPadDisplay, renderKeyPhrase, sampNameEl, scheduleAutosave, scratchClose, scratchOpen,
+//    stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -8171,8 +8182,10 @@ function _keyPaint(){
   const ruler=document.getElementById('keyRuler');if(ruler.width!==width)ruler.width=width;if(ruler.height!==28)ruler.height=28;const rc=ruler.getContext('2d');rc.fillStyle='#67747b';rc.fillRect(0,0,width,28);rc.font='11px sans-serif';rc.fillStyle='#fff';rc.fillText('4/4',10,18);for(let b=0;b<p.bars*4;b++){const x=58+b*_keyZoom;rc.fillText((Math.floor(b/4)+1)+'.'+(b%4+1),x+5,18);}
   // START / END（v0.3.212 §201）：外側を暗く、目盛りに START / END の印（ドラッグで動かす）
   const kr=_keyRange(),xs=58+kr.start*_keyZoom,xe=58+kr.end*_keyZoom,shade=(g,h)=>{g.fillStyle='rgba(20,26,30,.45)';if(xs>58)g.fillRect(58,0,xs-58,h);if(xe<width)g.fillRect(xe,0,width-xe,h);};
-  shade(rc,28);shade(c,cv.height);rc.font='bold 9px sans-serif';
-  for(const [x,label,left] of [[xs,'START',false],[xe,'END',true]]){rc.fillStyle='#3dd6c4';rc.fillRect(left?x-3:x,0,3,28);c.fillStyle='#2a9d8f';c.fillRect(left?x-2:x,0,2,cv.height);const w=rc.measureText(label).width+8;rc.fillRect(left?x-3-w:x+3,0,w,13);rc.fillStyle='#10221d';rc.fillText(label,(left?x-3-w:x+3)+4,7);}
+  shade(rc,28);shade(c,cv.height);rc.font='bold 10px sans-serif';rc.textBaseline='middle';
+  // 札（v0.3.214）：掴める範囲と同じ幅 KEY_FLAG_W・高さ 14px。掴んでいる印は明るく
+  for(const [x,label,left] of [[xs,'START',false],[xe,'END',true]]){const held=_keyRangeDrag&&_keyRangeDrag.which===(left?'end':'start'),w=KEY_FLAG_W-3,fx=left?x-3-w:x+3;rc.fillStyle=held?'#9ff3e8':'#3dd6c4';rc.fillRect(left?x-3:x,0,3,28);c.fillStyle='#2a9d8f';c.fillRect(left?x-2:x,0,2,cv.height);rc.fillRect(fx,0,w,14);rc.fillStyle='#10221d';rc.fillText(label,fx+5,7.5);}
+  rc.textBaseline='alphabetic';
   const vel=document.getElementById('keyVelocityRoll');if(vel.width!==width)vel.width=width;if(vel.height!==100)vel.height=100;const vc=vel.getContext('2d');vc.fillStyle='#bdc1c3';vc.fillRect(0,0,width,100);vc.font='10px sans-serif';vc.fillStyle='#334049';vc.fillText('VEL',9,17);vc.fillText('127',9,31);vc.fillText('1',18,90);vc.strokeStyle='#929a9f';for(const y of [16,88]){vc.beginPath();vc.moveTo(58,y+.5);vc.lineTo(width,y+.5);vc.stroke();}
   const drawVelocity=(n,j)=>{const x=58+n.beat*_keyZoom,y=88-(n.velocity-1)/126*72,sel=_keySelection.has(j);vc.strokeStyle=sel?'#9a5514':'#246d61';vc.lineWidth=sel?3:2;vc.beginPath();vc.moveTo(x,88);vc.lineTo(x,y);vc.stroke();vc.fillStyle=sel?'#ffb24a':'#318775';vc.beginPath();vc.arc(x,y,sel?5:4,0,Math.PI*2);vc.fill();if(sel){vc.fillStyle='#243138';vc.fillText(n.velocity,x+7,Math.max(12,y+3));}};
   p.notes.forEach((n,j)=>{if(!_keySelection.has(j))drawVelocity(n,j);});p.notes.forEach((n,j)=>{if(_keySelection.has(j))drawVelocity(n,j);});
@@ -8477,7 +8490,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.213";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.214";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
