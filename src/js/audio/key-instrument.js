@@ -1,6 +1,7 @@
 // @module audio/key-instrument
 // @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyShifted, _keyWarmTimer, keyApplyEffects,
-//    keySignatureOf, keyTineNote, keyTranspose, prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
+//    keySignatureOf, keySineBassNote, keyTineNote, keyTranspose, keyVoiceGain, keyVoiceNote,
+//    prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
 // @uses bpmVal, normalizeKeyPhrase, sampNameEl, tracks
 // @depends -
 const _keyCache=new Map(), _keyDryCache=new Map(), _keyJobs=new WeakMap(), _keyBuffers=new WeakSet();
@@ -37,6 +38,20 @@ function keyTineNote(pitch,velocity,hold,rate=26000){
   }
   return output;
 }
+// v0.3.216 §205：SIN BASS。サイン波 1 本（倍音を足さない）。押した瞬間のプチを消す 4ms の立ち上がり、押している間は少しだけ下がって伸び、
+// 離して 60ms で消える。強さは音量と、ほんの少しの丸い歪み（tanh）＝小さいスピーカーでも低音の輪郭が聞こえる程度
+function keySineBassNote(pitch,velocity,hold,rate=26000){
+  const freq=440*2**((pitch-69)/12),v=Math.max(1,Math.min(127,velocity))/127,attack=.004,release=.06;
+  const length=Math.ceil((hold+release+.01)*rate),out=new Float32Array(length),drive=1+1.2*v,norm=Math.tanh(drive),amp=(.25+.75*v)*.62;
+  const w=2*Math.PI*freq/rate,off=hold*rate;
+  for(let i=0;i<length;i++){const t=i/rate;let env=t<attack?Math.sin(.5*Math.PI*t/attack)**2:.82+.18*Math.exp(-(t-attack)/.35);
+    if(i>=off)env*=Math.max(0,Math.cos(.5*Math.PI*Math.min(1,(i-off)/(release*rate))));
+    out[i]=amp*env*Math.tanh(drive*Math.sin(w*i))/norm;}
+  return out;
+}
+// 音色ごとの 1 音（KEY_INSTRUMENTS の名前）。ミックスの重さも音色ごと（エレピ .42 は v0.3.205 までと同じ）
+function keyVoiceNote(instrument,pitch,velocity,hold,rate=26000){return instrument==='sine-bass'?keySineBassNote(pitch,velocity,hold,rate):keyTineNote(pitch,velocity,hold,rate);}
+function keyVoiceGain(instrument){return instrument==='sine-bass'?.55:.42;}
 function renderKeyDry(src,bpm){
   const p=normalizeKeyPhrase(src),tempo=Math.max(40,Math.min(250,+bpm||100));
   // Editor preferences cannot change the sound or create duplicate render jobs.
@@ -45,8 +60,8 @@ function renderKeyDry(src,bpm){
     const rate=26000,beat=60/tempo,duration=p.bars*4*beat+1.2;
     const ctx=new OfflineAudioContext(1,Math.ceil(duration*rate),rate),buf=ctx.createBuffer(1,Math.ceil(duration*rate),rate),a=buf.getChannelData(0);
     for(let ni=0;ni<p.notes.length;ni++){
-      const n=p.notes[ni],note=keyTineNote(n.pitch,n.velocity,n.length*beat,rate),start=Math.round(n.beat*beat*rate);
-      for(let j=0;j<note.length&&start+j<a.length;j++)a[start+j]+=note[j]*.42;
+      const n=p.notes[ni],note=keyVoiceNote(p.instrument,n.pitch,n.velocity,n.length*beat,rate),start=Math.round(n.beat*beat*rate),g=keyVoiceGain(p.instrument);
+      for(let j=0;j<note.length&&start+j<a.length;j++)a[start+j]+=note[j]*g;
       // Yield between small batches so mobile editing can still respond.
       if(ni%4===3)await new Promise(resolve=>setTimeout(resolve,0));
     }

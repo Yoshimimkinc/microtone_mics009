@@ -10,7 +10,7 @@
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
-//    keyTineNote, keyTranspose, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
+//    keyTranspose, keyVoiceNote, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
 //    refreshPadDisplay, sampNameEl, scheduleAutosave, selectPad, stopVoices, syncPadContentEditor, tracks,
 //    wakeSync
 // @depends data/key-presets, plock-undo
@@ -30,9 +30,9 @@ function _keySetPref(name,on){try{localStorage.setItem('mics.key'+name,on?'1':'0
 // 鍵盤の 1 音（試し弾き）：エレピの物理モデルをその場で 1 音だけ作り（2.5 秒押さえた形・1 音 30ms ほど）、押している間鳴らす。
 // 鍵盤の 16 音は開いた時に少しずつ先に作っておく（押した瞬間に作らない）
 function _keyLiveBuffer(pitch,velocity){
-  const fx=_keyPhrase().effects,key=pitch+'|'+velocity+'|'+JSON.stringify(fx);
+  const ph=_keyPhrase(),fx=ph.effects,key=ph.instrument+'|'+pitch+'|'+velocity+'|'+JSON.stringify(fx);
   if(_keyLiveCache.has(key))return _keyLiveCache.get(key);
-  const rate=26000,data=keyApplyEffects(keyTineNote(pitch,velocity,2.5,rate),rate,fx),buffer=AC.createBuffer(1,data.length,rate);
+  const rate=26000,data=keyApplyEffects(keyVoiceNote(ph.instrument,pitch,velocity,2.5,rate),rate,fx),buffer=AC.createBuffer(1,data.length,rate);
   buffer.getChannelData(0).set(data);_keyLiveCache.set(key,buffer);
   while(_keyLiveCache.size>48)_keyLiveCache.delete(_keyLiveCache.keys().next().value);
   return buffer;

@@ -2564,3 +2564,12 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - 直し：EDIT の KEY も `padKindGo(i,'KEY')`＝KEY にしてそのままピアノロール（もう KEY なら開くだけ）。`#peKeyOpen` は撤去（`tools/removals-ok.txt`）。
 - SAMPLE / SCRATCH は今まで通り種類を変えるだけ（EDIT の中で波形の START / END などを触れるので、画面を切り替えない）。音の入った KEY から移る時に聞くのも同じ（§195）。
 検査：`pad-content-check`（390 / 1280：EDIT の KEY を押すと KEY になってピアノロールが開く・PIANO ROLL ボタンが無い）。EDIT は開いて 0.45 秒は誤タップよけでクリックを受けないので、テストは 0.6 秒待ってから押す。
+
+## 205. KEY の音色に SIN BASS（v0.3.216）
+「KEY の音色は、エレピの音以外にも SIN BASS を用意したい」。
+- `keyPhrase.instrument` は `KEY_INSTRUMENTS`（data/key-phrase）の名前：`rhodes-tine-v2`（既定・TINE ELECTRIC PIANO）／`sine-bass`（SIN BASS）。知らない名前はエレピ。保存・SET・`.micset` も同じ値。
+- 音（audio/key-instrument `keySineBassNote`）：サイン波 1 本。立ち上がり 4ms（sin² でプチ無し）、押している間 0.35 秒で 82% へ少し下がって伸びる、離して 60ms（cos）で消える。強さ＝音量（.25〜1）と軽い tanh（drive 1〜2.2、ピークで割って音量は保つ）。ミックスの重さは .55（エレピは .42 のまま）。
+- 1 音の入口を `keyVoiceNote(instrument,…)` にまとめ、パッドの書き出し（`renderKeyDry`）・鍵盤の作り置き（`_keyLiveBuffer`、キャッシュの鍵に音色）・ロールの試し弾き（`_keyAudition`）が同じ音。読み込みの印（`keySignatureOf`）は正規化したフレーズを含むので、音色を変えると作り直す。
+- 画面：SOUND タブの上に ELECTRIC PIANO / SIN BASS の大きいボタン。見出し・名前の下（`.key-voice`）・状態の文字は音色の名前。SIN BASS にすると鍵盤を C2 から（エレピへ戻すと C3 から）。
+- ついでに SOUND の説明文が古いボタン名（PREVIEW）のままだったのを「NOTES の PLAY」に。
+検査：`key-editor-unit`（保存と既定・C2＝65.4 Hz・頭にプチが無い・離して 60ms で無音・音色で音と印が変わる）、`pad-content-check`（390 / 1280：SIN BASS を押すと保存・名前・鍵盤 C2〜／ELECTRIC PIANO で戻る）。

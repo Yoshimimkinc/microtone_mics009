@@ -6,11 +6,11 @@
 //    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
 //    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
 //    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, KEY_FLAG_W, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPref, _keyRange, _keyRangeDrag,
-//    _keySetPref, bpmVal, doUndo, keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase,
-//    openPadEdit, paintClKind, paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo,
-//    refreshPadDisplay, renderKeyPhrase, sampNameEl, scheduleAutosave, scratchClose, scratchOpen,
-//    stopVoices, tracks
+// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPadLow,
+//    _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
+//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
+//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
+//    sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
 // @depends plock-undo
 function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
 function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
@@ -126,6 +126,7 @@ function _keyPaint(){
   document.getElementById('keyNotePanel').hidden=_keySound;document.getElementById('keySoundPanel').hidden=!_keySound;
   document.getElementById('keyTabNotes').setAttribute('aria-selected',String(!_keySound));document.getElementById('keyTabSound').setAttribute('aria-selected',String(_keySound));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){document.getElementById(id).value=p.effects[prop];_keyFxLabel(id,p.effects[prop]);}
+  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyInstrument===p.instrument)));for(const el of document.querySelectorAll('.key-voice,#keySoundName'))el.textContent=KEY_INSTRUMENTS[p.instrument];   // 音色（v0.3.216 §205）
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyMotion===p.effects.motion)));document.querySelectorAll('[data-key-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.keyColor===p.effects.color)));_keySetCursor();
   const tr=keyTranspose(t);document.getElementById('keyTitle').textContent='KEY · '+(t.name||'PAD '+(_keyTarget+1))+(tr?' · PITCH '+(tr>0?'+':'')+tr:'');   // パッドの PITCH はここに出す（音符はそのまま表示、鳴る音は移る v0.3.213）document.getElementById('keyBars').value=p.bars;document.getElementById('keyZoom').value=_keyZoom;
   for(const [id,v] of [['keySnap',p.editor.snap],['keyScaleOn',p.editor.scaleEnabled],['keyNav',_keyNavigate],['keyMulti',_keyMulti]]){const b=document.getElementById(id);b.setAttribute('aria-pressed',String(v));b.textContent=({keySnap:'SNAP 1/16',keyScaleOn:'SCALE',keyNav:'SCROLL',keyMulti:'MULTI'})[id]+(id==='keyScaleOn'?'':v?' ON':' OFF');}
@@ -168,11 +169,11 @@ async function _keyUpdate(change){
   if(JSON.stringify(before)===JSON.stringify(next)){_keyPaint();return;}
   pushUndo();t.keyPhrase=next;if(before.bars!==next.bars&&_keyAutoFit)_keyFit();else _keyPaint();scheduleAutosave();   // 小節数が変わったら幅を合わせ直す（v0.3.212）
   const status=document.getElementById('keyStatus');status.textContent='音声を生成中…';
-  try{const result=await prepareKeyTrack(t,bpmVal);if(result&&(t._contentEpoch||0)===epoch){refreshPadDisplay(i);if(_keyTarget===i)status.textContent='TINE MODEL · 再生できます';}}
+  try{const result=await prepareKeyTrack(t,bpmVal);if(result&&(t._contentEpoch||0)===epoch){refreshPadDisplay(i);if(_keyTarget===i)status.textContent=KEY_INSTRUMENTS[normalizeKeyPhrase(t.keyPhrase).instrument]+' · 再生できます';}}
   catch(e){if(_keyTarget===i)status.textContent='生成失敗：'+e.message;}
 }
 async function _keyAudition(pitch,velocity=96){
-  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch:pitch+keyTranspose(tracks[target]),beat:0,length:.5,velocity}],effects:_keyPhrase().effects},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
+  if(_keyTarget<0)return;const target=_keyTarget,token=++_keyAuditionToken;try{await AC.resume();const buffer=await renderKeyPhrase({bars:1,notes:[{pitch:pitch+keyTranspose(tracks[target]),beat:0,length:.5,velocity}],effects:_keyPhrase().effects,instrument:_keyPhrase().instrument},bpmVal);if(_keyTarget!==target||token!==_keyAuditionToken)return;if(_keyAuditionNode){try{_keyAuditionNode.stop();}catch(_){}}const node=AC.createBufferSource(),gain=AC.createGain();gain.gain.value=.65;node.buffer=buffer;node.connect(gain);gain.connect(masterGain);node.onended=()=>{node.disconnect();gain.disconnect();if(_keyAuditionNode===node)_keyAuditionNode=null;};node.start();_keyAuditionNode=node;}catch(e){document.getElementById('keyStatus').textContent=e.message;}
 }
 function _keyPoint(e,canvas){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 // スマホ（指）：何も無い所・鍵盤を指で動かす＝スクロール、動かさずに離す＝そこへノート（v0.3.193 §181「スマホでピアノロールがスクロールしない」）
@@ -194,6 +195,8 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   const root=document.getElementById('keyScaleRoot');NOTE_NAMES.forEach((name,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=name;root.appendChild(opt);});
   document.getElementById('keyTabNotes').addEventListener('click',()=>{_keyEndGesture(true);_keySound=false;_keyPaint();if(_keyAutoFit)_keyFit();});
   document.getElementById('keyTabSound').addEventListener('click',()=>{_keyEndGesture(true);_keySound=true;_keyPaint();});
+  // 音色（v0.3.216 §205）：SIN BASS にしたら鍵盤を低い所（C2〜）へ。試し弾きの作り置きも作り直す
+  document.querySelectorAll('[data-key-instrument]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.keyInstrument;if(_keyPhrase().instrument===v)return;_keyUpdate(p=>p.instrument=v);if(v==='sine-bass'&&_keyPadLow>36+_keyPadRoot)_keyPadLow=36+_keyPadRoot;else if(v!=='sine-bass'&&_keyPadLow<48+_keyPadRoot)_keyPadLow=48+_keyPadRoot;_keyEntryPaint();_keyWarmPads();}));
   document.querySelectorAll('[data-key-motion]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.motion=b.dataset.keyMotion)));
   document.querySelectorAll('[data-key-color]').forEach(b=>b.addEventListener('click',()=>_keyUpdate(p=>p.effects.color=b.dataset.keyColor)));
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){

@@ -1,7 +1,9 @@
 // @module data/key-phrase
-// @provides normalizeKeyPhrase, parseKeyMidi
+// @provides KEY_INSTRUMENTS, normalizeKeyPhrase, parseKeyMidi
 // @uses -
 // @depends -
+// v0.3.216 §205：KEY の音色。エレピ（既定）と SIN BASS。名前は画面の見出しに出す
+const KEY_INSTRUMENTS={'rhodes-tine-v2':'TINE ELECTRIC PIANO','sine-bass':'SIN BASS'};
 // 演奏位置は拍単位。サンプルやBPMを含めず再編集可能な正データを保存する。
 function normalizeKeyPhrase(src){
   const bars=Math.max(1,Math.min(4,Math.round(+src?.bars||1))), end=bars*4;
@@ -14,7 +16,7 @@ function normalizeKeyPhrase(src){
   // v0.3.212 §201：START / END（拍）。パッドとループで鳴らす範囲。end:null＝最後（余韻まで）。小節数を減らしたら収まるように詰める
   const r=src?.range||{}, rs=Math.max(0,Math.min(end-1/96,Math.round((+r.start||0)*96)/96));
   const re=(r.end==null||!Number.isFinite(+r.end)||+r.end>=end)?null:Math.max(rs+1/96,Math.round(+r.end*96)/96);
-  return {bars,instrument:'rhodes-tine-v2',notes,editor,effects,range:{start:rs,end:re}};
+  return {bars,instrument:KEY_INSTRUMENTS[src?.instrument]?src.instrument:'rhodes-tine-v2',notes,editor,effects,range:{start:rs,end:re}};
 }
 // SMF format 0/1, PPQ。SMPTE/format 2は明確なエラーにする。
 function parseKeyMidi(bytes){
