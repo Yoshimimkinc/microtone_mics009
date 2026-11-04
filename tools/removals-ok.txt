@@ -114,3 +114,7 @@ scratchAngleDelta
 scratchDrawPlatter
 # v0.3.215 §204 EDIT の PIANO ROLL ボタンを撤去。EDIT の KEY を押すと KEY にしてそのままピアノロールを開く（padKindGo）ので二重だった
 document.getElementById('peKeyOpen') [click]
+# v0.3.217 §206 整理整頓：どこからも呼ばれていない関数を撤去（ダブルタップで外すのは fxBtnTap 側・SET のポン出しは §175 で別の入口）
+perfResetPad
+queueSet
+resetSet

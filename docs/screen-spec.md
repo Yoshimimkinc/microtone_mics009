@@ -2573,3 +2573,14 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - 画面：SOUND タブの上に ELECTRIC PIANO / SIN BASS の大きいボタン。見出し・名前の下（`.key-voice`）・状態の文字は音色の名前。SIN BASS にすると鍵盤を C2 から（エレピへ戻すと C3 から）。
 - ついでに SOUND の説明文が古いボタン名（PREVIEW）のままだったのを「NOTES の PLAY」に。
 検査：`key-editor-unit`（保存と既定・C2＝65.4 Hz・頭にプチが無い・離して 60ms で無音・音色で音と印が変わる）、`pad-content-check`（390 / 1280：SIN BASS を押すと保存・名前・鍵盤 C2〜／ELECTRIC PIANO で戻る）。
+
+## 206. 整理整頓：パッドの画面まわりのコードの置き場所（v0.3.217）
+「ここまで、いろいろ付け足し過ぎたので、一度プログラミングを見直して整理整頓して欲しい」。動きは変えず、置き場所と重複だけを直した（次の §207 共通の頭・§208 SCRATCH を押すと開く の土台）。
+- **ui/pad-content を 2 つに分けた**：v0.3.171 からパッドの種類の切替と KEY のピアノロールが 1 ファイル（38KB）に同居していた。
+  - `ui/pad-kind`：`padKind`・`setPadKind`（KEY から移る時の「波形にする / 元に戻す」も）・`openPadContent` / `padKindGo`（種類に合った画面を開く）・`keyLeaveChoice`・`syncPadContentEditor`、EDIT の種類ボタンと確認ダイアログのリスナ。
+  - `ui/key-roll`（旧 ui/pad-content を改名）：ピアノロールを開く / 閉じる・描画・ノートのドラッグ・SOUND タブ・MIDI。
+  - 今のパッドの画面の地図：SAMPLE＝`51-edit-modal`（EDIT）＋`52-chop`、KEY＝`ui/key-roll`（ロール）＋`ui/key-entry`（鍵盤・REC・STEP・ループ・MORE・CHOP・START / END）＋`audio/key-instrument`（音）＋`data/key-phrase` / `data/key-presets`、SCRATCH＝`ui/scratch-view`（画面）＋`audio/scratch-pad`（音）。種類の切替は `ui/pad-kind`。
+- **使われていない関数を撤去**（1 件ずつ・lost-listeners で確認）：`perfResetPad`（v0.3.168 のダブルタップで外す処理。今は `fxBtnTap` 側）、`queueSet` / `resetSet`（v0.3.187 §175 で SET のポン出しが変わってから呼ばれていない）。
+- **同じ式をまとめた**：KEY のテンポ `Math.max(40,Math.min(250,bpm||100))` 5 か所 → `keyTempo`（audio/key-instrument）。
+- 試して戻したもの：種類の並びを定数 `PAD_KINDS` にまとめる → `padKind` は起動中（定数より前の部品の読み込み時）にも呼ばれて TDZ で止まった。`paintClKind` の `typeof` 確認を外す → 単体テスト（vm、窓が無い）で止まった。どちらも理由のある書き方なので、理由をコメントに書いて元に戻した。
+検査：関門（check / key-editor-unit / pad-content-check / lost-listeners / module-check）が全部そのまま通ること＝動きが変わっていないこと。

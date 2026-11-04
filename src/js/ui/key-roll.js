@@ -1,79 +1,17 @@
-// @module ui/pad-content
+// @module ui/key-roll
 // @provides KEY_SCALES, _keyAudition, _keyAuditionNode, _keyAuditionToken, _keyAutoFit, _keyDeleteSelection,
 //    _keyDraft, _keyDragType, _keyDuplicate, _keyEndGesture, _keyFit, _keyFxLabel, _keyGesture, _keyHover,
-//    _keyInScale, _keyLanesShow, _keyLeaveDone, _keyLeaveResolve, _keyMidi, _keyMoreShow, _keyMulti,
-//    _keyNavigate, _keyPaint, _keyPhrase, _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows,
-//    _keyScalePitch, _keySelect, _keySelected, _keySelection, _keySetCursor, _keySnapBeat, _keySound,
-//    _keyTapNote, _keyTarget, _keyUpdate, _keyZoom, _sampleState, keyEditorClose, keyEditorOpen,
-//    keyLeaveChoice, openPadContent, padKind, padKindGo, setPadKind, syncPadContentEditor
-// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, PADS, _keyBuffers, _keyEntryPaint, _keyPadLow,
-//    _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
-//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, openPadEdit, paintClKind,
-//    paintPerf, parseKeyMidi, peTarget, prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase,
-//    sampNameEl, scheduleAutosave, scratchClose, scratchOpen, stopVoices, tracks
+//    _keyInScale, _keyLanesShow, _keyMidi, _keyMoreShow, _keyMulti, _keyNavigate, _keyPaint, _keyPhrase,
+//    _keyPitchAt, _keyPoint, _keyRowH, _keyRowY, _keyRows, _keyScalePitch, _keySelect, _keySelected,
+//    _keySelection, _keySetCursor, _keySnapBeat, _keySound, _keyTapNote, _keyTarget, _keyUpdate, _keyZoom,
+//    keyEditorClose, keyEditorOpen
+// @uses AC, KEY_FLAG_W, KEY_INSTRUMENTS, NOTE_NAMES, _keyEntryPaint, _keyLeaveDone, _keyLeaveResolve,
+//    _keyPadLow, _keyPadRoot, _keyPref, _keyRange, _keyRangeDrag, _keySetPref, _keyWarmPads, bpmVal, doUndo,
+//    keyEntryClose, keyEntryOpen, keyTranspose, masterGain, normalizeKeyPhrase, padKind, parseKeyMidi,
+//    prepareKeyTrack, pushUndo, refreshPadDisplay, renderKeyPhrase, scheduleAutosave, scratchClose, tracks
 // @depends plock-undo
-function padKind(t){ return ['SPL','KEY','SCR'].includes(t.padKind)?t.padKind:'SPL'; }
-function _sampleState(t,i){ return {buffer:t.buffer,rawBuffer:t.rawBuffer,start:t.start,end:t.end,loop:t.loop,loopStart:t.loopStart,type:PADS[i].type,voice:PADS[i].voice}; }
-// leave（KEY から移る時だけ）：'restore'＝元のサンプルに戻す（既定）／'bake'＝この KEY の音をそのパッドの波形にする（v0.3.206 §195）
-async function setPadKind(i,kind,leave='restore'){
-  if(!['SPL','KEY','SCR'].includes(kind))return;
-  const t=tracks[i];if(padKind(t)===kind)return;
-  let baked=null;
-  if(padKind(t)==='KEY'&&kind!=='KEY'&&leave==='bake'){
-    const epoch=t._contentEpoch||0;sampNameEl.textContent='KEY を波形にしています…';
-    const b=(await prepareKeyTrack(t,bpmVal))||(_keyBuffers.has(t.buffer)?t.buffer:null);
-    if((t._contentEpoch||0)!==epoch||padKind(t)!=='KEY')return;
-    // KEY の音の入れ物とは別の波形にする（KEY の印が付いたままだと SAMPLE として鳴らせない）
-    if(b){baked=AC.createBuffer(1,b.length,b.sampleRate);baked.getChannelData(0).set(b.getChannelData(0));baked._range=[t.start,t.end];}   // START / END も持っていく（v0.3.212）
-  }
-  pushUndo();stopVoices(t,AC.currentTime);t.loopPlaying=false;t._contentEpoch=(t._contentEpoch||0)+1;
-  if(kind==='KEY'&&padKind(t)!=='KEY')t.sampleState=_sampleState(t,i);
-  if(padKind(t)==='KEY'&&kind!=='KEY'&&t.sampleState){Object.assign(t,t.sampleState);PADS[i].type=t.sampleState.type;PADS[i].voice=t.sampleState.voice;}
-  if(baked){Object.assign(t,{buffer:baked,rawBuffer:baked,start:baked._range[0],end:baked._range[1],loop:false,loopStart:0});PADS[i].type='sample';PADS[i].voice=null;}
-  t._keySignature=null; // Restoring SPL replaces buffer: never retain a KEY readiness stamp.
-  t.padKind=kind;
-  if(kind==='KEY'){
-    t.keyPhrase=normalizeKeyPhrase(t.keyPhrase);PADS[i].type='sample';PADS[i].voice=null;
-    const epoch=t._contentEpoch;sampNameEl.textContent='KEYを生成中…';const ready=await prepareKeyTrack(t,bpmVal);
-    if(t._contentEpoch!==epoch||t.padKind!=='KEY')return;
-    if(ready)sampNameEl.textContent=t.keyPhrase.notes.length?'KEY · フレーズを演奏できます':'KEY · 鍵盤で弾いて入れるか、ロールをタップして置いてください';
-  }else sampNameEl.textContent=baked?(kind==='SCR'?'SCRATCH':'SAMPLE')+' · KEY のフレーズを波形にしました（KEY に戻せば打ち込みはそのまま）':kind==='SCR'?'SCRATCH · 窓の SCRATCH か EDIT＋パッドでスクラッチ画面':'SAMPLE · サンプルを再生';
-  refreshPadDisplay(i);syncPadContentEditor(i);paintPerf();scheduleAutosave();
-}
-// 種類に合った画面を開く（v0.3.203 §192）：KEY＝ピアノロール・SCRATCH＝スクラッチ・SAMPLE＝EDIT（波形・TRIM・CHOP）。EDIT＋パッドのタップもここ
-function openPadContent(i){
-  const k=padKind(tracks[i]);
-  if(k==='KEY')keyEditorOpen(i);
-  else if(k==='SCR')scratchOpen(i).catch(e=>{sampNameEl.textContent=e.message;});
-  else openPadEdit(i);
-}
-// 窓の種類ボタン：その種類にして、すぐその画面へ（同じ種類ならそのまま開く）。SAMPLE は窓の波形のまま（開かない）
-// KEY（音が入っている）から SAMPLE / SCRATCH へ移る時は聞く：この KEY を波形にする／元のサンプルに戻す／やめる（v0.3.206 §195）
-let _keyLeaveResolve=null;
-function keyLeaveChoice(i,kind){
-  const t=tracks[i];
-  if(padKind(t)!=='KEY'||kind==='KEY'||!normalizeKeyPhrase(t.keyPhrase).notes.length)return Promise.resolve('restore');
-  if(_keyLeaveResolve)_keyLeaveResolve(null);
-  document.getElementById('keyLeaveTo').textContent=kind==='SCR'?'SCRATCH':'SAMPLE';
-  document.getElementById('keyLeaveRestore').textContent=t.sampleState?.buffer?'元のサンプルに戻す':'元に戻す（空のパッド）';
-  document.getElementById('keyLeaveAsk').hidden=false;
-  return new Promise(resolve=>{_keyLeaveResolve=resolve;});
-}
-function _keyLeaveDone(v){const r=_keyLeaveResolve;_keyLeaveResolve=null;document.getElementById('keyLeaveAsk').hidden=true;if(r)r(v||null);}
-async function padKindGo(i,kind){
-  if(padKind(tracks[i])!==kind){const leave=await keyLeaveChoice(i,kind);if(!leave)return;await setPadKind(i,kind,leave);}
-  if(padKind(tracks[i])!==kind)return;
-  if(kind==='KEY')keyEditorOpen(i);
-  else if(kind==='SCR')await scratchOpen(i);
-  if(typeof paintClKind==='function')paintClKind();
-}
-function syncPadContentEditor(i){
-  const kind=padKind(tracks[i]);
-  document.getElementById('padEditModal').dataset.padKind=kind;
-  document.querySelectorAll('#peKinds button').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
-  document.querySelectorAll('#pads .pad').forEach((el,j)=>el.dataset.kind=padKind(tracks[j]));
-  if(typeof paintClKind==='function')paintClKind();
-}
+// KEY のピアノロール（v0.3.217 §206 で ui/pad-content から改名。パッドの種類の切替は ui/pad-kind へ分けた）：
+// 開く・閉じる（keyEditorOpen / keyEditorClose）・ロールと強弱の欄の描画（_keyPaint）・ノートのドラッグ・SOUND タブ・MIDI 読み込み。
 let _keyTarget=-1, _keySelected=-1, _keyMidi=null;
 let _keySelection=new Set(), _keyDraft=null, _keyGesture=null, _keyZoom=128, _keySound=false, _keyAutoFit=true, _keyNavigate=false, _keyMulti=false, _keyAuditionNode=null, _keyAuditionToken=0;
 const KEY_SCALES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixolydian:[0,2,4,5,7,9,10],pentatonic:[0,2,4,7,9],minorPentatonic:[0,3,5,7,10],chromatic:[0,1,2,3,4,5,6,7,8,9,10,11]};
@@ -202,9 +140,6 @@ function _keyDeleteSelection(){if(!_keySelection.size)return;_keyUpdate(p=>{p.no
   for(const [id,prop] of [['keyMotionDepth','motionDepth'],['keyMotionRate','motionRate'],['keyColorDepth','colorDepth'],['keyColorRate','colorRate']]){
     const control=document.getElementById(id);control.addEventListener('input',e=>_keyFxLabel(id,+e.target.value));control.addEventListener('change',e=>_keyUpdate(p=>p.effects[prop]=+e.target.value));
   }
-  // v0.3.215 §204「KEY と PIANO ROLL のボタンは一緒では」：KEY を押す＝KEY にしてそのままピアノロールを開く（窓の種類ボタンと同じ padKindGo）。PIANO ROLL ボタンは撤去
-  document.getElementById('peKinds').addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;const i=peTarget,kind=b.dataset.kind;if(kind==='KEY'){padKindGo(i,'KEY').catch(e=>sampNameEl.textContent=e.message);return;}keyLeaveChoice(i,kind).then(leave=>leave&&setPadKind(i,kind,leave)).catch(e=>sampNameEl.textContent=e.message);});
-  document.getElementById('keyLeaveAsk').addEventListener('click',e=>{const b=e.target.closest('[data-leave]');if(b)_keyLeaveDone(b.dataset.leave);else if(e.target===e.currentTarget)_keyLeaveDone(null);});
   document.getElementById('keyClose').addEventListener('click',keyEditorClose);
   document.getElementById('keyUndo').addEventListener('click',()=>{_keyEndGesture(true);doUndo();_keySelection.clear();_keySelected=-1;if(_keyTarget>=0&&padKind(tracks[_keyTarget])==='KEY')_keyPaint();else keyEditorClose();});
   // ▶ PLAY（keyPreview）は v0.3.205 §194 でループ再生に（ui/key-entry）。MORE・強弱の欄・鍵盤の出し入れ

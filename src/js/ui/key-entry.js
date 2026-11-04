@@ -10,7 +10,7 @@
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
-//    keyTranspose, keyVoiceNote, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
+//    keyTempo, keyTranspose, keyVoiceNote, masterGain, padKind, paintPerf, prepareKeyTrack, pushUndo,
 //    refreshPadDisplay, sampNameEl, scheduleAutosave, selectPad, stopVoices, syncPadContentEditor, tracks,
 //    wakeSync
 // @depends data/key-presets, plock-undo
@@ -38,7 +38,7 @@ function _keyLiveBuffer(pitch,velocity){
   return buffer;
 }
 function _keyWarmPads(){const list=_keyPadPitches();let k=0;const next=()=>{if(_keyTarget<0||k>=list.length)return;_keyLiveBuffer(list[k++]+keyTranspose(tracks[_keyTarget]),96);setTimeout(next,20);};setTimeout(next,60);}
-function _keyBeatSec(){return 60/Math.max(40,Math.min(250,+bpmVal||100));}
+function _keyBeatSec(){return 60/keyTempo(bpmVal);}
 // v0.3.212 §201：START / END（拍）。目盛りの START / END をドラッグ（ドラッグ中は下書き）。end は最後なら null（余韻まで）
 let _keyRangeDraft=null,_keyRangeDrag=null;
 function _keyRange(useDraft=true){const p=_keyPhrase(),r=(useDraft&&_keyRangeDraft)||p.range||{start:0,end:null},end=p.bars*4;return {start:r.start||0,end:r.end==null?end:r.end,full:r.end==null};}
@@ -175,7 +175,7 @@ async function keyChop(){
   if(!b||_keyTarget!==i||padKind(t)!=='KEY')return;
   // KEY の印が付かない別の波形へ写す（v0.3.206 の「波形にする」と同じ）
   const buf=AC.createBuffer(1,b.length,b.sampleRate);buf.getChannelData(0).set(b.getChannelData(0));
-  const spb=60/Math.max(40,Math.min(250,+bpmVal||100)),rg=_keyRange(false),bounds=plan.beats.map(x=>Math.min(1,x*spb/b.duration)).concat([rg.full?1:Math.min(1,rg.end*spb/b.duration)]);
+  const spb=60/keyTempo(bpmVal),rg=_keyRange(false),bounds=plan.beats.map(x=>Math.min(1,x*spb/b.duration)).concat([rg.full?1:Math.min(1,rg.end*spb/b.duration)]);
   pushUndo();for(let k=0;k<plan.N;k++)stopVoices(tracks[plan.anchor+k],AC.currentTime);
   const r=chopKeyToPads(i,buf,bounds);
   keyEditorClose();
