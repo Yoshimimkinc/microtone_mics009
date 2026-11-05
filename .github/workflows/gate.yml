@@ -15,7 +15,8 @@ concurrency:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    # ubuntu-latest が 26.04 になり、Playwright 1.56.1 が chromium を入れられなくなった（2026-11-05）。版は手元の Playwright に揃えたまま、OS を固定する
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
