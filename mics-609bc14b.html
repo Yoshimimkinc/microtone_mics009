@@ -962,6 +962,48 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   #clKeysSet{min-height:50px;}
 /* SET の窓の操作の案内（v0.3.196 §185） */
 .cl-help{grid-column:1/-1;flex:1 1 100%;align-self:center;margin:0 4px;font-size:11px;line-height:1.45;letter-spacing:.04em;color:inherit;opacity:.85}   /* SET の窓の空いていた段（#clKeysSet、高さ 50px は PADS のページ切替と同じ）に入れる＝窓の高さは変わらない */
+  /* ===== PADS 画面の SET ボタンと SET の一覧（v0.3.223 §212）===== */
+  /* 情報窓の上の段の先頭。数値欄（.cl-par）と同じ枠で、押すと一覧が開く（▾）。SET モードでは窓が SET ページなので出さない */
+  .perf-screen .cl-setsw{display:flex;align-items:baseline;gap:4px;min-height:34px;padding:5px 8px;font:inherit;color:inherit;cursor:pointer;
+    background:transparent;border:1px solid rgba(61,214,196,.45);border-radius:6px;touch-action:manipulation;max-width:100%;min-width:0;}
+  .perf-screen .cl-setsw:hover,.perf-screen .cl-setsw:focus-visible{border-color:var(--teal);}
+  .perf-screen .cl-setsw:active{background:rgba(61,214,196,.10);}
+  .perf-screen .cl-setsw b{font-size:13px;min-width:2ch;}
+  .perf-screen .cl-setsw .cl-setsw-nm{font-weight:700;font-size:12px;max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .perf-screen .cl-setsw .cl-setsw-q{font-weight:700;font-size:12px;color:var(--amber);white-space:nowrap;}
+  .perf-screen .cl-setsw .cl-setsw-q[hidden]{display:none;}
+  .perf-screen .cl-setsw em{font-style:normal;font-size:10px;opacity:.7;}
+  body.setmode .perf-screen .cl-setsw{display:none;}
+  /* スマホは番号だけ・SET の字を番号の上に重ねる（上の段 BPM / SWING / PATTERN / BAR と 1 行に収める＝窓が伸びてパッドが小さくならない。360 幅で測った） */
+  @media (max-width:767px){
+    .perf-screen .cl-setsw .cl-setsw-nm{display:none;}
+    #viewPads>.perf-screen .cl-setsw{flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px 6px;line-height:1;}
+    #viewPads>.perf-screen .cl-setsw i{margin:0;font-size:9px;}
+    #viewPads>.perf-screen .cl-setsw b{min-width:0;}
+    #viewPads>.perf-screen .cl-setsw em{display:none;}
+    #viewPads>.perf-screen .cl-setsw .cl-setsw-q{font-size:9px;order:-1;}   /* 予約があれば SET の字の場所に → 03（2 行のまま＝窓が伸びない） */
+    #viewPads>.perf-screen .cl-setsw.queued i{display:none;}
+  }
+  .perf-screen .cl-setsw.queued{border-color:var(--amber);}
+  @media (max-width:380px){ #viewPads>.perf-screen>.cl-body .cl-row.cl-stat{gap:4px;} }   /* 360 幅：SET を足したぶん 7px 足りない */
+  /* 一覧：4×4。ティール枠＝いまのセット、オレンジ＝鳴っている、オレンジ枠＋NEXT＝予約（次の小節の頭で） */
+  .modal.setpick{width:min(460px,94vw);}
+  .setpick-help{margin:0 0 10px;font-size:12px;color:var(--dim);}
+  .setpick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .setpick-k{position:relative;display:grid;grid-template-columns:1fr auto;grid-template-areas:"no tag" "nm nm" "bpm bpm";align-content:start;gap:2px 4px;
+    min-height:64px;padding:7px 8px;text-align:left;font:inherit;color:var(--ink);cursor:pointer;touch-action:manipulation;
+    background:linear-gradient(180deg,var(--pad-face),var(--pad));border:1px solid var(--line);border-radius:8px;}
+  .setpick-no{grid-area:no;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;}
+  .setpick-tag{grid-area:tag;font-size:9px;letter-spacing:.12em;color:var(--teal);font-weight:700;}
+  .setpick-nm{grid-area:nm;font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .setpick-bpm{grid-area:bpm;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;}
+  .setpick-k.fresh .setpick-nm,.setpick-k.fresh .setpick-no{color:var(--dim);}
+  .setpick-k.on{box-shadow:0 0 0 2px var(--teal) inset;}
+  .setpick-k.on .setpick-no{color:var(--teal);}
+  .setpick-k.playing{background:linear-gradient(180deg,rgba(var(--hit-glow-a),.42),rgba(var(--hit-glow-a),.22)),linear-gradient(180deg,var(--pad-face),var(--pad));}
+  .setpick-k.queued{box-shadow:0 0 0 2px var(--amber) inset;}
+  .setpick-k.queued .setpick-tag{color:var(--amber);}
+  .setpick-k:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
   /* 編集モーダル */
   .modal.pe{width:min(440px,94vw);}
   /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
@@ -1533,7 +1575,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.222</div>
+  <div class="s-ver" id="splashVer">v0.3.223</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1828,6 +1870,14 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
  <div class="scratch-controls"><button id="scratchPlay" aria-pressed="true">Ⅱ PAUSE</button><button id="scratchCue">↶ CUE</button><canvas id="scratchOverview" aria-label="全体の波形。タップでその位置へ"></canvas><div class="scratch-readout"><b id="scratchTitle">SCR</b><span><b id="scratchMotion">PLAY</b> <span id="scratchPosition">0.00 s</span></span></div></div>
  <p id="scratchStatus" role="status">波形から指を離すと通常再生</p></section>
 </div>
+    <!-- SET の一覧（v0.3.223 §212）：PADS 画面の情報窓の SET ボタンから開く。押す＝そのセットへ（止まっていればすぐ・鳴っていれば次の小節の頭で）。音は出さない -->
+    <div class="modal-backdrop" id="setPick" style="display:none;">
+      <div class="modal setpick" role="dialog" aria-modal="true" aria-labelledby="setPickTitle">
+        <div class="modal-head"><span id="setPickTitle">SET を選ぶ</span><button class="t" id="setPickClose" aria-label="閉じる">✕</button></div>
+        <p class="setpick-help" id="setPickHelp">押す＝そのセットへ切り替える</p>
+        <div class="setpick-grid" id="setPickGrid" role="group" aria-label="16 のセット"></div>
+      </div>
+    </div>
     <div class="viewdots" id="viewDots">
       <button class="vdot on" data-view="viewPads" aria-label="Pads"><span class="vd-dot"></span><svg class="vd-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>PADS</button>
       <button class="vdot" data-view="viewSeq" aria-label="Seq"><span class="vd-dot"></span><svg class="vd-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="2" width="3" height="3"/><rect x="5" y="2" width="3" height="3" opacity=".35"/><rect x="9" y="2" width="3" height="3"/><rect x="13" y="2" width="2" height="3" opacity=".35"/><rect x="1" y="7" width="3" height="3" opacity=".35"/><rect x="5" y="7" width="3" height="3"/><rect x="9" y="7" width="3" height="3" opacity=".35"/><rect x="13" y="7" width="2" height="3"/><rect x="1" y="12" width="3" height="3"/><rect x="5" y="12" width="3" height="3" opacity=".35"/><rect x="9" y="12" width="3" height="3"/><rect x="13" y="12" width="2" height="3" opacity=".35"/></svg>SEQ</button>
@@ -1921,6 +1971,8 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
              ソフトキー行（＝メニュー）は常に窓の全幅のまま＝ページを移っても幅が動かない -->
         <div class="cl-body">
         <div class="cl-row cl-stat">
+          <!-- SET の切替（v0.3.223 §212「PAD 画面の中に SET を切り替えるボタン」）：押す＝16 セットの一覧（#setPick）。再生中は次の小節の頭で切り替わる -->
+          <button class="cl-setsw" id="clSetSw" type="button" aria-haspopup="dialog" aria-label="セットを切り替える"><i>SET</i><b class="cl-num" id="clSetSwNo">01</b><span class="cl-setsw-nm" id="clSetSwNm"></span><span class="cl-setsw-q" id="clSetSwQ" hidden></span><em aria-hidden="true">▾</em></button>
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
           <span class="cl-par" data-p="swing"><i>SWING</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
           <span><i>PATTERN</i><b class="cl-num" id="perfPat">A</b></span>
@@ -4176,14 +4228,14 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 }
 // @module data/set
 // @provides DEFAULT_KIT, SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart,
-//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, setElapsed,
-//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
+//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, pickSet,
+//    setElapsed, setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
-//    prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo,
-//    setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct,
-//    tracks, warmKeyTracks
+//    playing, prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur,
+//    setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
+//    stripLegacyLocks, swingPct, tracks, warmKeyTracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -4307,6 +4359,16 @@ function focusSet(k){
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// PADS 画面の SET ボタンから選ぶ（v0.3.223 §212）：止まっていればすぐ k へ（音は出さない）。鳴っていれば次の小節の頭で切り替える予約
+// （切り替えは audio/transport が小節頭で switchSetNow）。予約したセット・いまのセットをもう一度選ぶと予約を取り消す。
+// 返り値："now" すぐ切り替えた／"queued" 予約した／"cancel" 予約を取り消した／"cur" もういまのセット
+function pickSet(k){
+  if(!(k>=0&&k<16)) return "cur";
+  if(k===setCur || queuedSet===k){ const had=queuedSet!==null; queuedSet=null; return had?"cancel":"cur"; }
+  if(playing){ queuedSet=k; return "queued"; }
+  stopAllVoices(AC.currentTime);   // 手叩きの余韻を切る（SET モードで止まっているセットを選ぶときと同じ）
+  focusSet(k); return "now";
 }
 // いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
 function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof setSetLevel==="function") setSetLevel(k, setLevels[setCur]); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }
@@ -4899,6 +4961,7 @@ function stopTransport(keepVoices){
   drawQueue.length=0; playStep=0;
   if(patSlot!==editPat) patLoad(editPat);   // 止めたら編集中のパターンのミュートへ（塗りは ui/transport-view）
   if(!keepVoices) stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
+  if(!keepVoices && queuedSet!==null) switchSetNow(queuedSet);   // 予約したセット（PADS の SET ボタン §212）は止めたら今すぐそこへ＝次の ▶ はそのセットから
 }
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、
@@ -7268,12 +7331,13 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const pf=document.getElementById("pro
 if(typeof IS_IOS!=="undefined" && IS_IOS){ const sp=document.getElementById("samp"); if(sp) sp.removeAttribute("accept"); }
 
 // @module ui/set-view
-// @provides _clPagePrev, _setIn, _setInfo, _snapPatHas, fmtClock, paintSet, paintSetLevel, paintSetMap,
-//    setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp, setPadUpAll
+// @provides _clPagePrev, _setIn, _setInfo, _setPickEl, _setPickGrid, _snapPatHas, fmtClock, paintSet,
+//    paintSetLevel, paintSetMap, paintSetPick, setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp,
+//    setPadUpAll, setPickClose, setPickIsOpen, setPickOpen
 // @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel,
-//    focusSet, isSetHeld, paintPerf, paintTransport, playing, queuedSet, renderClPage, sampNameEl, setCur,
-//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
-//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+//    focusSet, isSetHeld, paintPerf, paintTransport, pickSet, playing, queuedSet, renderClPage, sampNameEl,
+//    setCur, setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel,
+//    setSlots, sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -7305,7 +7369,55 @@ function paintSetMap(){
   document.querySelectorAll(".setmap").forEach(m=>{ for(let k=0;k<16;k++){ const c=m.children[k]; if(!c) continue; const on=setIsPlaying(k);
     c.classList.toggle("cur",k===setCur); c.classList.toggle("play",on); c.classList.toggle("held",on&&isSetHeld(k)); } });
   document.querySelectorAll(".setno").forEach(b=>{ if(b.textContent!==no) b.textContent=no; });
+  paintSetPick();
 }
+// PADS 画面の SET ボタン（情報窓の上の段）と SET の一覧（v0.3.223 §212「PAD 画面の中に SET を切り替えるためのボタン」）。
+// ボタン＝いまのセットの番号と名前（予約があれば → 次の番号）。一覧＝16 セット：ティール＝いまのセット、オレンジ＝鳴っている、NEXT＝予約
+// 要素は毎回 id で引く（関数は全体で巻き上がる。読み込み途中に paintSet が呼ばれても const の手前で落ちない）
+const _setPickEl=()=>document.getElementById("setPick"), _setPickGrid=()=>document.getElementById("setPickGrid");
+(function buildSetPick(){
+  const setPickGridEl=_setPickGrid(); if(!setPickGridEl) return;
+  for(let k=0;k<16;k++){
+    const b=document.createElement("button"); b.type="button"; b.className="setpick-k"; b.dataset.k=k;
+    b.innerHTML='<span class="setpick-no">'+String(k+1).padStart(2,"0")+'</span><span class="setpick-tag"></span><span class="setpick-nm"></span><span class="setpick-bpm"></span>';
+    setPickGridEl.appendChild(b);
+  }
+})();
+function setPickIsOpen(){ const m=_setPickEl(); return !!(m && m.style.display!=="none"); }
+function paintSetPick(){
+  const $=id=>document.getElementById(id), no=k=>String(k+1).padStart(2,"0");
+  if($("clSetSwNo")&&$("clSetSwNo").textContent!==no(setCur)) $("clSetSwNo").textContent=no(setCur);
+  if($("clSetSwNm")) $("clSetSwNm").textContent=setName(setCur);
+  const q=$("clSetSwQ"); if(q){ const on=queuedSet!==null; q.hidden=!on; q.textContent=on?"→ "+no(queuedSet):""; const sw=$("clSetSw"); if(sw) sw.classList.toggle("queued",on); }
+  const setPickGridEl=_setPickGrid(); if(!setPickIsOpen()||!setPickGridEl) return;
+  for(let k=0;k<16;k++){ const b=setPickGridEl.children[k]; if(!b) continue; const info=_setInfo(k), on=setIsPlaying(k);
+    b.classList.toggle("on",k===setCur); b.classList.toggle("playing",on); b.classList.toggle("queued",k===queuedSet); b.classList.toggle("fresh",info.fresh);
+    b.setAttribute("aria-pressed",String(k===setCur));
+    b.querySelector(".setpick-tag").textContent = k===queuedSet ? "NEXT" : (k===setCur ? "NOW" : (on ? "PLAY" : ""));
+    b.querySelector(".setpick-nm").textContent = info.name;
+    { const v=+info.bpm||100; b.querySelector(".setpick-bpm").textContent=(Number.isInteger(v)?String(v):v.toFixed(1))+" BPM"; }
+  }
+  const h=$("setPickHelp");
+  if(h) h.textContent = queuedSet!==null ? "次の小節の頭で SET "+no(queuedSet)+" へ（もう一度押すと取り消し）"
+                      : (playing ? "押す＝次の小節の頭でそのセットへ" : "押す＝そのセットへ切り替える");
+}
+function setPickOpen(){ const setPickEl=_setPickEl(); if(!setPickEl) return; setPickEl.style.display="flex"; paintSetPick(); const c=setPickEl.querySelector(".setpick-k.on")||document.getElementById("setPickClose"); if(c) c.focus(); }
+function setPickClose(){ const m=_setPickEl(); if(m) m.style.display="none"; }
+(function(){
+  const sw=document.getElementById("clSetSw");
+  if(sw) sw.addEventListener("click",e=>{ e.preventDefault(); setPickOpen(); });
+  const setPickEl=_setPickEl(), setPickGridEl=_setPickGrid(); if(!setPickEl||!setPickGridEl) return;
+  document.getElementById("setPickClose").addEventListener("click", setPickClose);
+  setPickEl.addEventListener("click",e=>{ if(e.target===setPickEl) setPickClose(); });   // 背景を押すと閉じる
+  setPickEl.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); setPickClose(); } });
+  setPickGridEl.addEventListener("click",e=>{ const b=e.target.closest(".setpick-k"); if(!b) return;
+    const k=+b.dataset.k, no=String(k+1).padStart(2,"0"), r=pickSet(k);
+    if(sampNameEl) sampNameEl.textContent = r==="now" ? "SET "+no+" "+setName(k) : r==="queued" ? "NEXT ▸ SET "+no+"（次の小節の頭で）" : r==="cancel" ? "SET の予約を取り消した" : "SET "+no+" "+setName(k);
+    if(typeof paintPerf==="function") paintPerf();
+    paintSet();
+    if(r==="now"||r==="cur") setPickClose();   // 予約・取り消しのときは開いたまま（切り替わる瞬間が一覧で見える）
+  });
+})();
 // SET のパッドをキーボード / MIDI から（v0.3.159）：指と同じ押す・離す・ホールド・音量。src はその入力を見分ける文字列（"key:Digit1" / "midi:60"）
 const _setIn={};
 function setPadDown(k,src){ return _setIn.down ? _setIn.down(k,src) : false; }
@@ -8588,7 +8700,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.222";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.223";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
