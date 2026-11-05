@@ -113,6 +113,7 @@ function stopTransport(keepVoices){
   drawQueue.length=0; playStep=0;
   if(patSlot!==editPat) patLoad(editPat);   // 止めたら編集中のパターンのミュートへ（塗りは ui/transport-view）
   if(!keepVoices) stopAllVoices(AC.currentTime);   // ループ音を止めてトグル状態もリセット（voice）
+  if(!keepVoices && queuedSet!==null) switchSetNow(queuedSet);   // 予約したセット（PADS の SET ボタン §212）は止めたら今すぐそこへ＝次の ▶ はそのセットから
 }
 function scheduler(){
   // メインスレッドが詰まって大きく遅延した時は、過去ステップを一気に発音（バースト＝デススパイラル）させず、
