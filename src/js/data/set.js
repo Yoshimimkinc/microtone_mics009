@@ -1,13 +1,13 @@
 // @module data/set
 // @provides DEFAULT_KIT, SET_TRACK_DEFAULT, _cloneSnap, _defaultTrackSnap, _emptyPatterns, _setStart,
-//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, setElapsed,
-//    setName, setRename, setsFromProject, snapshotSet, switchSetNow
+//    applySetSnapshot, copySetTo, decodeSetData, defaultSetSnapshot, focusSet, loadSetData, pickSet,
+//    setElapsed, setName, setRename, setsFromProject, snapshotSet, switchSetNow
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
-//    prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur, setDelayTempo,
-//    setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices, stripLegacyLocks, swingPct,
-//    tracks, warmKeyTracks
+//    playing, prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur,
+//    setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
+//    stripLegacyLocks, swingPct, tracks, warmKeyTracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
 // v0.3.144 §145。セットは最初から 16 ある（空という状態は無い。新しいセットは既定のキット＝1-8 空・9-16 プリセット）。
@@ -131,6 +131,16 @@ function focusSet(k){
   applySetSnapshot(setSlots[k], {deferPaint:true});
   clearUndo();
   if(typeof scheduleAutosave==="function") scheduleAutosave();
+}
+// PADS 画面の SET ボタンから選ぶ（v0.3.223 §212）：止まっていればすぐ k へ（音は出さない）。鳴っていれば次の小節の頭で切り替える予約
+// （切り替えは audio/transport が小節頭で switchSetNow）。予約したセット・いまのセットをもう一度選ぶと予約を取り消す。
+// 返り値："now" すぐ切り替えた／"queued" 予約した／"cancel" 予約を取り消した／"cur" もういまのセット
+function pickSet(k){
+  if(!(k>=0&&k<16)) return "cur";
+  if(k===setCur || queuedSet===k){ const had=queuedSet!==null; queuedSet=null; return had?"cancel":"cur"; }
+  if(playing){ queuedSet=k; return "queued"; }
+  stopAllVoices(AC.currentTime);   // 手叩きの余韻を切る（SET モードで止まっているセットを選ぶときと同じ）
+  focusSet(k); return "now";
 }
 // いまのセットを k にコピー（COPY モード＋セットを叩く）。名前はコピー先の番号
 function copySetTo(k){ if(!(k>=0&&k<16)||k===setCur) return false; if(typeof sideStop==="function") sideStop(k); const s=snapshotSet(); s.name="SET "+(k+1); setSlots[k]=_cloneSnap(s); if(typeof setSetLevel==="function") setSetLevel(k, setLevels[setCur]); if(typeof scheduleAutosave==="function") scheduleAutosave(); return true; }

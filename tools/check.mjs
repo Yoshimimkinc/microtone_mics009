@@ -846,6 +846,57 @@ async function setNameTest(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function setPickTest(){
+  // v0.3.223 §212「PAD 画面の中に SET を切り替えるためのボタン」：情報窓の上の段の SET ボタン → 16 セットの一覧。
+  // 止まっていれば押した瞬間に切り替わる（音は出さない）／鳴っていれば次の小節の頭（予約。もう一度で取消、■ で即そこへ）。上の段は 1 行のまま
+  for(const [w,h,mobile] of [[360,640,true],[390,844,true],[1280,800,false]]){
+    const V=`SETPICK ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    await p.evaluate(async()=>{ await clearAutosave(); setRename(4,'CHORUS'); });
+    const row=await p.evaluate(()=>{ const r=document.querySelector('.cl-stat'), sw=document.getElementById('clSetSw'); const mids=[...r.children].filter(c=>c.offsetParent).map(c=>{ const q=c.getBoundingClientRect(); return q.top+q.height/2; });
+      const b=sw.getBoundingClientRect(); return {vis:b.width>0&&b.height>0, h:Math.round(b.height), w:Math.round(b.width), spread:Math.round(Math.max(...mids)-Math.min(...mids)), no:document.getElementById('clSetSwNo').textContent, label:sw.querySelector('i').textContent}; });
+    ok_(`${V} 情報窓の上の段に SET ボタン（SET の字と番号）・上の段は 1 行のまま・押せる大きさ（高さ 32px 以上）`, row.vis && row.spread<12 && row.no==='01' && row.label==='SET' && row.h>=32, JSON.stringify(row));
+    await p.click('#clSetSw'); await p.waitForTimeout(150);
+    const op=await p.evaluate(()=>{ const m=document.getElementById('setPick'), g=[...document.querySelectorAll('#setPickGrid .setpick-k')];
+      return {open:getComputedStyle(m).display!=='none', n:g.length, on:g.filter(b=>b.classList.contains('on')).map(b=>+b.dataset.k), nm4:g[4].querySelector('.setpick-nm').textContent, tag0:g[0].querySelector('.setpick-tag').textContent, help:document.getElementById('setPickHelp').textContent}; });
+    ok_(`${V} 押すと 16 セットの一覧（いまのセットに NOW・名前つき）`, op.open && op.n===16 && op.on.join()==='0' && op.nm4==='CHORUS' && op.tag0==='NOW' && /押す/.test(op.help), JSON.stringify(op));
+    // 止まっている：押した瞬間に切り替わり、一覧は閉じる。音は出さない
+    await p.click('#setPickGrid .setpick-k[data-k="4"]'); await p.waitForTimeout(250);
+    const a=await p.evaluate(()=>({cur:setCur, playing, sides:sideCount(), open:getComputedStyle(document.getElementById('setPick')).display!=='none', no:document.getElementById('clSetSwNo').textContent, setmode:setMode, map:[...document.querySelector('.setmap').children].findIndex(c=>c.classList.contains('cur'))}));
+    ok_(`${V} 止まっているとき：押した瞬間に SET 05 へ（鳴らさない・一覧は閉じる・ボタンと地図が 05）・PADS のまま`, a.cur===4 && !a.playing && a.sides===0 && !a.open && a.no==='05' && !a.setmode && a.map===4, JSON.stringify(a));
+    // 鳴っている：予約（次の小節の頭）。もう一度押すと取消
+    await p.evaluate(()=>{ applyBpm(240); startTransport(); paintTransport(); });
+    await p.click('#clSetSw'); await p.waitForTimeout(120);
+    await p.click('#setPickGrid .setpick-k[data-k="1"]'); await p.waitForTimeout(80);
+    const q=await p.evaluate(()=>({cur:setCur, queued:queuedSet, open:getComputedStyle(document.getElementById('setPick')).display!=='none', tag:document.querySelector('#setPickGrid .setpick-k[data-k="1"] .setpick-tag').textContent, btnQ:document.getElementById('clSetSwQ').textContent, qHidden:document.getElementById('clSetSwQ').hidden}));
+    ok_(`${V} 鳴っているとき：押す＝予約（NEXT・ボタンに → 02・一覧は開いたまま）`, q.cur===4 && q.queued===1 && q.open && q.tag==='NEXT' && q.btnQ==='→ 02' && !q.qHidden, JSON.stringify(q));
+    await p.click('#setPickGrid .setpick-k[data-k="1"]'); await p.waitForTimeout(80);
+    ok_(`${V} 予約したセットをもう一度押す＝取消`, await p.evaluate(()=>queuedSet===null && setCur===4 && document.getElementById('clSetSwQ').hidden), await p.evaluate(()=>queuedSet+'/'+setCur));
+    await p.click('#setPickGrid .setpick-k[data-k="2"]'); await p.waitForTimeout(80);
+    await p.waitForFunction(()=>setCur===2, null, {timeout:4000}).catch(()=>{});
+    const sw=await p.evaluate(()=>({cur:setCur, queued:queuedSet, playing, on:[...document.querySelectorAll('#setPickGrid .setpick-k.on')].map(b=>+b.dataset.k), no:document.getElementById('clSetSwNo').textContent}));
+    ok_(`${V} 小節の頭で SET 03 へ切り替わる（鳴ったまま・一覧とボタンも 03）`, sw.cur===2 && sw.queued===null && sw.playing && sw.on.join()==='2' && sw.no==='03', JSON.stringify(sw));
+    // 予約したまま ■ ＝止めた瞬間にそのセットへ
+    await p.click('#setPickGrid .setpick-k[data-k="6"]'); await p.waitForTimeout(50);
+    await p.evaluate(()=>{ stopTransport(); paintTransport(); }); await p.waitForTimeout(100);
+    ok_(`${V} 予約したまま止める＝止めた瞬間にそのセットへ（次の ▶ はそこから）`, await p.evaluate(()=>setCur===6 && queuedSet===null && !playing), await p.evaluate(()=>setCur+'/'+queuedSet));
+    // 閉じる：背景・✕・Escape
+    await p.keyboard.press('Escape'); await p.waitForTimeout(80);
+    const closed1=await p.evaluate(()=>getComputedStyle(document.getElementById('setPick')).display==='none');
+    await p.click('#clSetSw'); await p.waitForTimeout(80); await p.click('#setPickClose'); await p.waitForTimeout(80);
+    const closed2=await p.evaluate(()=>getComputedStyle(document.getElementById('setPick')).display==='none');
+    ok_(`${V} Escape・✕ で閉じる`, closed1 && closed2, JSON.stringify({closed1,closed2}));
+    // SET モードでは窓が SET ページなので出さない
+    await p.click(mobile ? '#viewDots .vdot[data-view="viewSet"]' : '#modeSet'); await p.waitForTimeout(200);
+    ok_(`${V} SET モードでは SET ボタンを出さない`, await p.evaluate(()=>getComputedStyle(document.getElementById('clSetSw')).display==='none'), 'visible');
+    await p.evaluate(async()=>{ await clearAutosave(); });
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 async function wireSkin(){
   // v0.3.163：スキン WIRE（黒地＋線だけのワイヤーフレーム）
   const V='WIRE 390x844';
@@ -1400,6 +1451,7 @@ await modeOrder();
 await saveScopeTest();
 await wireSkin();
 await setNameTest();
+await setPickTest();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

@@ -82,6 +82,8 @@
              ソフトキー行（＝メニュー）は常に窓の全幅のまま＝ページを移っても幅が動かない -->
         <div class="cl-body">
         <div class="cl-row cl-stat">
+          <!-- SET の切替（v0.3.223 §212「PAD 画面の中に SET を切り替えるボタン」）：押す＝16 セットの一覧（#setPick）。再生中は次の小節の頭で切り替わる -->
+          <button class="cl-setsw" id="clSetSw" type="button" aria-haspopup="dialog" aria-label="セットを切り替える"><i>SET</i><b class="cl-num" id="clSetSwNo">01</b><span class="cl-setsw-nm" id="clSetSwNm"></span><span class="cl-setsw-q" id="clSetSwQ" hidden></span><em aria-hidden="true">▾</em></button>
           <span class="cl-par" data-p="bpm"><i>BPM</i><b class="cl-num" id="perfBpm">94.5</b></span>
           <span class="cl-par" data-p="swing"><i>SWING</i><b class="cl-num" id="clSwing">50</b><u>%</u></span>
           <span><i>PATTERN</i><b class="cl-num" id="perfPat">A</b></span>
