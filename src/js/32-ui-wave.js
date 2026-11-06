@@ -31,12 +31,14 @@ function drawPadWave(i, ink, force){
   const cv=pad.querySelector(".pad-wave"); if(!cv) return;
   const t=tracks[i], kind=t.padKind==="KEY"?"KEY":"SPL";
   const sig=kind==="KEY" ? "K"+JSON.stringify(t.keyPhrase||null) : "S"+(t.start||0)+"|"+(t.end??1);   // 色（スキン）が変わるときは drawAllPadWaves が force で描く
-  if(!force && cv.width>0 && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
+  if(!force && force!==false && cv.width>0 && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
   const w=pad.clientWidth, h=pad.clientHeight;
   if(!w||!h) return;
-  cv._sig=sig; cv._buf=kind==="KEY"?null:t.buffer;
   const dpr=window.devicePixelRatio||1;
   const cw=Math.round(w*dpr), ch=Math.round(h*dpr);
+  // force===false（モードの切替）：大きさまで同じなら描かない
+  if(force===false && cv.width===cw && cv.height===ch && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
+  cv._sig=sig; cv._buf=kind==="KEY"?null:t.buffer;
   if(cv.width!==cw || cv.height!==ch){ cv.width=cw; cv.height=ch; }   // サイズ不変なら再確保しない（毎ヒットのコスト削減）
   const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);   // 絶対変換でscale二重掛けを回避
   ctx.clearRect(0,0,w,h);
@@ -57,7 +59,8 @@ function drawPadWave(i, ink, force){
   }
   ctx.stroke();
 }
-function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink, true); }
+// force＝false：中身も大きさも同じパッドは描かない（モードの切替から。色の計算も描くときだけ）
+function drawAllPadWaves(force=true){ const ink=force?padWaveInk():undefined; for(let i=0;i<PADS.length;i++) drawPadWave(i, ink, force); }
 
 // ===== ステップキーの薄い波形（軽量：トラック毎に1回 data-URL 化してキャッシュ→CSS背景。再生中は再描画しない）=====
 const trackWaveURL=[];   // trackWaveURL[i] = そのトラック波形(start..end)の透明PNG data-URL

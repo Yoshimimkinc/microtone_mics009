@@ -5,8 +5,8 @@
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
-//    playing, prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur,
-//    setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
+//    playing, prepareKeyTrack, prerollAudio, queuedPat, queuedSet, scheduleAutosave, selectPad, selected,
+//    setCur, setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
 //    stripLegacyLocks, swingPct, tracks, warmKeyTracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
@@ -93,7 +93,8 @@ function applySetSnapshot(s, opts){
   if(!keepSel){ editPat=0; editBar=0; patLoad(0, true); }   // セットの頭は A＝ミュートも A のもの
   if(typeof warmKeyTracks==="function") warmKeyTracks();
   for(let i=0;i<PADS.length;i++) applyPadCategory(i);
-  const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
+  const paint=()=>{ if(typeof prerollAudio==="function") prerollAudio(0.3);   // 塗りは重い（16 枚の波形・ステップの絵）。鳴っている音を先に予約しておく（v0.3.226 §216）
+    selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
   if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();
 }
 // 切替の実体（スケジューラが小節頭に呼ぶ／止まっているときは queueSet から直接）。いまのを退避 → 次を live へ。音は stopAt で止める

@@ -928,6 +928,33 @@ async function tapLight(){
     await ctx.close();
   }
 }
+async function playLight(){
+  // v0.3.226 §216「モード変えながら再生してるとき（もたつく）」「SET で再生するときちょっとレーテンシー」：
+  // モードの切替は波形を描き直さず、音を先に予約してから。セットを切り替えても保存用の WAV を作り直さない（音に覚える）
+  const V='PLAYLIGHT 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(()=>{ window.__strokes=0; const o=CanvasRenderingContext2D.prototype.stroke; CanvasRenderingContext2D.prototype.stroke=function(){ if(this.canvas&&this.canvas.classList.contains('pad-wave')) __strokes++; return o.apply(this,arguments); }; });
+  await p.evaluate(()=>{ startTransport(); paintTransport(); });
+  await p.waitForTimeout(200);
+  // 切替の直前に音を先に予約する：切替の後、予約済みの音が 0.2 秒以上先まである
+  const pre=await p.evaluate(()=>{ const before=stepTimeClean(stepIdx)-AC.currentTime; switchView('viewSeq'); const after=stepTimeClean(stepIdx)-AC.currentTime; return {before:Math.round(before*1000), after:Math.round(after*1000)}; });
+  await p.click('#viewDots .vdot[data-view="viewPads"]'); await p.waitForTimeout(150);
+  await p.click('#viewDots .vdot[data-view="viewSet"]'); await p.waitForTimeout(150);
+  await p.click('#viewDots .vdot[data-view="viewPads"]'); await p.waitForTimeout(150);
+  const st=await p.evaluate(()=>({strokes:__strokes, ahead:schedAhead}));
+  ok_(`${V} 再生中にモードを切り替えると、切替の前に音を 0.2 秒以上先まで予約する（先読みはいつもの 0.1 秒に戻る）`, pre.after>=200 && Math.abs(st.ahead-0.1)<1e-9, JSON.stringify({pre,ahead:st.ahead}));
+  ok_(`${V} モードを切り替えても、中身の変わらないパッドの波形は描き直さない`, st.strokes===0, JSON.stringify(st));
+  await p.evaluate(()=>{ stopTransport(); paintTransport(); });
+  // セットを切り替えても、保存用の WAV は作り直さない（音そのものに覚える）
+  const wav=await p.evaluate(async()=>{ let n=0; const o=window.bufToWav; window.bufToWav=function(){ n++; return o.apply(this,arguments); };
+    buildProject(); const n0=n; copySetTo(1); focusSet(1); await new Promise(r=>setTimeout(r,200)); buildProject(); const n1=n-n0; window.bufToWav=o; return {n0,n1}; });
+  ok_(`${V} セットを切り替えた後の保存で、音を WAV に作り直さない`, wav.n1===0, JSON.stringify(wav));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function wireSkin(){
   // v0.3.163：スキン WIRE（黒地＋線だけのワイヤーフレーム）
   const V='WIRE 390x844';
@@ -1484,6 +1511,7 @@ await wireSkin();
 await setNameTest();
 await setPickTest();
 await tapLight();
+await playLight();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

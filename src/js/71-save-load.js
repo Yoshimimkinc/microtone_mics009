@@ -1,6 +1,6 @@
 // @module save-load
-// @provides SAVE_SCOPE_KEY, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop, curSetData,
-//    saveScope, setData, trackData, uint8ToB64, wavB64Cached
+// @provides SAVE_SCOPE_KEY, _wavB64Cache, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop,
+//    curSetData, saveScope, setData, trackData, uint8ToB64, wavB64Cached
 // @uses PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold, editPat,
 //    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, normalizeKeyPhrase, patSync, sampNameEl,
 //    seqDataOf, setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
@@ -54,11 +54,14 @@ function b64ToUint8(b64){
 // SAVE
 // WAV→base64 はバッファが同じで切り出し範囲も同じなら使い回す（重いのはここ）。
 // これで buildProject() が「設定のJSON化＋文字列の連結」だけになり、演奏中に走っても音が飛ばない。
+// 覚える先は音（AudioBuffer）そのもの（v0.3.226 §216）。v0.3.225 まではトラックに覚えていたので、セットを切り替えるたびに
+// トラックの写し（snapshot）が新しくなって覚えが消え、自動保存が全部の音を WAV に変換し直していた（再生中に 0.5 秒止まり、音が遅れた）
+const _wavB64Cache=new WeakMap();   // AudioBuffer → Map("from|to" → base64)
 function wavB64Cached(t, crop){
-  const c=t._wavCache;
-  if(c && c.buf===t.buffer && c.from===crop.fromSamp && c.to===crop.toSamp) return c.b64;
-  const b64=uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp));
-  t._wavCache={buf:t.buffer, from:crop.fromSamp, to:crop.toSamp, b64};
+  const buf=t.buffer, k=crop.fromSamp+"|"+crop.toSamp;
+  let m=_wavB64Cache.get(buf); if(!m){ m=new Map(); _wavB64Cache.set(buf,m); }
+  let b64=m.get(k);
+  if(b64==null){ b64=uint8ToB64(bufToWav(buf, crop.fromSamp, crop.toSamp)); if(m.size>=4) m.delete(m.keys().next().value); m.set(k,b64); }   // 範囲違いは 4 つまで（START / END を動かしている間に溜めない）
   return b64;
 }
 // 1 トラックを .mics の形に（t は live の tracks[i] でも、セットの snapshot の 1 要素でもよい）
