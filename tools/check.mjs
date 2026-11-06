@@ -958,6 +958,35 @@ async function playLight(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function edgeGrab(){
+  // v0.3.229 §219「サンプルのスタートエンドが動かない」：読み込んだばかりの音は START が左端・END が右端。
+  // 指の中心が波形の外（数 px）に落ちると何も起きず、外から始めた指はスクロール扱いでドラッグが切れていた。
+  // 波形の左右 28px の外からでも旗をつかんで最後まで動かせること（EDIT と情報窓の SAMPLE ページ、スマホ幅）
+  for (const where of ['edit','window']){
+    const V=`EDGEGRAB 390x844 ${where}`;
+    const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    const cdp=await ctx.newCDPSession(p);
+    const touch=(type,x,y)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y,id:1}]});
+    await p.evaluate(()=>{ selectPad(0); tracks[0].start=0; tracks[0].end=1; });
+    if(where==='edit') await p.evaluate(()=>openPadEdit(0)); else await p.tap('.cl-key[data-pg="smpl"]');
+    await p.waitForTimeout(600);
+    const r=await p.evaluate(()=>{ const wv=document.getElementById('peWave').parentElement.getBoundingClientRect(); return {l:wv.left,r:wv.right,w:wv.width,y:wv.top+wv.height/2}; });
+    const drag=async(x,dx)=>{ await touch('touchStart',x,r.y); for(let k=1;k<=6;k++){ await touch('touchMove',x+dx*k/6,r.y); await p.waitForTimeout(16);} await touch('touchEnd'); await p.waitForTimeout(200); };
+    await drag(r.l-8, 60);
+    const st=await p.evaluate(()=>tracks[0].start);
+    await drag(r.r+8, -60);
+    const en=await p.evaluate(()=>[tracks[0].end, document.getElementById('padEditModal').style.display]);
+    const want=52/r.w;
+    ok_(`${V} 左端の外 8px から START をつかんで右へ動かせる`, Math.abs(st-want)<0.03, `start=${st.toFixed(3)} want≈${want.toFixed(3)}`);
+    ok_(`${V} 右端の外 8px から END をつかんで左へ動かせる`, Math.abs((1-en[0])-want)<0.03, `end=${en[0].toFixed(3)} want≈${(1-want).toFixed(3)}`);
+    if(where==='edit') ok_(`${V} EDIT は閉じない`, en[1]==='flex', en[1]);
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
   // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
@@ -1551,6 +1580,7 @@ await setPickTest();
 await tapLight();
 await playLight();
 await editTabs();
+await edgeGrab();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
