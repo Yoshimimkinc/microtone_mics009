@@ -2697,3 +2697,18 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - 変えなかったこと：SET は「押して離した瞬間に鳴る」（§175。押しながら上下で音量を動かしても鳴らないため）。押している時間のぶん、押した瞬間に鳴るより遅く感じる。押した瞬間に鳴らすなら、音量の操作を別にする必要がある（判断待ち）。
 検査：`check.mjs` の PLAYLIGHT（モード切替の前に 0.2 秒以上先まで予約・先読みは 0.1 秒に戻る・切替で波形を描き直さない・セット切替の後の保存で WAV を作り直さない）。
 
+## 217. パッドの設定の階層を整理する：情報窓を SOUND / SAMPLE / FX / ASSIGN に（v0.3.227）
+「サンプルのエディットメニューが混乱してて使いにくい。Koala のようにスッキリさせたい」→「階層を整理整頓するとこから始める。TONE・ASSIGN も」→「SAMPLE の波形をいじりながら叩きたい」。
+- 洗い出し（v0.3.226）：
+  - 情報窓 MAIN＝PITCH・SCALE・LEVEL・DELAY・REVERB／SAMPLE＝波形・LOOP・EDIT・種類／TONE＝FILTER・CUTOFF・RESO・ATTACK・FADE／ASSIGN＝CHOKE・OUT・MIDI・KEY・LEARN・CLEAR。
+  - エフェクトのボタン（FILTER・DELAY・REVERB：パッドを動かして量、EDIT＋ボタン＝詳しい設定）。EDIT 画面（名前・LOAD / SAMPLING・波形・PREVIEW / TRIM / REVERSE / DELETE・CHOP）。
+  - 散らかっている理由：ページの分け方に性質の違う値が混ざっていた（MAIN にエフェクトと SEQ 用の SCALE、TONE にエフェクトとサンプルの鳴り始め・終わり、ASSIGN に鳴り方の CHOKE と鍵盤の割り当て）。
+- 決めた階層（演奏者が何をしたいか）：
+  1. 演奏面：パッド・エフェクトのボタン（叩きながら量）・EDIT。
+  2. 情報窓＝選んだパッドの鳴り方：**SOUND**（LEVEL・PITCH・ATTACK・FADE・CHOKE＝音そのもの）／**SAMPLE**（波形。叩きながらいじる＝窓に残す。ユーザーの指定）／**FX**（FILTER・CUTOFF・RESO・DELAY・REVERB＝A B C D ごと。ボタンで動かす値の数字版）／**ASSIGN**（SCALE・OUT・MIDI・KEY・LEARN・CLEAR＝鍵盤・キーとのつなぎ）。
+  3. EDIT 画面＝パッドの中身（SAMPLE / KEY / SCRATCH）。
+  4. MENU＝全体。
+- この版（第 1 段）：情報窓のページだけ。値の書き込み口（`CL_SPEC`）と変え方（横ドラッグ・列挙はタップ・ダブルタップで 0）は変えない。ページの id は main / smpl / fx / asgn（TONE の id tone は fx に）。
+- 次（第 2 段）：SAMPLE の EDIT 画面を、波形 1 つ＋タブ（TRIM / CHOP / SOUND）にする。名前は頭だけ・説明文は消す・「✂ TRIM」（範囲の外を切り捨てる）は見出しと被らない名前に・CHOP の OFF をやめる・DELETE は SOUND タブで 2 回押し。
+検査：`check.mjs` の WINDOW（ページの名前・各ページの欄・SCALE は ASSIGN・DELAY は FX）。
+

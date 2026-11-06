@@ -39,8 +39,12 @@ const CL_SPEC={
   midi:  {lbl:"MIDI",  ro:1, get:t=>t.midiNote, fmt:v=>v==null?"—":midiNoteName(v), w:4},
   key:   {lbl:"KEY",   ro:1, get:t=>t.key,      fmt:v=>v?String(v).toUpperCase():"—", w:4},
 };
+// v0.3.227 §217「階層を整理整頓するとこから」：ページを「演奏者が何をしたいか」で分け直した（値の書き込み口は変えない）。
+// SOUND＝このパッドの音そのもの／SAMPLE＝波形（叩きながらいじる）／FX＝A B C D ごとのエフェクト（エフェクトのボタンで動かす値の数字版）／
+// ASSIGN＝鍵盤・キーとのつなぎ。v0.3.226 までは MAIN（PITCH・SCALE・LEVEL・DELAY・REVERB）と TONE（FILTER…ATTACK・FADE）に
+// 性質の違う値が混ざっていた（エフェクトとサンプルの鳴り始め・終わり、SEQ 用の SCALE と音量）
 const CL_PAGES=[
-  {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},
+  {id:"main", lbl:"SOUND",  f:["level","pitch","attack","fade","choke"]},
   // SET 演奏モード（v0.3.143 §144）：キー列には出さない（モード切替で入る）。中身は ui/set-view の paintSet が書く
   {id:"set",  lbl:"SET",    f:[],
    x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
@@ -53,8 +57,8 @@ const CL_PAGES=[
    b:[{id:"clWave",t:'EDIT'}],   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
    // 種類の切り替え（v0.3.203 §192「EDIT からさらにモードを選ぶけど 1 発で行ける経路」）：押す＝その種類にして、すぐその画面へ（KEY＝ピアノロール・SCRATCH＝スクラッチ）
    x:'<span class="cl-kinds" role="group" aria-label="パッドの種類"><button class="cl-btn cl-kind" data-kind="SPL">SAMPLE</button><button class="cl-btn cl-kind" data-kind="KEY">KEY</button><button class="cl-btn cl-kind" data-kind="SCR">SCRATCH</button></span>'},
-  {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
-  {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
+  {id:"fx",   lbl:"FX",     f:["filter","cutoff","reso","delay","reverb"]},   // A B C D ごと（v0.3.150）
+  {id:"asgn", lbl:"ASSIGN", f:["scale","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
    x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
 ];
 let clPage="main";

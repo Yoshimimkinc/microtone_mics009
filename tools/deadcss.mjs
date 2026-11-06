@@ -44,7 +44,7 @@ const states=[ null,
  ()=>{openPadEdit(0);},
  ()=>{document.querySelector('#clKeys .cl-key[data-pg="smpl"]').click();},
  ()=>{document.querySelector('#clKeys .cl-key[data-pg="asgn"]').click();},
- ()=>{document.querySelector('#clKeys .cl-key[data-pg="tone"]').click();},
+ ()=>{document.querySelector('#clKeys .cl-key[data-pg="fx"]').click();},
  ()=>{document.body.classList.add('perf');},
  ()=>{armMode='edit'; if(typeof paintPerf==='function')paintPerf(); document.body.classList.add('rec-on');},
 ];

@@ -59,17 +59,18 @@ async function run(w,h,mobile){
 
   // 2) 5ページが出る
   const fields={};
-  for(const id of['main','smpl','tone','asgn']){ eq(`${V} ページ切替 ${id}`, await page(id), id);
+  for(const id of['main','smpl','fx','asgn']){ eq(`${V} ページ切替 ${id}`, await page(id), id);
     fields[id]=await p.$$eval('#clPage .cl-par',e=>e.map(x=>x.dataset.p)); }
-  eq(`${V} MAIN欄`,fields.main,['pitch','scale','level','delay','reverb']);   // FXはMAINの2行目（v0.3.108）
+  eq(`${V} SOUND欄`,fields.main,['level','pitch','attack','fade','choke']);   // v0.3.227 §217：音そのもの
   eq(`${V} SAMPLE欄`,fields.smpl,['loop']);   // START/END の数値欄は撤去（v0.3.126 §138）
-  eq(`${V} TONE欄`,fields.tone,['filter','cutoff','reso','attack','fade']);
-  eq(`${V} ASSIGN欄`,fields.asgn,['choke','out','midi','key']);
+  eq(`${V} FX欄`,fields.fx,['filter','cutoff','reso','delay','reverb']);   // A B C D ごとのエフェクト
+  eq(`${V} ASSIGN欄`,fields.asgn,['scale','out','midi','key']);
+  eq(`${V} ページの名前`, await p.$$eval('#clKeys .cl-key',e=>e.map(x=>x.textContent)), ['SOUND','SAMPLE','FX','ASSIGN']);
 
   // 2b) ★ページを移しても寸法が1pxも動かない（幅も高さも／窓・メニュー・キー・パッド）
   //    このクラスの不具合を何度も出しているので、ここで丸ごと止める
   const geo=[];
-  for(const id of['main','smpl','tone','asgn']){ await page(id);
+  for(const id of['main','smpl','fx','asgn']){ await page(id);
     geo.push([id, await p.evaluate(()=>{const r=x=>{const e=document.querySelector(x); if(!e) return null;
         const b=e.getBoundingClientRect(); return [Math.round(b.width),Math.round(b.height),Math.round(b.x),Math.round(b.y)];};
       return {scr:r('.perf-screen'), keys:r('#clKeys'), key1:r('#clKeys .cl-key'), pad:r('#pads .pad'), pads:r('#pads')};})]); }
@@ -100,12 +101,13 @@ async function run(w,h,mobile){
   await drag('.cl-par[data-p="pitch"]',70);
   ok_(`${V} PITCHドラッグ`, await p.evaluate(()=>tracks[selected].tune)===5, 'tune!==5');
   const sc0=await p.evaluate(()=>tracks[selected].scale);
+  await page('asgn');   // SCALE は ASSIGN（v0.3.227 §217）
   await p.click('.cl-par[data-p="scale"]'); await p.waitForTimeout(90);
   ok_(`${V} SCALEタップ`, (await p.evaluate(()=>tracks[selected].scale))!==sc0, '変化なし');
   ok_(`${V} SCALE→SEQ連動`, await p.evaluate(()=>melodicMode)===true, 'melodicMode false');
-  await dbl('.cl-par[data-p="pitch"]');
+  await page('main'); await dbl('.cl-par[data-p="pitch"]');
   ok_(`${V} PITCHダブルクリック=0`, await p.evaluate(()=>tracks[selected].tune)===0, '0でない');
-  await page('main'); await drag('.cl-par[data-p="delay"]',80);
+  await page('fx'); await drag('.cl-par[data-p="delay"]',80);   // DELAY は FX（v0.3.227 §217）
   ok_(`${V} DELAY（旧・入口なし）`, (await p.evaluate(()=>tracks[selected].delaySend))>0, '0のまま');
   await dbl('.cl-par[data-p="delay"]');
   ok_(`${V} DELAYを0へ`, await p.evaluate(()=>tracks[selected].delaySend)===0, '0でない');
@@ -153,7 +155,7 @@ async function run(w,h,mobile){
   const where=()=>p.evaluate(()=>{const b=document.getElementById('peWaveBox');return b?b.parentElement.id:'?';});
   eq(`${V} 波形の所在(ASSIGN中)`, await where(), 'peWaveHome');
   await page('smpl'); eq(`${V} 波形の所在(SAMPLE)`, await where(), 'clWaveSlot');
-  await page('tone'); eq(`${V} 波形の所在(TONE)`, await where(), 'peWaveHome');
+  await page('fx'); eq(`${V} 波形の所在(FX)`, await where(), 'peWaveHome');
   await page('smpl');
   const st0=await p.evaluate(()=>tracks[selected].start);
   await drag('#peStart',60);
@@ -173,7 +175,7 @@ async function run(w,h,mobile){
     let seen=false; for(let k=0;k<30;k++){ await p.waitForTimeout(60); const r=await ph(); if(r.op==='1'&&r.left>0){ seen=true; break; } }
     await p.evaluate(()=>{ document.getElementById('play').click(); tracks[3].patterns[editPat][editBar].fill(0); });
     ok_(`${V} 再生中も再生カーソル`, seen, '再生中にカーソルが出ない');
-    await page('tone'); await p.evaluate(()=>trigger(3)); await p.waitForTimeout(150);
+    await page('fx'); await p.evaluate(()=>trigger(3)); await p.waitForTimeout(150);
     ok_(`${V} 波形が無いページではカーソルを出さない`, (await ph()).op!=='1', '出ている');
     await page('smpl');   // 次の検査（TRIM/CHOP モーダル）は SAMPLE ページの ✂ から開く
   }
@@ -1422,7 +1424,7 @@ async function patFx(){
   await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
   await ready(p);
   await p.evaluate(async()=>{ await clearAutosave(); });
-  const r1=await p.evaluate(()=>{ selectPad(8); setEditPat(0); const t=tracks[8]; t.delaySend=0.5; t.reverbSend=0.3; paintPerf();
+  const r1=await p.evaluate(()=>{ clPage='fx'; renderClPage(); selectPad(8); setEditPat(0); const t=tracks[8]; t.delaySend=0.5; t.reverbSend=0.3; paintPerf();
     setEditPat(1); const b={d:t.delaySend, r:t.reverbSend, f:t.filter}; t.filter='lp'; t.cutoff=2000; t.reso=4;
     setEditPat(0); const win=document.querySelector('.cl-par[data-p="delay"] b'); return {b, a:{d:t.delaySend, r:t.reverbSend, f:t.filter, c:t.cutoff}, win:win?win.textContent:null}; });
   ok_(`${V} A の DELAY / REVERB は B に出ない／B の FILTER は A に戻ると外れる／窓の値も A のもの`, r1.b.d===0 && r1.b.r===0 && r1.b.f==='off' && r1.a.d===0.5 && r1.a.r===0.3 && r1.a.f==='off' && r1.a.c===12000 && r1.win==='50', JSON.stringify(r1));
