@@ -1576,7 +1576,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.226</div>
+  <div class="s-ver" id="splashVer">v0.3.227</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1986,9 +1986,9 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
         <!-- SAMPLEページの時だけ、行の「右側」に波形が入る（窓の高さは増やさない） -->
         <div class="cl-waveslot" id="clWaveSlot"></div>
         <div class="cl-keys" id="clKeys">
-          <button class="cl-key on" data-pg="main">MAIN</button>
+          <button class="cl-key on" data-pg="main">SOUND</button>
           <button class="cl-key" data-pg="smpl">SAMPLE</button>
-          <button class="cl-key" data-pg="tone">TONE</button>
+          <button class="cl-key" data-pg="fx">FX</button>
           <button class="cl-key" data-pg="asgn">ASSIGN</button>
         </div>
         <!-- SET モードのキー列：A B C D は窓の外（主面の下の A B C D）と重複するので v0.3.183 で撤去（§171）。窓の高さを変えないよう、行の高さだけ残す -->
@@ -4684,8 +4684,12 @@ const CL_SPEC={
   midi:  {lbl:"MIDI",  ro:1, get:t=>t.midiNote, fmt:v=>v==null?"—":midiNoteName(v), w:4},
   key:   {lbl:"KEY",   ro:1, get:t=>t.key,      fmt:v=>v?String(v).toUpperCase():"—", w:4},
 };
+// v0.3.227 §217「階層を整理整頓するとこから」：ページを「演奏者が何をしたいか」で分け直した（値の書き込み口は変えない）。
+// SOUND＝このパッドの音そのもの／SAMPLE＝波形（叩きながらいじる）／FX＝A B C D ごとのエフェクト（エフェクトのボタンで動かす値の数字版）／
+// ASSIGN＝鍵盤・キーとのつなぎ。v0.3.226 までは MAIN（PITCH・SCALE・LEVEL・DELAY・REVERB）と TONE（FILTER…ATTACK・FADE）に
+// 性質の違う値が混ざっていた（エフェクトとサンプルの鳴り始め・終わり、SEQ 用の SCALE と音量）
 const CL_PAGES=[
-  {id:"main", lbl:"MAIN",   f:["pitch","scale","level","delay","reverb"]},
+  {id:"main", lbl:"SOUND",  f:["level","pitch","attack","fade","choke"]},
   // SET 演奏モード（v0.3.143 §144）：キー列には出さない（モード切替で入る）。中身は ui/set-view の paintSet が書く
   {id:"set",  lbl:"SET",    f:[],
    x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
@@ -4698,8 +4702,8 @@ const CL_PAGES=[
    b:[{id:"clWave",t:'EDIT'}],   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
    // 種類の切り替え（v0.3.203 §192「EDIT からさらにモードを選ぶけど 1 発で行ける経路」）：押す＝その種類にして、すぐその画面へ（KEY＝ピアノロール・SCRATCH＝スクラッチ）
    x:'<span class="cl-kinds" role="group" aria-label="パッドの種類"><button class="cl-btn cl-kind" data-kind="SPL">SAMPLE</button><button class="cl-btn cl-kind" data-kind="KEY">KEY</button><button class="cl-btn cl-kind" data-kind="SCR">SCRATCH</button></span>'},
-  {id:"tone", lbl:"TONE",   f:["filter","cutoff","reso","attack","fade"]},
-  {id:"asgn", lbl:"ASSIGN", f:["choke","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
+  {id:"fx",   lbl:"FX",     f:["filter","cutoff","reso","delay","reverb"]},   // A B C D ごと（v0.3.150）
+  {id:"asgn", lbl:"ASSIGN", f:["scale","out","midi","key"], b:[{id:"clLearn",t:"LEARN"},{id:"clClear",t:"CLEAR"}],
    x:'<span class="cl-mon" id="clMon" title="鍵盤/キーの着信"><i></i><em>IN</em><b class="cl-num">—</b></span>'},
 ];
 let clPage="main";
@@ -8781,7 +8785,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.226";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.227";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
