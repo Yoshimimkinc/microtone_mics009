@@ -1575,7 +1575,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.223</div>
+  <div class="s-ver" id="splashVer">v0.3.224</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -3626,9 +3626,9 @@ new MutationObserver(()=>{
 //    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
-//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
-//    selected, swapPads, syncEditor, tracks, trigger
+//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, paintSteps,
+//    perfPadDown, perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl,
+//    scratchOpen, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -3738,7 +3738,7 @@ PADS.forEach((p,i)=>{
     }
     if(tgt>=0 && tgt!==i){
       if(copy){ copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
-      else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); paintPadStates(); paintSteps(); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       flashPad(tgt);
     }
     // ドロップ先なし＝何もしない（EDITは維持して続けて並べ替え可）
@@ -4121,13 +4121,16 @@ function clearPadSound(i){
   PADS[i].type="empty"; PADS[i].voice=null; PADS[i].name="PAD "+(i+1);
 }
 // パッドの音色設定をまるごと入れ替え（EDITドラッグの移動）。バッファ差替でピッチキャッシュは自動破棄。
+// v0.3.224 §213「パッドの入れ替えを EDIT のドラッグで行った時、SEQ のデータも入れ替えて」：打ち込み（A B C D 全小節）・p-lock・
+// A B C D ごとのミュート / ソロも音と一緒に動く＝入れ替えても曲は同じに鳴る（いまのセットだけ）
 function swapPads(a,b){
   if(a===b) return;
   pushUndo();
   if(typeof patSync==="function") patSync();   // 入れ替える前に live を今のパターンへ書き戻す
   const ta=tracks[a], tb=tracks[b];
   ta._contentEpoch=(ta._contentEpoch||0)+1;tb._contentEpoch=(tb._contentEpoch||0)+1;
-  for(const k of ["_keySignature","padKind","keyPhrase","sampleState","buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
+  for(const k of ["_keySignature","padKind","keyPhrase","sampleState","buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key",
+                 "patterns","locks","mutes","solos","mute","solo"]){   // SEQ のデータ（v0.3.224。live の mute / solo は入替前に patSync で mutes / solos へ書き戻し済み）
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   { const f=ta.patFx; ta.patFx=tb.patFx; tb.patFx=f; }   // A B C D ごとのエフェクトも一緒に（v0.3.150。live は入替前に patSync 済み）
@@ -8700,7 +8703,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.223";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.224";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

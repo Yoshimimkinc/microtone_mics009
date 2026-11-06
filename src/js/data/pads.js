@@ -56,13 +56,16 @@ function clearPadSound(i){
   PADS[i].type="empty"; PADS[i].voice=null; PADS[i].name="PAD "+(i+1);
 }
 // パッドの音色設定をまるごと入れ替え（EDITドラッグの移動）。バッファ差替でピッチキャッシュは自動破棄。
+// v0.3.224 §213「パッドの入れ替えを EDIT のドラッグで行った時、SEQ のデータも入れ替えて」：打ち込み（A B C D 全小節）・p-lock・
+// A B C D ごとのミュート / ソロも音と一緒に動く＝入れ替えても曲は同じに鳴る（いまのセットだけ）
 function swapPads(a,b){
   if(a===b) return;
   pushUndo();
   if(typeof patSync==="function") patSync();   // 入れ替える前に live を今のパターンへ書き戻す
   const ta=tracks[a], tb=tracks[b];
   ta._contentEpoch=(ta._contentEpoch||0)+1;tb._contentEpoch=(tb._contentEpoch||0)+1;
-  for(const k of ["_keySignature","padKind","keyPhrase","sampleState","buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key"]){
+  for(const k of ["_keySignature","padKind","keyPhrase","sampleState","buffer","rawBuffer","tune","start","end","loop","loopStart","filter","cutoff","reso","vol","choke","name","scale","attack","fade","delaySend","reverbSend","outBus","midiNote","key",
+                 "patterns","locks","mutes","solos","mute","solo"]){   // SEQ のデータ（v0.3.224。live の mute / solo は入替前に patSync で mutes / solos へ書き戻し済み）
     const tmp=ta[k]; ta[k]=tb[k]; tb[k]=tmp;
   }
   { const f=ta.patFx; ta.patFx=tb.patFx; tb.patFx=f; }   // A B C D ごとのエフェクトも一緒に（v0.3.150。live は入替前に patSync 済み）

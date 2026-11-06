@@ -640,15 +640,24 @@ async function copyPaint(){
   const c=await p.evaluate(()=>({ name:tracks[5].name, nm:document.querySelectorAll('#pads .pad')[5].querySelector('.nm').textContent, rn:document.querySelectorAll('#grid .rn')[5].textContent }));
   ok_(`COPY パッド→パッドで名前・表示・行名が写る`, c.name==='KICK X' && c.nm==='KICK X' && /KICK X/.test(c.rn), JSON.stringify(c));
   // MOVE（EDIT中のドラッグ）：入れ替え後に両方のパッド表示が追従
-  await p.evaluate(()=>{ tracks[6].name='SNARE Y'; refreshPadDisplay(6); arm('edit',true); });
+  // v0.3.224 §213：SEQ のデータ（打ち込み・A B C D ごとのミュート）も一緒に入れ替わる
+  await p.evaluate(()=>{ tracks[6].name='SNARE Y'; refreshPadDisplay(6);
+    tracks.forEach(t=>t.patterns.forEach(pt=>pt.forEach(b=>b.fill(0))));
+    tracks[5].patterns[0][0][0]=1; tracks[5].patterns[1][2][3]=1; tracks[6].patterns[0][0][8]=1;
+    patSync(); tracks[6].mutes[1]=true; tracks[5].mute=false; tracks[6].mute=true; patSync();
+    paintSteps(); arm('edit',true); });
   const pads=await p.$$('#pads .pad'); const a=await pads[5].boundingBox(), b=await pads[6].boundingBox();
   await p.mouse.move(a.x+a.width/2, a.y+a.height/2); await p.mouse.down();
   for(let k=1;k<=6;k++) await p.mouse.move(a.x+a.width/2+(b.x-a.x)*k/6, a.y+a.height/2+(b.y-a.y)*k/6);
   await p.mouse.up(); await p.waitForTimeout(150);
   const m=await p.evaluate(()=>({ n5:tracks[5].name, n6:tracks[6].name, nm5:document.querySelectorAll('#pads .pad')[5].querySelector('.nm').textContent, nm6:document.querySelectorAll('#pads .pad')[6].querySelector('.nm').textContent,
     rn5:document.querySelectorAll('#grid .rn')[5].textContent, rn6:document.querySelectorAll('#grid .rn')[6].textContent, arm:armMode }));
+  const sq=await p.evaluate(()=>{ const on=(i,pp,b)=>tracks[i].patterns[pp][b].map((v,k)=>v>0?k:-1).filter(k=>k>=0).join();
+    return {a0:on(5,0,0), a1:on(5,1,2), b0:on(6,0,0), b1:on(6,1,2), m5:tracks[5].mute, m6:tracks[6].mute, ms5:tracks[5].mutes.join(), ms6:tracks[6].mutes.join()}; });
+  ok_(`MOVE ドラッグで SEQ の打ち込みとミュートも入れ替わる（A B C D 全小節）`, sq.a0==='8' && sq.a1==='' && sq.b0==='0' && sq.b1==='3' && sq.m5===true && sq.m6===false && /^true,true/.test(sq.ms5) && /^false,false/.test(sq.ms6), JSON.stringify(sq));
   ok_(`MOVE ドラッグで入れ替え＝データと表示が両方追従`, m.n5==='SNARE Y' && m.n6==='KICK X' && m.nm5==='SNARE Y' && m.nm6==='KICK X' && /SNARE Y/.test(m.rn5) && /KICK X/.test(m.rn6), JSON.stringify(m));
   const u=await p.evaluate(()=>{ doUndo(); return { n5:tracks[5].name, n6:tracks[6].name, nm5:document.querySelectorAll('#pads .pad')[5].querySelector('.nm').textContent, rn6:document.querySelectorAll('#grid .rn')[6].textContent }; });
+  ok_(`MOVE ↩ で SEQ の打ち込みも戻る`, await p.evaluate(()=>tracks[5].patterns[0][0][0]>0 && tracks[5].patterns[1][2][3]>0 && tracks[6].patterns[0][0][8]>0 && !tracks[5].mute && tracks[6].mute), 'not restored');
   ok_(`MOVE ↩ で戻る（データも表示も）`, u.n5==='KICK X' && u.n6==='SNARE Y' && u.nm5==='KICK X' && /SNARE Y/.test(u.rn6), JSON.stringify(u));
   // LOAD（#samp）：名前・パッド表示・SEQ 行名・カテゴリが揃う（v0.3.131 までは SEQ 行名とステップ波形が古いままだった）
   const fsp=await import('node:fs/promises'); const wavPath='/tmp/ZEBRA.wav';
