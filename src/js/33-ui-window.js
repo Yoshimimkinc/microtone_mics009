@@ -108,7 +108,7 @@ function paintClPage(){
   paintClKind();
   document.querySelectorAll("#clPage .cl-par").forEach(el=>{
     const sp=CL_SPEC[el.dataset.p]; if(!sp) return;
-    el.querySelector("b").textContent=sp.fmt(sp.get(t));
+    const b=el.querySelector("b"), v=sp.fmt(sp.get(t)); if(b.textContent!==v) b.textContent=v;   // 変わったときだけ（v0.3.225 §215）
   });
   const lb=document.getElementById("clLearn");
   if(lb) lb.classList.toggle("learn-on", assignTarget===selected);

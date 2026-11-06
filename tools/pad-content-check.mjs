@@ -98,6 +98,13 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     await p.click('#keyStep');await p.click('#keyUndo');await p.click('#keyUndo');
     await p.click('#keyPreview');await p.waitForTimeout(400);const pl=await p.evaluate(()=>({loop:!!_keyLoop,head:!document.getElementById('keyPlayhead').hidden}));await p.click('#keyPreview');
     ok_(`${label} KEY の PLAY はループ再生とプレイヘッド`,pl.loop&&pl.head,JSON.stringify(pl));
+    // v0.3.225 §214：パッドが手叩き・SEQ で鳴ったら（エディタの PLAY ではなく）、ロールにも再生位置。音が止まると消える
+    { await p.waitForFunction(()=>!_keyLoop);await p.evaluate(async()=>{await prepareKeyTrack(tracks[8],bpmVal);});
+      await p.evaluate(()=>{playVoice(8,AC.currentTime+.02,false,true);});await p.waitForTimeout(350);
+      const a=await p.evaluate(()=>{const ph=document.getElementById('keyPlayhead'),m=/translateX\(([\d.]+)px\)/.exec(ph.style.transform||'');return {head:!ph.hidden,x:m?+m[1]:-1,x0:58+_keyRange(false).start*_keyZoom,run:!!_keyPadRun};});
+      await p.evaluate(()=>{stopVoices(tracks[8],AC.currentTime);});await p.waitForTimeout(150);
+      const b=await p.evaluate(()=>({head:!document.getElementById('keyPlayhead').hidden,run:!!_keyPadRun}));
+      ok_(`${label} KEY のパッドが鳴るとロールに再生位置（START から進む）・止まると消える`,a.head&&a.run&&a.x>a.x0&&!b.head&&!b.run,JSON.stringify({a,b})); }
     // v0.3.207 §196：MORE はロールの上に重なるシート（鍵盤を押し出さない）・CHORDS で定番の進行が入ってループで鳴る・UNDO で戻る
     const before=await p.evaluate(()=>({n:tracks[8].keyPhrase.notes.length,pads:document.getElementById('keyPads').getBoundingClientRect().bottom}));
     await p.click('#keyMore');await p.waitForTimeout(150);
