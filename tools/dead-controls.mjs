@@ -17,10 +17,13 @@ const EXPECT=new Set([
   '#resetBtn',                             // confirm を出す（自動では承認しない）
   '#undoBtn',                              // Undoスタックが空なら何も起きない（別途 check.mjs でUndoは検査）
   '#modeSeq',                              // SEQ画面で再タップ＝変化なしが正しい（PADS側は #modePads）
+  'span.cl-par[p=bpm]',                    // BPM はタップテンポ＝2 回押して初めて変わる（1 回では何も起きないのが正しい。v0.3.126 §137）。
+                                           // v0.3.227 までは直前の SET ボタンで開いた一覧が閉じる変化を拾って通っていただけ（v0.3.228 で判明）
 ]);
 // 「すでに選択中（.on）」のものは再タップで変化しないのが正しい＝個別登録せず一律で除外
 // 「押した後に元へ戻す」もの：状態を汚さないために押した直後に戻す
-const REVERT={ '#play':()=>{ if(playing) document.getElementById('play').click(); } };
+const REVERT={ '#play':()=>{ if(playing) document.getElementById('play').click(); },
+  '#clSetSw':()=>{ if(typeof setPickClose==='function') setPickClose(); } };   // SET の一覧（v0.3.223）は開いたら閉じる＝次のクリックが一覧の背景に落ちない
 
 const br=await chromium.launch({...(process.env.PW_EXE?{executablePath:process.env.PW_EXE}:{}),
   args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
@@ -72,7 +75,7 @@ for(const view of ['viewPads','viewSeq']){
   await p.waitForTimeout(350);
   const list=await targets();
   for(const t of list){
-    if(EXPECT.has(t.name.split('[')[0])) continue;
+    if(EXPECT.has(t.name.split('[')[0]) || EXPECT.has(t.name)) continue;   // 要素の種類ごと、または欄ごと（span.cl-par[p=bpm]）
     const onNow=await p.evaluate(path=>{const e=document.querySelector(path); return !!(e&&e.classList.contains('on'));}, t.path);
     if(onNow) continue;   // 「すでに選択中」は再タップで変化しないのが正しい（クリック直前の状態で判定＝非決定性を潰す）
     const before=await fingerprint();

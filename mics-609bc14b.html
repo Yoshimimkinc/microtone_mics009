@@ -1009,7 +1009,8 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   .modal.pe{width:min(440px,94vw);}
   /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
   /* 名前の行（v0.3.120）：ここがサンプル名を変える唯一の入口 */
-  .pe-name{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-width:0;}
+  .pe-name{display:none;align-items:center;gap:8px;margin:0 0 10px;min-width:0;}
+  .pe-name.editing{display:flex;}   /* v0.3.228 §218：名前は頭に出ているので、この行は入力中だけ */
   .pe-name-txt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-size:14px;letter-spacing:.04em;color:var(--ink);}
   .pe-name-edit{flex:0 0 auto;min-width:34px;min-height:34px;background:transparent;border:1px solid var(--line);
@@ -1020,7 +1021,6 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
     letter-spacing:.04em;background:var(--well);color:var(--well-ink);border:1px solid var(--teal);border-radius:6px;}
   .pe-sample{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
   .pe-sample .loadbtn{font-size:12px;padding:8px 14px;}
-  .pe-sample-hint{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-left:auto;}
   /* 波形＝発光するLCD窓（沈ませて窓だけが点いて見える。外向きグローは使わずinsetで軽量） */
   .pe-wave{position:relative;background:#0a0d10;border:1px solid var(--edge);border-radius:8px;
     height:128px;overflow:hidden;margin-bottom:0;touch-action:none;cursor:ew-resize;
@@ -1072,7 +1072,6 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   .pe-empty .pe-sample{flex-direction:column;gap:10px;margin-top:6px;}
   .pe-empty .pe-sample .loadbtn{width:100%;font-size:14px;min-height:54px;display:flex;
     align-items:center;justify-content:center;border-radius:10px;}
-  .pe-empty .pe-sample-hint{margin:0;text-align:center;}
 
    /* Pitch/Level＝スライダーを横幅一杯に */
   @media(max-width:380px){
@@ -1151,12 +1150,27 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   .fxm-list.filt .fxm-type{display:block;}
 
   /* v0.3.199 §188 EDIT を見出しで区切る・値に名前と単位（参考 UI の TRIM 画面） */
-  .pe-sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--line);
-    font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--ink);}
-  .pe-sec small{font-size:10px;font-weight:400;letter-spacing:.02em;color:var(--dim);}
+  /* v0.3.228 §218：見出し（.pe-sec）は撤去。波形の下にタブ TRIM / CHOP / SOURCE、見えるのは 1 つだけ */
+  .pe-tabs{display:flex;gap:0;margin:10px 0 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .pe-tab{flex:1 1 0;min-height:40px;padding:0 6px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.12em;
+    background:transparent;color:var(--dim);border:0;border-left:1px solid var(--line);cursor:pointer;touch-action:manipulation;}
+  .pe-tab:first-child{border-left:0;}
+  .pe-tab.on{background:color-mix(in srgb,var(--teal) 16%,transparent);color:var(--teal);box-shadow:inset 0 -2px 0 var(--teal);}
+  .pe-panel{display:none;}
+  .pe-panel.on{display:block;}
+  .pe-panel .pe-sample{margin:10px 0 0;}
+  .pe-panel .pe-sample>*{flex:1 1 0;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;
+    padding:0 8px;font:inherit;font-size:11px;letter-spacing:.1em;background:var(--panel2);border:1px solid var(--line);border-radius:7px;}
+  .pe-panel .pe-del{flex:0 0 auto;padding:0 12px;color:var(--red);}   /* 消すのは控えめに（枠は他と同じ・文字だけ赤）。2 回押し */
+  .pe-panel .pe-del.armed{background:var(--red);color:#fff;border-color:var(--red);}
+  .pe-panel .pe-chop{margin:10px 0 0;}
+  /* 音の無いパッド：波形・数字・TRIM / CHOP は出さず、SOURCE（音を入れる）だけを大きく */
+  .pe-empty #peWaveHome,.pe-empty .pe-range,.pe-empty .pe-tabs{display:none;}
+  .pe-empty .pe-panel .pe-sample{flex-direction:column;}
+  .pe-empty .pe-del{display:none;}
   .pe-range{display:flex;justify-content:space-between;gap:8px;margin:6px 0 0;font-size:10px;letter-spacing:.1em;color:var(--dim);}
   .pe-range b{margin-left:4px;font-size:13px;letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums;}
-  #padEditModal[data-pad-kind=KEY] .pe-sec-wave,#padEditModal[data-pad-kind=KEY] .pe-range{display:none;}
+  #padEditModal[data-pad-kind=KEY] .pe-range,#padEditModal[data-pad-kind=KEY] .pe-tabs,#padEditModal[data-pad-kind=KEY] .pe-panel{display:none;}
   #peKinds .t{font-size:11px;letter-spacing:.08em;}
 
   .pe-transport button{min-width:0;}
@@ -1564,6 +1578,14 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
 #scratchEditor .scratch-panel .pad-head .pad-head-kinds button{background:transparent;border-color:currentColor;border-width:0 0 0 1px}#scratchEditor .scratch-panel .pad-head .pad-head-kinds button:first-child{border-left:0}
 #scratchEditor .scratch-panel .pad-head .pad-head-kinds button[aria-pressed=true],#padEditModal .pad-head .pad-head-kinds button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#10221d}   /* 画面ごとのボタンの色より強く（選んでいる種類＝teal） */
 #scratchEditor .scratch-panel .scratch-attack{grid-area:atk;font-size:11px;font-weight:700;letter-spacing:.06em;line-height:1.25;min-height:44px}   /* v0.3.221 §210：フェーダーの真上＝そのフェーダーの開く速さ */
+/* v0.3.228 §218：EDIT の名前の ✎ は頭の名前の横（名前の行は入力中だけ） */
+.pad-head[data-screen=edit] .pad-head-name{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"no pen" "sub pen";align-items:center;column-gap:6px}
+.pad-head[data-screen=edit] .pad-head-no{grid-area:no;font-size:11px;opacity:.7}
+.pad-head[data-screen=edit] .pad-head-sub{grid-area:sub;font-size:14px;font-weight:700;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:1}
+.pad-head[data-screen=edit] .pad-head-name .pe-name-edit{grid-area:pen;min-width:32px;min-height:32px;padding:0}
+/* 波形が主役：EDIT の中では高く、全体の帯は細く */
+#padEditModal .pe-wave{height:min(200px,26vh);min-height:128px}
+#padEditModal .pe-over{height:24px}
 </style>
 </head>
 <body>
@@ -1576,7 +1598,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.227</div>
+  <div class="s-ver" id="splashVer">v0.3.228</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1739,56 +1761,65 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
       <div class="modal pe" role="dialog" aria-modal="true" aria-label="パッドの EDIT（SAMPLE）">
         <!-- v0.3.218 §207：3 つの画面（EDIT / KEY / SCRATCH）に共通の頭。PAD 番号・SAMPLE | KEY | SCRATCH・CLOSE が同じ場所（ui/pad-kind が中身を作る） -->
         <div class="pad-head" data-screen="edit"></div>
-        <!-- 名前：唯一の変更入口（v0.3.120）。✎ を押すと入力箱が出る -->
-        <div class="pe-name">
-          <span class="pe-name-txt" id="peName">—</span>
-          <button class="pe-name-edit" id="peNameEdit" title="名前を変える" aria-label="名前を変える">✎</button>
-          <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
-                 spellcheck="false" aria-label="パッドの名前" hidden>
+        <!-- 名前（v0.3.228 §218）：✎ は共通の頭（ui/pad-kind が #peNameEdit を頭へ移す）。この行は入力中だけ出る。名前を変える入口はここだけ（v0.3.120） -->
+      <div class="pe-name">
+        <span class="pe-name-txt" id="peName">—</span>
+        <button class="pe-name-edit" id="peNameEdit" title="名前を変える" aria-label="名前を変える">✎</button>
+        <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
+               spellcheck="false" aria-label="パッドの名前" hidden>
+      </div>
+      <!-- v0.3.228 §218「Koala のようにスッキリ」：波形が主役（1 つ）、下にタブ TRIM / CHOP / SOURCE。一度に見えるのは 1 つのタブだけ。
+           見出しと説明文（SOURCE / TRIM / PROCESS / CHOP、§188）は撤去 -->
+      <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
+      <div id="peWaveHome">
+        <div id="peWaveBox">
+          <div class="pe-over" id="peOver">
+            <canvas id="peOverCv"></canvas>
+            <div class="pe-over-win" id="peOverWin"></div>
+          </div>
+          <div class="pe-wave">
+            <canvas id="peWave"></canvas>
+            <div class="shade" id="peShadeL"></div>
+            <div class="shade" id="peShadeR"></div>
+            <div class="playhead" id="pePlayhead"></div>
+            <div class="cue" id="peCue"><span class="cap">▶</span></div>
+            <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
+            <div class="handle start" id="peStart"><span class="cap">START</span></div>
+            <div class="handle end" id="peEnd"><span class="cap">END</span></div>
+          </div>
         </div>
-        <!-- v0.3.199 §188：見出しで区切り、値に名前と単位（参考 UI の TRIM 画面）。略さない（SPL→SAMPLE・SCR→SCRATCH・REV→REVERSE・ATK→ATTACK） -->
-        <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
-        <div class="pe-sec pe-sec-wave">SOURCE<small>音を入れる</small></div>
+      </div>
+      <div class="pe-range" aria-live="polite"><span>START <b id="peStartVal">0 ms</b></span><span>END <b id="peEndVal">—</b></span><span>LENGTH <b id="peLenVal">—</b></span></div>
+      <div class="pe-tabs" id="peTabs" role="tablist" aria-label="EDIT のタブ">
+        <button class="pe-tab" data-tab="trim" role="tab">TRIM</button>
+        <button class="pe-tab" data-tab="chop" role="tab">CHOP</button>
+        <button class="pe-tab" data-tab="source" role="tab">SOURCE</button>
+      </div>
+      <!-- TRIM：START / END は波形の旗で。ここは試聴と加工 -->
+      <div class="pe-panel" data-panel="trim" role="tabpanel">
+        <div class="pe-transport">
+          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
+          <button class="pe-trim" id="peRev">⇄ REVERSE</button>
+          <button class="pe-trim" id="peTrunc" title="START〜END の外を切り捨てる（↩ で戻せる）">✂ CUT</button>
+        </div>
+      </div>
+      <!-- CHOP：タブを開くと切れ目が波形に出る（OFF は撤去）。→ PADS で確定 -->
+      <div class="pe-panel" data-panel="chop" role="tabpanel">
+        <div class="pe-chop">
+          <div class="seg" id="edChopMode"><button class="on" data-mode="time">EVEN</button><button data-mode="attack">ATTACK</button></div>
+          <div class="seg" id="edChopDiv"><button data-n="2">2</button><button class="on" data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
+          <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LOW</button><button class="on" data-s="mid">MID</button><button data-s="high">HIGH</button></div>
+          <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
+        </div>
+      </div>
+      <!-- SOURCE：音を入れる・差し替える・消す（DELETE は 2 回押し） -->
+      <div class="pe-panel" data-panel="source" role="tabpanel">
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
           <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SAMPLING</span>
-          <span class="pe-sample-hint">ファイルを読み込む / マイク・タブの音を録る</span>
-        </div>
-        <div class="pe-sec pe-sec-wave">TRIM<small>START / END を波形の上でドラッグ（ダブルタップ＝全体）</small></div>
-        <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
-        <div id="peWaveHome">
-          <div id="peWaveBox">
-            <div class="pe-over" id="peOver">
-              <canvas id="peOverCv"></canvas>
-              <div class="pe-over-win" id="peOverWin"></div>
-            </div>
-            <div class="pe-wave">
-              <canvas id="peWave"></canvas>
-              <div class="shade" id="peShadeL"></div>
-              <div class="shade" id="peShadeR"></div>
-              <div class="playhead" id="pePlayhead"></div>
-              <div class="cue" id="peCue"><span class="cap">▶</span></div>
-              <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
-              <div class="handle start" id="peStart"><span class="cap">START</span></div>
-              <div class="handle end" id="peEnd"><span class="cap">END</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="pe-range" aria-live="polite"><span>START <b id="peStartVal">0 ms</b></span><span>END <b id="peEndVal">—</b></span><span>LENGTH <b id="peLenVal">—</b></span></div>
-        <div class="pe-sec pe-sec-wave">PROCESS<small>試聴・加工</small></div>
-        <div class="pe-transport">
-          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
-          <button class="pe-trim" id="peTrunc">✂ TRIM</button>
-          <button class="pe-trim" id="peRev">⇄ REVERSE</button>
           <button class="pe-trim pe-del" id="peDel" title="このパッドの音を消す（2 回押す・↩ で戻せる）">✕ DELETE</button>
         </div>
-        <div class="pe-sec pe-sec-wave">CHOP<small>パッドに分ける：分け方・数（OFF＝分けない）</small></div>
-        <div class="pe-chop">
-          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATTACK</button></div>
-          <div class="seg" id="edChopDiv"><button class="on" data-n="0">OFF</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
-          <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
-          <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
-        </div>
+      </div>
       </div>
     </div>
 
@@ -5401,9 +5432,10 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 })();
 
 // @module edit-modal
-// @provides _ovCache, closePadEdit, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor,
-//    peCueFrom, peCueT, peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue,
-//    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+// @provides _ovCache, _peChopMode, _peChopN, closePadEdit, cropBufferToSelection, openPadEdit, peCue,
+//    peCueBuf, peCueFor, peCueFrom, peCueT, peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun,
+//    peRangePaint, peSetCue, peTab, peTabSet, peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver,
+//    renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
 //    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadHeads,
 //    paintPadName, paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo,
@@ -5617,7 +5649,8 @@ function peNameSync(){
   const btn=document.getElementById("peNameEdit"), inp=document.getElementById("peNameIn"),
         txt=document.getElementById("peName");
   if(!btn||!inp||!txt) return;
-  const show=on=>{ inp.hidden=!on; txt.hidden=on; btn.hidden=on; };
+  const row=inp.parentElement;
+  const show=on=>{ inp.hidden=!on; txt.hidden=on; btn.hidden=on; if(row) row.classList.toggle("editing",on); };   // 行は入力中だけ出る（✎ は頭、v0.3.228）
   const open=()=>{ inp.value=tracks[peTarget].name||PADS[peTarget].name||""; show(true); inp.focus(); inp.select(); };
   const close=commit=>{ if(commit) renameTrack(peTarget, inp.value); show(false); peNameSync(); };
   btn.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); open(); });
@@ -5629,7 +5662,29 @@ function peNameSync(){
   inp.addEventListener("blur",()=>{ if(!inp.hidden) close(true); });
   window.peNameCloseBox=()=>{ if(!inp.hidden) close(false); };   // モーダルを閉じる時に入力箱も畳む
 })();
+// EDIT のタブ（v0.3.228 §218「Koala のようにスッキリ」）：TRIM＝試聴と加工／CHOP＝パッドに分ける／SOURCE＝音を入れる・消す。
+// 見えるのは 1 つだけ。CHOP を開いている間だけ切れ目を波形に出す（離れると消える。v0.3.227 までの OFF ボタンの代わり）。
+// 分け方（EVEN / ATTACK）と数は覚えておき、次に CHOP を開いたときに戻す
+let peTab="trim", _peChopMode="time", _peChopN=4;
+function peTabSet(tab){
+  if(!["trim","chop","source"].includes(tab)) tab="trim";
+  const was=peTab; peTab=tab;
+  document.querySelectorAll("#peTabs .pe-tab").forEach(b=>{ const on=b.dataset.tab===tab; b.classList.toggle("on",on); b.setAttribute("aria-selected",String(on)); });
+  document.querySelectorAll("#padEditModal .pe-panel").forEach(p=>p.classList.toggle("on",p.dataset.panel===tab));
+  chopTarget=peTarget;
+  if(tab==="chop"){ chopMode=_peChopMode; chopDivN=_peChopN; }
+  else { if(was==="chop"){ _peChopMode=chopMode; if(chopDivN>=2) _peChopN=chopDivN; } chopMode="time"; chopDivN=0; }   // CHOP の外では線を出さない
+  syncChopSeg("edChopMode","mode",chopMode==="attack"?"attack":"time");
+  syncChopSeg("edChopDiv","n",String(chopDivN>=2?chopDivN:_peChopN));
+  syncChopSeg("edChopSens","s",chopSens);
+  document.getElementById("edChopDiv").style.display = (tab!=="chop"||chopMode==="time")?"":"none";
+  document.getElementById("edChopSens").style.display = (tab==="chop"&&chopMode==="attack")?"":"none";
+  computeChopBounds();
+  if(tracks[peTarget] && tracks[peTarget].buffer && document.getElementById("padEditModal").style.display==="flex") renderPeWave(peTarget);
+}
 function openPadEdit(i){
+  const _pem=document.getElementById("padEditModal");
+  const _again=_pem && _pem.style.display==="flex" && peTarget===i && _pem.classList.contains("pe-empty")===!tracks[i].buffer;   // 開いたまま中身を塗り直すだけ（タブはそのまま）
   if(typeof clWaveTo==="function") clWaveTo("modal");   // 窓に出していた波形を回収してから開く
   if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
@@ -5641,14 +5696,9 @@ function openPadEdit(i){
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
   // このモーダルに残るのは「入り組んだ設定」＝波形の切り出し（TRIM/REV/CHOP）と音源の差し替えだけ。
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
-  // CHOPプレビュー初期化（この編集パッドを対象に。既定 TIME / 8分割）
-  chopTarget=i; chopMode="time"; chopDivN=0; chopSens="mid";   // 既定OFF＝開いた時は線を出さない（分割を選んだ瞬間だけ）
-  syncChopSeg("edChopMode","mode",chopMode);
-  syncChopSeg("edChopDiv","n",String(chopDivN));
-  syncChopSeg("edChopSens","s",chopSens);
-  document.getElementById("edChopDiv").style.display = chopMode==="time"?"":"none";
-  document.getElementById("edChopSens").style.display = chopMode==="attack"?"":"none";
-  computeChopBounds();
+  // タブ（v0.3.228 §218）：音の無いパッドは SOURCE（音を入れる）、音があれば TRIM で開く。開いたまま塗り直すだけならタブはそのまま
+  chopTarget=i;
+  peTabSet(_again ? peTab : (t.buffer ? "trim" : "source"));
   const modal=document.getElementById("padEditModal");
   peOpenedAt=performance.now();
   document.body.classList.add("pe-open");   // 開いている間は窓の ✂ ボタンを隠す（二重）
@@ -5667,6 +5717,7 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
   modal.addEventListener("click",e=>{ if(performance.now()-peOpenedAt<450){ e.stopPropagation(); e.preventDefault(); } },true);
   // ✕（#peClose）は v0.3.218 §207 で撤去。閉じるのは共通の頭の CLOSE
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
+  document.getElementById("peTabs").addEventListener("click",e=>{ const b=e.target.closest(".pe-tab"); if(b) peTabSet(b.dataset.tab); });
   // DELETE（v0.3.160）：「EDIT メニューの中に、サンプルを消す DELETE がないといけない」。2 回押す（2.5 秒以内）＝消す。↩ で戻せる
   let peDelT=-1e9;   // 起動直後（performance.now() が 2.5 秒未満）の 1 回目を 2 回目と取り違えない
   const peDelBtn=document.getElementById("peDel");
@@ -5861,26 +5912,26 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
     pushUndo();
     // 失敗（ロングサンプルで端末のメモリが足りない等）は黙らず理由を出す。途中で落ちても buffer は差し替え前のまま（v0.3.169 §163）
     try{ cropBufferToSelection(t); }
-    catch(err){ console.warn("[trim]",err); sampNameEl.textContent="TRIM できなかった — "+((err&&(err.name||err.message))||err)+"（範囲を短くしてもう一度）"; return; }
+    catch(err){ console.warn("[trim]",err); sampNameEl.textContent="CUT できなかった — "+((err&&(err.name||err.message))||err)+"（範囲を短くしてもう一度）"; return; }
     renderPeWave(peTarget); drawPadWave(peTarget);
-    sampNameEl.textContent="TRIM完了  ↩で戻せる";
+    sampNameEl.textContent="CUT ▸ START〜END の外を切り捨てた  ↩で戻せる";
   });
   // ===== CHOP（EDIT内に統合）：この編集パッドをスライスして各パッドへ展開 =====
   document.getElementById("edChopMode").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
-    chopMode=b.dataset.mode; chopTarget=peTarget; syncChopSeg("edChopMode","mode",chopMode);
+    chopMode=b.dataset.mode; _peChopMode=chopMode; chopTarget=peTarget; syncChopSeg("edChopMode","mode",chopMode);
     document.getElementById("edChopDiv").style.display = chopMode==="time"?"":"none";
     document.getElementById("edChopSens").style.display = chopMode==="attack"?"":"none";
     computeChopBounds(); renderPeWave(peTarget);
   });
   document.getElementById("edChopDiv").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
-    chopDivN=+b.dataset.n; chopTarget=peTarget; syncChopSeg("edChopDiv","n",String(chopDivN)); computeChopBounds(); renderPeWave(peTarget);
+    chopDivN=+b.dataset.n; _peChopN=chopDivN; chopTarget=peTarget; syncChopSeg("edChopDiv","n",String(chopDivN)); computeChopBounds(); renderPeWave(peTarget);
   });
   document.getElementById("edChopSens").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
     chopSens=b.dataset.s; chopTarget=peTarget; syncChopSeg("edChopSens","s",chopSens); computeChopBounds(); renderPeWave(peTarget);
   });
   document.getElementById("edChopApply").addEventListener("click",()=>{
     if(chopTarget!==peTarget){ chopTarget=peTarget; computeChopBounds(); }   // 手動調整済みの線は再計算で潰さない
-    if(chopBounds.length<3){ sampNameEl.textContent="CHOP — まず分割数（2/4/8/16 か ATK）を選ぶ"; return; }
+    if(chopBounds.length<3){ sampNameEl.textContent="CHOP — 切れ目が見つからない（数を選ぶか、ATTACK の感度を上げる）"; return; }
     applyChop();
   });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });
@@ -8053,7 +8104,10 @@ function paintPadHeads(){
   for(const h of document.querySelectorAll('.pad-head')){
     const screen=h.dataset.screen,i=padScreenTarget(screen);if(!(i>=0)||!tracks[i])continue;
     const t=tracks[i],kind=padKind(t);
-    h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0')+(t.name||PADS[i].name?' · '+(t.name||PADS[i].name):'');
+    const nm=t.name||PADS[i].name||'';
+    // EDIT は「PAD 01」と名前を 2 段に（横に ✎ が並ぶので 1 行だとスマホで名前が切れる。v0.3.228 §218）
+    if(screen==='edit'){h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0');const sb=h.querySelector('.pad-head-sub');if(sb)sb.textContent=nm;}
+    else h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0')+(nm?' · '+nm:'');
     h.querySelectorAll('[data-head-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.headKind===kind)));
   }
 }
@@ -8077,6 +8131,8 @@ async function padHeadGo(screen,kind){
     h.addEventListener('click',e=>{const b=e.target.closest('[data-head-kind]');if(b){padHeadGo(h.dataset.screen,b.dataset.headKind).catch(err=>sampNameEl.textContent=err.message);return;}
       if(e.target.closest('.pad-head-close'))padScreenClose(h.dataset.screen);});
   }
+  // v0.3.228 §218：EDIT の名前の ✎ は頭の名前の横（名前の行は入力中だけ出る）。ボタンの実体と登録は 51-edit-modal のまま、置き場所だけ移す
+  { const pen=document.getElementById('peNameEdit'),hn=document.querySelector('.pad-head[data-screen="edit"] .pad-head-name');if(pen&&hn)hn.appendChild(pen); }
   // v0.3.215 §204：EDIT の KEY を押す＝KEY にしてそのままピアノロール → v0.3.218 §207 で共通の頭（padHeadGo）に置き換え。EDIT の種類ボタン（#peKinds）は撤去
 })();
 // @module ui/key-entry
@@ -8785,7 +8841,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.227";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.228";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

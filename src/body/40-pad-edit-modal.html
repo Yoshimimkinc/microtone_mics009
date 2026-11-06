@@ -2,56 +2,65 @@
       <div class="modal pe" role="dialog" aria-modal="true" aria-label="パッドの EDIT（SAMPLE）">
         <!-- v0.3.218 §207：3 つの画面（EDIT / KEY / SCRATCH）に共通の頭。PAD 番号・SAMPLE | KEY | SCRATCH・CLOSE が同じ場所（ui/pad-kind が中身を作る） -->
         <div class="pad-head" data-screen="edit"></div>
-        <!-- 名前：唯一の変更入口（v0.3.120）。✎ を押すと入力箱が出る -->
-        <div class="pe-name">
-          <span class="pe-name-txt" id="peName">—</span>
-          <button class="pe-name-edit" id="peNameEdit" title="名前を変える" aria-label="名前を変える">✎</button>
-          <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
-                 spellcheck="false" aria-label="パッドの名前" hidden>
+        <!-- 名前（v0.3.228 §218）：✎ は共通の頭（ui/pad-kind が #peNameEdit を頭へ移す）。この行は入力中だけ出る。名前を変える入口はここだけ（v0.3.120） -->
+      <div class="pe-name">
+        <span class="pe-name-txt" id="peName">—</span>
+        <button class="pe-name-edit" id="peNameEdit" title="名前を変える" aria-label="名前を変える">✎</button>
+        <input class="pe-name-in" id="peNameIn" type="text" maxlength="16" autocomplete="off"
+               spellcheck="false" aria-label="パッドの名前" hidden>
+      </div>
+      <!-- v0.3.228 §218「Koala のようにスッキリ」：波形が主役（1 つ）、下にタブ TRIM / CHOP / SOURCE。一度に見えるのは 1 つのタブだけ。
+           見出しと説明文（SOURCE / TRIM / PROCESS / CHOP、§188）は撤去 -->
+      <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
+      <div id="peWaveHome">
+        <div id="peWaveBox">
+          <div class="pe-over" id="peOver">
+            <canvas id="peOverCv"></canvas>
+            <div class="pe-over-win" id="peOverWin"></div>
+          </div>
+          <div class="pe-wave">
+            <canvas id="peWave"></canvas>
+            <div class="shade" id="peShadeL"></div>
+            <div class="shade" id="peShadeR"></div>
+            <div class="playhead" id="pePlayhead"></div>
+            <div class="cue" id="peCue"><span class="cap">▶</span></div>
+            <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
+            <div class="handle start" id="peStart"><span class="cap">START</span></div>
+            <div class="handle end" id="peEnd"><span class="cap">END</span></div>
+          </div>
         </div>
-        <!-- v0.3.199 §188：見出しで区切り、値に名前と単位（参考 UI の TRIM 画面）。略さない（SPL→SAMPLE・SCR→SCRATCH・REV→REVERSE・ATK→ATTACK） -->
-        <!-- このパッドに音を入れる/差し替える（全レイアウト共通の導線） -->
-        <div class="pe-sec pe-sec-wave">SOURCE<small>音を入れる</small></div>
+      </div>
+      <div class="pe-range" aria-live="polite"><span>START <b id="peStartVal">0 ms</b></span><span>END <b id="peEndVal">—</b></span><span>LENGTH <b id="peLenVal">—</b></span></div>
+      <div class="pe-tabs" id="peTabs" role="tablist" aria-label="EDIT のタブ">
+        <button class="pe-tab" data-tab="trim" role="tab">TRIM</button>
+        <button class="pe-tab" data-tab="chop" role="tab">CHOP</button>
+        <button class="pe-tab" data-tab="source" role="tab">SOURCE</button>
+      </div>
+      <!-- TRIM：START / END は波形の旗で。ここは試聴と加工 -->
+      <div class="pe-panel" data-panel="trim" role="tabpanel">
+        <div class="pe-transport">
+          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
+          <button class="pe-trim" id="peRev">⇄ REVERSE</button>
+          <button class="pe-trim" id="peTrunc" title="START〜END の外を切り捨てる（↩ で戻せる）">✂ CUT</button>
+        </div>
+      </div>
+      <!-- CHOP：タブを開くと切れ目が波形に出る（OFF は撤去）。→ PADS で確定 -->
+      <div class="pe-panel" data-panel="chop" role="tabpanel">
+        <div class="pe-chop">
+          <div class="seg" id="edChopMode"><button class="on" data-mode="time">EVEN</button><button data-mode="attack">ATTACK</button></div>
+          <div class="seg" id="edChopDiv"><button data-n="2">2</button><button class="on" data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
+          <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LOW</button><button class="on" data-s="mid">MID</button><button data-s="high">HIGH</button></div>
+          <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
+        </div>
+      </div>
+      <!-- SOURCE：音を入れる・差し替える・消す（DELETE は 2 回押し） -->
+      <div class="pe-panel" data-panel="source" role="tabpanel">
         <div class="pe-sample">
           <span class="loadbtn" id="peLoadBtn">⤓ LOAD</span>
           <span class="loadbtn" id="peSmplBtn" style="color:var(--red);">● SAMPLING</span>
-          <span class="pe-sample-hint">ファイルを読み込む / マイク・タブの音を録る</span>
-        </div>
-        <div class="pe-sec pe-sec-wave">TRIM<small>START / END を波形の上でドラッグ（ダブルタップ＝全体）</small></div>
-        <!-- 波形エディタは1つだけ。情報窓のSAMPLEページとこの箱の間を「移動」する（複製しない） -->
-        <div id="peWaveHome">
-          <div id="peWaveBox">
-            <div class="pe-over" id="peOver">
-              <canvas id="peOverCv"></canvas>
-              <div class="pe-over-win" id="peOverWin"></div>
-            </div>
-            <div class="pe-wave">
-              <canvas id="peWave"></canvas>
-              <div class="shade" id="peShadeL"></div>
-              <div class="shade" id="peShadeR"></div>
-              <div class="playhead" id="pePlayhead"></div>
-              <div class="cue" id="peCue"><span class="cap">▶</span></div>
-              <div class="handle loop" id="peLoop"><span class="cap">LOOP</span></div>
-              <div class="handle start" id="peStart"><span class="cap">START</span></div>
-              <div class="handle end" id="peEnd"><span class="cap">END</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="pe-range" aria-live="polite"><span>START <b id="peStartVal">0 ms</b></span><span>END <b id="peEndVal">—</b></span><span>LENGTH <b id="peLenVal">—</b></span></div>
-        <div class="pe-sec pe-sec-wave">PROCESS<small>試聴・加工</small></div>
-        <div class="pe-transport">
-          <button class="pe-play" id="peAudition" aria-label="試聴"><span class="tri"></span>PREVIEW</button>
-          <button class="pe-trim" id="peTrunc">✂ TRIM</button>
-          <button class="pe-trim" id="peRev">⇄ REVERSE</button>
           <button class="pe-trim pe-del" id="peDel" title="このパッドの音を消す（2 回押す・↩ で戻せる）">✕ DELETE</button>
         </div>
-        <div class="pe-sec pe-sec-wave">CHOP<small>パッドに分ける：分け方・数（OFF＝分けない）</small></div>
-        <div class="pe-chop">
-          <div class="seg" id="edChopMode"><button class="on" data-mode="time">TIME</button><button data-mode="attack">ATTACK</button></div>
-          <div class="seg" id="edChopDiv"><button class="on" data-n="0">OFF</button><button data-n="2">2</button><button data-n="4">4</button><button data-n="8">8</button><button data-n="16">16</button></div>
-          <div class="seg" id="edChopSens" style="display:none;"><button data-s="low">LO</button><button class="on" data-s="mid">MID</button><button data-s="high">HI</button></div>
-          <button class="pe-trim" id="edChopApply" style="border-color:var(--amber);color:var(--amber);">✂ <span id="edChopTxt">CHOP→PADS</span></button>
-        </div>
+      </div>
       </div>
     </div>
 

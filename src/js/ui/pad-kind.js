@@ -80,7 +80,10 @@ function paintPadHeads(){
   for(const h of document.querySelectorAll('.pad-head')){
     const screen=h.dataset.screen,i=padScreenTarget(screen);if(!(i>=0)||!tracks[i])continue;
     const t=tracks[i],kind=padKind(t);
-    h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0')+(t.name||PADS[i].name?' · '+(t.name||PADS[i].name):'');
+    const nm=t.name||PADS[i].name||'';
+    // EDIT は「PAD 01」と名前を 2 段に（横に ✎ が並ぶので 1 行だとスマホで名前が切れる。v0.3.228 §218）
+    if(screen==='edit'){h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0');const sb=h.querySelector('.pad-head-sub');if(sb)sb.textContent=nm;}
+    else h.querySelector('.pad-head-no').textContent='PAD '+String(i+1).padStart(2,'0')+(nm?' · '+nm:'');
     h.querySelectorAll('[data-head-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.headKind===kind)));
   }
 }
@@ -104,5 +107,7 @@ async function padHeadGo(screen,kind){
     h.addEventListener('click',e=>{const b=e.target.closest('[data-head-kind]');if(b){padHeadGo(h.dataset.screen,b.dataset.headKind).catch(err=>sampNameEl.textContent=err.message);return;}
       if(e.target.closest('.pad-head-close'))padScreenClose(h.dataset.screen);});
   }
+  // v0.3.228 §218：EDIT の名前の ✎ は頭の名前の横（名前の行は入力中だけ出る）。ボタンの実体と登録は 51-edit-modal のまま、置き場所だけ移す
+  { const pen=document.getElementById('peNameEdit'),hn=document.querySelector('.pad-head[data-screen="edit"] .pad-head-name');if(pen&&hn)hn.appendChild(pen); }
   // v0.3.215 §204：EDIT の KEY を押す＝KEY にしてそのままピアノロール → v0.3.218 §207 で共通の頭（padHeadGo）に置き換え。EDIT の種類ボタン（#peKinds）は撤去
 })();

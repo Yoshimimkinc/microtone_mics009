@@ -2712,3 +2712,17 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - 次（第 2 段）：SAMPLE の EDIT 画面を、波形 1 つ＋タブ（TRIM / CHOP / SOUND）にする。名前は頭だけ・説明文は消す・「✂ TRIM」（範囲の外を切り捨てる）は見出しと被らない名前に・CHOP の OFF をやめる・DELETE は SOUND タブで 2 回押し。
 検査：`check.mjs` の WINDOW（ページの名前・各ページの欄・SCALE は ASSIGN・DELAY は FX）。
 
+## 218. SAMPLE の EDIT 画面：波形 1 つ＋タブ TRIM / CHOP / SOURCE（v0.3.228）
+§217 の第 2 段。「Koala のようにスッキリさせたい」。
+- v0.3.227 まで：見出し 4 つ（SOURCE / TRIM / PROCESS / CHOP）に説明文。全部が同時に見え、名前は頭と名前の行の 2 回。「TRIM」が見出し（START / END を動かす）とボタン（外を切り捨てる）の 2 つの意味。CHOP は OFF を選んでいても CHOP ボタンが押せた。DELETE が PREVIEW の横に赤く大きく。
+- いま：
+  - 頭：PAD 番号（小）と名前（大）の 2 段、その横に ✎（`#peNameEdit` を ui/pad-kind が頭へ移す。登録は 51-edit-modal のまま＝名前を変える入口は 1 つ）。名前だけの行（`.pe-name`）は入力中だけ出る。
+  - 波形：高く（`min(200px, 26vh)`、最低 128px）。全体の帯は 24px に細く。START / END / LENGTH は波形の下に 1 行。
+  - タブ（`peTabSet`）：**TRIM**＝PREVIEW・REVERSE・CUT（START〜END の外を切り捨てる＝旧「✂ TRIM」。見出しと被らない名前に）／**CHOP**＝EVEN（旧 TIME）/ ATTACK・2 / 4 / 8 / 16・「CHOP 01–04」／**SOURCE**＝LOAD・SAMPLING・DELETE（2 回押し・枠は他と同じで文字だけ赤）。
+  - CHOP の切れ目は CHOP タブを開いている間だけ出る（他のタブでは chopDivN＝0）。OFF は撤去。分け方と数は覚えて、次に CHOP を開くと戻る（既定 EVEN・4）。
+  - 開くタブ：音のあるパッドは TRIM、空のパッドは SOURCE（波形・数字・タブ・DELETE は出さず、LOAD / SAMPLING を大きく）。開いたまま塗り直すとき（ループの切替・DELETE の後など）は、空かどうかが変わらなければタブはそのまま。
+  - 撤去：見出し（`.pe-sec`）と説明文、`.pe-sample-hint`。
+- 情報窓の SAMPLE ページ（波形をいじりながら叩く）は変えない。波形の実体は 1 つで、窓と EDIT の間を移動する（今まで通り）。
+検査：`check.mjs` の EDITTABS（開くタブ・タブごとに見えるもの・CHOP の切れ目は CHOP の間だけ・数を覚える・塗り直しでタブが変わらない・空のパッド）、名前変更（頭に 2 段・✎ は頭・名前の行は隠れる）、EDIT のタブ名、LOAD / SAMPLING と DELETE は SOURCE タブから。
+- 関門 `dead-controls` の直し：BPM（タップテンポ。2 回押して初めて変わる）を 1 回押しても何も起きないのは正しいので、理由つきで EXPECT に（欄ごとに書けるようにした）。v0.3.227 までは、直前の SET ボタン（§212）で開いた一覧が BPM のクリックで閉じる変化を拾って通っていた。指紋は画面の文字を 7 文字おきに拾うので、EDIT の文字数が変わって見逃すようになり発覚。SET ボタンを押した後は一覧を閉じる（REVERT）。
+

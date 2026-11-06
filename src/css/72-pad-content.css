@@ -163,3 +163,11 @@
 #scratchEditor .scratch-panel .pad-head .pad-head-kinds button{background:transparent;border-color:currentColor;border-width:0 0 0 1px}#scratchEditor .scratch-panel .pad-head .pad-head-kinds button:first-child{border-left:0}
 #scratchEditor .scratch-panel .pad-head .pad-head-kinds button[aria-pressed=true],#padEditModal .pad-head .pad-head-kinds button[aria-pressed=true]{background:var(--teal,#3dd6c4);color:#10221d}   /* 画面ごとのボタンの色より強く（選んでいる種類＝teal） */
 #scratchEditor .scratch-panel .scratch-attack{grid-area:atk;font-size:11px;font-weight:700;letter-spacing:.06em;line-height:1.25;min-height:44px}   /* v0.3.221 §210：フェーダーの真上＝そのフェーダーの開く速さ */
+/* v0.3.228 §218：EDIT の名前の ✎ は頭の名前の横（名前の行は入力中だけ） */
+.pad-head[data-screen=edit] .pad-head-name{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"no pen" "sub pen";align-items:center;column-gap:6px}
+.pad-head[data-screen=edit] .pad-head-no{grid-area:no;font-size:11px;opacity:.7}
+.pad-head[data-screen=edit] .pad-head-sub{grid-area:sub;font-size:14px;font-weight:700;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:1}
+.pad-head[data-screen=edit] .pad-head-name .pe-name-edit{grid-area:pen;min-width:32px;min-height:32px;padding:0}
+/* 波形が主役：EDIT の中では高く、全体の帯は細く */
+#padEditModal .pe-wave{height:min(200px,26vh);min-height:128px}
+#padEditModal .pe-over{height:24px}

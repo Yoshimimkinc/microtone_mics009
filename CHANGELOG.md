@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.228 (2026-11-06)
+- SAMPLE の EDIT 画面を整理した（パッドの設定の階層の整理、第 2 段）：波形を大きく 1 つ、その下にタブ **TRIM / CHOP / SOURCE**。一度に見えるのは 1 つのタブだけ。
+  - TRIM：PREVIEW・REVERSE・CUT（START〜END の外を切り捨てる。今までの「✂ TRIM」。見出しの TRIM と同じ名前で紛らわしかった）
+  - CHOP：タブを開くと切れ目が波形に出る（既定 4 つ。OFF ボタンは撤去）。EVEN / ATTACK と数を選んで「CHOP 01–04」で確定。選んだ数は次に開いた時も同じ。
+  - SOURCE：LOAD・SAMPLING・DELETE（2 回押し。控えめな見た目に）
+- 名前は頭に「PAD 01」と名前の 2 段で出し、✎ も頭に。名前だけの行は入力中だけ出る。
+- 見出し（SOURCE / TRIM / PROCESS / CHOP）と説明文は撤去。
+- 音のあるパッドは TRIM、空のパッドは SOURCE（LOAD / SAMPLING だけを大きく）で開く。
+
 ## v0.3.227 (2026-11-06)
 - 情報窓のページを「何をしたいか」で分け直した（パッドの設定の階層の整理、第 1 段）：
   - SOUND（旧 MAIN）＝このパッドの音そのもの：LEVEL・PITCH・ATTACK・FADE・CHOKE
