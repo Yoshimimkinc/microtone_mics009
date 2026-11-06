@@ -336,7 +336,7 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
     else                      t.loopStart=Math.max(0,Math.min(n,(t.end??1)));
     renderPeWave(peTarget);
   };
-  peWaveEl.addEventListener("pointerdown",e=>{
+  const peDown=e=>{
     if(!tracks[peTarget]||!tracks[peTarget].buffer) return;   // 空パッドは無視
     e.preventDefault();
     const tt=tracks[peTarget];
@@ -355,7 +355,8 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
     }
     peDownX=e.clientX; peDownN=n;
     try{ peWaveEl.setPointerCapture(e.pointerId); }catch(_){}
-  });
+  };
+  peWaveEl.addEventListener("pointerdown",e=>peDown(e));
   peWaveEl.addEventListener("pointermove",e=>{
     if(pePtrs.size>=2) return;   // ピンチ中はズーム側に任せる
     if(dragKind){ peApply(peNorm(e.clientX)+dragOff); return; }
@@ -395,7 +396,7 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
       peZoomTo(anchor-(anchor-peV0)*(ns/sp), anchor+(peV1-anchor)*(ns/sp));
     }
   },{passive:false});
-  peWaveEl.addEventListener("pointerdown",e=>{
+  const pePinchDown=e=>{
     if(!tracks[peTarget]||!tracks[peTarget].buffer) return;
     pePtrs.set(e.pointerId,{x:e.clientX, x0:e.clientX});
     if(pePtrs.size===2){
@@ -410,7 +411,32 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
       dragKind=null; peLastTap=0; peZoomTo(0,1); return;
     }
     peLastTap=now2; peTapPrev=dragPrev;
-  });
+  };
+  peWaveEl.addEventListener("pointerdown",e=>pePinchDown(e));
+  // 端の旗は波形の外からもつかめる（v0.3.229 §219）：読み込んだばかりの音は START が左端・END が右端にあり、
+  // 指の中心が波形の外（数 px）に落ちると何も起きなかった＝「START / END が動かない」。左右 28px の外側で、
+  // 近くに START / END / LOOP の旗があるときだけ波形の押下として扱う（ボタン類の上は除く。試聴カーソルやパンは波形の中だけ）
+  const PE_EDGE_SLOP=28;
+  const peEdgeGrab=(tg,x,y)=>{
+    if(!tg || !tg.closest || tg.closest(".pe-wave") || tg.closest("button,input,select,label,a,.loadbtn,.cl-par,.cl-btn")) return false;
+    if(!tracks[peTarget] || !tracks[peTarget].buffer || !peWaveVisible()) return false;
+    const r=peWaveEl.getBoundingClientRect();
+    if(y<r.top || y>r.bottom) return false;
+    const out=x<r.left ? r.left-x : x>r.right ? x-r.right : -1;
+    if(out<0 || out>PE_EDGE_SLOP) return false;
+    const k=pickHandle(peNorm(x));
+    return !!k && k!=="cue";
+  };
+  document.addEventListener("pointerdown",e=>{
+    if(!peEdgeGrab(e.target,e.clientX,e.clientY)) return;
+    e.stopPropagation();
+    peDown(e); pePinchDown(e);
+  }, true);
+  // 押した場所（波形の外）は touch-action が効かずスクロール扱い→数 px でドラッグが切れる。touchstart を止めてスクロールさせない
+  document.addEventListener("touchstart",e=>{
+    const tc=e.touches && e.touches.length===1 ? e.touches[0] : null;
+    if(tc && peEdgeGrab(e.target,tc.clientX,tc.clientY)) e.preventDefault();
+  }, {capture:true, passive:false});
   peWaveEl.addEventListener("pointermove",e=>{
     if(!pePtrs.has(e.pointerId)) return;
     const prev=[...pePtrs.values()];
