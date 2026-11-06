@@ -2,7 +2,8 @@
   .modal.pe{width:min(440px,94vw);}
   /* EDIT先頭：このパッドへサンプルを入れる/差し替える導線（LOAD / ● SMPL） */
   /* 名前の行（v0.3.120）：ここがサンプル名を変える唯一の入口 */
-  .pe-name{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-width:0;}
+  .pe-name{display:none;align-items:center;gap:8px;margin:0 0 10px;min-width:0;}
+  .pe-name.editing{display:flex;}   /* v0.3.228 §218：名前は頭に出ているので、この行は入力中だけ */
   .pe-name-txt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-size:14px;letter-spacing:.04em;color:var(--ink);}
   .pe-name-edit{flex:0 0 auto;min-width:34px;min-height:34px;background:transparent;border:1px solid var(--line);
@@ -13,7 +14,6 @@
     letter-spacing:.04em;background:var(--well);color:var(--well-ink);border:1px solid var(--teal);border-radius:6px;}
   .pe-sample{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
   .pe-sample .loadbtn{font-size:12px;padding:8px 14px;}
-  .pe-sample-hint{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-left:auto;}
   /* 波形＝発光するLCD窓（沈ませて窓だけが点いて見える。外向きグローは使わずinsetで軽量） */
   .pe-wave{position:relative;background:#0a0d10;border:1px solid var(--edge);border-radius:8px;
     height:128px;overflow:hidden;margin-bottom:0;touch-action:none;cursor:ew-resize;
@@ -65,7 +65,6 @@
   .pe-empty .pe-sample{flex-direction:column;gap:10px;margin-top:6px;}
   .pe-empty .pe-sample .loadbtn{width:100%;font-size:14px;min-height:54px;display:flex;
     align-items:center;justify-content:center;border-radius:10px;}
-  .pe-empty .pe-sample-hint{margin:0;text-align:center;}
 
    /* Pitch/Level＝スライダーを横幅一杯に */
   @media(max-width:380px){
@@ -144,12 +143,27 @@
   .fxm-list.filt .fxm-type{display:block;}
 
   /* v0.3.199 §188 EDIT を見出しで区切る・値に名前と単位（参考 UI の TRIM 画面） */
-  .pe-sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--line);
-    font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--ink);}
-  .pe-sec small{font-size:10px;font-weight:400;letter-spacing:.02em;color:var(--dim);}
+  /* v0.3.228 §218：見出し（.pe-sec）は撤去。波形の下にタブ TRIM / CHOP / SOURCE、見えるのは 1 つだけ */
+  .pe-tabs{display:flex;gap:0;margin:10px 0 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .pe-tab{flex:1 1 0;min-height:40px;padding:0 6px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.12em;
+    background:transparent;color:var(--dim);border:0;border-left:1px solid var(--line);cursor:pointer;touch-action:manipulation;}
+  .pe-tab:first-child{border-left:0;}
+  .pe-tab.on{background:color-mix(in srgb,var(--teal) 16%,transparent);color:var(--teal);box-shadow:inset 0 -2px 0 var(--teal);}
+  .pe-panel{display:none;}
+  .pe-panel.on{display:block;}
+  .pe-panel .pe-sample{margin:10px 0 0;}
+  .pe-panel .pe-sample>*{flex:1 1 0;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;
+    padding:0 8px;font:inherit;font-size:11px;letter-spacing:.1em;background:var(--panel2);border:1px solid var(--line);border-radius:7px;}
+  .pe-panel .pe-del{flex:0 0 auto;padding:0 12px;color:var(--red);}   /* 消すのは控えめに（枠は他と同じ・文字だけ赤）。2 回押し */
+  .pe-panel .pe-del.armed{background:var(--red);color:#fff;border-color:var(--red);}
+  .pe-panel .pe-chop{margin:10px 0 0;}
+  /* 音の無いパッド：波形・数字・TRIM / CHOP は出さず、SOURCE（音を入れる）だけを大きく */
+  .pe-empty #peWaveHome,.pe-empty .pe-range,.pe-empty .pe-tabs{display:none;}
+  .pe-empty .pe-panel .pe-sample{flex-direction:column;}
+  .pe-empty .pe-del{display:none;}
   .pe-range{display:flex;justify-content:space-between;gap:8px;margin:6px 0 0;font-size:10px;letter-spacing:.1em;color:var(--dim);}
   .pe-range b{margin-left:4px;font-size:13px;letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums;}
-  #padEditModal[data-pad-kind=KEY] .pe-sec-wave,#padEditModal[data-pad-kind=KEY] .pe-range{display:none;}
+  #padEditModal[data-pad-kind=KEY] .pe-range,#padEditModal[data-pad-kind=KEY] .pe-tabs,#padEditModal[data-pad-kind=KEY] .pe-panel{display:none;}
   #peKinds .t{font-size:11px;letter-spacing:.08em;}
 
   .pe-transport button{min-width:0;}

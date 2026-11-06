@@ -1,7 +1,8 @@
 // @module edit-modal
-// @provides _ovCache, closePadEdit, cropBufferToSelection, openPadEdit, peCue, peCueBuf, peCueFor,
-//    peCueFrom, peCueT, peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun, peRangePaint, peSetCue,
-//    peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver, renderPeWave, syncPeOverWin
+// @provides _ovCache, _peChopMode, _peChopN, closePadEdit, cropBufferToSelection, openPadEdit, peCue,
+//    peCueBuf, peCueFor, peCueFrom, peCueT, peCueTimer, peFmtTime, peNameSync, pePlayRAF, pePlayheadRun,
+//    peRangePaint, peSetCue, peTab, peTabSet, peWaveVisible, refreshOpenPadEdit, renameTrack, renderPeOver,
+//    renderPeWave, syncPeOverWin
 // @uses AC, PADS, applyChop, chopBounds, chopDivN, chopMode, chopSens, chopTarget, clPage, clSyncWave,
 //    clWaveTo, clearPadSound, computeChopBounds, drawPadWave, flashPad, paintClPage, paintPadHeads,
 //    paintPadName, paintPerf, peOpenedAt, peTarget, peV0, peV1, previewVoiceFrom, pushUndo,
@@ -215,7 +216,8 @@ function peNameSync(){
   const btn=document.getElementById("peNameEdit"), inp=document.getElementById("peNameIn"),
         txt=document.getElementById("peName");
   if(!btn||!inp||!txt) return;
-  const show=on=>{ inp.hidden=!on; txt.hidden=on; btn.hidden=on; };
+  const row=inp.parentElement;
+  const show=on=>{ inp.hidden=!on; txt.hidden=on; btn.hidden=on; if(row) row.classList.toggle("editing",on); };   // 行は入力中だけ出る（✎ は頭、v0.3.228）
   const open=()=>{ inp.value=tracks[peTarget].name||PADS[peTarget].name||""; show(true); inp.focus(); inp.select(); };
   const close=commit=>{ if(commit) renameTrack(peTarget, inp.value); show(false); peNameSync(); };
   btn.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); open(); });
@@ -227,7 +229,29 @@ function peNameSync(){
   inp.addEventListener("blur",()=>{ if(!inp.hidden) close(true); });
   window.peNameCloseBox=()=>{ if(!inp.hidden) close(false); };   // モーダルを閉じる時に入力箱も畳む
 })();
+// EDIT のタブ（v0.3.228 §218「Koala のようにスッキリ」）：TRIM＝試聴と加工／CHOP＝パッドに分ける／SOURCE＝音を入れる・消す。
+// 見えるのは 1 つだけ。CHOP を開いている間だけ切れ目を波形に出す（離れると消える。v0.3.227 までの OFF ボタンの代わり）。
+// 分け方（EVEN / ATTACK）と数は覚えておき、次に CHOP を開いたときに戻す
+let peTab="trim", _peChopMode="time", _peChopN=4;
+function peTabSet(tab){
+  if(!["trim","chop","source"].includes(tab)) tab="trim";
+  const was=peTab; peTab=tab;
+  document.querySelectorAll("#peTabs .pe-tab").forEach(b=>{ const on=b.dataset.tab===tab; b.classList.toggle("on",on); b.setAttribute("aria-selected",String(on)); });
+  document.querySelectorAll("#padEditModal .pe-panel").forEach(p=>p.classList.toggle("on",p.dataset.panel===tab));
+  chopTarget=peTarget;
+  if(tab==="chop"){ chopMode=_peChopMode; chopDivN=_peChopN; }
+  else { if(was==="chop"){ _peChopMode=chopMode; if(chopDivN>=2) _peChopN=chopDivN; } chopMode="time"; chopDivN=0; }   // CHOP の外では線を出さない
+  syncChopSeg("edChopMode","mode",chopMode==="attack"?"attack":"time");
+  syncChopSeg("edChopDiv","n",String(chopDivN>=2?chopDivN:_peChopN));
+  syncChopSeg("edChopSens","s",chopSens);
+  document.getElementById("edChopDiv").style.display = (tab!=="chop"||chopMode==="time")?"":"none";
+  document.getElementById("edChopSens").style.display = (tab==="chop"&&chopMode==="attack")?"":"none";
+  computeChopBounds();
+  if(tracks[peTarget] && tracks[peTarget].buffer && document.getElementById("padEditModal").style.display==="flex") renderPeWave(peTarget);
+}
 function openPadEdit(i){
+  const _pem=document.getElementById("padEditModal");
+  const _again=_pem && _pem.style.display==="flex" && peTarget===i && _pem.classList.contains("pe-empty")===!tracks[i].buffer;   // 開いたまま中身を塗り直すだけ（タブはそのまま）
   if(typeof clWaveTo==="function") clWaveTo("modal");   // 窓に出していた波形を回収してから開く
   if(peTarget!==i){ peV0=0; peV1=1; }   // 別パッドを開いたらズームは全体へ（同パッド更新は窓維持）
   peTarget=i;
@@ -239,14 +263,9 @@ function openPadEdit(i){
   // 音作り（PITCH/LEVEL/SCALE/LOOP/FILTER/CHOKE/ASSIGN/OUT/ATTACK/FADE）は情報窓のページが唯一の入口。
   // このモーダルに残るのは「入り組んだ設定」＝波形の切り出し（TRIM/REV/CHOP）と音源の差し替えだけ。
   document.getElementById("padEditModal").classList.toggle("pe-empty", !t.buffer);   // 空パッドは音源選択だけ見せる
-  // CHOPプレビュー初期化（この編集パッドを対象に。既定 TIME / 8分割）
-  chopTarget=i; chopMode="time"; chopDivN=0; chopSens="mid";   // 既定OFF＝開いた時は線を出さない（分割を選んだ瞬間だけ）
-  syncChopSeg("edChopMode","mode",chopMode);
-  syncChopSeg("edChopDiv","n",String(chopDivN));
-  syncChopSeg("edChopSens","s",chopSens);
-  document.getElementById("edChopDiv").style.display = chopMode==="time"?"":"none";
-  document.getElementById("edChopSens").style.display = chopMode==="attack"?"":"none";
-  computeChopBounds();
+  // タブ（v0.3.228 §218）：音の無いパッドは SOURCE（音を入れる）、音があれば TRIM で開く。開いたまま塗り直すだけならタブはそのまま
+  chopTarget=i;
+  peTabSet(_again ? peTab : (t.buffer ? "trim" : "source"));
   const modal=document.getElementById("padEditModal");
   peOpenedAt=performance.now();
   document.body.classList.add("pe-open");   // 開いている間は窓の ✂ ボタンを隠す（二重）
@@ -265,6 +284,7 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
   modal.addEventListener("click",e=>{ if(performance.now()-peOpenedAt<450){ e.stopPropagation(); e.preventDefault(); } },true);
   // ✕（#peClose）は v0.3.218 §207 で撤去。閉じるのは共通の頭の CLOSE
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });
+  document.getElementById("peTabs").addEventListener("click",e=>{ const b=e.target.closest(".pe-tab"); if(b) peTabSet(b.dataset.tab); });
   // DELETE（v0.3.160）：「EDIT メニューの中に、サンプルを消す DELETE がないといけない」。2 回押す（2.5 秒以内）＝消す。↩ で戻せる
   let peDelT=-1e9;   // 起動直後（performance.now() が 2.5 秒未満）の 1 回目を 2 回目と取り違えない
   const peDelBtn=document.getElementById("peDel");
@@ -459,26 +479,26 @@ function closePadEdit(){ const modal=document.getElementById("padEditModal"); mo
     pushUndo();
     // 失敗（ロングサンプルで端末のメモリが足りない等）は黙らず理由を出す。途中で落ちても buffer は差し替え前のまま（v0.3.169 §163）
     try{ cropBufferToSelection(t); }
-    catch(err){ console.warn("[trim]",err); sampNameEl.textContent="TRIM できなかった — "+((err&&(err.name||err.message))||err)+"（範囲を短くしてもう一度）"; return; }
+    catch(err){ console.warn("[trim]",err); sampNameEl.textContent="CUT できなかった — "+((err&&(err.name||err.message))||err)+"（範囲を短くしてもう一度）"; return; }
     renderPeWave(peTarget); drawPadWave(peTarget);
-    sampNameEl.textContent="TRIM完了  ↩で戻せる";
+    sampNameEl.textContent="CUT ▸ START〜END の外を切り捨てた  ↩で戻せる";
   });
   // ===== CHOP（EDIT内に統合）：この編集パッドをスライスして各パッドへ展開 =====
   document.getElementById("edChopMode").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
-    chopMode=b.dataset.mode; chopTarget=peTarget; syncChopSeg("edChopMode","mode",chopMode);
+    chopMode=b.dataset.mode; _peChopMode=chopMode; chopTarget=peTarget; syncChopSeg("edChopMode","mode",chopMode);
     document.getElementById("edChopDiv").style.display = chopMode==="time"?"":"none";
     document.getElementById("edChopSens").style.display = chopMode==="attack"?"":"none";
     computeChopBounds(); renderPeWave(peTarget);
   });
   document.getElementById("edChopDiv").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
-    chopDivN=+b.dataset.n; chopTarget=peTarget; syncChopSeg("edChopDiv","n",String(chopDivN)); computeChopBounds(); renderPeWave(peTarget);
+    chopDivN=+b.dataset.n; _peChopN=chopDivN; chopTarget=peTarget; syncChopSeg("edChopDiv","n",String(chopDivN)); computeChopBounds(); renderPeWave(peTarget);
   });
   document.getElementById("edChopSens").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
     chopSens=b.dataset.s; chopTarget=peTarget; syncChopSeg("edChopSens","s",chopSens); computeChopBounds(); renderPeWave(peTarget);
   });
   document.getElementById("edChopApply").addEventListener("click",()=>{
     if(chopTarget!==peTarget){ chopTarget=peTarget; computeChopBounds(); }   // 手動調整済みの線は再計算で潰さない
-    if(chopBounds.length<3){ sampNameEl.textContent="CHOP — まず分割数（2/4/8/16 か ATK）を選ぶ"; return; }
+    if(chopBounds.length<3){ sampNameEl.textContent="CHOP — 切れ目が見つからない（数を選ぶか、ATTACK の感度を上げる）"; return; }
     applyChop();
   });
   window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.style.display==="flex") close(); });

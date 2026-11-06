@@ -233,6 +233,7 @@ async function run(w,h,mobile){
       ok_(`${V} EDIT ボタンは文字「EDIT」・13px・幅 56px 以上・34px 高`, cw.t==='EDIT' && cw.fs>=13 && cw.h>=34 && cw.w>=56, JSON.stringify(cw));   // SAMPLE のまま次（EDIT からモーダル）へ
       ok_(`${V} 浮いた高さがパッドへ（390×844 で 100px 以上）`, h<700 || st.padH>=100, `padH=${st.padH}`);
       await p.evaluate(()=>{ selectPad(0); openPadEdit(0); }); await p.waitForTimeout(600);
+      await p.click('#peTabs .pe-tab[data-tab="source"]'); await p.waitForTimeout(100);   // LOAD / SAMPLING は SOURCE タブ（v0.3.228 §218）
       const pe=await p.evaluate(()=>{ const g=id=>{ const e=document.getElementById(id); const r=e.getBoundingClientRect(); return getComputedStyle(e).display!=='none' && r.height>0 && r.width>0; }; return {load:g('peLoadBtn'), smpl:g('peSmplBtn')}; });
       ok_(`${V} EDIT モーダルに LOAD と SMPL が出る`, pe.load && pe.smpl, JSON.stringify(pe));
       await p.click('.pad-head[data-screen=edit] .pad-head-close'); await p.waitForTimeout(300); }
@@ -267,12 +268,12 @@ async function run(w,h,mobile){
   ok_(`${V} モーダルは表示できる`, md.disp==='flex', md.disp);
   // v0.3.199 §188：EDIT は見出しで区切り、START / END / LENGTH を数字と単位で（参考 UI の TRIM 画面）。略さない
   { const ed=await p.evaluate(()=>{const m=document.getElementById('padEditModal');const t=tracks[peTarget],d=t.buffer.duration;
-      const secs=[...m.querySelectorAll('.pe-sec')].filter(e=>e.getBoundingClientRect().height>0).map(e=>e.firstChild.textContent.trim());
+      const secs=[...m.querySelectorAll('#peTabs .pe-tab')].filter(e=>e.getBoundingClientRect().height>0).map(e=>e.textContent.trim());
       const v=id=>document.getElementById(id).textContent,before=[v('peStartVal'),v('peEndVal'),v('peLenVal')];
       const s0=t.start,e0=t.end;t.start=0.25;t.end=0.75;renderPeWave(peTarget);const after=[v('peStartVal'),v('peEndVal'),v('peLenVal')];t.start=s0;t.end=e0;renderPeWave(peTarget);
       const fmt=x=>x<1?Math.round(x*1000)+' ms':x.toFixed(2)+' s';
       return {secs,before,after,want:[fmt(.25*d),fmt(.75*d),fmt(.5*d)],kinds:[...m.querySelectorAll('.pad-head [data-head-kind]')].map(b=>b.textContent),rev:v('peRev')};});
-    eq(`${V} EDIT の見出し（音の種類は v0.3.218 から共通の頭）`, ed.secs, ['SOURCE','TRIM','PROCESS','CHOP']);
+    eq(`${V} EDIT はタブ TRIM / CHOP / SOURCE（v0.3.228 §218。見出しは撤去）`, ed.secs, ['TRIM','CHOP','SOURCE']);
     ok_(`${V} EDIT の START / END / LENGTH が数字と単位で、動かすと追従`, ed.before.every(x=>/ ms$| s$/.test(x)) && JSON.stringify(ed.after)===JSON.stringify(ed.want), JSON.stringify(ed));
     ok_(`${V} EDIT の種類・加工は略さない`, ed.kinds.join()==='SAMPLE,KEY,SCRATCH' && /REVERSE/.test(ed.rev), JSON.stringify(ed)); }
   await p.click('.pad-head[data-screen=edit] .pad-head-close'); await p.waitForTimeout(400);
@@ -596,8 +597,8 @@ async function renameFlow(){
   await ready(p);
   await p.evaluate(()=>{ selectPad(0); openPadEdit(0); });
   await p.waitForTimeout(600);   // モーダルは開いた直後450msのクリックを捨てる仕様（peOpenedAt）
-  const shown=await p.$eval('#peName',e=>e.textContent.trim());
-  ok_(`名前変更 モーダルに名前が出る`, /^01\s+\S/.test(shown), shown);
+  const shown=await p.evaluate(()=>{ const h=document.querySelector('.pad-head[data-screen=edit]'); return {no:h.querySelector('.pad-head-no').textContent, nm:h.querySelector('.pad-head-sub').textContent, pen:!!h.querySelector('#peNameEdit'), row:getComputedStyle(document.querySelector('.pe-name')).display}; });
+  ok_(`名前変更 名前は頭に（PAD 01 と名前の 2 段・✎ も頭）・名前の行は隠れている（v0.3.228 §218）`, shown.no==='PAD 01' && shown.nm.length>0 && shown.pen && shown.row==='none', JSON.stringify(shown));
   ok_(`名前変更 入力箱は最初は隠れている`, await p.$eval('#peNameIn',e=>e.hidden), '出たまま');
   await p.click('#peNameEdit'); await p.waitForTimeout(150);
   ok_(`名前変更 ✎で入力箱が出る`, !(await p.$eval('#peNameIn',e=>e.hidden)), '出ない');
@@ -613,7 +614,7 @@ async function renameFlow(){
     name:tracks[0].name, pads:PADS[0].name,
     pad:document.querySelector('#pads .pad .nm').textContent.trim(),
     row:(document.querySelector('#grid .rn')||{}).textContent||'',
-    label:document.getElementById('peName').textContent.trim(),
+    label:document.querySelector('.pad-head[data-screen=edit] .pad-head-sub').textContent.trim(),
     boxHidden:document.getElementById('peNameIn').hidden}));
   ok_(`名前変更 保存される`, r.name==='VERSE 1' && r.pads==='VERSE 1', JSON.stringify(r));
   ok_(`名前変更 パッドが追従`, r.pad==='VERSE 1', r.pad);
@@ -954,6 +955,40 @@ async function playLight(){
   const wav=await p.evaluate(async()=>{ let n=0; const o=window.bufToWav; window.bufToWav=function(){ n++; return o.apply(this,arguments); };
     buildProject(); const n0=n; copySetTo(1); focusSet(1); await new Promise(r=>setTimeout(r,200)); buildProject(); const n1=n-n0; window.bufToWav=o; return {n0,n1}; });
   ok_(`${V} セットを切り替えた後の保存で、音を WAV に作り直さない`, wav.n1===0, JSON.stringify(wav));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
+async function editTabs(){
+  // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
+  // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
+  const V='EDITTABS 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const vis=()=>p.evaluate(()=>{ const v=s=>{ const e=document.querySelector(s); if(!e) return false; const r=e.getBoundingClientRect(); return r.width>0&&r.height>0; };
+    return {tab:peTab, on:[...document.querySelectorAll('#peTabs .pe-tab.on')].map(b=>b.dataset.tab).join(), wave:v('#padEditModal .pe-wave'), audition:v('#peAudition'), cut:v('#peTrunc'), chop:v('#edChopApply'), load:v('#peLoadBtn'), del:v('#peDel'), bounds:chopBounds.length, n:chopDivN}; });
+  await p.evaluate(()=>{ selectPad(0); openPadEdit(0); }); await p.waitForTimeout(600);
+  const a=await vis();
+  ok_(`${V} 音のあるパッドは TRIM で開く（波形・PREVIEW・CUT。CHOP と SOURCE の中身は隠れる・切れ目は出ない）`, a.tab==='trim' && a.on==='trim' && a.wave && a.audition && a.cut && !a.chop && !a.load && !a.del && a.bounds===0, JSON.stringify(a));
+  await p.click('#peTabs .pe-tab[data-tab="chop"]'); await p.waitForTimeout(120);
+  const b=await vis();
+  ok_(`${V} CHOP を開くと切れ目が出る（既定 4 つ）`, b.tab==='chop' && b.chop && !b.audition && b.bounds===5 && b.n===4, JSON.stringify(b));
+  await p.click('#edChopDiv button[data-n="8"]'); await p.waitForTimeout(80);
+  await p.click('#peTabs .pe-tab[data-tab="source"]'); await p.waitForTimeout(120);
+  const c=await vis();
+  ok_(`${V} SOURCE に移ると切れ目は消える・LOAD / SAMPLING / DELETE`, c.tab==='source' && c.load && c.del && !c.chop && c.bounds===0, JSON.stringify(c));
+  await p.click('#peTabs .pe-tab[data-tab="chop"]'); await p.waitForTimeout(120);
+  const d=await vis();
+  ok_(`${V} もう一度 CHOP を開くと、前に選んだ数（8）で切れ目が出る`, d.n===8 && d.bounds===9, JSON.stringify(d));
+  // 開いたまま塗り直しても（ループの切替など）タブはそのまま
+  await p.evaluate(()=>refreshOpenPadEdit(0)); await p.waitForTimeout(80);
+  ok_(`${V} 開いたまま塗り直してもタブはそのまま`, (await vis()).tab==='chop', 'tab changed');
+  await p.click('.pad-head[data-screen=edit] .pad-head-close'); await p.waitForTimeout(300);
+  // 空のパッドは SOURCE（音を入れる）だけ
+  await p.evaluate(()=>{ selectPad(1); clearPadSound(1); refreshPadDisplay(1); openPadEdit(1); }); await p.waitForTimeout(600);
+  const e=await vis();
+  ok_(`${V} 空のパッドは SOURCE で開く（波形・タブ・DELETE は出さない）`, e.tab==='source' && e.load && !e.wave && !e.del && !(await p.evaluate(()=>{ const r=document.getElementById('peTabs').getBoundingClientRect(); return r.height>0; })), JSON.stringify(e));
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
@@ -1305,6 +1340,7 @@ async function editTools(){
   // DELETE：1 回目は「もう一度」、2 回目で空のパッドに。↩ で戻る
   const nm0=await p.evaluate(()=>{ selectPad(0); openPadEdit(0); return tracks[0].name; });
   await p.waitForTimeout(500);   // 開いた直後 450ms のゴーストクリック除け
+  await p.click('#peTabs .pe-tab[data-tab="source"]'); await p.waitForTimeout(80);   // DELETE は SOURCE タブ（v0.3.228 §218）
   await p.click('#peDel'); await p.waitForTimeout(80);
   const d1=await p.evaluate(()=>({buf:!!tracks[0].buffer, armed:document.getElementById('peDel').classList.contains('armed'), msg:sampNameEl.textContent}));
   await p.click('#peDel'); await p.waitForTimeout(150);
@@ -1514,6 +1550,7 @@ await setNameTest();
 await setPickTest();
 await tapLight();
 await playLight();
+await editTabs();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
