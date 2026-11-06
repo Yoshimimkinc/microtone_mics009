@@ -1,8 +1,8 @@
 // @module autosave
-// @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarned, autosaveDbName,
-//    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave
-// @uses APP_VERSION, DEFAULT_PROJECT, applyProject, bakePhrase, buildProject, drawAllPadWaves, loadPresets,
-//    sampNameEl
+// @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarmQ, _asWarned, autosaveDbName,
+//    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave, warmWavCache
+// @uses APP_VERSION, DEFAULT_PROJECT, PADS, applyProject, bakePhrase, buildProject, drawAllPadWaves,
+//    loadPresets, playing, prerollAudio, sampNameEl, setCur, setSlots, sideCount, trackData, tracks
 // @depends presets
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
@@ -32,6 +32,7 @@ async function autosaveNow(force){
     // v0.3.94〜0.3.97は演奏中に一切書かなかったため「演奏しながら編集→閉じる」で全部消えていた
   }
   _asBusy=true; _asDirty=false; _asLast=Date.now();
+  if(typeof prerollAudio==="function") prerollAudio(0.4);   // 書き出しの間（JSON 化・保存）に音が遅れないよう、先に予約しておく（v0.3.226 §216）
   try{
     const json=JSON.stringify(buildProject());
     await idbOp("readwrite", st=>st.put({at:Date.now(), ver:APP_VERSION, json}, AUTOSAVE.key));
@@ -62,6 +63,27 @@ async function loadAutosave(){
 }
 async function clearAutosave(){ try{ await idbOp("readwrite", st=>st.delete(AUTOSAVE.key)); }catch(e){} }
 
+// 保存用の WAV を、止まっていて暇なときに 1 音ずつ先に作っておく（v0.3.226 §216）。起動後の最初の自動保存が全部の音を変換して、
+// 再生中なら 0.2〜0.5 秒止まっていた（遅い端末では 2 秒以上）。作ったものは音（AudioBuffer）に覚える＝wavB64Cached がそのまま使う。
+// 鳴っている間は作らない（次の暇を待つ）
+let _asWarmQ=null;
+function warmWavCache(){
+  if(typeof trackData!=="function") return;
+  const jobs=[];
+  tracks.forEach((t,i)=>jobs.push(()=>trackData(t,i,PADS[i].type,PADS[i].voice)));
+  for(let k=0;k<16;k++){ if(k===setCur||!setSlots[k]) continue; setSlots[k].tracks.forEach((t,i)=>jobs.push(()=>trackData(t,i,t.type,t.voice))); }
+  _asWarmQ=jobs;
+  const busy=()=>playing || (typeof sideCount==="function" && sideCount()>0);
+  const later=()=>{ if(window.requestIdleCallback) requestIdleCallback(step,{timeout:3000}); else setTimeout(()=>step(null),250); };
+  const step=(dl)=>{
+    while(_asWarmQ && _asWarmQ.length && !busy()){
+      const j=_asWarmQ.shift(); try{ j(); }catch(_){}
+      if(!dl || !dl.timeRemaining || dl.timeRemaining()<10) break;   // 1 回の暇に入るぶんだけ
+    }
+    if(_asWarmQ && _asWarmQ.length) later(); else _asWarmQ=null;
+  };
+  later();
+}
 loadPresets().then(async ()=>{
   // 既定プロジェクト＝同梱の default.mics（ユーザーのビート：フレーズ＋ドラム＋パターン）。
   // ドラム9-16はsynthプリセットなので音声は同梱せず起動時に再生成（軽量化）。フレーズ1-4のみ音声同梱。
@@ -69,7 +91,7 @@ loadPresets().then(async ()=>{
   if(saved){
     try{
       await applyProject(saved);
-      drawAllPadWaves();
+      drawAllPadWaves(); warmWavCache();
       if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="前回の続きを復元（メニューの RESET で初期状態へ）";
       return;   // 復元できたら default.mics は読まない
     }catch(e){ console.warn("autosave復元に失敗→既定へ:",e); }
@@ -84,6 +106,6 @@ loadPresets().then(async ()=>{
     console.warn("default.mics 読込失敗→合成デフォルトにフォールバック:", e);
     try{ await applyProject(DEFAULT_PROJECT); await bakePhrase(); }catch(_){}
   }
-  drawAllPadWaves();
+  drawAllPadWaves(); warmWavCache();
 });
 

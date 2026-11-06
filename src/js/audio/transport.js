@@ -1,12 +1,12 @@
 // @module audio/transport
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
-//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock,
-//    resumeTransportClock, schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec, startTransport,
-//    stepTimeClean, stopTransport, swingDelayTicks, tickDur
+//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock, prerollAudio,
+//    resumeTransportClock, schedAhead, schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec,
+//    startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar, getPlayPattern,
 //    isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot, patSwitchMode, playBar, playPat,
-//    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, stepIdx, stopAllVoices, stopVoices,
-//    swingPct, switchSetNow, tracks, wakeSync
+//    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, sideCount, sideTick, stepIdx,
+//    stopAllVoices, stopVoices, swingPct, switchSetNow, tracks, wakeSync
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -39,6 +39,14 @@ function laidbackSec(sw=swingPct){ return 0.006 + 0.016*grooveFactor(sw); } // 2
 function staggerSec(sw=swingPct){  return 0.0015 + 0.003*grooveFactor(sw); } // 同時発音: 1.5〜4.5ms/音
 
 const LOOKAHEAD = 0.1;      // sec, how far ahead we schedule（25ms→100ms：メインスレッドが詰まっても発音が遅れないように）
+let schedAhead = LOOKAHEAD; // いまの先読み。重い画面の処理の直前だけ prerollAudio が一時的に延ばす（v0.3.226 §216）
+// 重い処理（モードの切替・セットの切替の塗り・自動保存）の直前に呼ぶ：音を sec 先まで先に予約しておく＝その間メインスレッドが詰まっても音が遅れない。
+// 先読みを延ばすのはこの 1 回だけ（ミュートなどの反応はいつもの 0.1 秒のまま）
+function prerollAudio(sec){
+  const a=schedAhead; schedAhead=Math.max(LOOKAHEAD, sec||0.3);
+  try{ if(playing) scheduler(); if(typeof sideTick==="function" && typeof sideCount==="function" && sideCount()>0) sideTick(); }
+  finally{ schedAhead=a; }
+}
 const INTERVAL = 25;        // ms timer
 let schedTimer = null;
 let drawQueue = [];         // {step, time, hits}
@@ -121,7 +129,7 @@ function scheduler(){
   const behind = (AC.currentTime - stepTimeClean(stepIdx));
   if(behind > 0.12){ barStartTime += behind; }
   let guard = 0;
-  while(stepTimeClean(stepIdx) < AC.currentTime + LOOKAHEAD){
+  while(stepTimeClean(stepIdx) < AC.currentTime + schedAhead){
     // SP的微細ドリフトはスケジュール時のみ適用
     const when = stepTimeClean(stepIdx) + driftSec();
     // BEAT（v0.3.168）：予約したパターンへ次の拍で。小節の中の位置はそのまま（その小節が無ければ頭の小節へ）

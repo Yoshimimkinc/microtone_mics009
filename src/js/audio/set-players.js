@@ -3,8 +3,8 @@
 //    isSetHeld, pauseSideClock, resumeSideClock, setHeldSet, setHold, setHoldClear, setIndexOfTrs,
 //    setIsPlaying, setLevelLin, setLevelNode, setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop,
 //    sideStopAll, sideTakeCurrent, sideTick, sideTimer, sideTrs
-// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec,
-//    laidbackSec, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels, setSlots,
+// @uses AC, INTERVAL, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec, laidbackSec,
+//    patRead, playBar, playPat, playVoice, playing, scaleSemi, schedAhead, setCur, setLevels, setSlots,
 //    staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
 // @depends -
 // ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
@@ -59,7 +59,7 @@ function sideTick(){
     const trs=sideTrs(p.k); if(!trs) return;
     const behind=now-_sideStepTime(p,p.idx); if(behind>0.12) p.t0+=behind;   // メインスレッドが詰まったら取り戻す（transport と同じ）
     let guard=0;
-    while(_sideStepTime(p,p.idx) < now+LOOKAHEAD){
+    while(_sideStepTime(p,p.idx) < now+schedAhead){   // 先読みは transport と同じ（prerollAudio で一時的に延びる）
       _sideStep(p, trs, p.idx, _sideStepTime(p,p.idx)+driftSec(p.swing));
       p.idx++;
       if(p.idx>=STEPS){ p.idx=0; p.t0+=STEPS*TICKS_PER_16TH*tickDur(p.bpm); p.bar++; if(p.bar>=_sidePatLen(trs,p.pat)) p.bar=0; }

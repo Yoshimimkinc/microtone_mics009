@@ -3,21 +3,23 @@
 //    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, queuedPat,
-//    renderPerfFills, sampNameEl, seqModeEnter, setEditBar, setEditPat, setModeEnter, stepTrackName,
-//    swingPct, tracks, viewPadsEl
+//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, prerollAudio,
+//    queuedPat, renderPerfFills, sampNameEl, seqModeEnter, setEditBar, setEditPat, setModeEnter,
+//    stepTrackName, swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
 function switchView(viewId){
   // SET（v0.3.143 §144）：独立した view ではなく PADS 画面の「状態」。情報窓が SET 演奏モード、格子が 16 の枠になる（寸法は同じ）
   // SEQ も v0.3.183 から PADS 画面の状態（§171）。3 モードとも同じ並び（窓 → 主面 → A B C D・BAR → ステップ）
+  if(typeof prerollAudio==="function") prerollAudio(0.3);   // 切替は重い（主面の入れ替え・配置の計算）。その間の音を先に予約しておく（v0.3.226 §216）
   const modeId=viewId; const inSet=(viewId==="viewSet"), inSeq=(viewId==="viewSeq"); if(inSet||inSeq) viewId="viewPads";
   if(typeof setModeEnter==="function") setModeEnter(inSet);
   if(typeof seqModeEnter==="function") seqModeEnter(inSeq);
   modeBtns.forEach(b=>{ const on=b.dataset.view===modeId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
-  if(viewId==="viewPads" && !inSeq){ drawAllPadWaves(); }
+  // パッドの波形は、中身か大きさが変わったものだけ（次のコマで。v0.3.226 §216：切替のたびに 16 枚を描き直していた）
+  if(viewId==="viewPads" && !inSeq){ requestAnimationFrame(()=>drawAllPadWaves(false)); }
   if(inSeq) paintSteps();
   // スマホのモードドット同期（●PADS 〇SEQ）
   const dots=document.getElementById("viewDots");

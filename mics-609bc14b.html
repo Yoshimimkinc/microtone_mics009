@@ -1576,7 +1576,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.225</div>
+  <div class="s-ver" id="splashVer">v0.3.226</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4242,8 +4242,8 @@ function copyBar(src,dst){   // 現パターン(editPat)内の小節 src を dst
 // @uses AC, PADS, PRESET_BUFS, STEPS, applyPadCategory, applyTrackSnapshot, b64ToUint8, bpmVal,
 //    buildAllTrackWaves, clearBarHold, clearUndo, decodeAudio, drawAllPadWaves, editBar, editPat, makeLofi,
 //    normalizeKeyPhrase, paintMixer, paintPadStates, paintPatBar, paintPerf, paintSet, paintSteps, patLoad,
-//    playing, prepareKeyTrack, queuedPat, queuedSet, scheduleAutosave, selectPad, selected, setCur,
-//    setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
+//    playing, prepareKeyTrack, prerollAudio, queuedPat, queuedSet, scheduleAutosave, selectPad, selected,
+//    setCur, setDelayTempo, setLevels, setSetLevel, setSlots, sideStop, snapshotState, stopAllVoices,
 //    stripLegacyLocks, swingPct, tracks, warmKeyTracks
 // @depends -
 // ---------- SET：ファイル全体 = 16 セット × 16 パッド × 4 シーケンス。SET モードではパッドがセットの「ポン出し」になる ----------
@@ -4330,7 +4330,8 @@ function applySetSnapshot(s, opts){
   if(!keepSel){ editPat=0; editBar=0; patLoad(0, true); }   // セットの頭は A＝ミュートも A のもの
   if(typeof warmKeyTracks==="function") warmKeyTracks();
   for(let i=0;i<PADS.length;i++) applyPadCategory(i);
-  const paint=()=>{ selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
+  const paint=()=>{ if(typeof prerollAudio==="function") prerollAudio(0.3);   // 塗りは重い（16 枚の波形・ステップの絵）。鳴っている音を先に予約しておく（v0.3.226 §216）
+    selectPad(keepSel?selWas:0); paintPadStates(); paintSteps(); paintMixer(); paintPatBar(); drawAllPadWaves(); buildAllTrackWaves(); if(typeof paintPerf==="function") paintPerf(); if(typeof paintSet==="function") paintSet(); };
   if(opts&&opts.deferPaint) requestAnimationFrame(paint); else paint();
 }
 // 切替の実体（スケジューラが小節頭に呼ぶ／止まっているときは queueSet から直接）。いまのを退避 → 次を live へ。音は stopAt で止める
@@ -4522,12 +4523,14 @@ function drawPadWave(i, ink, force){
   const cv=pad.querySelector(".pad-wave"); if(!cv) return;
   const t=tracks[i], kind=t.padKind==="KEY"?"KEY":"SPL";
   const sig=kind==="KEY" ? "K"+JSON.stringify(t.keyPhrase||null) : "S"+(t.start||0)+"|"+(t.end??1);   // 色（スキン）が変わるときは drawAllPadWaves が force で描く
-  if(!force && cv.width>0 && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
+  if(!force && force!==false && cv.width>0 && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
   const w=pad.clientWidth, h=pad.clientHeight;
   if(!w||!h) return;
-  cv._sig=sig; cv._buf=kind==="KEY"?null:t.buffer;
   const dpr=window.devicePixelRatio||1;
   const cw=Math.round(w*dpr), ch=Math.round(h*dpr);
+  // force===false（モードの切替）：大きさまで同じなら描かない
+  if(force===false && cv.width===cw && cv.height===ch && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
+  cv._sig=sig; cv._buf=kind==="KEY"?null:t.buffer;
   if(cv.width!==cw || cv.height!==ch){ cv.width=cw; cv.height=ch; }   // サイズ不変なら再確保しない（毎ヒットのコスト削減）
   const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);   // 絶対変換でscale二重掛けを回避
   ctx.clearRect(0,0,w,h);
@@ -4548,7 +4551,8 @@ function drawPadWave(i, ink, force){
   }
   ctx.stroke();
 }
-function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink, true); }
+// force＝false：中身も大きさも同じパッドは描かない（モードの切替から。色の計算も描くときだけ）
+function drawAllPadWaves(force=true){ const ink=force?padWaveInk():undefined; for(let i=0;i<PADS.length;i++) drawPadWave(i, ink, force); }
 
 // ===== ステップキーの薄い波形（軽量：トラック毎に1回 data-URL 化してキャッシュ→CSS背景。再生中は再描画しない）=====
 const trackWaveURL=[];   // trackWaveURL[i] = そのトラック波形(start..end)の透明PNG data-URL
@@ -4866,13 +4870,13 @@ function paintClPage(){
 
 // @module audio/transport
 // @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
-//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock,
-//    resumeTransportClock, schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec, startTransport,
-//    stepTimeClean, stopTransport, swingDelayTicks, tickDur
+//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock, prerollAudio,
+//    resumeTransportClock, schedAhead, schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec,
+//    startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar, getPlayPattern,
 //    isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot, patSwitchMode, playBar, playPat,
-//    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, stepIdx, stopAllVoices, stopVoices,
-//    swingPct, switchSetNow, tracks, wakeSync
+//    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, sideCount, sideTick, stepIdx,
+//    stopAllVoices, stopVoices, swingPct, switchSetNow, tracks, wakeSync
 // @depends -
 // ---------- transport：スケジューラ（音）。tick 導出の絶対時刻・スウィング・ドリフト・先読み ----------
 // 40-transport.js を音（ここ）と表示・ボタン（ui/transport-view）に分けた（v0.3.132 Phase 2 第3段）。中身はそのまま
@@ -4905,6 +4909,14 @@ function laidbackSec(sw=swingPct){ return 0.006 + 0.016*grooveFactor(sw); } // 2
 function staggerSec(sw=swingPct){  return 0.0015 + 0.003*grooveFactor(sw); } // 同時発音: 1.5〜4.5ms/音
 
 const LOOKAHEAD = 0.1;      // sec, how far ahead we schedule（25ms→100ms：メインスレッドが詰まっても発音が遅れないように）
+let schedAhead = LOOKAHEAD; // いまの先読み。重い画面の処理の直前だけ prerollAudio が一時的に延ばす（v0.3.226 §216）
+// 重い処理（モードの切替・セットの切替の塗り・自動保存）の直前に呼ぶ：音を sec 先まで先に予約しておく＝その間メインスレッドが詰まっても音が遅れない。
+// 先読みを延ばすのはこの 1 回だけ（ミュートなどの反応はいつもの 0.1 秒のまま）
+function prerollAudio(sec){
+  const a=schedAhead; schedAhead=Math.max(LOOKAHEAD, sec||0.3);
+  try{ if(playing) scheduler(); if(typeof sideTick==="function" && typeof sideCount==="function" && sideCount()>0) sideTick(); }
+  finally{ schedAhead=a; }
+}
 const INTERVAL = 25;        // ms timer
 let schedTimer = null;
 let drawQueue = [];         // {step, time, hits}
@@ -4987,7 +4999,7 @@ function scheduler(){
   const behind = (AC.currentTime - stepTimeClean(stepIdx));
   if(behind > 0.12){ barStartTime += behind; }
   let guard = 0;
-  while(stepTimeClean(stepIdx) < AC.currentTime + LOOKAHEAD){
+  while(stepTimeClean(stepIdx) < AC.currentTime + schedAhead){
     // SP的微細ドリフトはスケジュール時のみ適用
     const when = stepTimeClean(stepIdx) + driftSec();
     // BEAT（v0.3.168）：予約したパターンへ次の拍で。小節の中の位置はそのまま（その小節が無ければ頭の小節へ）
@@ -5028,8 +5040,8 @@ function resumeTransportClock(){
 //    isSetHeld, pauseSideClock, resumeSideClock, setHeldSet, setHold, setHoldClear, setIndexOfTrs,
 //    setIsPlaying, setLevelLin, setLevelNode, setSetLevel, sideCount, sidePlayers, sidePlaying, sideStop,
 //    sideStopAll, sideTakeCurrent, sideTick, sideTimer, sideTrs
-// @uses AC, INTERVAL, LOOKAHEAD, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec,
-//    laidbackSec, patRead, playBar, playPat, playVoice, playing, scaleSemi, setCur, setLevels, setSlots,
+// @uses AC, INTERVAL, STEPS, TICKS_PER_16TH, anySolo, barStartTime, bpmVal, dbToGain, driftSec, laidbackSec,
+//    patRead, playBar, playPat, playVoice, playing, scaleSemi, schedAhead, setCur, setLevels, setSlots,
 //    staggerSec, stepIdx, stopTransport, stopVoices, swingDelayTicks, swingPct, tickDur, tracks
 // @depends -
 // ---------- SET のミックス：いまのセット以外で鳴っているセット（＝他のセットの再生）。v0.3.147 §145 ----------
@@ -5084,7 +5096,7 @@ function sideTick(){
     const trs=sideTrs(p.k); if(!trs) return;
     const behind=now-_sideStepTime(p,p.idx); if(behind>0.12) p.t0+=behind;   // メインスレッドが詰まったら取り戻す（transport と同じ）
     let guard=0;
-    while(_sideStepTime(p,p.idx) < now+LOOKAHEAD){
+    while(_sideStepTime(p,p.idx) < now+schedAhead){   // 先読みは transport と同じ（prerollAudio で一時的に延びる）
       _sideStep(p, trs, p.idx, _sideStepTime(p,p.idx)+driftSec(p.swing));
       p.idx++;
       if(p.idx>=STEPS){ p.idx=0; p.t0+=STEPS*TICKS_PER_16TH*tickDur(p.bpm); p.bar++; if(p.bar>=_sidePatLen(trs,p.pat)) p.bar=0; }
@@ -6233,10 +6245,10 @@ async function bakePhrase(){
   }catch(e){ console.warn("phrase bake:", e); }
 }
 // @module autosave
-// @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarned, autosaveDbName,
-//    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave
-// @uses APP_VERSION, DEFAULT_PROJECT, applyProject, bakePhrase, buildProject, drawAllPadWaves, loadPresets,
-//    sampNameEl
+// @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarmQ, _asWarned, autosaveDbName,
+//    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave, warmWavCache
+// @uses APP_VERSION, DEFAULT_PROJECT, PADS, applyProject, bakePhrase, buildProject, drawAllPadWaves,
+//    loadPresets, playing, prerollAudio, sampNameEl, setCur, setSlots, sideCount, trackData, tracks
 // @depends presets
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
@@ -6266,6 +6278,7 @@ async function autosaveNow(force){
     // v0.3.94〜0.3.97は演奏中に一切書かなかったため「演奏しながら編集→閉じる」で全部消えていた
   }
   _asBusy=true; _asDirty=false; _asLast=Date.now();
+  if(typeof prerollAudio==="function") prerollAudio(0.4);   // 書き出しの間（JSON 化・保存）に音が遅れないよう、先に予約しておく（v0.3.226 §216）
   try{
     const json=JSON.stringify(buildProject());
     await idbOp("readwrite", st=>st.put({at:Date.now(), ver:APP_VERSION, json}, AUTOSAVE.key));
@@ -6296,6 +6309,27 @@ async function loadAutosave(){
 }
 async function clearAutosave(){ try{ await idbOp("readwrite", st=>st.delete(AUTOSAVE.key)); }catch(e){} }
 
+// 保存用の WAV を、止まっていて暇なときに 1 音ずつ先に作っておく（v0.3.226 §216）。起動後の最初の自動保存が全部の音を変換して、
+// 再生中なら 0.2〜0.5 秒止まっていた（遅い端末では 2 秒以上）。作ったものは音（AudioBuffer）に覚える＝wavB64Cached がそのまま使う。
+// 鳴っている間は作らない（次の暇を待つ）
+let _asWarmQ=null;
+function warmWavCache(){
+  if(typeof trackData!=="function") return;
+  const jobs=[];
+  tracks.forEach((t,i)=>jobs.push(()=>trackData(t,i,PADS[i].type,PADS[i].voice)));
+  for(let k=0;k<16;k++){ if(k===setCur||!setSlots[k]) continue; setSlots[k].tracks.forEach((t,i)=>jobs.push(()=>trackData(t,i,t.type,t.voice))); }
+  _asWarmQ=jobs;
+  const busy=()=>playing || (typeof sideCount==="function" && sideCount()>0);
+  const later=()=>{ if(window.requestIdleCallback) requestIdleCallback(step,{timeout:3000}); else setTimeout(()=>step(null),250); };
+  const step=(dl)=>{
+    while(_asWarmQ && _asWarmQ.length && !busy()){
+      const j=_asWarmQ.shift(); try{ j(); }catch(_){}
+      if(!dl || !dl.timeRemaining || dl.timeRemaining()<10) break;   // 1 回の暇に入るぶんだけ
+    }
+    if(_asWarmQ && _asWarmQ.length) later(); else _asWarmQ=null;
+  };
+  later();
+}
 loadPresets().then(async ()=>{
   // 既定プロジェクト＝同梱の default.mics（ユーザーのビート：フレーズ＋ドラム＋パターン）。
   // ドラム9-16はsynthプリセットなので音声は同梱せず起動時に再生成（軽量化）。フレーズ1-4のみ音声同梱。
@@ -6303,7 +6337,7 @@ loadPresets().then(async ()=>{
   if(saved){
     try{
       await applyProject(saved);
-      drawAllPadWaves();
+      drawAllPadWaves(); warmWavCache();
       if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="前回の続きを復元（メニューの RESET で初期状態へ）";
       return;   // 復元できたら default.mics は読まない
     }catch(e){ console.warn("autosave復元に失敗→既定へ:",e); }
@@ -6318,7 +6352,7 @@ loadPresets().then(async ()=>{
     console.warn("default.mics 読込失敗→合成デフォルトにフォールバック:", e);
     try{ await applyProject(DEFAULT_PROJECT); await bakePhrase(); }catch(_){}
   }
-  drawAllPadWaves();
+  drawAllPadWaves(); warmWavCache();
 });
 
 // @module layout
@@ -6326,21 +6360,23 @@ loadPresets().then(async ()=>{
 //    patHasContent, perfFourUp, refViewH, refitMobileHeight, relocateLogo, relocateMuteSolo, switchView,
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
-//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, queuedPat,
-//    renderPerfFills, sampNameEl, seqModeEnter, setEditBar, setEditPat, setModeEnter, stepTrackName,
-//    swingPct, tracks, viewPadsEl
+//    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, prerollAudio,
+//    queuedPat, renderPerfFills, sampNameEl, seqModeEnter, setEditBar, setEditPat, setModeEnter,
+//    stepTrackName, swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
 const modeBtns=[document.getElementById("modePads"),document.getElementById("modeSeq"),document.getElementById("modeSet")].filter(Boolean);
 function switchView(viewId){
   // SET（v0.3.143 §144）：独立した view ではなく PADS 画面の「状態」。情報窓が SET 演奏モード、格子が 16 の枠になる（寸法は同じ）
   // SEQ も v0.3.183 から PADS 画面の状態（§171）。3 モードとも同じ並び（窓 → 主面 → A B C D・BAR → ステップ）
+  if(typeof prerollAudio==="function") prerollAudio(0.3);   // 切替は重い（主面の入れ替え・配置の計算）。その間の音を先に予約しておく（v0.3.226 §216）
   const modeId=viewId; const inSet=(viewId==="viewSet"), inSeq=(viewId==="viewSeq"); if(inSet||inSeq) viewId="viewPads";
   if(typeof setModeEnter==="function") setModeEnter(inSet);
   if(typeof seqModeEnter==="function") seqModeEnter(inSeq);
   modeBtns.forEach(b=>{ const on=b.dataset.view===modeId; b.classList.toggle("on",on); b.setAttribute("aria-pressed", on?"true":"false"); });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
-  if(viewId==="viewPads" && !inSeq){ drawAllPadWaves(); }
+  // パッドの波形は、中身か大きさが変わったものだけ（次のコマで。v0.3.226 §216：切替のたびに 16 枚を描き直していた）
+  if(viewId==="viewPads" && !inSeq){ requestAnimationFrame(()=>drawAllPadWaves(false)); }
   if(inSeq) paintSteps();
   // スマホのモードドット同期（●PADS 〇SEQ）
   const dots=document.getElementById("viewDots");
@@ -6933,8 +6969,8 @@ async function finalizeRec(){
 }
 
 // @module save-load
-// @provides SAVE_SCOPE_KEY, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop, curSetData,
-//    saveScope, setData, trackData, uint8ToB64, wavB64Cached
+// @provides SAVE_SCOPE_KEY, _wavB64Cache, b64ToUint8, bufToWav, buildProject, buildSaveFile, calcCrop,
+//    curSetData, saveScope, setData, trackData, uint8ToB64, wavB64Cached
 // @uses PADS, PRESET_BUFS, _asDirty, bpmVal, clearAutosave, compDrive, compOn, compThreshold, editPat,
 //    fxDelayAmt, fxDelayOn, fxReverbAmt, fxReverbOn, groupVol, normalizeKeyPhrase, patSync, sampNameEl,
 //    seqDataOf, setCur, setLevels, setSlots, shareOrDownload, swingPct, tracks
@@ -6988,11 +7024,14 @@ function b64ToUint8(b64){
 // SAVE
 // WAV→base64 はバッファが同じで切り出し範囲も同じなら使い回す（重いのはここ）。
 // これで buildProject() が「設定のJSON化＋文字列の連結」だけになり、演奏中に走っても音が飛ばない。
+// 覚える先は音（AudioBuffer）そのもの（v0.3.226 §216）。v0.3.225 まではトラックに覚えていたので、セットを切り替えるたびに
+// トラックの写し（snapshot）が新しくなって覚えが消え、自動保存が全部の音を WAV に変換し直していた（再生中に 0.5 秒止まり、音が遅れた）
+const _wavB64Cache=new WeakMap();   // AudioBuffer → Map("from|to" → base64)
 function wavB64Cached(t, crop){
-  const c=t._wavCache;
-  if(c && c.buf===t.buffer && c.from===crop.fromSamp && c.to===crop.toSamp) return c.b64;
-  const b64=uint8ToB64(bufToWav(t.buffer, crop.fromSamp, crop.toSamp));
-  t._wavCache={buf:t.buffer, from:crop.fromSamp, to:crop.toSamp, b64};
+  const buf=t.buffer, k=crop.fromSamp+"|"+crop.toSamp;
+  let m=_wavB64Cache.get(buf); if(!m){ m=new Map(); _wavB64Cache.set(buf,m); }
+  let b64=m.get(k);
+  if(b64==null){ b64=uint8ToB64(bufToWav(buf, crop.fromSamp, crop.toSamp)); if(m.size>=4) m.delete(m.keys().next().value); m.set(k,b64); }   // 範囲違いは 4 つまで（START / END を動かしている間に溜めない）
   return b64;
 }
 // 1 トラックを .mics の形に（t は live の tracks[i] でも、セットの snapshot の 1 要素でもよい）
@@ -8742,7 +8781,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.225";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.226";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
