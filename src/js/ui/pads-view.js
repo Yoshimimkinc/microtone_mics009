@@ -3,9 +3,9 @@
 //    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
 //    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
-//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, perfPadDown,
-//    perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl, scratchOpen,
-//    selected, swapPads, syncEditor, tracks, trigger
+//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, paintSteps,
+//    perfPadDown, perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl,
+//    scratchOpen, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -115,7 +115,7 @@ PADS.forEach((p,i)=>{
     }
     if(tgt>=0 && tgt!==i){
       if(copy){ copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
-      else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); paintPadStates(); paintSteps(); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       flashPad(tgt);
     }
     // ドロップ先なし＝何もしない（EDITは維持して続けて並べ替え可）
