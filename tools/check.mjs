@@ -906,6 +906,28 @@ async function setPickTest(){
     await ctx.close();
   }
 }
+async function tapLight(){
+  // v0.3.225 §215「全体的に演奏がもたつくのも見直し」：パッドを叩いて選び直しても、中身の変わらないパッドの波形は描き直さない・
+  // SEQ の行名は変わったときだけ書く・ステップ列は別の描画層（選び直しで画面の背景ごと描き直さない）・叩くたびに EDIT の波形の場所を測らない
+  for(const [w,h,mobile] of [[390,844,true],[1280,800,false]]){
+    const V=`TAPLIGHT ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    await p.evaluate(()=>{ window.__strokes=0; const o=CanvasRenderingContext2D.prototype.stroke; CanvasRenderingContext2D.prototype.stroke=function(){ if(this.canvas&&this.canvas.classList.contains('pad-wave')) __strokes++; return o.apply(this,arguments); };
+      window.__muts=0; new MutationObserver(l=>{ __muts+=l.length; }).observe(document.querySelector('#grid'),{subtree:true,childList:true,characterData:true}); });
+    const pads=await p.$$('#pads .pad');
+    for(const k of [0,4,9,0,4]){ const b=await pads[k].boundingBox(); if(mobile) await p.touchscreen.tap(b.x+b.width/2,b.y+b.height/2); else await p.mouse.click(b.x+b.width/2,b.y+b.height/2); await p.waitForTimeout(80); }
+    await p.waitForTimeout(150);
+    const r=await p.evaluate(()=>({strokes:__strokes, gridMuts:__muts, sel:selected, layer:getComputedStyle(document.getElementById('stepStrip')).willChange, pe:peWaveVisible()}));
+    ok_(`${V} パッドを叩いて選び直しても波形は描き直さない・SEQ の行名は書き直さない・ステップ列は別の層`, r.strokes===0 && r.gridMuts===0 && r.sel===4 && /transform/.test(r.layer) && r.pe===false, JSON.stringify(r));
+    const s2=await p.evaluate(()=>{ __strokes=0; tracks[4].start=Math.min(.5,(tracks[4].start||0)+.05); drawPadWave(4); return __strokes; });
+    ok_(`${V} START が変わったパッドは描き直す`, s2===1, String(s2));
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 async function wireSkin(){
   // v0.3.163：スキン WIRE（黒地＋線だけのワイヤーフレーム）
   const V='WIRE 390x844';
@@ -1461,6 +1483,7 @@ await saveScopeTest();
 await wireSkin();
 await setNameTest();
 await setPickTest();
+await tapLight();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

@@ -121,20 +121,22 @@ function barHasContent(p,b){ for(let i=0;i<tracks.length;i++){ const arr=tracks[
 function patHasContent(p){ for(let i=0;i<tracks.length;i++){ const pat=tracks[i].patterns[p]; if(!pat) continue; for(let b=0;b<pat.length;b++){ const arr=pat[b]; if(arr){ for(let s=0;s<arr.length;s++) if(arr[s]>0) return true; } } } return false; }
 function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常時ここに現在地と選択パッドの値が出る）
   const $=id=>document.getElementById(id);
+  // 値が変わったときだけ書く（v0.3.225 §215：同じ文字でも書き込むと配置の計算がやり直しになる。パッドを叩くたびに呼ばれる）
+  const _t=(id,v)=>{ const e=$(id); if(e&&e.textContent!==v) e.textContent=v; };
   const bv=(typeof bpmVal!=="undefined"?bpmVal:100), ep=(typeof editPat!=="undefined"?editPat:0);
-  if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1);
-  if($("clSwing")) $("clSwing").textContent=String(typeof swingPct!=="undefined"?swingPct:50);
+  _t("perfBpm",bv.toFixed(1));
+  _t("clSwing",String(typeof swingPct!=="undefined"?swingPct:50));
   // 窓の PAT/BAR は「現在地」＝再生中は鳴っている場所、停止中は編集位置（§0-3「嘘をつかない」。
   // 以前は再生中も編集位置で、2小節目が鳴っていても BAR 1、予約しただけで PAT B と出ていた）
   const _plNow=(typeof playing!=="undefined"&&playing);
-  if($("perfPat")) $("perfPat").textContent="ABCD"[_plNow?(typeof displayPat!=="undefined"?displayPat:ep):ep];
-  if($("clBar")) $("clBar").textContent=String((_plNow?(typeof displayBar!=="undefined"?displayBar:0):(typeof editBar!=="undefined"?editBar:0))+1);
+  _t("perfPat","ABCD"[_plNow?(typeof displayPat!=="undefined"?displayPat:ep):ep]);
+  _t("clBar",String((_plNow?(typeof displayBar!=="undefined"?displayBar:0):(typeof editBar!=="undefined"?editBar:0))+1));
   const _pl=(typeof playing!=="undefined"&&playing);
-  if($("clStep")) $("clStep").textContent=_pl?(String((typeof playStep!=="undefined"?playStep:0)+1).padStart(2,"0")+"/16"):"--";
+  _t("clStep",_pl?(String((typeof playStep!=="undefined"?playStep:0)+1).padStart(2,"0")+"/16"):"--");
   const _scr=document.querySelector(".perf-screen"); if(_scr) _scr.classList.toggle("playing",_pl);
-  if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
+  if(typeof stepTrackName==="function") _t("perfSel",stepTrackName());
   const _msg=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):"";
-  if($("clMsg")) $("clMsg").textContent=_msg;   // 行は常設。空でも畳まない（畳むと窓が跳ねる）
+  _t("clMsg",_msg);   // 行は常設。空でも畳まない（畳むと窓が跳ねる）
   // 選択パッドの値（MPC式＝この窓で直接いじる対象。中身は開いているページぶんだけ）
   if(typeof paintClPage==="function") paintClPage();
   if($("clHint")){
@@ -147,15 +149,16 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右／上下で現在値を調整";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
-    $("clHint").textContent = _msg ? "" : h;   // メッセージが出ている間はヒントを引っ込める（1行を共用）
+    _t("clHint", _msg ? "" : h);   // メッセージが出ている間はヒントを引っ込める（1行を共用）
   }
   // パターン：現在=on、再生中の予約=queued
+  const _has=[0,1,2,3].map(p=>patHasContent(p));   // 1 回だけ数える（ボタンは 8 個ある）
   document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>{
     const p=+b.dataset.p;
     b.classList.toggle("on", p===ep);
-    if(b.classList.contains("fx-pattern"))b.setAttribute("aria-pressed",String(p===ep));
+    if(b.classList.contains("fx-pattern")&&b.getAttribute("aria-pressed")!==String(p===ep))b.setAttribute("aria-pressed",String(p===ep));
     b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
-    b.classList.toggle("has", patHasContent(p));   // 中身あり＝ドット表示
+    b.classList.toggle("has", _has[p]);   // 中身あり＝ドット表示
   });
   // 小節1-4：現在の editBar を反映＋中身あり＝ドット（今のパターンの各小節）
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>{

@@ -2,10 +2,10 @@
 // @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
 //    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
-//    keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps,
-//    pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording, reverbPre,
-//    sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen, tapeEcho, tracks,
-//    vuHit
+//    keyPadPlayheadRun, keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain,
+//    paintSteps, pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording,
+//    reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen,
+//    tapeEcho, tracks, vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -249,6 +249,8 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   if(trs===tracks && i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
     pePlayheadRun(when, startSec+pr.off, endSec+pr.off, pr.at(lsN)+pr.off, pr.V, t.loop);   // 波形の上の位置＝全体を焼いたときの秒（off で範囲の頭をずらす）
   }
+  // KEY のパッド：ピアノロールを開いていれば、そこに再生位置（v0.3.225 §214）
+  if(trs===tracks && t.padKind==="KEY" && typeof keyPadPlayheadRun==="function") keyPadPlayheadRun(i, when, t.loop);
 }
 
 // 手叩きの共通部（音側だけ）：ループ系はトグル＝発音中なら止めて false、それ以外は鳴らして true。

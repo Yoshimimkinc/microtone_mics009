@@ -51,6 +51,8 @@ function peSetCue(n, restart){
 let pePlayRAF=0;
 // 波形エディタが画面に出ているか（モーダルが開いている／窓のSAMPLEページに居る）
 function peWaveVisible(){
+  // EDIT が開いていない・窓が SAMPLE ページでない＝波形は出ていない。先に安く見る（v0.3.225 §215：叩くたびに配置の計算をさせていた）
+  if(!document.body.classList.contains("pe-open") && (typeof clPage==="undefined" || clPage!=="smpl")) return false;
   const w=document.getElementById("peWave"); if(!w) return false;
   const r=w.parentElement.getBoundingClientRect(); return r.width>0 && r.height>0;
 }

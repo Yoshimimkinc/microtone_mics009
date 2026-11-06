@@ -23,11 +23,18 @@ function drawKeyPadNotes(ctx,src,w,h,ink){
   for(let b=Math.ceil(g.from);b<=g.to;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+(b-g.from)/(g.to-g.from)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
   ctx.fillStyle=ink||'#48d9de';for(const n of g.notes){ctx.globalAlpha=.4+.6*n.velocity/127;ctx.fillRect(n.x,n.y-n.height/2,n.width,n.height);}ctx.restore();
 }
-function drawPadWave(i, ink){
+// 中身（音・START / END・KEY の音符・色）が前に描いたときと同じなら描き直さない（v0.3.225 §215「演奏がもたつく」）。
+// パッドを選ぶたびに syncEditor から呼ばれ、長いサンプルを毎回端から端まで読み、大きさを測るために配置の計算もさせていた。
+// 大きさが変わったとき（リサイズ・スキン・セット切替）は drawAllPadWaves が force で描き直す
+function drawPadWave(i, ink, force){
   const pad=padsEl.children[i]; if(!pad) return;
   const cv=pad.querySelector(".pad-wave"); if(!cv) return;
+  const t=tracks[i], kind=t.padKind==="KEY"?"KEY":"SPL";
+  const sig=kind==="KEY" ? "K"+JSON.stringify(t.keyPhrase||null) : "S"+(t.start||0)+"|"+(t.end??1);   // 色（スキン）が変わるときは drawAllPadWaves が force で描く
+  if(!force && cv.width>0 && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
   const w=pad.clientWidth, h=pad.clientHeight;
   if(!w||!h) return;
+  cv._sig=sig; cv._buf=kind==="KEY"?null:t.buffer;
   const dpr=window.devicePixelRatio||1;
   const cw=Math.round(w*dpr), ch=Math.round(h*dpr);
   if(cv.width!==cw || cv.height!==ch){ cv.width=cw; cv.height=ch; }   // サイズ不変なら再確保しない（毎ヒットのコスト削減）
@@ -50,7 +57,7 @@ function drawPadWave(i, ink){
   }
   ctx.stroke();
 }
-function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink); }
+function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink, true); }
 
 // ===== ステップキーの薄い波形（軽量：トラック毎に1回 data-URL 化してキャッシュ→CSS背景。再生中は再描画しない）=====
 const trackWaveURL=[];   // trackWaveURL[i] = そのトラック波形(start..end)の透明PNG data-URL
@@ -74,6 +81,8 @@ function buildTrackWave(i){
 // セルに「全波形の 1/16 スライス」を CSS背景で割り当て（drawImageせず＝軽い）
 function setCellWave(el, url, s){
   if(!el) return;
+  if(el._wurl===(url||"")) return;   // 同じ波形なら書かない（長い data URL を毎回読ませない。v0.3.225 §215）
+  el._wurl=url||"";
   // 各セル＝そのトラックの再生範囲(start..end)の全波形を丸ごと表示（演奏用PADと同じ）。16分割スライスではない。
   if(url){ el.style.backgroundImage="url("+url+")"; el.style.backgroundSize="100% 100%";
     el.style.backgroundPosition="center"; el.style.backgroundRepeat="no-repeat"; }
@@ -124,7 +133,7 @@ function snapStartToOnset(idx=selected){
 // エディタを選択パッドに同期
 function syncEditor(){   // 値のUIは情報窓のページ1本になったので、ここは名前と波形だけ
   const t=tracks[selected];
-  const ew=document.getElementById("edWho"); if(ew) ew.textContent=String(selected+1).padStart(2,"0")+" "+(PADS[selected].type==="sample"?t.name:PADS[selected].name);
+  const ew=document.getElementById("edWho"), wt=String(selected+1).padStart(2,"0")+" "+(PADS[selected].type==="sample"?t.name:PADS[selected].name); if(ew&&ew.textContent!==wt) ew.textContent=wt;
   drawPadWave(selected);   // 窓波形の代わりにパッド内波形を更新
 }
 let _rsT=null;

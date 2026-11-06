@@ -65,7 +65,7 @@ function paintStepStrip(){
         norm=Math.max(0,Math.min(1,norm));
         el._fill.style.width=(norm*100).toFixed(1)+"%"; el._fill.style.background="rgb("+spec.color+")";
         el._lv.textContent=spec.fmt(val);
-      } else { el._fill.style.width="0%"; el._lv.textContent=""; }
+      } else { if(el._fill.style.width!=="0%") el._fill.style.width="0%"; if(el._lv.textContent) el._lv.textContent=""; }   // 変わったときだけ（v0.3.225 §215）
     }
   }
   _stripCurStep=cur;   // moveCursors(再生中の差分更新)とカーソルキャッシュを同期

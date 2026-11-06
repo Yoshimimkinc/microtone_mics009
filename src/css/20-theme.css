@@ -219,7 +219,8 @@
   .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:540px;}
   .pads .pad{aspect-ratio:1;}
   /* 常時表示の16ステップ列（選択トラックの打ち込み）。1画面化(v0.3.0) */
-  .stepstrip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px;width:100%;align-self:end;}
+  .stepstrip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px;width:100%;align-self:end;
+    will-change:transform;}   /* 別の描画層に（v0.3.225 §215）：パッドを選ぶたびにステップの波形が替わり、画面の背景ごと広く描き直していた（PC で描画が約 1/4 に） */
   .stepbtn{height:32px;border:1px solid var(--line);border-radius:4px;background:#1a1e23;position:relative;
     cursor:pointer;padding:0;transition:.08s;-webkit-tap-highlight-color:transparent;touch-action:none;}
   /* SEQ画面と同じデザイン：拍内4ステップを暗→明グラデ＋頭拍(1,5,9,13)に区切り線＝頭拍アクセント（OFFガイド／ONはテーマ色） */

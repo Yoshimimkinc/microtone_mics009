@@ -255,7 +255,8 @@
   .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:540px;}
   .pads .pad{aspect-ratio:1;}
   /* 常時表示の16ステップ列（選択トラックの打ち込み）。1画面化(v0.3.0) */
-  .stepstrip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px;width:100%;align-self:end;}
+  .stepstrip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px;width:100%;align-self:end;
+    will-change:transform;}   /* 別の描画層に（v0.3.225 §215）：パッドを選ぶたびにステップの波形が替わり、画面の背景ごと広く描き直していた（PC で描画が約 1/4 に） */
   .stepbtn{height:32px;border:1px solid var(--line);border-radius:4px;background:#1a1e23;position:relative;
     cursor:pointer;padding:0;transition:.08s;-webkit-tap-highlight-color:transparent;touch-action:none;}
   /* SEQ画面と同じデザイン：拍内4ステップを暗→明グラデ＋頭拍(1,5,9,13)に区切り線＝頭拍アクセント（OFFガイド／ONはテーマ色） */
@@ -1575,7 +1576,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.224</div>
+  <div class="s-ver" id="splashVer">v0.3.225</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -3204,10 +3205,10 @@ function warmKeyTracks(){
 // @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
 //    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
-//    keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain, paintSteps,
-//    pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording, reverbPre,
-//    sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen, tapeEcho, tracks,
-//    vuHit
+//    keyPadPlayheadRun, keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain,
+//    paintSteps, pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording,
+//    reverbPre, sampNameEl, setIndexOfTrs, setLevelLin, setLevelNode, setSlots, setStepAt, spDynOpen,
+//    tapeEcho, tracks, vuHit
 // @depends -
 // ===== SP風 12bit Lo-Fi 処理 =====
 // ビット量子化 + サンプルレート低下（間引き＆ホールドで高域を落とす）
@@ -3451,6 +3452,8 @@ function playVoice(i, when, accent, fromSeq, noteSemi, plock, trs=tracks, fromN=
   if(trs===tracks && i===peTarget && typeof pePlayheadRun==="function" && typeof peWaveVisible==="function" && peWaveVisible()){
     pePlayheadRun(when, startSec+pr.off, endSec+pr.off, pr.at(lsN)+pr.off, pr.V, t.loop);   // 波形の上の位置＝全体を焼いたときの秒（off で範囲の頭をずらす）
   }
+  // KEY のパッド：ピアノロールを開いていれば、そこに再生位置（v0.3.225 §214）
+  if(trs===tracks && t.padKind==="KEY" && typeof keyPadPlayheadRun==="function") keyPadPlayheadRun(i, when, t.loop);
 }
 
 // 手叩きの共通部（音側だけ）：ループ系はトグル＝発音中なら止めて false、それ以外は鳴らして true。
@@ -3657,13 +3660,14 @@ function applyPadCategory(i){
 // v0.3.131 までは録音・LOAD・読込・undo・改名の5箇所がそれぞれ .nm を直書きしていて、整形の有無や SEQ 行名の更新漏れがあった
 // パッド右上の種類の札：サンプル（既定）は出さない、KEY / SCRATCH だけ略さずに（v0.3.198 §187）
 const PAD_KIND_TAG={KEY:"KEY",SCR:"SCRATCH"};
+// 変わっていなければ書かない（v0.3.225 §215：同じ文字でも書き込むと配置の計算がやり直しになり、パッドを選ぶたびに 16 枚ぶん走っていた）
 function paintPadName(i){
   const nm=tracks[i].name||PADS[i].name||"";
-  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.toUpperCase();   // 8 文字で切らない（2 行まで CSS で。v0.3.198 §187）
-  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=PAD_KIND_TAG[tracks[i].padKind]||"";}
-  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${nm}</span>`;
+  const pe=padsEl.children[i], ne=pe&&pe.querySelector(".nm"), up=nm.toUpperCase();
+  if(ne&&ne.textContent!==up) ne.textContent=up;   // 8 文字で切らない（2 行まで CSS で。v0.3.198 §187）
+  if(pe){const kd=tracks[i].padKind||"SPL";if(pe.dataset.kind!==kd)pe.dataset.kind=kd;const k=pe.querySelector(".pad-kind"),tg=PAD_KIND_TAG[tracks[i].padKind]||"";if(k&&k.textContent!==tg)k.textContent=tg;}
+  const rn=grid.children[i]&&grid.children[i].querySelector(".rn"), no=String(i+1).padStart(2,"0");
+  if(rn&&rn.textContent!==no+" "+nm) rn.innerHTML=`<b>${no}</b> <span>${nm}</span>`;
 }
 // パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
 function refreshPadDisplay(i){
@@ -3773,9 +3777,11 @@ function selectPad(i, light){
   const changed = selected!==i;
   selected=i;
   // 軽い更新（毎回）：選択ハイライト＋トラック名/音量表示
-  for(let idx=0;idx<padsEl.children.length;idx++){ const el=padsEl.children[idx]; el.classList.toggle("sel",idx===i); el.setAttribute("aria-current", idx===i?"true":"false"); }
-  document.getElementById("vol").value=tracks[i].vol;
-  document.getElementById("volVal").textContent=tracks[i].vol;
+  // 変わったパッドだけ書く（v0.3.225 §215：毎回 16 枚に書くと、そのたびに見た目の計算がやり直しになっていた）
+  for(let idx=0;idx<padsEl.children.length;idx++){ const el=padsEl.children[idx], on=idx===i; if(el.classList.contains("sel")!==on) el.classList.toggle("sel",on); const ac=on?"true":"false"; if(el.getAttribute("aria-current")!==ac) el.setAttribute("aria-current",ac); }
+  const _v=String(tracks[i].vol), vEl=document.getElementById("vol"), vv=document.getElementById("volVal");
+  if(vEl.value!==_v) vEl.value=_v;
+  if(vv.textContent!==_v) vv.textContent=_v;
   // 同じパッド連打は重い更新を完全スキップ
   if(light && !changed) return;
   if(light){   // 演奏タップ（指弾き）：重いUI同期は次フレームに1回だけ集約＝連打しても発音が軽い
@@ -4508,11 +4514,18 @@ function drawKeyPadNotes(ctx,src,w,h,ink){
   for(let b=Math.ceil(g.from);b<=g.to;b++){ctx.strokeStyle=b%4===0?'#365860':'#223b42';const x=g.left+(b-g.from)/(g.to-g.from)*g.width;ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.height);ctx.stroke();}
   ctx.fillStyle=ink||'#48d9de';for(const n of g.notes){ctx.globalAlpha=.4+.6*n.velocity/127;ctx.fillRect(n.x,n.y-n.height/2,n.width,n.height);}ctx.restore();
 }
-function drawPadWave(i, ink){
+// 中身（音・START / END・KEY の音符・色）が前に描いたときと同じなら描き直さない（v0.3.225 §215「演奏がもたつく」）。
+// パッドを選ぶたびに syncEditor から呼ばれ、長いサンプルを毎回端から端まで読み、大きさを測るために配置の計算もさせていた。
+// 大きさが変わったとき（リサイズ・スキン・セット切替）は drawAllPadWaves が force で描き直す
+function drawPadWave(i, ink, force){
   const pad=padsEl.children[i]; if(!pad) return;
   const cv=pad.querySelector(".pad-wave"); if(!cv) return;
+  const t=tracks[i], kind=t.padKind==="KEY"?"KEY":"SPL";
+  const sig=kind==="KEY" ? "K"+JSON.stringify(t.keyPhrase||null) : "S"+(t.start||0)+"|"+(t.end??1);   // 色（スキン）が変わるときは drawAllPadWaves が force で描く
+  if(!force && cv.width>0 && cv._sig===sig && cv._buf===(kind==="KEY"?null:t.buffer)) return;
   const w=pad.clientWidth, h=pad.clientHeight;
   if(!w||!h) return;
+  cv._sig=sig; cv._buf=kind==="KEY"?null:t.buffer;
   const dpr=window.devicePixelRatio||1;
   const cw=Math.round(w*dpr), ch=Math.round(h*dpr);
   if(cv.width!==cw || cv.height!==ch){ cv.width=cw; cv.height=ch; }   // サイズ不変なら再確保しない（毎ヒットのコスト削減）
@@ -4535,7 +4548,7 @@ function drawPadWave(i, ink){
   }
   ctx.stroke();
 }
-function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink); }
+function drawAllPadWaves(){ const ink=padWaveInk(); for(let i=0;i<PADS.length;i++) drawPadWave(i, ink, true); }
 
 // ===== ステップキーの薄い波形（軽量：トラック毎に1回 data-URL 化してキャッシュ→CSS背景。再生中は再描画しない）=====
 const trackWaveURL=[];   // trackWaveURL[i] = そのトラック波形(start..end)の透明PNG data-URL
@@ -4559,6 +4572,8 @@ function buildTrackWave(i){
 // セルに「全波形の 1/16 スライス」を CSS背景で割り当て（drawImageせず＝軽い）
 function setCellWave(el, url, s){
   if(!el) return;
+  if(el._wurl===(url||"")) return;   // 同じ波形なら書かない（長い data URL を毎回読ませない。v0.3.225 §215）
+  el._wurl=url||"";
   // 各セル＝そのトラックの再生範囲(start..end)の全波形を丸ごと表示（演奏用PADと同じ）。16分割スライスではない。
   if(url){ el.style.backgroundImage="url("+url+")"; el.style.backgroundSize="100% 100%";
     el.style.backgroundPosition="center"; el.style.backgroundRepeat="no-repeat"; }
@@ -4609,7 +4624,7 @@ function snapStartToOnset(idx=selected){
 // エディタを選択パッドに同期
 function syncEditor(){   // 値のUIは情報窓のページ1本になったので、ここは名前と波形だけ
   const t=tracks[selected];
-  const ew=document.getElementById("edWho"); if(ew) ew.textContent=String(selected+1).padStart(2,"0")+" "+(PADS[selected].type==="sample"?t.name:PADS[selected].name);
+  const ew=document.getElementById("edWho"), wt=String(selected+1).padStart(2,"0")+" "+(PADS[selected].type==="sample"?t.name:PADS[selected].name); if(ew&&ew.textContent!==wt) ew.textContent=wt;
   drawPadWave(selected);   // 窓波形の代わりにパッド内波形を更新
 }
 let _rsT=null;
@@ -4734,7 +4749,7 @@ function paintClPage(){
   paintClKind();
   document.querySelectorAll("#clPage .cl-par").forEach(el=>{
     const sp=CL_SPEC[el.dataset.p]; if(!sp) return;
-    el.querySelector("b").textContent=sp.fmt(sp.get(t));
+    const b=el.querySelector("b"), v=sp.fmt(sp.get(t)); if(b.textContent!==v) b.textContent=v;   // 変わったときだけ（v0.3.225 §215）
   });
   const lb=document.getElementById("clLearn");
   if(lb) lb.classList.toggle("learn-on", assignTarget===selected);
@@ -5248,7 +5263,7 @@ function paintStepStrip(){
         norm=Math.max(0,Math.min(1,norm));
         el._fill.style.width=(norm*100).toFixed(1)+"%"; el._fill.style.background="rgb("+spec.color+")";
         el._lv.textContent=spec.fmt(val);
-      } else { el._fill.style.width="0%"; el._lv.textContent=""; }
+      } else { if(el._fill.style.width!=="0%") el._fill.style.width="0%"; if(el._lv.textContent) el._lv.textContent=""; }   // 変わったときだけ（v0.3.225 §215）
     }
   }
   _stripCurStep=cur;   // moveCursors(再生中の差分更新)とカーソルキャッシュを同期
@@ -5422,6 +5437,8 @@ function peSetCue(n, restart){
 let pePlayRAF=0;
 // 波形エディタが画面に出ているか（モーダルが開いている／窓のSAMPLEページに居る）
 function peWaveVisible(){
+  // EDIT が開いていない・窓が SAMPLE ページでない＝波形は出ていない。先に安く見る（v0.3.225 §215：叩くたびに配置の計算をさせていた）
+  if(!document.body.classList.contains("pe-open") && (typeof clPage==="undefined" || clPage!=="smpl")) return false;
   const w=document.getElementById("peWave"); if(!w) return false;
   const r=w.parentElement.getBoundingClientRect(); return r.width>0 && r.height>0;
 }
@@ -6427,20 +6444,22 @@ function barHasContent(p,b){ for(let i=0;i<tracks.length;i++){ const arr=tracks[
 function patHasContent(p){ for(let i=0;i<tracks.length;i++){ const pat=tracks[i].patterns[p]; if(!pat) continue; for(let b=0;b<pat.length;b++){ const arr=pat[b]; if(arr){ for(let s=0;s<arr.length;s++) if(arr[s]>0) return true; } } } return false; }
 function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常時ここに現在地と選択パッドの値が出る）
   const $=id=>document.getElementById(id);
+  // 値が変わったときだけ書く（v0.3.225 §215：同じ文字でも書き込むと配置の計算がやり直しになる。パッドを叩くたびに呼ばれる）
+  const _t=(id,v)=>{ const e=$(id); if(e&&e.textContent!==v) e.textContent=v; };
   const bv=(typeof bpmVal!=="undefined"?bpmVal:100), ep=(typeof editPat!=="undefined"?editPat:0);
-  if($("perfBpm")) $("perfBpm").textContent=bv.toFixed(1);
-  if($("clSwing")) $("clSwing").textContent=String(typeof swingPct!=="undefined"?swingPct:50);
+  _t("perfBpm",bv.toFixed(1));
+  _t("clSwing",String(typeof swingPct!=="undefined"?swingPct:50));
   // 窓の PAT/BAR は「現在地」＝再生中は鳴っている場所、停止中は編集位置（§0-3「嘘をつかない」。
   // 以前は再生中も編集位置で、2小節目が鳴っていても BAR 1、予約しただけで PAT B と出ていた）
   const _plNow=(typeof playing!=="undefined"&&playing);
-  if($("perfPat")) $("perfPat").textContent="ABCD"[_plNow?(typeof displayPat!=="undefined"?displayPat:ep):ep];
-  if($("clBar")) $("clBar").textContent=String((_plNow?(typeof displayBar!=="undefined"?displayBar:0):(typeof editBar!=="undefined"?editBar:0))+1);
+  _t("perfPat","ABCD"[_plNow?(typeof displayPat!=="undefined"?displayPat:ep):ep]);
+  _t("clBar",String((_plNow?(typeof displayBar!=="undefined"?displayBar:0):(typeof editBar!=="undefined"?editBar:0))+1));
   const _pl=(typeof playing!=="undefined"&&playing);
-  if($("clStep")) $("clStep").textContent=_pl?(String((typeof playStep!=="undefined"?playStep:0)+1).padStart(2,"0")+"/16"):"--";
+  _t("clStep",_pl?(String((typeof playStep!=="undefined"?playStep:0)+1).padStart(2,"0")+"/16"):"--");
   const _scr=document.querySelector(".perf-screen"); if(_scr) _scr.classList.toggle("playing",_pl);
-  if($("perfSel") && typeof stepTrackName==="function") $("perfSel").textContent=stepTrackName();
+  if(typeof stepTrackName==="function") _t("perfSel",stepTrackName());
   const _msg=(typeof sampNameEl!=="undefined"&&sampNameEl)?((sampNameEl.textContent||"").trim()):"";
-  if($("clMsg")) $("clMsg").textContent=_msg;   // 行は常設。空でも畳まない（畳むと窓が跳ねる）
+  _t("clMsg",_msg);   // 行は常設。空でも畳まない（畳むと窓が跳ねる）
   // 選択パッドの値（MPC式＝この窓で直接いじる対象。中身は開いているページぶんだけ）
   if(typeof paintClPage==="function") paintClPage();
   if($("clHint")){
@@ -6453,15 +6472,16 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右／上下で現在値を調整";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
-    $("clHint").textContent = _msg ? "" : h;   // メッセージが出ている間はヒントを引っ込める（1行を共用）
+    _t("clHint", _msg ? "" : h);   // メッセージが出ている間はヒントを引っ込める（1行を共用）
   }
   // パターン：現在=on、再生中の予約=queued
+  const _has=[0,1,2,3].map(p=>patHasContent(p));   // 1 回だけ数える（ボタンは 8 個ある）
   document.querySelectorAll("#perfPats .perf-pat, .fx-pattern").forEach(b=>{
     const p=+b.dataset.p;
     b.classList.toggle("on", p===ep);
-    if(b.classList.contains("fx-pattern"))b.setAttribute("aria-pressed",String(p===ep));
+    if(b.classList.contains("fx-pattern")&&b.getAttribute("aria-pressed")!==String(p===ep))b.setAttribute("aria-pressed",String(p===ep));
     b.classList.toggle("queued", (typeof playing!=="undefined"&&playing) && (typeof queuedPat!=="undefined") && queuedPat===p);
-    b.classList.toggle("has", patHasContent(p));   // 中身あり＝ドット表示
+    b.classList.toggle("has", _has[p]);   // 中身あり＝ドット表示
   });
   // 小節1-4：現在の editBar を反映＋中身あり＝ドット（今のパターンの各小節）
   document.querySelectorAll("#perfPats .perf-bar").forEach(b=>{
@@ -8021,10 +8041,10 @@ async function padHeadGo(screen,kind){
 //    _keyChopPlan, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache,
 //    _keyLoop, _keyLoopBeat, _keyLoopKey, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
 //    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
-//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRange,
-//    _keyRangeDraft, _keyRangeDrag, _keyRangeHit, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt,
-//    _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop,
-//    keyChopBeats, keyEntryClose, keyEntryOpen
+//    _keyPadPitches, _keyPadPlayheadFrame, _keyPadRoot, _keyPadRun, _keyPadsLit, _keyPlayheadFrame,
+//    _keyPref, _keyPutNote, _keyRange, _keyRangeDraft, _keyRangeDrag, _keyRangeHit, _keyRecCommit,
+//    _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads,
+//    keyApplyPreset, keyChop, keyChopBeats, keyEntryClose, keyEntryOpen, keyPadPlayheadRun
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
@@ -8131,6 +8151,25 @@ function _keyPlayheadFrame(){
   const x=58+_keyLoopBeat()*_keyZoom;ph.hidden=false;ph.style.transform='translateX('+x+'px)';
   const h=document.getElementById('keyHorizontal');if(!_keyGesture&&!_keyRangeDrag&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);
   L.raf=requestAnimationFrame(_keyPlayheadFrame);
+}
+// パッドが鳴った時の再生位置（v0.3.225 §214「KEY も再生箇所は示してほしい」）：SAMPLE の EDIT 波形と同じく、
+// ピアノロールを開いているパッドが手叩き・SEQ で鳴ったら、#keyPlayhead をその音の位置で走らせる（START から。ループなら START〜END をくり返す）。
+// 音が止まる（チョーク・再トリガ・最後まで鳴った）と消える。エディタの PLAY（ループ）中はそちらが優先
+let _keyPadRun=null;
+function keyPadPlayheadRun(i,when,loop){
+  if(_keyTarget!==i||_keyLoop)return;
+  const r=_keyRange(false),bs=_keyBeatSec(),beats=Math.max(1e-4,r.end-r.start);
+  if(_keyPadRun)cancelAnimationFrame(_keyPadRun.raf);
+  _keyPadRun={i,when,loop:!!loop,rs:r.start,beats,bs,raf:0};
+  _keyPadRun.raf=requestAnimationFrame(_keyPadPlayheadFrame);
+}
+function _keyPadPlayheadFrame(){
+  const R=_keyPadRun,ph=document.getElementById('keyPlayhead');if(!R||!ph)return;
+  const t=tracks[R.i],lat=Math.min(.2,(AC.outputLatency||0)+(AC.baseLatency||0)),el=(AC.currentTime-lat-R.when)/R.bs;
+  if(_keyLoop||_keyTarget!==R.i||!t||!t.activeVoices||!t.activeVoices.length||(!R.loop&&el>=R.beats)){_keyPadRun=null;if(!_keyLoop)ph.hidden=true;return;}
+  if(el>=0){const b=R.rs+(R.loop?el%R.beats:el),x=58+b*_keyZoom;ph.hidden=false;ph.style.transform='translateX('+x+'px)';
+    const h=document.getElementById('keyHorizontal');if(h&&!_keyGesture&&!_keyRangeDrag&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);}
+  R.raf=requestAnimationFrame(_keyPadPlayheadFrame);
 }
 function _keyLoopKey(){const r=_keyRange(false);return JSON.stringify([r.start,r.end,r.full,_keyBeatSec()]);}
 async function _keyLoopStart(){
@@ -8703,7 +8742,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.224";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.225";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

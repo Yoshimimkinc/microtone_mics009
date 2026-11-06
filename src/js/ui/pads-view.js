@@ -34,13 +34,14 @@ function applyPadCategory(i){
 // v0.3.131 までは録音・LOAD・読込・undo・改名の5箇所がそれぞれ .nm を直書きしていて、整形の有無や SEQ 行名の更新漏れがあった
 // パッド右上の種類の札：サンプル（既定）は出さない、KEY / SCRATCH だけ略さずに（v0.3.198 §187）
 const PAD_KIND_TAG={KEY:"KEY",SCR:"SCRATCH"};
+// 変わっていなければ書かない（v0.3.225 §215：同じ文字でも書き込むと配置の計算がやり直しになり、パッドを選ぶたびに 16 枚ぶん走っていた）
 function paintPadName(i){
   const nm=tracks[i].name||PADS[i].name||"";
-  const ne=padsEl.children[i]&&padsEl.children[i].querySelector(".nm");
-  if(ne) ne.textContent=nm.toUpperCase();   // 8 文字で切らない（2 行まで CSS で。v0.3.198 §187）
-  if(padsEl.children[i]){padsEl.children[i].dataset.kind=tracks[i].padKind||"SPL";const k=padsEl.children[i].querySelector(".pad-kind");if(k)k.textContent=PAD_KIND_TAG[tracks[i].padKind]||"";}
-  const rn=grid.children[i]&&grid.children[i].querySelector(".rn");
-  if(rn) rn.innerHTML=`<b>${String(i+1).padStart(2,"0")}</b> <span>${nm}</span>`;
+  const pe=padsEl.children[i], ne=pe&&pe.querySelector(".nm"), up=nm.toUpperCase();
+  if(ne&&ne.textContent!==up) ne.textContent=up;   // 8 文字で切らない（2 行まで CSS で。v0.3.198 §187）
+  if(pe){const kd=tracks[i].padKind||"SPL";if(pe.dataset.kind!==kd)pe.dataset.kind=kd;const k=pe.querySelector(".pad-kind"),tg=PAD_KIND_TAG[tracks[i].padKind]||"";if(k&&k.textContent!==tg)k.textContent=tg;}
+  const rn=grid.children[i]&&grid.children[i].querySelector(".rn"), no=String(i+1).padStart(2,"0");
+  if(rn&&rn.textContent!==no+" "+nm) rn.innerHTML=`<b>${no}</b> <span>${nm}</span>`;
 }
 // パッドの表示（カテゴリ色・名前・SEQ行名・波形）をトラック状態から再描画。データ更新（data/pads）の後に呼ぶ唯一の描画口
 function refreshPadDisplay(i){
@@ -150,9 +151,11 @@ function selectPad(i, light){
   const changed = selected!==i;
   selected=i;
   // 軽い更新（毎回）：選択ハイライト＋トラック名/音量表示
-  for(let idx=0;idx<padsEl.children.length;idx++){ const el=padsEl.children[idx]; el.classList.toggle("sel",idx===i); el.setAttribute("aria-current", idx===i?"true":"false"); }
-  document.getElementById("vol").value=tracks[i].vol;
-  document.getElementById("volVal").textContent=tracks[i].vol;
+  // 変わったパッドだけ書く（v0.3.225 §215：毎回 16 枚に書くと、そのたびに見た目の計算がやり直しになっていた）
+  for(let idx=0;idx<padsEl.children.length;idx++){ const el=padsEl.children[idx], on=idx===i; if(el.classList.contains("sel")!==on) el.classList.toggle("sel",on); const ac=on?"true":"false"; if(el.getAttribute("aria-current")!==ac) el.setAttribute("aria-current",ac); }
+  const _v=String(tracks[i].vol), vEl=document.getElementById("vol"), vv=document.getElementById("volVal");
+  if(vEl.value!==_v) vEl.value=_v;
+  if(vv.textContent!==_v) vv.textContent=_v;
   // 同じパッド連打は重い更新を完全スキップ
   if(light && !changed) return;
   if(light){   // 演奏タップ（指弾き）：重いUI同期は次フレームに1回だけ集約＝連打しても発音が軽い

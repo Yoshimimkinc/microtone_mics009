@@ -3,10 +3,10 @@
 //    _keyChopPlan, _keyClick, _keyEntryPaint, _keyGridBeat, _keyLive, _keyLiveBuffer, _keyLiveCache,
 //    _keyLoop, _keyLoopBeat, _keyLoopKey, _keyLoopStart, _keyLoopStop, _keyLoopTick, _keyMorePaint,
 //    _keyMoreTab, _keyMoreTabSet, _keyNativeSet, _keyNoteName, _keyNoteOff, _keyNoteOn, _keyPadLow,
-//    _keyPadPitches, _keyPadRoot, _keyPadsLit, _keyPlayheadFrame, _keyPref, _keyPutNote, _keyRange,
-//    _keyRangeDraft, _keyRangeDrag, _keyRangeHit, _keyRecCommit, _keyRecOn, _keySetPref, _keyStepAt,
-//    _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads, keyApplyPreset, keyChop,
-//    keyChopBeats, keyEntryClose, keyEntryOpen
+//    _keyPadPitches, _keyPadPlayheadFrame, _keyPadRoot, _keyPadRun, _keyPadsLit, _keyPlayheadFrame,
+//    _keyPref, _keyPutNote, _keyRange, _keyRangeDraft, _keyRangeDrag, _keyRangeHit, _keyRecCommit,
+//    _keyRecOn, _keySetPref, _keyStepAt, _keyStepHeld, _keyStepMove, _keyStepOn, _keyStepPut, _keyWarmPads,
+//    keyApplyPreset, keyChop, keyChopBeats, keyEntryClose, keyEntryOpen, keyPadPlayheadRun
 // @uses AC, KEYMAP, KEY_PRESETS, NOTE_NAMES, _keyBuffers, _keyGesture, _keyInScale, _keyMoreShow, _keyPaint,
 //    _keyPhrase, _keyPoint, _keySelected, _keySelection, _keySound, _keyTarget, _keyUpdate, _keyZoom,
 //    bpmVal, chopKeyToPads, clearPadSound, keyApplyEffects, keyChopLayout, keyEditorClose, keyPresetPhrase,
@@ -113,6 +113,25 @@ function _keyPlayheadFrame(){
   const x=58+_keyLoopBeat()*_keyZoom;ph.hidden=false;ph.style.transform='translateX('+x+'px)';
   const h=document.getElementById('keyHorizontal');if(!_keyGesture&&!_keyRangeDrag&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);
   L.raf=requestAnimationFrame(_keyPlayheadFrame);
+}
+// パッドが鳴った時の再生位置（v0.3.225 §214「KEY も再生箇所は示してほしい」）：SAMPLE の EDIT 波形と同じく、
+// ピアノロールを開いているパッドが手叩き・SEQ で鳴ったら、#keyPlayhead をその音の位置で走らせる（START から。ループなら START〜END をくり返す）。
+// 音が止まる（チョーク・再トリガ・最後まで鳴った）と消える。エディタの PLAY（ループ）中はそちらが優先
+let _keyPadRun=null;
+function keyPadPlayheadRun(i,when,loop){
+  if(_keyTarget!==i||_keyLoop)return;
+  const r=_keyRange(false),bs=_keyBeatSec(),beats=Math.max(1e-4,r.end-r.start);
+  if(_keyPadRun)cancelAnimationFrame(_keyPadRun.raf);
+  _keyPadRun={i,when,loop:!!loop,rs:r.start,beats,bs,raf:0};
+  _keyPadRun.raf=requestAnimationFrame(_keyPadPlayheadFrame);
+}
+function _keyPadPlayheadFrame(){
+  const R=_keyPadRun,ph=document.getElementById('keyPlayhead');if(!R||!ph)return;
+  const t=tracks[R.i],lat=Math.min(.2,(AC.outputLatency||0)+(AC.baseLatency||0)),el=(AC.currentTime-lat-R.when)/R.bs;
+  if(_keyLoop||_keyTarget!==R.i||!t||!t.activeVoices||!t.activeVoices.length||(!R.loop&&el>=R.beats)){_keyPadRun=null;if(!_keyLoop)ph.hidden=true;return;}
+  if(el>=0){const b=R.rs+(R.loop?el%R.beats:el),x=58+b*_keyZoom;ph.hidden=false;ph.style.transform='translateX('+x+'px)';
+    const h=document.getElementById('keyHorizontal');if(h&&!_keyGesture&&!_keyRangeDrag&&(x>h.scrollLeft+h.clientWidth-24||x<h.scrollLeft+58))h.scrollLeft=Math.max(0,x-58);}
+  R.raf=requestAnimationFrame(_keyPadPlayheadFrame);
 }
 function _keyLoopKey(){const r=_keyRange(false);return JSON.stringify([r.start,r.end,r.full,_keyBeatSec()]);}
 async function _keyLoopStart(){
