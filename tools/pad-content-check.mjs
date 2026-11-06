@@ -66,7 +66,7 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     finally{proto.start=orig;}
   });ok_(`${label} 旧pitchロックが発音バッファを変えない`,live,String(live));
   // Both axes share the same numeric parameter path, with one undo per gesture.
-  await p.evaluate(()=>{clPage='tone';renderClPage();tracks[selected].cutoff=3200;paintClPage();});
+  await p.evaluate(()=>{clPage='fx';renderClPage();tracks[selected].cutoff=3200;paintClPage();});
   eq(`${label} CUTOFF整数Hz`,await p.evaluate(()=>CL_SPEC.cutoff.fmt(3200.8)),'3201');
   const g=await p.locator('.cl-par[data-p="cutoff"]').boundingBox();
   await p.mouse.move(g.x+g.width/2,g.y+g.height/2);await p.mouse.down();await p.mouse.move(g.x+g.width/2,g.y+g.height/2-20,{steps:4});await p.mouse.up();
