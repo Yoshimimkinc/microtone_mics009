@@ -1333,6 +1333,23 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
     .viewdots .vdot[data-view="viewSet"] .vd-ic{display:none;}   /* SET はセットの地図がアイコンの代わり */
   }
 
+
+/* v0.3.230 §220「A B C D の段がはみ出てる」：低い横画面（iPad の Safari でタブバー・ツールバーが出ているとき等、高さ 640px 前後）で
+   パッドの段が 56px×2 を下回るまで潰れ、はみ出たパッドが A B C D の段に重なっていた（パッドの段が minmax(0,1fr)＝0 まで縮めた）。
+   ・パッドの段は 2 段ぶん（56px×2＋すき間 6＋枠 24）を下回らない。足りなければ情報窓のほうが縮む（中は隠れる。最後の手段）
+   ・高さ 760px 以下はまず上を詰める：筐体の上下の余白・PADS / SEQ / SET の段の前後・情報窓の上下の余白
+     （30-window の「ヘッダ圧縮」.modebar-row{margin:0 0 2px} は後ろの 50-seq の margin:16px 0 20px に負けて効いていなかった） */
+@media (min-width:768px) and (orientation:landscape), (min-width:768px) and (pointer:fine){
+  body.perf #viewPads.split.active{grid-template-rows:minmax(0,auto) auto minmax(142px,1fr) auto auto;}
+  body.perf #viewPads.split>.perf-screen{min-height:0;overflow:hidden;}
+}
+@media (min-width:768px) and (max-height:760px) and (orientation:landscape), (min-width:768px) and (max-height:760px) and (pointer:fine){
+  body.perf .unit{padding-top:10px;padding-bottom:10px;}
+  body.perf .top{padding-bottom:4px;margin-bottom:4px;}
+  body.perf .modebar-row{margin:0 0 6px;}
+  body.perf #viewPads.split>.perf-screen{padding-top:5px;padding-bottom:5px;}
+  body.perf .perf-screen .cl-keys{margin-top:3px;padding-top:3px;}
+}
   @media(max-width:400px){
     body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
     .unit{padding:10px 8px 8px;}
@@ -1598,7 +1615,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.229</div>
+  <div class="s-ver" id="splashVer">v0.3.230</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -8867,7 +8884,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.229";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.230";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

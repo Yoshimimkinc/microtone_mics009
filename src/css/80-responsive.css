@@ -153,3 +153,20 @@
     .viewdots .vdot[data-view="viewSet"] .vd-ic{display:none;}   /* SET はセットの地図がアイコンの代わり */
   }
 
+
+/* v0.3.230 §220「A B C D の段がはみ出てる」：低い横画面（iPad の Safari でタブバー・ツールバーが出ているとき等、高さ 640px 前後）で
+   パッドの段が 56px×2 を下回るまで潰れ、はみ出たパッドが A B C D の段に重なっていた（パッドの段が minmax(0,1fr)＝0 まで縮めた）。
+   ・パッドの段は 2 段ぶん（56px×2＋すき間 6＋枠 24）を下回らない。足りなければ情報窓のほうが縮む（中は隠れる。最後の手段）
+   ・高さ 760px 以下はまず上を詰める：筐体の上下の余白・PADS / SEQ / SET の段の前後・情報窓の上下の余白
+     （30-window の「ヘッダ圧縮」.modebar-row{margin:0 0 2px} は後ろの 50-seq の margin:16px 0 20px に負けて効いていなかった） */
+@media (min-width:768px) and (orientation:landscape), (min-width:768px) and (pointer:fine){
+  body.perf #viewPads.split.active{grid-template-rows:minmax(0,auto) auto minmax(142px,1fr) auto auto;}
+  body.perf #viewPads.split>.perf-screen{min-height:0;overflow:hidden;}
+}
+@media (min-width:768px) and (max-height:760px) and (orientation:landscape), (min-width:768px) and (max-height:760px) and (pointer:fine){
+  body.perf .unit{padding-top:10px;padding-bottom:10px;}
+  body.perf .top{padding-bottom:4px;margin-bottom:4px;}
+  body.perf .modebar-row{margin:0 0 6px;}
+  body.perf #viewPads.split>.perf-screen{padding-top:5px;padding-bottom:5px;}
+  body.perf .perf-screen .cl-keys{margin-top:3px;padding-top:3px;}
+}
