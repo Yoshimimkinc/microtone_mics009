@@ -987,6 +987,30 @@ async function edgeGrab(){
     await ctx.close();
   }
 }
+async function shortLandscape(){
+  // v0.3.230 §220「A B C D の段がはみ出てる」：低い横画面（iPad の Safari でタブバー等が出ている）で、パッドの段が潰れて
+  // はみ出たパッドが A B C D の段に重なっていた。高さを下げても パッド → A B C D → 16 ステップ が重ならず画面に収まること
+  for (const [w,h] of [[1180,640],[1133,600],[1180,820]]){
+    const V=`SHORTLAND ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:true,hasTouch:true}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    for (const v of ['viewPads','viewSet']){
+      await p.evaluate(v=>switchView(v),v); await p.waitForTimeout(400);
+      const m=await p.evaluate(()=>{ const r=s=>document.querySelector(s).getBoundingClientRect();
+        const cells=[...document.querySelectorAll(document.body.classList.contains('setmode')?'#setGrid > *, #viewPads .set-cell, #pads .pad':'#pads .pad')].filter(e=>e.getBoundingClientRect().height>0);
+        const lastB=Math.max(...cells.map(e=>e.getBoundingClientRect().bottom));
+        const minH=Math.min(...cells.map(e=>e.getBoundingClientRect().height));
+        return {perf:document.body.classList.contains('perf'), lastB:Math.round(lastB), minH:Math.round(minH), pats:Math.round(r('#perfPats').top), patsB:Math.round(r('#perfPats').bottom), steps:Math.round(r('#viewPads .stepstrip').top), stepsB:Math.round(r('#viewPads .stepstrip').bottom), ih:innerHeight}; });
+      ok_(`${V} ${v} パッドが A B C D の段に重ならない`, m.perf && m.lastB<=m.pats, JSON.stringify(m));
+      ok_(`${V} ${v} A B C D と 16 ステップが重ならず画面の中`, m.patsB<=m.steps && m.stepsB<=m.ih, JSON.stringify(m));
+      if(v==='viewPads') ok_(`${V} パッドは 56px 以上`, m.minH>=56, JSON.stringify(m));
+    }
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
   // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
@@ -1581,6 +1605,7 @@ await tapLight();
 await playLight();
 await editTabs();
 await edgeGrab();
+await shortLandscape();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
