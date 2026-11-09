@@ -1011,6 +1011,38 @@ async function shortLandscape(){
     await ctx.close();
   }
 }
+async function spEngine(){
+  // v0.3.231 §221「SP1200 の情報を GitHub から出してオーディオエンジンに」：実機の出力 4 組（1-2 SSM2044・3-4 約 7.5kHz・5-6 約 10kHz・7-8 無し）を
+  // 4 グループに、DAC はグループごとにフィルターの前、PITCH を下げたときは実測の比（Yeh 2007 / pitcher）
+  const V='SPENGINE';
+  const ctx=await br.newContext({viewport:{width:1280,height:800}}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p); await p.waitForTimeout(800);
+  const r=await p.evaluate(async()=>{
+    const out={dacs:spDacNodes.filter(Boolean).length, ssm:[0,1,2,3].map(g=>!!ssmNode[g]), kinds:SP_CH.map(c=>c.kind)};
+    const an=AC.createAnalyser(); an.fftSize=8192; an.smoothingTimeConstant=0;
+    const noise=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate); const d=noise.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.3;
+    out.hi={};
+    for(const g of [0,3]){
+      const src=AC.createBufferSource(); src.buffer=noise; src.connect(groupBus[g]); grpOut[g].connect(an); src.start();
+      await new Promise(r=>setTimeout(r,500));
+      const f=new Float32Array(an.frequencyBinCount); an.getFloatFrequencyData(f);
+      const band=(lo,hi)=>{ let s=0,n=0; for(let k=0;k<f.length;k++){ const hz=k*AC.sampleRate/an.fftSize; if(hz>=lo&&hz<hi){ s+=Math.pow(10,f[k]/10); n++; } } return 10*Math.log10(s/n); };
+      out.hi[g]=+(band(14000,16000)-band(1000,3000)).toFixed(1);
+      src.stop(); src.disconnect(); grpOut[g].disconnect(an); await new Promise(r=>setTimeout(r,80));
+    }
+    const t=tracks[0], L=t.buffer.length/t.buffer.sampleRate;
+    out.r4=+(getPitchedRegion(t,-4,0,1).buf.duration/L).toFixed(4);
+    setSpTune(false); out.r4eq=+(getPitchedRegion(t,-4,0,1).buf.duration/L).toFixed(4); setSpTune(true);
+    out.r3=+(getPitchedRegion(t,3,0,1).buf.duration/L).toFixed(4);
+    return out; });
+  ok_(`${V} DAC はグループごとに 4 つ、SSM2044 は g2（出力 1-2）だけ`, r.dacs===4 && r.ssm.join()==='false,false,true,false' && r.kinds.join()==='none,lp10,ssm,lp75', JSON.stringify(r));
+  ok_(`${V} 出力 7-8（g0）は DAC のイメージが残り、出力 3-4（g3）は 15kHz を削る`, r.hi[0]>-12 && r.hi[3]<-20, JSON.stringify(r.hi));
+  ok_(`${V} PITCH -4 は実測の比 1.2532（SP TUNING OFF で平均律 1.2599）・上げは平均律`, Math.abs(r.r4-1.2532)<0.002 && Math.abs(r.r4eq-1.2599)<0.002 && Math.abs(r.r3-0.8409)<0.002, JSON.stringify(r));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
   // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
@@ -1606,6 +1638,7 @@ await playLight();
 await editTabs();
 await edgeGrab();
 await shortLandscape();
+await spEngine();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
