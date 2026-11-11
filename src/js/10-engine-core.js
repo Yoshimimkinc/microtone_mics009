@@ -81,7 +81,10 @@ function extractViaPlayback(file){
 const masterGain = AC.createGain();
 masterGain.gain.value = 0.9;
 
-// ===== SP-1200 DAC段：固定26.04kHzゼロ次ホールド + 12bitリニア量子化（再構成フィルタ無し）=====
+// ===== SP-1200 DAC段：固定26.04kHzゼロ次ホールド（再構成フィルタ無し）=====
+// v0.3.232 §222：ここでは 12 ビットに丸めない。実機はメモリの 12 ビットの値をそのまま DAC に送り、音量（Level Data）は DAC の後の
+// アナログの段でかける＝小さい音でも 12 ビットの細かさが残る。v0.3.231 までは「音量 → ここで 12 ビットに丸め直し」で、
+// 小さいパッドほど段が粗くなっていた（-30dB で実質 7 ビット）。12 ビットにするのは取り込み（makeLofi）と KEY の書き出しだけ
 // 文献(Yeh CCRMA他)準拠：実機は固定クロックDAC＋アンチイメージング無しで13kHz超のイメージングを放射する＝音の核。
 // v0.3.231 §221：実機は 1 つの DAC を 8 つの出力チャンネルで時分割し、チャンネルごとのサンプル&ホールドの後に
 // チャンネルごとのアナログフィルター（1-2 SSM2044・3-4 約 7.5kHz・5-6 約 10kHz・7-8 なし）が来る（Lytrix/EMU-SP1200 の信号一覧
@@ -112,12 +115,12 @@ function nearestZeroCross(data, idx, win){
     "    if(!output||!output.length)return true;"+
     "    const nf=output[0].length,nc=output.length;"+
     "    if(this.bypass){for(let ch=0;ch<nc;ch++){const inp=(input&&(input[ch]||input[0]));const o=output[ch];if(inp){o.set(inp);}else{o.fill(0);}}return true;}"+   // OFF=DAC段を素通り（焼き込み済みmakeLofiのみ＝1段）
-    "    const inc=this.rate/sampleRate,step=2/4096;"+   // 12bitリニア
+    "    const inc=this.rate/sampleRate;"+
     "    let phase=this.phase;"+
     "    for(let i=0;i<nf;i++){"+
     "      phase+=inc;let latch=false;if(phase>=1){phase-=1;latch=true;}"+
     "      for(let ch=0;ch<nc;ch++){"+
-    "        if(latch){const inp=(input&&(input[ch]||input[0]));let s=inp?inp[i]:0;this.held[ch]=Math.round(s/step)*step;}"+   // 26kHzでラッチ＋量子化、間はホールド
+    "        if(latch){const inp=(input&&(input[ch]||input[0]));this.held[ch]=inp?inp[i]:0;}"+   // 26kHzでラッチ、間はホールド（丸めない v0.3.232）
     "        output[ch][i]=this.held[ch];"+
     "      }"+
     "    }"+
