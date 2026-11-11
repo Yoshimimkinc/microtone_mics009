@@ -1,7 +1,7 @@
 // @module engine-core
 // @provides AC, SP_DAC_RATE, decodeAudio, extractViaPlayback, isSilent, loopZeroSnap, masterGain,
-//    nearestZeroCross, spDacNode, spOut
-// @uses selected
+//    nearestZeroCross, spOut
+// @uses selected, spDacInstall
 // @depends -
 // ===== MPC-style sampler engine (raw Web Audio) =====
 // 全パッドが1つのAudioContextを共有。発音はバッファを持つボイスをプールから確保。
@@ -83,12 +83,15 @@ masterGain.gain.value = 0.9;
 
 // ===== SP-1200 DAC段：固定26.04kHzゼロ次ホールド + 12bitリニア量子化（再構成フィルタ無し）=====
 // 文献(Yeh CCRMA他)準拠：実機は固定クロックDAC＋アンチイメージング無しで13kHz超のイメージングを放射する＝音の核。
-// pad総和(masterGain)直後に挿入し、以降(comp/サチュ/テープ/低域)はアウトボード扱い。
-// AudioWorkletは非同期ロード。非対応/失敗時はspOutを素通り（従来のmakeLofi音）にフォールバック。
+// v0.3.231 §221：実機は 1 つの DAC を 8 つの出力チャンネルで時分割し、チャンネルごとのサンプル&ホールドの後に
+// チャンネルごとのアナログフィルター（1-2 SSM2044・3-4 約 7.5kHz・5-6 約 10kHz・7-8 なし）が来る（Lytrix/EMU-SP1200 の信号一覧
+// CNLSH0-7 → CNLO0/1、Yeh 2007）。v0.3.230 まではパッド総和(masterGain)の後に 1 つ置いていた＝フィルターの後に DAC が来て、
+// 7.5kHz の出力にも 13kHz 超のイメージが残っていた。いまはグループごとに DAC を置き、その後ろにフィルター（12-engine-bus の spDacInstall）。
+// ここではプロセッサの登録だけをする。masterGain→spOut は素通し（以降 comp/サチュ/テープ/低域はアウトボード扱い）。
+// AudioWorkletは非同期ロード。非対応/失敗時は DAC 無し（従来のmakeLofi音）にフォールバック。
 const SP_DAC_RATE = 26040;
 const spOut = AC.createGain();   // DAC出力ノード（このノードから先へ全アウトボードを接続）
-masterGain.connect(spOut);       // 既定は素通り。worklet成功時に masterGain→DAC→spOut へ差し替え
-let spDacNode=null;              // A/Bトグルで bypass を送るため参照を保持
+masterGain.connect(spOut);
 let loopZeroSnap=true;           // ループ点を最近傍ゼロ交差にスナップ（既定ON＝設定なしで継ぎ目のプツを抑える。A/BでOFF可）
 // 最近傍のゼロ交差サンプル位置を返す（±win以内、符号反転点）。見つからなければ元のidx
 function nearestZeroCross(data, idx, win){
@@ -124,13 +127,7 @@ function nearestZeroCross(data, idx, win){
     "registerProcessor('sp-dac',SPDac);";
   const url=URL.createObjectURL(new Blob([code],{type:"application/javascript"}));
   AC.audioWorklet.addModule(url).then(()=>{
-    try{
-      const dac=new AudioWorkletNode(AC,'sp-dac',{outputChannelCount:[2],processorOptions:{rate:SP_DAC_RATE}});
-      masterGain.disconnect(spOut);
-      masterGain.connect(dac);
-      dac.connect(spOut);
-      spDacNode=dac;
-    }catch(e){ /* 失敗時はmasterGain→spOutの素通りのまま */ }
+    try{ if(typeof spDacInstall==="function") spDacInstall(); }catch(e){ /* 失敗時は DAC 無しの素通りのまま */ }
     URL.revokeObjectURL(url);
   }).catch(()=>{ URL.revokeObjectURL(url); });
 })();

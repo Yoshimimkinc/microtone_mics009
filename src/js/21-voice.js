@@ -1,6 +1,7 @@
 // @module voice
-// @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
-//    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
+// @provides PITCH_CAP_SEC, SP_TUNE_DOWN, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice,
+//    makeLofi, pitchBufferNN, playVoice, previewVoiceFrom, setSpTune, spPitchRatio, spTuneOn, stopAllVoices,
+//    stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
 //    keyPadPlayheadRun, keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain,
 //    paintSteps, pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording,
@@ -17,7 +18,7 @@ function makeLofi(buffer){
   const out = AC.createBuffer(ch, buffer.length, sr);
   const levels = Math.pow(2, LOFI.bits);          // 12bit = 4096段
   const half = levels/2;
-  const hold = Math.max(1, Math.round(sr / LOFI.targetRate)); // 何サンプルに1回更新するか
+  const inc = Math.min(1, LOFI.targetRate / sr);   // 1 サンプルあたりの位相（v0.3.231 §221：26.04kHz ちょうどで取る。以前は round(sr/26040)＝48k で 24kHz・44.1k で 22.05kHz だった）
   // 入力AA: 2極Butterworth LP（RBJ）fc≈13kHz。録音側のエイリアスを軽く抑える（寄与は小さいのが実機）
   const fc=Math.min(13000, sr*0.46);
   const w0=2*Math.PI*fc/sr, cw=Math.cos(w0), sw=Math.sin(w0), alpha=sw/(2*0.7071);
@@ -26,13 +27,14 @@ function makeLofi(buffer){
   for(let c=0;c<ch;c++){
     const src = buffer.getChannelData(c);
     const dst = out.getChannelData(c);
-    let held = 0, x1=0,x2=0,y1=0,y2=0;
+    let held = 0, x1=0,x2=0,y1=0,y2=0, ph=1;
     for(let n=0;n<src.length;n++){
       // 入力AA（1パス2極LP）
       const x=src[n];
       let f=B0*x+B1*x1+B2*x2-A1*y1-A2*y2;
       x2=x1; x1=x; y2=y1; y1=f;
-      if(n % hold === 0){
+      ph += inc;
+      if(ph >= 1){ ph -= 1;
         // サンプル&ホールド（レート低下）＋ 12bitリニア量子化（ディザ無し）
         held = Math.round(f*half)/half;
       }
@@ -85,6 +87,17 @@ function audible(i, trs=tracks){
 // これをplaybackRate=1.0で再生すると、ブラウザの補間を一切受けずSP的なエイリアス/粒立ちが出る。
 // 連続ベンドは無いアプリなので発音毎の生成で十分（短音はサブms、ループ系もトグル時のみ）。
 // a..b：元バッファのこの範囲だけを焼く（フレーム。既定＝全体）
+// SP-1200 の実測の音程（v0.3.231 §221）：PITCH を下げたときの再生速度の比。実機は 7 ビットの加算器で「1 つ飛ばす／2 回読む」を
+// 混ぜて音程を作るので平均律からずれる（-1＝-4.9 セント、-3＝-8.4、-4＝-9.3、-6＝-12.5、-7＝+5.0、-8＝-11.7 …）。
+// 値は Yeh 2007（SP-12 の測定）を pitcher（mwcm/pitcher、MIT）が表にしたもの。上げ側の実測は確かめられないので平均律のまま
+const SP_TUNE_DOWN = [1, 1.05652677103003, 1.1215356033380033, 1.1834835840896631, 1.253228360845465,
+  1.3310440397149297, 1.4039714929646099, 1.5028019735639886, 1.5766735700797954];
+let spTuneOn = true;
+function setSpTune(on){ spTuneOn=!!on; }
+function spPitchRatio(semi){
+  if(spTuneOn && Number.isInteger(semi) && semi<0 && semi>=-8) return 1/SP_TUNE_DOWN[-semi];
+  return Math.pow(2, semi/12);
+}
 const PITCH_CAP_SEC = 120;   // 焼いたバッファの長さの上限（極端なピッチダウン×ロングサンプルでメモリを食い尽くさない）
 function pitchBufferNN(buf, ratio, a=0, b=buf.length){
   const srcSr = buf.sampleRate, ch = buf.numberOfChannels;
@@ -107,10 +120,10 @@ function pitchBufferNN(buf, ratio, a=0, b=buf.length){
 function getPitchedRegion(t, semi, aN=0, bN=1){
   const src = t.buffer, N = src.length, srcSr = src.sampleRate;
   if(!semi) return {buf:src, at:x=>x*N/srcSr, off:0, V:N/srcSr};   // 等倍は焼かない（初回ヒットの全長コピーを省く）
-  const ratio = Math.pow(2, semi/12), step = ratio*srcSr/AC.sampleRate, sr = AC.sampleRate;
+  const ratio = spPitchRatio(semi), step = ratio*srcSr/AC.sampleRate, sr = AC.sampleRate;
   const a = Math.max(0, Math.min(N-1, Math.floor(aN*N))), b = Math.max(a+1, Math.min(N, Math.ceil(bN*N)));
   if(t._pcacheBuf !== src){ t._pcache = {}; t._pcacheKeys = []; t._pcacheBuf = src; }
-  const key = semi+":"+a+":"+b, keys = t._pcacheKeys || (t._pcacheKeys=[]);
+  const key = (spTuneOn&&semi<0&&semi>=-8?"sp":"")+semi+":"+a+":"+b, keys = t._pcacheKeys || (t._pcacheKeys=[]);
   let buf = t._pcache[key];
   if(!buf){
     buf = t._pcache[key] = pitchBufferNN(src, ratio, a, b);

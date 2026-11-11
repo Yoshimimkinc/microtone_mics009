@@ -1615,7 +1615,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.230</div>
+  <div class="s-ver" id="splashVer">v0.3.231</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1698,6 +1698,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC</span></label>
             <label class="toggle on" id="spFilterToggle"><span class="sw"></span><span>SP CH FILTER</span></label>
+            <label class="toggle on" id="spTuneToggle" title="PITCH を下げたときの音程を SP-1200 の実測値に（平均律から最大 13 セントずれる）"><span class="sw"></span><span>SP TUNING</span></label>
             <label class="toggle on" id="fatBassToggle"><span class="sw"></span><span>FAT BASS</span></label>
             <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点スナップ</span></label>
           </div>
@@ -2177,8 +2178,8 @@ let perfRecArm = false; // Performance: REC ON=再生中いじりをステップ
 let perfTapT = [];      // 各パッドの直近タップ時刻（演奏P-LOCKのダブルタップ検出）  @writers -
 // @module engine-core
 // @provides AC, SP_DAC_RATE, decodeAudio, extractViaPlayback, isSilent, loopZeroSnap, masterGain,
-//    nearestZeroCross, spDacNode, spOut
-// @uses selected
+//    nearestZeroCross, spOut
+// @uses selected, spDacInstall
 // @depends -
 // ===== MPC-style sampler engine (raw Web Audio) =====
 // 全パッドが1つのAudioContextを共有。発音はバッファを持つボイスをプールから確保。
@@ -2260,12 +2261,15 @@ masterGain.gain.value = 0.9;
 
 // ===== SP-1200 DAC段：固定26.04kHzゼロ次ホールド + 12bitリニア量子化（再構成フィルタ無し）=====
 // 文献(Yeh CCRMA他)準拠：実機は固定クロックDAC＋アンチイメージング無しで13kHz超のイメージングを放射する＝音の核。
-// pad総和(masterGain)直後に挿入し、以降(comp/サチュ/テープ/低域)はアウトボード扱い。
-// AudioWorkletは非同期ロード。非対応/失敗時はspOutを素通り（従来のmakeLofi音）にフォールバック。
+// v0.3.231 §221：実機は 1 つの DAC を 8 つの出力チャンネルで時分割し、チャンネルごとのサンプル&ホールドの後に
+// チャンネルごとのアナログフィルター（1-2 SSM2044・3-4 約 7.5kHz・5-6 約 10kHz・7-8 なし）が来る（Lytrix/EMU-SP1200 の信号一覧
+// CNLSH0-7 → CNLO0/1、Yeh 2007）。v0.3.230 まではパッド総和(masterGain)の後に 1 つ置いていた＝フィルターの後に DAC が来て、
+// 7.5kHz の出力にも 13kHz 超のイメージが残っていた。いまはグループごとに DAC を置き、その後ろにフィルター（12-engine-bus の spDacInstall）。
+// ここではプロセッサの登録だけをする。masterGain→spOut は素通し（以降 comp/サチュ/テープ/低域はアウトボード扱い）。
+// AudioWorkletは非同期ロード。非対応/失敗時は DAC 無し（従来のmakeLofi音）にフォールバック。
 const SP_DAC_RATE = 26040;
 const spOut = AC.createGain();   // DAC出力ノード（このノードから先へ全アウトボードを接続）
-masterGain.connect(spOut);       // 既定は素通り。worklet成功時に masterGain→DAC→spOut へ差し替え
-let spDacNode=null;              // A/Bトグルで bypass を送るため参照を保持
+masterGain.connect(spOut);
 let loopZeroSnap=true;           // ループ点を最近傍ゼロ交差にスナップ（既定ON＝設定なしで継ぎ目のプツを抑える。A/BでOFF可）
 // 最近傍のゼロ交差サンプル位置を返す（±win以内、符号反転点）。見つからなければ元のidx
 function nearestZeroCross(data, idx, win){
@@ -2301,13 +2305,7 @@ function nearestZeroCross(data, idx, win){
     "registerProcessor('sp-dac',SPDac);";
   const url=URL.createObjectURL(new Blob([code],{type:"application/javascript"}));
   AC.audioWorklet.addModule(url).then(()=>{
-    try{
-      const dac=new AudioWorkletNode(AC,'sp-dac',{outputChannelCount:[2],processorOptions:{rate:SP_DAC_RATE}});
-      masterGain.disconnect(spOut);
-      masterGain.connect(dac);
-      dac.connect(spOut);
-      spDacNode=dac;
-    }catch(e){ /* 失敗時はmasterGain→spOutの素通りのまま */ }
+    try{ if(typeof spDacInstall==="function") spDacInstall(); }catch(e){ /* 失敗時は DAC 無しの素通りのまま */ }
     URL.revokeObjectURL(url);
   }).catch(()=>{ URL.revokeObjectURL(url); });
 })();
@@ -2512,11 +2510,13 @@ finalClip.curve = (()=>{ const N=4096, c=new Float32Array(N);
   return c; })();
 finalClip.connect(mainOut);
 // @module engine-bus
-// @provides GROUP_OF, LIVE_DRY, SP_CH, _liveDuck, _liveDuckT, _outMerger, _rampCompRouting, applyGroupVol,
-//    applySpChFilter, bypassGain, compDrive, compMakeup, compOn, compThreshold, groupBus, groupVol,
-//    grpBiquad, grpInputNode, grpOut, initMultiOut, liveCompDuck, multiOut, outBGain, setCompBypass,
-//    spChFilterOn, spDynOpen, ssmNode
-// @uses AC, compNode, compThr, fatShelf, finalClip, mainOut, makeupGain, masterGain, sampNameEl, tapeDelay
+// @provides GROUP_OF, LIVE_DRY, SP_CH, SP_FIXED_LP, _liveDuck, _liveDuckT, _outMerger, _rampCompRouting,
+//    applyGroupVol, applySpChFilter, bypassGain, compDrive, compMakeup, compOn, compThreshold, groupBus,
+//    groupVol, grpBiquad, grpInputNode, grpOut, initMultiOut, liveCompDuck, multiOut, outBGain,
+//    setCompBypass, setSpDacBypass, spChFilterOn, spDacBypass, spDacInstall, spDacNodes, spDynOpen,
+//    spFixedChain, ssmNode
+// @uses AC, SP_DAC_RATE, compNode, compThr, fatShelf, finalClip, mainOut, makeupGain, masterGain,
+//    sampNameEl, tapeDelay
 // @depends engine-core, engine-master
 // ===== OUT B（外部ミキサー2系統目＝ch3/4）：KO Sidekick等の4ch以上出力機器で有効 =====
 // OUT Bはドライ送り（12bit/パッドフィルター/エンベロープ後、グループFX・コンプ・テープの前）＝外部ミキサー側で処理する前提
@@ -2619,15 +2619,33 @@ function applyGroupVol(){ for(let g=0;g<4;g++) groupBus[g].gain.value=Math.pow(1
 //   - モデル：OTAラダー＝4段の1次LP直列＋最終段から入力への共振帰還。各段に tanh 非線形(OTAの transconductance
 //     飽和)を入れる＝SSM2044特有のクリーミーな歪み/自己発振。2xオーバーサンプリングで非線形の折返しを低減。
 //   - 非対応ブラウザ/ロード失敗時は biquad の近似(直列LP)へ自動フォールバック。
-// 4グループへの割り当て(SP-1200の出力chゾーン翻訳)：サンプル群(g0/g1)=明るい(高カットオフ/低レゾ)、
-//   ドラム群(g2/g3)=丸める(低カットオフ/4極/レゾ)。g2は発音毎にカットオフが開いて閉じる(ch1-2のダイナミック)。
-// フィールド: cut=カットオフHz / poles,q=biquadフォールバック用 / res=共振0..4,drive=入力ドライブ(SSM2044用) / dyn=発音時に開く量Hz。
+// 4グループへの割り当て＝SP-1200 の出力 4 組（v0.3.231 §221。Yeh 2007 の測定／pitcher（MIT）の出力フィルター／Lytrix/EMU-SP1200 の信号一覧）：
+//   出力 1-2＝SSM2044（発音ごとに開閉するダイナミックフィルター）／3-4＝固定ローパス 約 7.5kHz（実測カーブ）／5-6＝固定ローパス 約 10kHz／7-8＝フィルター無し。
+//   g2 DR9-12＝1-2（キック・スネア向き。v0.3.230 までと同じ）、g3 DR13-16＝3-4、g1 SMP5-8＝5-6、g0 SMP1-4＝7-8。
+//   v0.3.230 までは g3 も SSM2044（小さめの開閉）、g1 は素通しだった。
+// フィールド: kind=ssm/lp75/lp10/none, cut=カットオフHz / poles,q=biquadフォールバック用 / res=共振0..4,drive=入力ドライブ(SSM2044用) / dyn=発音時に開く量Hz。
 const SP_CH = [
-  {cut:15000, poles:1, q:0.5,  res:0.15, drive:0.9,  dyn:0},     // g0 SMP1-4 : bright（ザラつき/明るさ残す）
-  {cut:12000, poles:1, q:0.6,  res:0.30, drive:1.0,  dyn:0},     // g1 SMP5-8 : やや丸め
-  {cut:5200,  poles:2, q:0.95, res:1.35, drive:1.5,  dyn:3800},  // g2 DR9-12 : 4極で丸め＋発音毎ダイナミック開閉
-  {cut:6200,  poles:2, q:0.85, res:1.05, drive:1.25, dyn:1500},  // g3 DR13-16: 4極丸め＋小さめのダイナミック開閉（スネア/パーカスのアクセントが立つ）
+  {kind:"none", cut:20000, poles:0, q:0.5,  res:0,    drive:1,    dyn:0},     // g0 SMP1-4 : 出力 7-8＝フィルター無し（DAC のイメージがそのまま＝ザラつき）
+  {kind:"lp10", cut:10000, poles:0, q:0.5,  res:0,    drive:1,    dyn:0},     // g1 SMP5-8 : 出力 5-6＝約 10kHz（7 次 Butterworth 近似）
+  {kind:"ssm",  cut:5200,  poles:2, q:0.95, res:1.35, drive:1.5,  dyn:3800},  // g2 DR9-12 : 出力 1-2＝SSM2044、4極で丸め＋発音毎ダイナミック開閉
+  {kind:"lp75", cut:7500,  poles:0, q:0.5,  res:0,    drive:1,    dyn:0},     // g3 DR13-16: 出力 3-4＝約 7.5kHz（実測カーブ。6.5kHz まで平坦→8k -5dB→13k -23dB）
 ];
+// 固定ローパスの段（v0.3.231 §221）。BiquadFilterNode の lowpass は Q を dB で受けるので 20log10(Q) で渡す。
+// 7.5kHz：実測点（0Hz〜6.51kHz 0dB / 8k -5 / 10k -10 / 11.1k -15 / 13.02k -23 / 15k -28 / 17.5k -35 / 20k -41）に 2 段の biquad を当てはめた（48k・44.1k の両方で ±4dB 以内）
+// 10kHz：7 次 Butterworth（Q 0.555・0.802・2.247 の 3 段＋1 次）
+const SP_FIXED_LP = {
+  lp75:{bq:[[7857,0.699],[17000,0.3]], first:0},
+  lp10:{bq:[[10000,0.5550],[10000,0.8019],[10000,2.2470]], first:10000},
+};
+function spFixedChain(kind){
+  const spec=SP_FIXED_LP[kind]; if(!spec) return [];
+  const nyq=AC.sampleRate*0.49, nodes=[];
+  for(const [f,Q] of spec.bq){ const b=AC.createBiquadFilter(); b.type="lowpass"; b.frequency.value=Math.min(f,nyq); b.Q.value=20*Math.log10(Q); nodes.push(b); }
+  if(spec.first){ const K=Math.tan(Math.PI*Math.min(spec.first,nyq)/AC.sampleRate), b0=K/(1+K), a1=(K-1)/(1+K);
+    try{ nodes.push(AC.createIIRFilter([b0,b0],[1,a1])); }catch(_){} }
+  for(let k=0;k<nodes.length-1;k++) nodes[k].connect(nodes[k+1]);
+  return nodes;
+}
 const grpOut=[0,1,2,3].map(()=>{ const g=AC.createGain(); g.connect(masterGain); return g; });  // 安定末端→master（フィルタ実体を差し替えても不変）
 const grpBiquad=[];     // フォールバック用 biquad 直列配列（[0]=ダイナミック自動化対象）
 const ssmNode=[];       // SSM2044 worklet ノード（ロード成功時のみ。[0]がダイナミック自動化対象）
@@ -2635,7 +2653,13 @@ const grpInputNode=[];  // ON時に groupBus を繋ぐ先（初期=biquad先頭�
 let spChFilterOn=true;
 (function buildBiquadFallback(){
   for(let g=0;g<4;g++){
-    const cfg=SP_CH[g], nodes=[];
+    const cfg=SP_CH[g];
+    if(cfg.kind!=="ssm"){   // 固定ローパス（3-4 / 5-6）とフィルター無し（7-8）は worklet を待たない＝最初から実体
+      const fx=spFixedChain(cfg.kind);
+      if(fx.length){ fx[fx.length-1].connect(grpOut[g]); grpInputNode[g]=fx[0]; } else grpInputNode[g]=grpOut[g];
+      grpBiquad[g]=fx; continue;
+    }
+    const nodes=[];
     for(let p=0;p<cfg.poles;p++){
       const bq=AC.createBiquadFilter(); bq.type="lowpass";
       bq.frequency.value=cfg.cut; bq.Q.value=(p===0?cfg.q:0.5);
@@ -2646,13 +2670,29 @@ let spChFilterOn=true;
     grpBiquad[g]=nodes; grpInputNode[g]=nodes[0];
   }
 })();
-// groupBus の出力先を ON=フィルター入口 / OFF=末端直結(素通し) で切替
+// groupBus の出力先を ON=フィルター入口 / OFF=末端直結(素通し) で切替。
+// DAC（v0.3.231 §221）が載っていれば groupBus → DAC → フィルター（実機と同じ順＝フィルターが DAC のイメージを削る）
+const spDacNodes=[];   // グループごとの DAC（sp-dac worklet。VINTAGE DAC の A/B は bypass を送る）
+let spDacBypass=false;
 function applySpChFilter(){
   for(let g=0;g<4;g++){
+    const dst=(spChFilterOn && grpInputNode[g]) ? grpInputNode[g] : grpOut[g], dac=spDacNodes[g];
     try{ groupBus[g].disconnect(); }catch(_){}
-    groupBus[g].connect((spChFilterOn && grpInputNode[g]) ? grpInputNode[g] : grpOut[g]);
+    if(dac){ try{ dac.disconnect(); }catch(_){} groupBus[g].connect(dac); dac.connect(dst); }
+    else groupBus[g].connect(dst);
   }
 }
+// sp-dac の登録が済んだら（10-engine-core の loadSpDac から）グループごとに DAC を作って差し込む
+function spDacInstall(){
+  for(let g=0;g<4;g++){
+    if(spDacNodes[g]) continue;
+    const n=new AudioWorkletNode(AC,'sp-dac',{outputChannelCount:[2],processorOptions:{rate:SP_DAC_RATE}});
+    if(spDacBypass) n.port.postMessage({bypass:true});
+    spDacNodes[g]=n;
+  }
+  applySpChFilter();
+}
+function setSpDacBypass(off){ spDacBypass=!!off; spDacNodes.forEach(n=>{ try{ n.port.postMessage({bypass:spDacBypass}); }catch(_){} }); }
 applySpChFilter();
 // 発音毎にカットオフを開いて閉じる（SSM2044のエンベロープ駆動ダイナミックフィルター）。ssm優先・無ければbiquad。
 function spDynOpen(g, when, accent){
@@ -2727,10 +2767,10 @@ registerProcessor('ssm-2044', SSM2044);`;
   AC.audioWorklet.addModule(url).then(()=>{
     try{
       for(let g=0;g<4;g++){
-        // 上物（サンプル群 g0/g1＝PAD上段）は SSM2044 をバイパス＝直結。
-        // 音声スレッドの worklet を 4→2 に半減し、低レイテンシ化（ドラム群 g2/g3 のみ SSM2044）。
-        if(g<2){ grpInputNode[g]=grpOut[g]; continue; }
+        // SSM2044 は出力 1-2（g2）だけ（v0.3.231 §221。実機も SSM2044 は 2 チャンネル）。他は固定ローパス／素通しのまま
         const cfg=SP_CH[g];
+        if(cfg.kind!=="ssm") continue;
+        try{ (grpBiquad[g]||[]).forEach(b=>b.disconnect()); }catch(_){}
         const n=new AudioWorkletNode(AC,'ssm-2044',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
         n.parameters.get('cutoff').value=cfg.cut;
         n.parameters.get('reso').value=cfg.res;
@@ -2738,7 +2778,7 @@ registerProcessor('ssm-2044', SSM2044);`;
         n.connect(grpOut[g]);
         ssmNode[g]=n; grpInputNode[g]=n;        // 入口を SSM2044 に差し替え
       }
-      applySpChFilter();                         // groupBus → (g2/g3=SSM2044 / g0/g1=直結) へ再ルーティング
+      applySpChFilter();                         // groupBus → [DAC] → (g2=SSM2044 / g3・g1=固定ローパス / g0=直結) へ再ルーティング
     }catch(e){ /* 失敗時は biquad のまま */ }
     URL.revokeObjectURL(url);
   }).catch(()=>{ URL.revokeObjectURL(url); });
@@ -3250,8 +3290,9 @@ function warmKeyTracks(){
   },120); // BPMドラッグ中に大量のOfflineAudioContextを作らない
 }
 // @module voice
-// @provides PITCH_CAP_SEC, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice, makeLofi,
-//    pitchBufferNN, playVoice, previewVoiceFrom, stopAllVoices, stopVoices, trigger, warmPitch
+// @provides PITCH_CAP_SEC, SP_TUNE_DOWN, _warmT, anySolo, audible, chokeGroup, getPitchedRegion, hitVoice,
+//    makeLofi, pitchBufferNN, playVoice, previewVoiceFrom, setSpTune, spPitchRatio, spTuneOn, stopAllVoices,
+//    stopVoices, trigger, warmPitch
 // @uses AC, GROUP_OF, LOFI, PADS, _keyBuffers, bpmVal, dbToGain, displayBar, displayPat, flashPad, groupBus,
 //    keyPadPlayheadRun, keySignatureOf, liveCompDuck, loopZeroSnap, multiOut, nearestZeroCross, outBGain,
 //    paintSteps, pePlayheadRun, peTarget, peWaveVisible, playStep, playing, prepareKeyTrack, recording,
@@ -3268,7 +3309,7 @@ function makeLofi(buffer){
   const out = AC.createBuffer(ch, buffer.length, sr);
   const levels = Math.pow(2, LOFI.bits);          // 12bit = 4096段
   const half = levels/2;
-  const hold = Math.max(1, Math.round(sr / LOFI.targetRate)); // 何サンプルに1回更新するか
+  const inc = Math.min(1, LOFI.targetRate / sr);   // 1 サンプルあたりの位相（v0.3.231 §221：26.04kHz ちょうどで取る。以前は round(sr/26040)＝48k で 24kHz・44.1k で 22.05kHz だった）
   // 入力AA: 2極Butterworth LP（RBJ）fc≈13kHz。録音側のエイリアスを軽く抑える（寄与は小さいのが実機）
   const fc=Math.min(13000, sr*0.46);
   const w0=2*Math.PI*fc/sr, cw=Math.cos(w0), sw=Math.sin(w0), alpha=sw/(2*0.7071);
@@ -3277,13 +3318,14 @@ function makeLofi(buffer){
   for(let c=0;c<ch;c++){
     const src = buffer.getChannelData(c);
     const dst = out.getChannelData(c);
-    let held = 0, x1=0,x2=0,y1=0,y2=0;
+    let held = 0, x1=0,x2=0,y1=0,y2=0, ph=1;
     for(let n=0;n<src.length;n++){
       // 入力AA（1パス2極LP）
       const x=src[n];
       let f=B0*x+B1*x1+B2*x2-A1*y1-A2*y2;
       x2=x1; x1=x; y2=y1; y1=f;
-      if(n % hold === 0){
+      ph += inc;
+      if(ph >= 1){ ph -= 1;
         // サンプル&ホールド（レート低下）＋ 12bitリニア量子化（ディザ無し）
         held = Math.round(f*half)/half;
       }
@@ -3336,6 +3378,17 @@ function audible(i, trs=tracks){
 // これをplaybackRate=1.0で再生すると、ブラウザの補間を一切受けずSP的なエイリアス/粒立ちが出る。
 // 連続ベンドは無いアプリなので発音毎の生成で十分（短音はサブms、ループ系もトグル時のみ）。
 // a..b：元バッファのこの範囲だけを焼く（フレーム。既定＝全体）
+// SP-1200 の実測の音程（v0.3.231 §221）：PITCH を下げたときの再生速度の比。実機は 7 ビットの加算器で「1 つ飛ばす／2 回読む」を
+// 混ぜて音程を作るので平均律からずれる（-1＝-4.9 セント、-3＝-8.4、-4＝-9.3、-6＝-12.5、-7＝+5.0、-8＝-11.7 …）。
+// 値は Yeh 2007（SP-12 の測定）を pitcher（mwcm/pitcher、MIT）が表にしたもの。上げ側の実測は確かめられないので平均律のまま
+const SP_TUNE_DOWN = [1, 1.05652677103003, 1.1215356033380033, 1.1834835840896631, 1.253228360845465,
+  1.3310440397149297, 1.4039714929646099, 1.5028019735639886, 1.5766735700797954];
+let spTuneOn = true;
+function setSpTune(on){ spTuneOn=!!on; }
+function spPitchRatio(semi){
+  if(spTuneOn && Number.isInteger(semi) && semi<0 && semi>=-8) return 1/SP_TUNE_DOWN[-semi];
+  return Math.pow(2, semi/12);
+}
 const PITCH_CAP_SEC = 120;   // 焼いたバッファの長さの上限（極端なピッチダウン×ロングサンプルでメモリを食い尽くさない）
 function pitchBufferNN(buf, ratio, a=0, b=buf.length){
   const srcSr = buf.sampleRate, ch = buf.numberOfChannels;
@@ -3358,10 +3411,10 @@ function pitchBufferNN(buf, ratio, a=0, b=buf.length){
 function getPitchedRegion(t, semi, aN=0, bN=1){
   const src = t.buffer, N = src.length, srcSr = src.sampleRate;
   if(!semi) return {buf:src, at:x=>x*N/srcSr, off:0, V:N/srcSr};   // 等倍は焼かない（初回ヒットの全長コピーを省く）
-  const ratio = Math.pow(2, semi/12), step = ratio*srcSr/AC.sampleRate, sr = AC.sampleRate;
+  const ratio = spPitchRatio(semi), step = ratio*srcSr/AC.sampleRate, sr = AC.sampleRate;
   const a = Math.max(0, Math.min(N-1, Math.floor(aN*N))), b = Math.max(a+1, Math.min(N, Math.ceil(bN*N)));
   if(t._pcacheBuf !== src){ t._pcache = {}; t._pcacheKeys = []; t._pcacheBuf = src; }
-  const key = semi+":"+a+":"+b, keys = t._pcacheKeys || (t._pcacheKeys=[]);
+  const key = (spTuneOn&&semi<0&&semi>=-8?"sp":"")+semi+":"+a+":"+b, keys = t._pcacheKeys || (t._pcacheKeys=[]);
   let buf = t._pcache[key];
   if(!buf){
     buf = t._pcache[key] = pitchBufferNN(src, ratio, a, b);
@@ -5355,14 +5408,14 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 // @provides -
 // @uses AC, _ckTimes, _ckUiT, _midiNoteTimes, _outMerger, applyFatBass, applySpChFilter, initMultiOut,
 //    loopZeroSnap, mainOut, metroOn, midiEnabled, midiSync, multiOut, outBGain, paintLatency, sampNameEl,
-//    spChFilterOn, spDacNode
+//    setSpDacBypass, setSpTune, spChFilterOn
 // @depends -
 // ===== Sound A/B トグル（メニュー） =====
 (function(){
   const dac=document.getElementById("dacLofiToggle");
   if(dac) dac.addEventListener("click",()=>{
     const on=!dac.classList.contains("on"); dac.classList.toggle("on",on);
-    if(spDacNode) try{ spDacNode.port.postMessage({bypass:!on}); }catch(_){}   // ON=2段(DAC有効) / OFF=1段(素通り)
+    if(typeof setSpDacBypass==="function") setSpDacBypass(!on);   // ON=DAC有効（グループごと v0.3.231） / OFF=素通り
     sampNameEl.textContent = on ? "VINTAGE DAC ON" : "VINTAGE DAC OFF";
   });
   const spf=document.getElementById("spFilterToggle");
@@ -5370,6 +5423,13 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
     spChFilterOn=!spf.classList.contains("on"); spf.classList.toggle("on",spChFilterOn);
     if(typeof applySpChFilter==="function") applySpChFilter();
     sampNameEl.textContent = spChFilterOn ? "SP チャンネルフィルター ON（出力ch別の丸み）" : "SP チャンネルフィルター OFF（素通し）";
+  });
+  // SP TUNING（v0.3.231 §221）：PITCH -1〜-8 を実機の実測の比に（OFF＝平均律）
+  const stn=document.getElementById("spTuneToggle");
+  if(stn) stn.addEventListener("click",()=>{
+    const on=!stn.classList.contains("on"); stn.classList.toggle("on",on);
+    setSpTune(on);
+    sampNameEl.textContent = on ? "SP TUNING ON（下げた音程が実機の実測値）" : "SP TUNING OFF（平均律）";
   });
   const fat=document.getElementById("fatBassToggle");
   if(fat) fat.addEventListener("click",()=>{
@@ -8884,7 +8944,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.230";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.231";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

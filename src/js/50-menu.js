@@ -2,14 +2,14 @@
 // @provides -
 // @uses AC, _ckTimes, _ckUiT, _midiNoteTimes, _outMerger, applyFatBass, applySpChFilter, initMultiOut,
 //    loopZeroSnap, mainOut, metroOn, midiEnabled, midiSync, multiOut, outBGain, paintLatency, sampNameEl,
-//    spChFilterOn, spDacNode
+//    setSpDacBypass, setSpTune, spChFilterOn
 // @depends -
 // ===== Sound A/B トグル（メニュー） =====
 (function(){
   const dac=document.getElementById("dacLofiToggle");
   if(dac) dac.addEventListener("click",()=>{
     const on=!dac.classList.contains("on"); dac.classList.toggle("on",on);
-    if(spDacNode) try{ spDacNode.port.postMessage({bypass:!on}); }catch(_){}   // ON=2段(DAC有効) / OFF=1段(素通り)
+    if(typeof setSpDacBypass==="function") setSpDacBypass(!on);   // ON=DAC有効（グループごと v0.3.231） / OFF=素通り
     sampNameEl.textContent = on ? "VINTAGE DAC ON" : "VINTAGE DAC OFF";
   });
   const spf=document.getElementById("spFilterToggle");
@@ -17,6 +17,13 @@
     spChFilterOn=!spf.classList.contains("on"); spf.classList.toggle("on",spChFilterOn);
     if(typeof applySpChFilter==="function") applySpChFilter();
     sampNameEl.textContent = spChFilterOn ? "SP チャンネルフィルター ON（出力ch別の丸み）" : "SP チャンネルフィルター OFF（素通し）";
+  });
+  // SP TUNING（v0.3.231 §221）：PITCH -1〜-8 を実機の実測の比に（OFF＝平均律）
+  const stn=document.getElementById("spTuneToggle");
+  if(stn) stn.addEventListener("click",()=>{
+    const on=!stn.classList.contains("on"); stn.classList.toggle("on",on);
+    setSpTune(on);
+    sampNameEl.textContent = on ? "SP TUNING ON（下げた音程が実機の実測値）" : "SP TUNING OFF（平均律）";
   });
   const fat=document.getElementById("fatBassToggle");
   if(fat) fat.addEventListener("click",()=>{

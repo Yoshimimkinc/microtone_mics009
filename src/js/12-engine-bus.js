@@ -1,9 +1,11 @@
 // @module engine-bus
-// @provides GROUP_OF, LIVE_DRY, SP_CH, _liveDuck, _liveDuckT, _outMerger, _rampCompRouting, applyGroupVol,
-//    applySpChFilter, bypassGain, compDrive, compMakeup, compOn, compThreshold, groupBus, groupVol,
-//    grpBiquad, grpInputNode, grpOut, initMultiOut, liveCompDuck, multiOut, outBGain, setCompBypass,
-//    spChFilterOn, spDynOpen, ssmNode
-// @uses AC, compNode, compThr, fatShelf, finalClip, mainOut, makeupGain, masterGain, sampNameEl, tapeDelay
+// @provides GROUP_OF, LIVE_DRY, SP_CH, SP_FIXED_LP, _liveDuck, _liveDuckT, _outMerger, _rampCompRouting,
+//    applyGroupVol, applySpChFilter, bypassGain, compDrive, compMakeup, compOn, compThreshold, groupBus,
+//    groupVol, grpBiquad, grpInputNode, grpOut, initMultiOut, liveCompDuck, multiOut, outBGain,
+//    setCompBypass, setSpDacBypass, spChFilterOn, spDacBypass, spDacInstall, spDacNodes, spDynOpen,
+//    spFixedChain, ssmNode
+// @uses AC, SP_DAC_RATE, compNode, compThr, fatShelf, finalClip, mainOut, makeupGain, masterGain,
+//    sampNameEl, tapeDelay
 // @depends engine-core, engine-master
 // ===== OUT B（外部ミキサー2系統目＝ch3/4）：KO Sidekick等の4ch以上出力機器で有効 =====
 // OUT Bはドライ送り（12bit/パッドフィルター/エンベロープ後、グループFX・コンプ・テープの前）＝外部ミキサー側で処理する前提
@@ -106,15 +108,33 @@ function applyGroupVol(){ for(let g=0;g<4;g++) groupBus[g].gain.value=Math.pow(1
 //   - モデル：OTAラダー＝4段の1次LP直列＋最終段から入力への共振帰還。各段に tanh 非線形(OTAの transconductance
 //     飽和)を入れる＝SSM2044特有のクリーミーな歪み/自己発振。2xオーバーサンプリングで非線形の折返しを低減。
 //   - 非対応ブラウザ/ロード失敗時は biquad の近似(直列LP)へ自動フォールバック。
-// 4グループへの割り当て(SP-1200の出力chゾーン翻訳)：サンプル群(g0/g1)=明るい(高カットオフ/低レゾ)、
-//   ドラム群(g2/g3)=丸める(低カットオフ/4極/レゾ)。g2は発音毎にカットオフが開いて閉じる(ch1-2のダイナミック)。
-// フィールド: cut=カットオフHz / poles,q=biquadフォールバック用 / res=共振0..4,drive=入力ドライブ(SSM2044用) / dyn=発音時に開く量Hz。
+// 4グループへの割り当て＝SP-1200 の出力 4 組（v0.3.231 §221。Yeh 2007 の測定／pitcher（MIT）の出力フィルター／Lytrix/EMU-SP1200 の信号一覧）：
+//   出力 1-2＝SSM2044（発音ごとに開閉するダイナミックフィルター）／3-4＝固定ローパス 約 7.5kHz（実測カーブ）／5-6＝固定ローパス 約 10kHz／7-8＝フィルター無し。
+//   g2 DR9-12＝1-2（キック・スネア向き。v0.3.230 までと同じ）、g3 DR13-16＝3-4、g1 SMP5-8＝5-6、g0 SMP1-4＝7-8。
+//   v0.3.230 までは g3 も SSM2044（小さめの開閉）、g1 は素通しだった。
+// フィールド: kind=ssm/lp75/lp10/none, cut=カットオフHz / poles,q=biquadフォールバック用 / res=共振0..4,drive=入力ドライブ(SSM2044用) / dyn=発音時に開く量Hz。
 const SP_CH = [
-  {cut:15000, poles:1, q:0.5,  res:0.15, drive:0.9,  dyn:0},     // g0 SMP1-4 : bright（ザラつき/明るさ残す）
-  {cut:12000, poles:1, q:0.6,  res:0.30, drive:1.0,  dyn:0},     // g1 SMP5-8 : やや丸め
-  {cut:5200,  poles:2, q:0.95, res:1.35, drive:1.5,  dyn:3800},  // g2 DR9-12 : 4極で丸め＋発音毎ダイナミック開閉
-  {cut:6200,  poles:2, q:0.85, res:1.05, drive:1.25, dyn:1500},  // g3 DR13-16: 4極丸め＋小さめのダイナミック開閉（スネア/パーカスのアクセントが立つ）
+  {kind:"none", cut:20000, poles:0, q:0.5,  res:0,    drive:1,    dyn:0},     // g0 SMP1-4 : 出力 7-8＝フィルター無し（DAC のイメージがそのまま＝ザラつき）
+  {kind:"lp10", cut:10000, poles:0, q:0.5,  res:0,    drive:1,    dyn:0},     // g1 SMP5-8 : 出力 5-6＝約 10kHz（7 次 Butterworth 近似）
+  {kind:"ssm",  cut:5200,  poles:2, q:0.95, res:1.35, drive:1.5,  dyn:3800},  // g2 DR9-12 : 出力 1-2＝SSM2044、4極で丸め＋発音毎ダイナミック開閉
+  {kind:"lp75", cut:7500,  poles:0, q:0.5,  res:0,    drive:1,    dyn:0},     // g3 DR13-16: 出力 3-4＝約 7.5kHz（実測カーブ。6.5kHz まで平坦→8k -5dB→13k -23dB）
 ];
+// 固定ローパスの段（v0.3.231 §221）。BiquadFilterNode の lowpass は Q を dB で受けるので 20log10(Q) で渡す。
+// 7.5kHz：実測点（0Hz〜6.51kHz 0dB / 8k -5 / 10k -10 / 11.1k -15 / 13.02k -23 / 15k -28 / 17.5k -35 / 20k -41）に 2 段の biquad を当てはめた（48k・44.1k の両方で ±4dB 以内）
+// 10kHz：7 次 Butterworth（Q 0.555・0.802・2.247 の 3 段＋1 次）
+const SP_FIXED_LP = {
+  lp75:{bq:[[7857,0.699],[17000,0.3]], first:0},
+  lp10:{bq:[[10000,0.5550],[10000,0.8019],[10000,2.2470]], first:10000},
+};
+function spFixedChain(kind){
+  const spec=SP_FIXED_LP[kind]; if(!spec) return [];
+  const nyq=AC.sampleRate*0.49, nodes=[];
+  for(const [f,Q] of spec.bq){ const b=AC.createBiquadFilter(); b.type="lowpass"; b.frequency.value=Math.min(f,nyq); b.Q.value=20*Math.log10(Q); nodes.push(b); }
+  if(spec.first){ const K=Math.tan(Math.PI*Math.min(spec.first,nyq)/AC.sampleRate), b0=K/(1+K), a1=(K-1)/(1+K);
+    try{ nodes.push(AC.createIIRFilter([b0,b0],[1,a1])); }catch(_){} }
+  for(let k=0;k<nodes.length-1;k++) nodes[k].connect(nodes[k+1]);
+  return nodes;
+}
 const grpOut=[0,1,2,3].map(()=>{ const g=AC.createGain(); g.connect(masterGain); return g; });  // 安定末端→master（フィルタ実体を差し替えても不変）
 const grpBiquad=[];     // フォールバック用 biquad 直列配列（[0]=ダイナミック自動化対象）
 const ssmNode=[];       // SSM2044 worklet ノード（ロード成功時のみ。[0]がダイナミック自動化対象）
@@ -122,7 +142,13 @@ const grpInputNode=[];  // ON時に groupBus を繋ぐ先（初期=biquad先頭�
 let spChFilterOn=true;
 (function buildBiquadFallback(){
   for(let g=0;g<4;g++){
-    const cfg=SP_CH[g], nodes=[];
+    const cfg=SP_CH[g];
+    if(cfg.kind!=="ssm"){   // 固定ローパス（3-4 / 5-6）とフィルター無し（7-8）は worklet を待たない＝最初から実体
+      const fx=spFixedChain(cfg.kind);
+      if(fx.length){ fx[fx.length-1].connect(grpOut[g]); grpInputNode[g]=fx[0]; } else grpInputNode[g]=grpOut[g];
+      grpBiquad[g]=fx; continue;
+    }
+    const nodes=[];
     for(let p=0;p<cfg.poles;p++){
       const bq=AC.createBiquadFilter(); bq.type="lowpass";
       bq.frequency.value=cfg.cut; bq.Q.value=(p===0?cfg.q:0.5);
@@ -133,13 +159,29 @@ let spChFilterOn=true;
     grpBiquad[g]=nodes; grpInputNode[g]=nodes[0];
   }
 })();
-// groupBus の出力先を ON=フィルター入口 / OFF=末端直結(素通し) で切替
+// groupBus の出力先を ON=フィルター入口 / OFF=末端直結(素通し) で切替。
+// DAC（v0.3.231 §221）が載っていれば groupBus → DAC → フィルター（実機と同じ順＝フィルターが DAC のイメージを削る）
+const spDacNodes=[];   // グループごとの DAC（sp-dac worklet。VINTAGE DAC の A/B は bypass を送る）
+let spDacBypass=false;
 function applySpChFilter(){
   for(let g=0;g<4;g++){
+    const dst=(spChFilterOn && grpInputNode[g]) ? grpInputNode[g] : grpOut[g], dac=spDacNodes[g];
     try{ groupBus[g].disconnect(); }catch(_){}
-    groupBus[g].connect((spChFilterOn && grpInputNode[g]) ? grpInputNode[g] : grpOut[g]);
+    if(dac){ try{ dac.disconnect(); }catch(_){} groupBus[g].connect(dac); dac.connect(dst); }
+    else groupBus[g].connect(dst);
   }
 }
+// sp-dac の登録が済んだら（10-engine-core の loadSpDac から）グループごとに DAC を作って差し込む
+function spDacInstall(){
+  for(let g=0;g<4;g++){
+    if(spDacNodes[g]) continue;
+    const n=new AudioWorkletNode(AC,'sp-dac',{outputChannelCount:[2],processorOptions:{rate:SP_DAC_RATE}});
+    if(spDacBypass) n.port.postMessage({bypass:true});
+    spDacNodes[g]=n;
+  }
+  applySpChFilter();
+}
+function setSpDacBypass(off){ spDacBypass=!!off; spDacNodes.forEach(n=>{ try{ n.port.postMessage({bypass:spDacBypass}); }catch(_){} }); }
 applySpChFilter();
 // 発音毎にカットオフを開いて閉じる（SSM2044のエンベロープ駆動ダイナミックフィルター）。ssm優先・無ければbiquad。
 function spDynOpen(g, when, accent){
@@ -214,10 +256,10 @@ registerProcessor('ssm-2044', SSM2044);`;
   AC.audioWorklet.addModule(url).then(()=>{
     try{
       for(let g=0;g<4;g++){
-        // 上物（サンプル群 g0/g1＝PAD上段）は SSM2044 をバイパス＝直結。
-        // 音声スレッドの worklet を 4→2 に半減し、低レイテンシ化（ドラム群 g2/g3 のみ SSM2044）。
-        if(g<2){ grpInputNode[g]=grpOut[g]; continue; }
+        // SSM2044 は出力 1-2（g2）だけ（v0.3.231 §221。実機も SSM2044 は 2 チャンネル）。他は固定ローパス／素通しのまま
         const cfg=SP_CH[g];
+        if(cfg.kind!=="ssm") continue;
+        try{ (grpBiquad[g]||[]).forEach(b=>b.disconnect()); }catch(_){}
         const n=new AudioWorkletNode(AC,'ssm-2044',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
         n.parameters.get('cutoff').value=cfg.cut;
         n.parameters.get('reso').value=cfg.res;
@@ -225,7 +267,7 @@ registerProcessor('ssm-2044', SSM2044);`;
         n.connect(grpOut[g]);
         ssmNode[g]=n; grpInputNode[g]=n;        // 入口を SSM2044 に差し替え
       }
-      applySpChFilter();                         // groupBus → (g2/g3=SSM2044 / g0/g1=直結) へ再ルーティング
+      applySpChFilter();                         // groupBus → [DAC] → (g2=SSM2044 / g3・g1=固定ローパス / g0=直結) へ再ルーティング
     }catch(e){ /* 失敗時は biquad のまま */ }
     URL.revokeObjectURL(url);
   }).catch(()=>{ URL.revokeObjectURL(url); });
