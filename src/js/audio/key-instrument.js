@@ -1,7 +1,7 @@
 // @module audio/key-instrument
 // @provides _keyBuffers, _keyCache, _keyDryCache, _keyJobs, _keyShifted, _keyWarmTimer, keyApplyEffects,
-//    keySignatureOf, keySineBassNote, keyTempo, keyTineNote, keyTranspose, keyVoiceGain, keyVoiceNote,
-//    prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
+//    keyQuantize12, keySignatureOf, keySineBassNote, keyTempo, keyTineNote, keyTranspose, keyVoiceGain,
+//    keyVoiceNote, prepareKeyTrack, renderKeyDry, renderKeyPhrase, warmKeyTracks
 // @uses bpmVal, normalizeKeyPhrase, sampNameEl, tracks
 // @depends -
 const _keyCache=new Map(), _keyDryCache=new Map(), _keyJobs=new WeakMap(), _keyBuffers=new WeakSet();
@@ -54,6 +54,8 @@ function keyVoiceNote(instrument,pitch,velocity,hold,rate=26000){return instrume
 function keyVoiceGain(instrument){return instrument==='sine-bass'?.55:.42;}
 // KEY のテンポ（BPM を 40〜250 に収める。未設定は 100）。書き出し・ループ・START / END の秒換算が同じ値を使う（v0.3.217 §206 で 5 か所の同じ式をまとめた）
 function keyTempo(bpm){return Math.max(40,Math.min(250,+bpm||100));}
+// KEY の音も SP のメモリと同じ 12 ビットに（取り込みの makeLofi と同じ段。v0.3.232 §222：DAC が丸めなくなったので書き出しで丸める）
+function keyQuantize12(a){const half=2048;for(let i=0;i<a.length;i++)a[i]=Math.round(a[i]*half)/half;}
 function renderKeyDry(src,bpm){
   const p=normalizeKeyPhrase(src),tempo=keyTempo(bpm);
   // Editor preferences cannot change the sound or create duplicate render jobs.
@@ -70,6 +72,7 @@ function renderKeyDry(src,bpm){
     let peak=0;for(let i=0;i<a.length;i++)peak=Math.max(peak,Math.abs(a[i]));
     // Fixed soft limiter preserves velocity contrasts, unlike per-phrase normalisation.
     if(peak>.86)for(let i=0;i<a.length;i++)a[i]=.9*Math.tanh(a[i]/.9);
+    keyQuantize12(a);   // 12 ビットはここで（DAC は丸めない v0.3.232 §222）
     return buf;
   })();
   _keyDryCache.set(key,job);while(_keyDryCache.size>8)_keyDryCache.delete(_keyDryCache.keys().next().value);
@@ -116,6 +119,7 @@ function renderKeyPhrase(src,bpm){
     if(processed===dry.getChannelData(0))return dry;
     const ctx=new OfflineAudioContext(1,dry.length,dry.sampleRate),buffer=ctx.createBuffer(1,dry.length,dry.sampleRate),out=buffer.getChannelData(0);out.set(processed);
     let peak=0;for(let i=0;i<out.length;i++)peak=Math.max(peak,Math.abs(out[i]));if(peak>.9)for(let i=0;i<out.length;i++)out[i]=.9*Math.tanh(out[i]/.9);
+    keyQuantize12(out);
     return buffer;
   })();
   _keyCache.set(key,job);while(_keyCache.size>12)_keyCache.delete(_keyCache.keys().next().value);

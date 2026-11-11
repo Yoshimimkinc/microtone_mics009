@@ -1036,10 +1036,20 @@ async function spEngine(){
     out.r4=+(getPitchedRegion(t,-4,0,1).buf.duration/L).toFixed(4);
     setSpTune(false); out.r4eq=+(getPitchedRegion(t,-4,0,1).buf.duration/L).toFixed(4); setSpTune(true);
     out.r3=+(getPitchedRegion(t,3,0,1).buf.duration/L).toFixed(4);
+    // v0.3.232 §222：12 ビットの音を -30dB で鳴らしても DAC で丸め直さない（実機は音量を DAC の後でかける）
+    { const sr=AC.sampleRate, buf=AC.createBuffer(1,sr,sr), d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=Math.round(0.9*Math.sin(2*Math.PI*200*i/sr)*2048)/2048;
+      const src=AC.createBufferSource(); src.buffer=buf; const g=AC.createGain(); g.gain.value=Math.pow(10,-30/20); src.connect(g); g.connect(groupBus[0]);
+      const an2=AC.createAnalyser(); an2.fftSize=8192; grpOut[0].connect(an2); src.start(); await new Promise(r=>setTimeout(r,400));
+      const x=new Float32Array(an2.fftSize); an2.getFloatTimeDomainData(x); src.stop(); grpOut[0].disconnect(an2);
+      const lv=new Set(); for(const v of x) lv.add(Math.round(v*1e7));
+      const inLv=new Set(); for(let i=0;i<sr/200;i++) inLv.add(Math.round(d[i]*g.gain.value*1e7));
+      out.quiet={out:lv.size, in:inLv.size}; }
     return out; });
   ok_(`${V} DAC はグループごとに 4 つ、SSM2044 は g2（出力 1-2）だけ`, r.dacs===4 && r.ssm.join()==='false,false,true,false' && r.kinds.join()==='none,lp10,ssm,lp75', JSON.stringify(r));
   ok_(`${V} 出力 7-8（g0）は DAC のイメージが残り、出力 3-4（g3）は 15kHz を削る`, r.hi[0]>-12 && r.hi[3]<-20, JSON.stringify(r.hi));
   ok_(`${V} PITCH -4 は実測の比 1.2532（SP TUNING OFF で平均律 1.2599）・上げは平均律`, Math.abs(r.r4-1.2532)<0.002 && Math.abs(r.r4eq-1.2599)<0.002 && Math.abs(r.r3-0.8409)<0.002, JSON.stringify(r));
+  ok_(`${V} -30dB の 12 ビットの音が DAC で粗くならない（段の数が入力以上）`, r.quiet.out>=r.quiet.in, JSON.stringify(r.quiet));
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
