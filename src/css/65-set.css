@@ -55,6 +55,7 @@
   .setpad.held.fresh .nm,.setpad.held.fresh .n{color:var(--hit-ink);}   /* ホールドの面塗りの上では薄くしない（赤の上で読めなくなる v0.3.148） */
   .setpad.armed{box-shadow:0 0 0 2px var(--red) inset;}
   /* 情報窓の SET ページ */
+  .cl-par.cl-setname b.cl-setno{max-width:none;margin-right:.6em;}   /* 番号と名前を 1 枠に（v0.3.234 §224） */
   .cl-par.cl-setname b{max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
   /* セットの名前の ✎（v0.3.167 §160）：パッドの名前の ✎ と同じ見た目。入力欄は 16px（iOS が拡大しない大きさ） */
   .cl-setname-edit{flex:0 0 auto;min-width:32px;min-height:32px;margin:-8px 0 -8px 6px;   /* 触れる 32px は保ち、行の高さは増やさない（窓の不変性） */

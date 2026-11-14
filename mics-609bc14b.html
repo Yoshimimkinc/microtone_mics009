@@ -934,6 +934,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   .setpad.held.fresh .nm,.setpad.held.fresh .n{color:var(--hit-ink);}   /* ホールドの面塗りの上では薄くしない（赤の上で読めなくなる v0.3.148） */
   .setpad.armed{box-shadow:0 0 0 2px var(--red) inset;}
   /* 情報窓の SET ページ */
+  .cl-par.cl-setname b.cl-setno{max-width:none;margin-right:.6em;}   /* 番号と名前を 1 枠に（v0.3.234 §224） */
   .cl-par.cl-setname b{max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
   /* セットの名前の ✎（v0.3.167 §160）：パッドの名前の ✎ と同じ見た目。入力欄は 16px（iOS が拡大しない大きさ） */
   .cl-setname-edit{flex:0 0 auto;min-width:32px;min-height:32px;margin:-8px 0 -8px 6px;   /* 触れる 32px は保ち、行の高さは増やさない（窓の不変性） */
@@ -1626,7 +1627,7 @@ body.nohints .fx-swipe::after{display:none}
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.233</div>
+  <div class="s-ver" id="splashVer">v0.3.234</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4812,8 +4813,8 @@ const CL_PAGES=[
   {id:"main", lbl:"SOUND",  f:["level","pitch","attack","fade","choke"]},
   // SET 演奏モード（v0.3.143 §144）：キー列には出さない（モード切替で入る）。中身は ui/set-view の paintSet が書く
   {id:"set",  lbl:"SET",    f:[],
-   x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
-     +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b>'
+   // v0.3.234 §224「セット名の表示も重複してる」：SET（番号）と NOW（名前）の 2 枠を 1 枠「SET 03 EXPWY ✎」に
+   x:'<span class="cl-par ro cl-setname" data-p="setname"><i>SET</i><b class="cl-num cl-setno" id="clSetNo">--</b><b id="clSetName">—</b>'
      +'<input class="cl-setname-in" id="clSetNameIn" type="text" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" hidden aria-label="セットの名前">'
      +'<button class="cl-setname-edit" id="clSetRename" title="セットの名前を変える" aria-label="セットの名前を変える">✎</button></span>'
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
@@ -8989,7 +8990,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.233";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.234";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
