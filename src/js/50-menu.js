@@ -75,10 +75,25 @@
 (function(){
   const modal=document.getElementById("menuModal"), btn=document.getElementById("menuBtn"), closeBtn=document.getElementById("menuClose");
   let lastFocus=null;
+  // ジャンルごとのドリルダウン（v0.3.237 §227）：c＝ジャンル（null＝一覧）。見せるのは一覧か、そのジャンルの .modal-sec だけ
+  const dlg=modal.querySelector(".modal"), cats=document.getElementById("menuCats"), back=document.getElementById("menuBack"), title=document.getElementById("menuTitle");
+  let lastCat=null;
+  function menuPage(c){
+    const b=c ? cats.querySelector('.menu-cat[data-cat="'+c+'"]') : null;
+    if(c && !b) c=null;
+    dlg.dataset.page=c||"top";
+    modal.querySelectorAll(".modal-sec").forEach(s=>{ s.hidden = s.dataset.cat!==c; });
+    cats.hidden=!!c; back.hidden=!c;
+    title.textContent = c ? b.querySelector("b").textContent : "MENU";
+    dlg.scrollTop=0;
+    if(c){ lastCat=c; if(c==="master" && typeof paintLatency==="function") paintLatency(); }
+    if(modal.style.display==="flex"){ const f=c ? back : (cats.querySelector('.menu-cat[data-cat="'+lastCat+'"]')||closeBtn); if(f&&f.focus) f.focus(); }
+  }
   function open(){
     lastFocus=document.activeElement;
     if(typeof paintLatency==="function") paintLatency();
     modal.style.display="flex";
+    lastCat=null; menuPage(null);           // 開くたびに一覧から（どこに居るか迷わない）
     closeBtn.focus();                       // フォーカスをダイアログ内へ
     document.addEventListener("keydown",onKey);
   }
@@ -88,15 +103,18 @@
     if(lastFocus&&lastFocus.focus) lastFocus.focus();   // フォーカス復帰
   }
   function onKey(e){
-    if(e.key==="Escape"){ close(); return; }
-    if(e.key==="Tab"){    // 簡易フォーカストラップ
-      const f=modal.querySelectorAll('button,select,input,[tabindex]:not([tabindex="-1"])');
+    if(e.key==="Escape"){ if(dlg.dataset.page!=="top") menuPage(null); else close(); return; }   // ジャンルの中では一覧へ戻る、一覧では閉じる
+    if(e.key==="Tab"){    // 簡易フォーカストラップ（見えているものだけ）
+      const f=[...modal.querySelectorAll('button,select,input,summary,[tabindex]:not([tabindex="-1"])')].filter(el=>el.offsetParent!==null);
       if(!f.length) return;
       const first=f[0], last=f[f.length-1];
       if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
       else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
     }
   }
+  cats.addEventListener("click",e=>{ const b=e.target.closest(".menu-cat"); if(b) menuPage(b.dataset.cat); });
+  back.addEventListener("click",()=>menuPage(null));
+  menuPage(null);
   btn.addEventListener("click",open);
   closeBtn.addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });   // 背景クリックで閉じる

@@ -180,7 +180,8 @@ body.nohints #clHint,
 body.nohints .setpick-help,
 body.nohints .key-more-note:not(#keyChopInfo),
 body.nohints .key-sound-help,
-body.nohints .scratch-fader-hint{display:none!important}
+body.nohints .scratch-fader-hint,
+body.nohints .menu-cat-sub{display:none!important}
 body.nohints .cl-help{visibility:hidden}
 body.nohints .fx-swipe::after{display:none}
 

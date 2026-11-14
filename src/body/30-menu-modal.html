@@ -1,7 +1,17 @@
     <div class="modal-backdrop" id="menuModal" style="display:none;">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
-        <div class="modal-head"><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
-        <div class="modal-sec">
+        <!-- v0.3.237 §227「設定はジャンルごとにドリルダウン方式にする」：開くとジャンルの一覧（#menuCats）。押す＝そのジャンルの設定だけ（.modal-sec[data-cat]）。
+             ‹ MENU で一覧へ戻る。設定の部品（id・登録）はそのまま、見せ方だけ（50-menu の menuPage） -->
+        <div class="modal-head"><button class="t menu-back" id="menuBack" hidden aria-label="メニューの一覧へ戻る">‹ MENU</button><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
+        <div class="menu-cats" id="menuCats" role="group" aria-label="設定のジャンル">
+          <button class="menu-cat" data-cat="project"><b>PROJECT</b><span class="menu-cat-sub">保存 · 読み込み · WAV · Dropbox</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="master"><b>MASTER</b><span class="menu-cat-sub">音量 · COMP · Latency</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="sound"><b>SOUND</b><span class="menu-cat-sub">VINTAGE DAC · SP の音 · FAT BASS</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="timing"><b>TIMING</b><span class="menu-cat-sub">メトロノーム · MIDI SYNC · A B C D の切替</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="io"><b>I/O</b><span class="menu-cat-sub">そとの鍵盤 · OUT B</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="display"><b>DISPLAY</b><span class="menu-cat-sub">Skin · 起動アニメーション · 解説の文言</span><em aria-hidden="true">›</em></button>
+        </div>
+        <div class="modal-sec" data-cat="none">
           <div class="modal-label">Tempo</div>
           <div class="tempo-row" style="flex-wrap:wrap;align-items:center;gap:14px;">
             <!-- テンポ/スウィングの編集入口は情報窓に一本化（v0.3.101）。この2つは applyBpm / 窓のSWG欄が
@@ -23,7 +33,7 @@
             </div>
           </div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="display">
           <div class="modal-label">Skin</div>
           <div class="seg" id="themeSeg">
             <button data-th="ak" class="on">AK</button>
@@ -34,7 +44,7 @@
           <label class="toggle on" id="splashAnimToggle" style="margin-top:10px;"><span class="sw"></span><span>起動アニメーション</span></label>
           <label class="toggle on" id="hintsToggle" style="margin-top:10px;" title="OFF＝操作の説明（SET の使い方・モード中のヒント・スワイプの案内など）を隠す"><span class="sw"></span><span>解説の文言</span></label>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="master">
           <div class="modal-label">Master</div>
           <div class="master-bar" id="masterBar">
             <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
@@ -52,7 +62,7 @@
           </div>
           <div class="knob lat-row"><label>Latency <span class="v" id="vLat">—</span></label></div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="sound">
           <div class="modal-label">Sound</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC</span></label>
@@ -62,7 +72,7 @@
             <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点スナップ</span></label>
           </div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="timing">
           <div class="modal-label">Timing</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム</span></label>
@@ -72,14 +82,26 @@
           <div class="modal-sublabel">A B C D の切替</div>
           <div class="seg" id="patSwitch"><button data-u="end" class="on">PATTERN</button><button data-u="bar">BAR</button><button data-u="beat">BEAT</button></div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="io">
           <div class="modal-label">I/O</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle" id="midiToggle"><span class="sw"></span><span>そとの鍵盤で叩く</span></label>
             <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>OUT B — ch3/4</span></label>
           </div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="project">
+          <div class="modal-label">Project</div>
+          <!-- SAVE / LOAD の単位（v0.3.162 §156）：ステージ全体 / いまのセット / 編集中のシーケンス -->
+          <div class="seg" id="saveScope" style="margin-bottom:10px;"><button data-u="stage" class="on">STAGE</button><button data-u="set">SET</button><button data-u="seq">SEQ</button></div>
+          <div class="modal-btns">
+            <button class="t" id="saveBtn">Save</button>
+            <button class="t" id="loadProjBtn">Load</button>
+            <button class="t" id="exportWavBtn">WAV ↓</button>
+            <button class="t" id="resetBtn" title="自動保存を消して初期状態から始める">RESET</button>
+            <input type="file" id="projFile" accept=".mics,.micset,.micseq,.json" style="display:none;">
+          </div>
+        </div>
+        <div class="modal-sec" data-cat="project">
           <div class="modal-label">Source</div>
           <div class="modal-btns">
             <details id="dropboxPanel"><summary>Dropbox · ステージ共有</summary>
@@ -92,18 +114,6 @@
             </details>
 
 
-          </div>
-        </div>
-        <div class="modal-sec">
-          <div class="modal-label">Project</div>
-          <!-- SAVE / LOAD の単位（v0.3.162 §156）：ステージ全体 / いまのセット / 編集中のシーケンス -->
-          <div class="seg" id="saveScope" style="margin-bottom:10px;"><button data-u="stage" class="on">STAGE</button><button data-u="set">SET</button><button data-u="seq">SEQ</button></div>
-          <div class="modal-btns">
-            <button class="t" id="saveBtn">Save</button>
-            <button class="t" id="loadProjBtn">Load</button>
-            <button class="t" id="exportWavBtn">WAV ↓</button>
-            <button class="t" id="resetBtn" title="自動保存を消して初期状態から始める">RESET</button>
-            <input type="file" id="projFile" accept=".mics,.micset,.micseq,.json" style="display:none;">
           </div>
         </div>
       </div>
