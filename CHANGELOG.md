@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.238 (2026-11-14)
+- VJ モードの要件定義を書いた（`docs/vj-mode-requirements.md`。アプリの動きは変えていない）。パッドの種類に VISUAL（動画・写真）を足し、映像は別ウインドウ VJ OUT に出す。重い処理は VJ OUT だけでやり、操作画面は「映像のきっかけ」を送るだけ。ネット越しは検討だけ。
+
 ## v0.3.237 (2026-11-14)
 - メニュー（設定）をジャンルごとのドリルダウンに。開くとジャンルの一覧（PROJECT / MASTER / SOUND / TIMING / I/O / DISPLAY）だけが出て、押すとそのジャンルの設定だけが出る。「‹ MENU」か Escape で一覧へ戻る。
   - PROJECT＝保存・読み込み・WAV・RESET・Dropbox（前の Project と Source）、DISPLAY＝Skin・起動アニメーション・解説の文言（前の Skin）。
