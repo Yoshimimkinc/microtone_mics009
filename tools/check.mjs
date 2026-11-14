@@ -1083,6 +1083,22 @@ async function hintsToggle(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function setWinOnce(){
+  // v0.3.234 §224「セット名の表示も重複してる」：SET の情報窓で、いまのセットは 1 枠（SET 番号＋名前＋✎）だけ
+  const V='SETWIN 390x844';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  await p.evaluate(()=>switchView('viewSet')); await p.waitForTimeout(300);
+  const r=await p.evaluate(()=>{ const nm=setName(setCur), no=String(setCur+1).padStart(2,'0');
+    const cells=[...document.querySelectorAll('#clPage .cl-par')].filter(e=>e.getBoundingClientRect().height>0);
+    return {n:cells.length, withName:cells.filter(e=>e.textContent.includes(nm)).length, withNo:cells.filter(e=>/^SET/.test(e.textContent.trim())).length,
+      one:cells.find(e=>e.dataset.p==='setname').textContent.replace(/\s+/g,' ').trim(), now:cells.some(e=>/^NOW/.test(e.textContent.trim())), no, nm}; });
+  ok_(`${V} いまのセットは 1 枠（SET 番号と名前、NOW の枠は無い）`, r.withName===1 && r.withNo===1 && !r.now && r.one.startsWith('SET'+r.no) && r.one.includes(r.nm), JSON.stringify(r));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
   // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
@@ -1680,6 +1696,7 @@ await edgeGrab();
 await shortLandscape();
 await spEngine();
 await hintsToggle();
+await setWinOnce();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

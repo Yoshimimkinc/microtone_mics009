@@ -47,8 +47,8 @@ const CL_PAGES=[
   {id:"main", lbl:"SOUND",  f:["level","pitch","attack","fade","choke"]},
   // SET 演奏モード（v0.3.143 §144）：キー列には出さない（モード切替で入る）。中身は ui/set-view の paintSet が書く
   {id:"set",  lbl:"SET",    f:[],
-   x:'<span class="cl-par ro" data-p="setno"><i>SET</i><b class="cl-num" id="clSetNo">--</b></span>'
-     +'<span class="cl-par ro cl-setname" data-p="setname"><i>NOW</i><b id="clSetName">—</b>'
+   // v0.3.234 §224「セット名の表示も重複してる」：SET（番号）と NOW（名前）の 2 枠を 1 枠「SET 03 EXPWY ✎」に
+   x:'<span class="cl-par ro cl-setname" data-p="setname"><i>SET</i><b class="cl-num cl-setno" id="clSetNo">--</b><b id="clSetName">—</b>'
      +'<input class="cl-setname-in" id="clSetNameIn" type="text" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" hidden aria-label="セットの名前">'
      +'<button class="cl-setname-edit" id="clSetRename" title="セットの名前を変える" aria-label="セットの名前を変える">✎</button></span>'
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
