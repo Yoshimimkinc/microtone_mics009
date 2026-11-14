@@ -1053,6 +1053,36 @@ async function spEngine(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function hintsToggle(){
+  // v0.3.233 §223「解説の文言はオンオフ出来ないかな設定で」：メニューの「解説の文言」で操作の説明を隠す（端末ごとに覚える）。
+  // メッセージは出す。SET の使い方は場所を残す（情報窓の高さが変わらない）
+  const V='HINTS';
+  const ctx=await br.newContext({viewport:{width:1180,height:820},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  const st=()=>p.evaluate(()=>{ const vis=s=>{ const e=document.querySelector(s); if(!e) return null; const cs=getComputedStyle(e); return cs.display!=='none' && cs.visibility!=='hidden'; };
+    return {nohints:document.body.classList.contains('nohints'), on:document.getElementById('hintsToggle').classList.contains('on'),
+      help:vis('#clSetHelp'), pick:vis('#setPickHelp'), keyNote:vis('.key-more-note:not(#keyChopInfo)'), fader:vis('.scratch-fader-hint'),
+      scrH:Math.round(document.querySelector('.perf-screen').getBoundingClientRect().height)}; });
+  const a=await st();
+  ok_(`${V} 既定は ON（説明が出る）`, a.on && !a.nohints && a.pick!==false && a.keyNote!==false, JSON.stringify(a));
+  await p.evaluate(()=>switchView('viewSet')); await p.waitForTimeout(300);
+  const hOn=(await st()).scrH;
+  await p.evaluate(()=>{ document.getElementById('menuBtn').click(); }); await p.waitForTimeout(200);
+  await p.click('#hintsToggle'); await p.waitForTimeout(150);
+  const b=await st();
+  ok_(`${V} OFF で説明が隠れる（SET の使い方・SET 一覧・KEY・スクラッチ）`, b.nohints && !b.on && b.help===false && b.pick===false && b.keyNote===false && b.fader===false, JSON.stringify(b));
+  ok_(`${V} OFF でも SET の情報窓の高さは同じ`, Math.abs(b.scrH-hOn)<=1, `${hOn} → ${b.scrH}`);
+  ok_(`${V} 切り替えのメッセージは出る`, /解説の文言 OFF/.test(await p.evaluate(()=>sampNameEl.textContent)), 'msg');
+  await p.reload({waitUntil:'load'}); await ready(p);
+  const c=await st();
+  ok_(`${V} 読み込み直しても OFF のまま（端末ごとに覚える）`, c.nohints && !c.on, JSON.stringify(c));
+  await p.evaluate(()=>setHints(true)); await p.waitForTimeout(80);
+  ok_(`${V} ON に戻すと説明が出る`, !(await st()).nohints, 'still nohints');
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
+}
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
   // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
@@ -1649,6 +1679,7 @@ await editTabs();
 await edgeGrab();
 await shortLandscape();
 await spEngine();
+await hintsToggle();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

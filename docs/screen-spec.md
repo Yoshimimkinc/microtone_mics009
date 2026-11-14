@@ -2768,3 +2768,19 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - 測定：12 ビットの 200Hz サインを -30dB でグループ 0 に入れ、出力の段の数を数える：117（v0.3.231）→ 431（入力 1 周期ぶん 219）。
 検査：`check.mjs` の SPENGINE に「-30dB の 12 ビットの音が DAC で粗くならない」。
 
+## 223. 解説の文言の ON / OFF（v0.3.233）
+「解説の文言はオンオフ出来ないかな設定で」。
+- 置き場所：メニュー **Skin** の「起動アニメーション」の下に「**解説の文言**」（見え方の設定なので Skin）。端末ごとに覚える（localStorage `mics-hints`）、既定 ON。`ui/hints`（`hintsOn` / `setHints`）。
+- OFF（`body.nohints`）で隠すもの＝操作の説明：
+  - 情報窓のモード中のヒント（#clHint：「MUTE中：パッド=消音トグル」など）
+  - SET の使い方の行（.cl-help「パッドを押して離す＝鳴らす／止める …」）。**場所は残す**（visibility）＝PADS ⇄ SET で情報窓の高さが変わらない
+  - SET 一覧の説明（.setpick-help）。予約中は各セットの NEXT の札で分かる
+  - スマホの FX ⇄ A B C D のスワイプ案内（.fx-swipe::after「FX ● ○ ABCD ⟷」）
+  - KEY の CHORDS の説明・SOUND の説明（.key-more-note / .key-sound-help）
+  - スクラッチのフェーダーの TOUCH ↓ VOL（.scratch-fader-hint）
+  - 起動時の「前回の続きを復元（メニューの RESET で初期状態へ）」の括弧の中
+- 出し続けるもの：状態やエラーを知らせるメッセージ（情報窓の 1 行 #clMsg：「SP TUNING ON」「KEY生成中 — もう一度タップ」など）、KEY の CHOP の切り方（#keyChopInfo＝結果の情報）、ボタンの名前（data-label）。
+- 新しく説明の文言を足すときは、上のどれかのクラスにするか、css/80-responsive の最後の nohints の規則に足す。
+- 未対応：PC のマウスを載せたときの説明（title 属性のツールチップ）は消さない（iPad / スマホでは出ない）。
+検査：`check.mjs` の HINTS（既定 ON・OFF で隠れる・SET の情報窓の高さが同じ・読み込み直しても OFF・ON に戻せる）。
+

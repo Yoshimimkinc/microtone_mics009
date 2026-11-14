@@ -2,7 +2,7 @@
 // @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarmQ, _asWarned, autosaveDbName,
 //    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave, warmWavCache
 // @uses APP_VERSION, DEFAULT_PROJECT, PADS, applyProject, bakePhrase, buildProject, drawAllPadWaves,
-//    loadPresets, playing, prerollAudio, sampNameEl, setCur, setSlots, sideCount, trackData, tracks
+//    hintsOn, loadPresets, playing, prerollAudio, sampNameEl, setCur, setSlots, sideCount, trackData, tracks
 // @depends presets
 // ===== 自動保存：更新やリロードで「読み込んだ音」が消えないようにする =====
 // localStorage は数MBで足りない（WAVを積むと数十MB）ので IndexedDB に丸ごと1件だけ置く。
@@ -92,7 +92,7 @@ loadPresets().then(async ()=>{
     try{
       await applyProject(saved);
       drawAllPadWaves(); warmWavCache();
-      if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="前回の続きを復元（メニューの RESET で初期状態へ）";
+      if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent=(typeof hintsOn!=="function"||hintsOn())?"前回の続きを復元（メニューの RESET で初期状態へ）":"前回の続きを復元";
       return;   // 復元できたら default.mics は読まない
     }catch(e){ console.warn("autosave復元に失敗→既定へ:",e); }
   }

@@ -66,6 +66,7 @@
   "js/73-share-export.js",
   "js/ui/set-view.js",
   "js/ui/splash-anim.js",
+  "js/ui/hints.js",
   "js/audio/scratch-pad.js",
   "js/ui/scratch-view.js",
   "js/ui/pad-kind.js",
