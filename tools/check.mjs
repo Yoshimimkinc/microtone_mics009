@@ -1074,7 +1074,7 @@ async function hintsToggle(){
   const b=await st();
   ok_(`${V} OFF で説明が隠れる（SET の使い方・SET 一覧・KEY・スクラッチ）`, b.nohints && !b.on && b.help===false && b.pick===false && b.keyNote===false && b.fader===false, JSON.stringify(b));
   ok_(`${V} OFF でも SET の情報窓の高さは同じ`, Math.abs(b.scrH-hOn)<=1, `${hOn} → ${b.scrH}`);
-  ok_(`${V} 切り替えのメッセージは出る`, /解説の文言 OFF/.test(await p.evaluate(()=>sampNameEl.textContent)), 'msg');
+  ok_(`${V} 切り替えても情報窓に「解説の文言 …」と書かない（v0.3.236 §226）`, !/解説の文言/.test(await p.evaluate(()=>sampNameEl.textContent+document.getElementById('clMsg').textContent)), await p.evaluate(()=>sampNameEl.textContent));
   await p.reload({waitUntil:'load'}); await ready(p);
   const c=await st();
   ok_(`${V} 読み込み直しても OFF のまま（端末ごとに覚える）`, c.nohints && !c.on, JSON.stringify(c));
