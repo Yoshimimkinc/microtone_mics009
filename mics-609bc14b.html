@@ -1109,9 +1109,10 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
   .rec-dot{color:var(--red);font-size:18px;animation:blink .6s infinite;}
   /* MIDI着信インジケーター：信号が来たら光る（入力OFFでも光る＝ケーブルが生きているか分かる） */
   #menuBtn{position:relative;}
-  #menuBtn::after{content:"";position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;
+  /* ランプは ::before（v0.3.235 §225：::after を使っていたので、他のボタンと同じ名前 data-label="MENU" が出ていなかった） */
+  #menuBtn::before{content:"";position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;
     background:var(--line);transition:background .08s,box-shadow .08s;}
-  #menuBtn.midi-lit::after{background:var(--teal);box-shadow:0 0 7px var(--teal);}
+  #menuBtn.midi-lit::before{background:var(--teal);box-shadow:0 0 7px var(--teal);}
 
   .transport .t.rec-live{animation:blink .9s ease-in-out infinite;color:var(--red);border-color:var(--red);}   /* 録音中＝●が点滅 */
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
@@ -1192,7 +1193,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
     .unit{flex:1;min-height:0;display:flex;flex-direction:column;}
     html:fullscreen .unit,html:-webkit-full-screen .unit{margin:0;}
     .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:0;}
-    .unit{padding:8px 10px 10px;border-radius:10px;}
+    .unit{--unit-pt:8px;--unit-pr:10px;padding:var(--unit-pt) var(--unit-pr) 10px;border-radius:10px;}   /* 上と右の余白は変数（MENU の位置がこれに合わせる v0.3.235） */
     .brand .logo{font-size:18px;}
     .brand .model{display:none;}
     /* スマホ：ロゴは PADS/SEQ の行へ移す（relocateLogo）。見出し行が1段減る＝約35px をパッドへ。ブランドは画面に残る（v0.3.111） */
@@ -1325,7 +1326,10 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
     .transport{order:1;flex:0 0 auto;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
     .transport button.t[data-label]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1;font-size:15px;}
     .transport button.t[data-label]::after{margin:0;font-size:9px;letter-spacing:.08em;}
-    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:44px;flex:none;padding:0;}
+    /* MENU はタブの段の右端。タブと同じ上端・高さ・角・すき間・文字（v0.3.235 §225「メニューのボタンが他と不揃い」：4px 上にずれ、角 6px、名前なしだった） */
+    .transport #menuBtn{position:absolute;top:calc(var(--unit-pt,8px) + 2px);right:var(--unit-pr,10px);width:47px;   /* +2px＝.modebar-row の上の余白。幅で筐体の余白が変わっても（400px 境）タブと同じ位置 */height:44px;min-height:44px;flex:none;padding:0;margin:0;
+      border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--dim);box-shadow:none;gap:1px;font-size:15px;}
+    .transport #menuBtn::after{font-size:11px;letter-spacing:.06em;font-weight:700;}
     .viewdots .vdot{min-height:44px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
     .viewdots .vdot .vd-dot{display:none;}
     .viewdots .vdot.on{color:var(--ink);border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}
@@ -1364,7 +1368,7 @@ body.nohints .fx-swipe::after{display:none}
 
   @media(max-width:400px){
     body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
-    .unit{padding:10px 8px 8px;}
+    .unit{--unit-pt:10px;--unit-pr:8px;padding:var(--unit-pt) var(--unit-pr) 8px;}
     .brand .logo{font-size:18px;}
     .modebtn{padding:6px 12px;font-size:12px;letter-spacing:.12em;}
     .msbtn{padding:5px 8px;font-size:11px;}
@@ -1627,7 +1631,7 @@ body.nohints .fx-swipe::after{display:none}
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.234</div>
+  <div class="s-ver" id="splashVer">v0.3.235</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -8990,7 +8994,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.234";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.235";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
