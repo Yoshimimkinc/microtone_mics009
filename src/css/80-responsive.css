@@ -170,3 +170,14 @@
   body.perf #viewPads.split>.perf-screen{padding-top:5px;padding-bottom:5px;}
   body.perf .perf-screen .cl-keys{margin-top:3px;padding-top:3px;}
 }
+
+/* v0.3.233 §223 解説の文言 OFF（メニュー Skin、ui/hints）：操作の説明だけを隠す。状態・エラーのメッセージ（#clMsg）は出す。
+   SET の使い方（.cl-help）は場所を残す＝PADS ⇄ SET で情報窓の高さが変わらない（寸法の不変性）。KEY の CHOP の切り方（#keyChopInfo）は結果の情報なので出す */
+body.nohints #clHint,
+body.nohints .setpick-help,
+body.nohints .key-more-note:not(#keyChopInfo),
+body.nohints .key-sound-help,
+body.nohints .scratch-fader-hint{display:none!important}
+body.nohints .cl-help{visibility:hidden}
+body.nohints .fx-swipe::after{display:none}
+
