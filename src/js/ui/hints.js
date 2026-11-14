@@ -1,6 +1,6 @@
 // @module ui/hints
 // @provides HINTS_KEY, hintsOn, setHints
-// @uses sampNameEl
+// @uses -
 // @depends -
 // ---------- 解説の文言の ON / OFF（v0.3.233 §223） ----------
 // 「解説の文言はオンオフ出来ないかな設定で」。メニュー Skin の「解説の文言」で切り替える（端末ごとに覚える。既定 ON）。
@@ -20,7 +20,6 @@ function setHints(on){
   if(!tg) return;
   tg.classList.toggle("on", hintsOn());
   tg.addEventListener("click",()=>{
-    const on=!tg.classList.contains("on"); setHints(on);
-    if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent = on ? "解説の文言 ON" : "解説の文言 OFF（操作の説明を隠す）";
+    setHints(!tg.classList.contains("on"));   // 情報窓には何も書かない（v0.3.236 §226「解説の文言 OFF という文言が要らない」。状態はスイッチで分かる）
   });
 })();
