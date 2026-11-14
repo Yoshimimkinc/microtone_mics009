@@ -1,6 +1,7 @@
 // @module autosave
-// @provides AS_MIN_GAP, AUTOSAVE, _asBusy, _asDirty, _asLast, _asSoonT, _asWarmQ, _asWarned, autosaveDbName,
-//    autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName, scheduleAutosave, warmWavCache
+// @provides AS_MIN_GAP, AUTOSAVE, _asAgain, _asBusy, _asDirty, _asLast, _asRun, _asSoonT, _asWarmQ,
+//    _asWarned, autosaveDbName, autosaveNow, clearAutosave, idb, idbOp, loadAutosave, previewName,
+//    scheduleAutosave, warmWavCache
 // @uses APP_VERSION, DEFAULT_PROJECT, PADS, applyProject, bakePhrase, buildProject, drawAllPadWaves,
 //    hintsOn, loadPresets, playing, prerollAudio, sampNameEl, setCur, setSlots, sideCount, trackData, tracks
 // @depends presets
@@ -21,26 +22,36 @@ function idbOp(mode,fn){ return idb().then(d=>new Promise((res,rej)=>{
   const r=fn(st); tx.oncomplete=()=>res(r&&r.result); tx.onerror=()=>rej(tx.error); })); }
 // 保存は全パッドのWAVエンコード＝重い。演奏中には絶対に走らせない（音が飛ぶ）。
 // 「変更あり」の印だけ立てて、止まっていて・間隔が空いていて・暇なときにまとめて書く。
-let _asDirty=false, _asBusy=false, _asWarned=false, _asLast=0;
+let _asDirty=false, _asBusy=false, _asWarned=false, _asLast=0, _asRun=null, _asAgain=false;
 const AS_MIN_GAP=15000;   // 最短15秒に1回
 async function autosaveNow(force){
-  if(_asBusy || typeof buildProject!=="function") return;
+  if(typeof buildProject!=="function") return;
+  // 書いている最中に来た「必ず書く」は捨てない：いまの書き込みが終わったらもう一度書き、それを待つ（v0.3.236 §226）。
+  // v0.3.235 までは何もせずに戻っていたので、書いている最中の変更は次の 5 秒後まで保存されず、その間に閉じる／読み込み直すと消えた
+  // （pagehide・visibilitychange の保存も同じく捨てられていた。CI の「リロードで 16 セットが戻る（名前も）」がこれで落ちた）
+  if(_asBusy){ if(force){ _asAgain=true; await _asRun; } return; }
   if(!force){
     if(!_asDirty) return;
     if(Date.now()-_asLast < AS_MIN_GAP) return;
     // 演奏中も書く：WAVエンコードはキャッシュ済み（wavB64Cached）なので、走るのは設定のJSON化だけ。
     // v0.3.94〜0.3.97は演奏中に一切書かなかったため「演奏しながら編集→閉じる」で全部消えていた
   }
-  _asBusy=true; _asDirty=false; _asLast=Date.now();
-  if(typeof prerollAudio==="function") prerollAudio(0.4);   // 書き出しの間（JSON 化・保存）に音が遅れないよう、先に予約しておく（v0.3.226 §216）
-  try{
-    const json=JSON.stringify(buildProject());
-    await idbOp("readwrite", st=>st.put({at:Date.now(), ver:APP_VERSION, json}, AUTOSAVE.key));
-  }catch(e){
-    _asDirty=true;   // 失敗したら次の機会に再挑戦
-    if(!_asWarned){ _asWarned=true; console.warn("autosave:",e);
-      if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="自動保存できず（容量不足かも）— Saveで書き出しを"; }
-  }finally{ _asBusy=false; }
+  _asBusy=true;
+  _asRun=(async()=>{
+    do{
+      _asAgain=false; _asDirty=false; _asLast=Date.now();
+      if(typeof prerollAudio==="function") prerollAudio(0.4);   // 書き出しの間（JSON 化・保存）に音が遅れないよう、先に予約しておく（v0.3.226 §216）
+      try{
+        const json=JSON.stringify(buildProject());
+        await idbOp("readwrite", st=>st.put({at:Date.now(), ver:APP_VERSION, json}, AUTOSAVE.key));
+      }catch(e){
+        _asDirty=true; _asAgain=false;   // 失敗したら次の機会に再挑戦（ここでは繰り返さない）
+        if(!_asWarned){ _asWarned=true; console.warn("autosave:",e);
+          if(typeof sampNameEl!=="undefined"&&sampNameEl) sampNameEl.textContent="自動保存できず（容量不足かも）— Saveで書き出しを"; }
+      }
+    }while(_asAgain);
+  })();
+  try{ await _asRun; } finally{ _asBusy=false; }
 }
 let _asSoonT=null;
 function scheduleAutosave(){ _asDirty=true;

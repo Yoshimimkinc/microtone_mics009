@@ -824,7 +824,8 @@ async function setMode(){
       await applyProject(old); return {cur:setCur, name:tracks[0].name, bpm:bpmVal, s2fresh:setSlots[1].tracks[0].buffer===null && setSlots[1].tracks[9].patterns[0][0][4]===0}; });
     ok_(`${V} v2 の .mics は SET 1 に入り、他は既定のキット`, v2.cur===0 && v2.name==='OLD1' && v2.bpm===95 && v2.s2fresh, JSON.stringify(v2));
     // リロード：自動保存（v3）で 16 セットが戻る
-    await p.evaluate(async()=>{ await applyProject(JSON.parse(JSON.stringify(buildProject()))); setRename(2,'THIRD'); await autosaveNow(true); });
+    // v0.3.236 §226：書いている最中に変えた内容も、次の「必ず書く」で保存される（前は捨てられ、すぐ読み込み直すと消えた）＝1 回目の最中に名前を変えて 2 回目を呼ぶ
+    await p.evaluate(async()=>{ await applyProject(JSON.parse(JSON.stringify(buildProject()))); const first=autosaveNow(true); setRename(2,'THIRD'); await autosaveNow(true); await first; });
     await p.reload({waitUntil:'load'}); await ready(p);
     ok_(`${V} リロードで 16 セットが戻る（名前も）`, await p.evaluate(()=>setSlots.filter(Boolean).length===16 && setName(2)==='THIRD' && tracks[0].name==='OLD1'), await p.evaluate(()=>setSlots.filter(Boolean).length+'/'+setName(2)+'/'+tracks[0].name));
     // 戻る：PADS に 1 タップ
