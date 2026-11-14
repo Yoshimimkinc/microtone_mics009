@@ -102,6 +102,21 @@
   .modal-label{font-size:10px;color:var(--dim);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;}
   .modal-btns{display:flex;gap:8px;flex-wrap:wrap;}
   .modal-sublabel{font-size:11px;color:var(--dim);margin:14px 0 6px;}   /* セクションの中の小見出し（A B C D の切替 v0.3.168） */
+  /* メニューのドリルダウン（v0.3.237 §227）：一覧＝ジャンルの行（名前＋中身の一言＋›）。ジャンルの中では見出しは頭（#menuTitle）が言うので .modal-label は出さない */
+  .menu-cats{display:flex;flex-direction:column;gap:8px;}
+  .menu-cats[hidden],.modal-sec[hidden],.menu-back[hidden]{display:none;}
+  .menu-cat{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm go" "sub go";align-items:center;column-gap:10px;row-gap:3px;
+    width:100%;min-height:52px;padding:9px 12px;text-align:left;font:inherit;color:var(--ink);background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;cursor:pointer;touch-action:manipulation;transition:.1s;}
+  .menu-cat:hover{border-color:var(--dim);}
+  .menu-cat:active{transform:translateY(1px);}
+  .menu-cat b{grid-area:nm;font-size:13px;font-weight:700;letter-spacing:.14em;}
+  .menu-cat .menu-cat-sub{grid-area:sub;font-size:11px;line-height:1.35;color:var(--dim);letter-spacing:.02em;}
+  .menu-cat em{grid-area:go;font-style:normal;font-size:20px;line-height:1;color:var(--dim);}
+  #menuModal .modal-label{display:none;}
+  #menuModal .modal-sec{margin-bottom:16px;}
+  #menuModal .modal-head .menu-back{letter-spacing:.12em;font-size:11px;min-width:0;}
+  #menuModal .modal:not([data-page="top"]) #menuTitle{color:var(--ink);font-weight:700;}
   .modal .master-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
   .modal .master-ctrls .knob{flex:1 1 90px;}
   *{box-sizing:border-box;margin:0;padding:0;}

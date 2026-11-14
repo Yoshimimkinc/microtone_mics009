@@ -138,6 +138,21 @@
   .modal-label{font-size:10px;color:var(--dim);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;}
   .modal-btns{display:flex;gap:8px;flex-wrap:wrap;}
   .modal-sublabel{font-size:11px;color:var(--dim);margin:14px 0 6px;}   /* セクションの中の小見出し（A B C D の切替 v0.3.168） */
+  /* メニューのドリルダウン（v0.3.237 §227）：一覧＝ジャンルの行（名前＋中身の一言＋›）。ジャンルの中では見出しは頭（#menuTitle）が言うので .modal-label は出さない */
+  .menu-cats{display:flex;flex-direction:column;gap:8px;}
+  .menu-cats[hidden],.modal-sec[hidden],.menu-back[hidden]{display:none;}
+  .menu-cat{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm go" "sub go";align-items:center;column-gap:10px;row-gap:3px;
+    width:100%;min-height:52px;padding:9px 12px;text-align:left;font:inherit;color:var(--ink);background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;cursor:pointer;touch-action:manipulation;transition:.1s;}
+  .menu-cat:hover{border-color:var(--dim);}
+  .menu-cat:active{transform:translateY(1px);}
+  .menu-cat b{grid-area:nm;font-size:13px;font-weight:700;letter-spacing:.14em;}
+  .menu-cat .menu-cat-sub{grid-area:sub;font-size:11px;line-height:1.35;color:var(--dim);letter-spacing:.02em;}
+  .menu-cat em{grid-area:go;font-style:normal;font-size:20px;line-height:1;color:var(--dim);}
+  #menuModal .modal-label{display:none;}
+  #menuModal .modal-sec{margin-bottom:16px;}
+  #menuModal .modal-head .menu-back{letter-spacing:.12em;font-size:11px;min-width:0;}
+  #menuModal .modal:not([data-page="top"]) #menuTitle{color:var(--ink);font-weight:700;}
   .modal .master-ctrls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
   .modal .master-ctrls .knob{flex:1 1 90px;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -1362,7 +1377,8 @@ body.nohints #clHint,
 body.nohints .setpick-help,
 body.nohints .key-more-note:not(#keyChopInfo),
 body.nohints .key-sound-help,
-body.nohints .scratch-fader-hint{display:none!important}
+body.nohints .scratch-fader-hint,
+body.nohints .menu-cat-sub{display:none!important}
 body.nohints .cl-help{visibility:hidden}
 body.nohints .fx-swipe::after{display:none}
 
@@ -1631,7 +1647,7 @@ body.nohints .fx-swipe::after{display:none}
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.236</div>
+  <div class="s-ver" id="splashVer">v0.3.237</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1658,8 +1674,18 @@ body.nohints .fx-swipe::after{display:none}
     <!-- メニュー（SKIN / プロジェクト操作） -->
     <div class="modal-backdrop" id="menuModal" style="display:none;">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
-        <div class="modal-head"><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
-        <div class="modal-sec">
+        <!-- v0.3.237 §227「設定はジャンルごとにドリルダウン方式にする」：開くとジャンルの一覧（#menuCats）。押す＝そのジャンルの設定だけ（.modal-sec[data-cat]）。
+             ‹ MENU で一覧へ戻る。設定の部品（id・登録）はそのまま、見せ方だけ（50-menu の menuPage） -->
+        <div class="modal-head"><button class="t menu-back" id="menuBack" hidden aria-label="メニューの一覧へ戻る">‹ MENU</button><span id="menuTitle">MENU</span><button class="t" id="menuClose" aria-label="Close">✕</button></div>
+        <div class="menu-cats" id="menuCats" role="group" aria-label="設定のジャンル">
+          <button class="menu-cat" data-cat="project"><b>PROJECT</b><span class="menu-cat-sub">保存 · 読み込み · WAV · Dropbox</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="master"><b>MASTER</b><span class="menu-cat-sub">音量 · COMP · Latency</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="sound"><b>SOUND</b><span class="menu-cat-sub">VINTAGE DAC · SP の音 · FAT BASS</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="timing"><b>TIMING</b><span class="menu-cat-sub">メトロノーム · MIDI SYNC · A B C D の切替</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="io"><b>I/O</b><span class="menu-cat-sub">そとの鍵盤 · OUT B</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="display"><b>DISPLAY</b><span class="menu-cat-sub">Skin · 起動アニメーション · 解説の文言</span><em aria-hidden="true">›</em></button>
+        </div>
+        <div class="modal-sec" data-cat="none">
           <div class="modal-label">Tempo</div>
           <div class="tempo-row" style="flex-wrap:wrap;align-items:center;gap:14px;">
             <!-- テンポ/スウィングの編集入口は情報窓に一本化（v0.3.101）。この2つは applyBpm / 窓のSWG欄が
@@ -1681,7 +1707,7 @@ body.nohints .fx-swipe::after{display:none}
             </div>
           </div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="display">
           <div class="modal-label">Skin</div>
           <div class="seg" id="themeSeg">
             <button data-th="ak" class="on">AK</button>
@@ -1692,7 +1718,7 @@ body.nohints .fx-swipe::after{display:none}
           <label class="toggle on" id="splashAnimToggle" style="margin-top:10px;"><span class="sw"></span><span>起動アニメーション</span></label>
           <label class="toggle on" id="hintsToggle" style="margin-top:10px;" title="OFF＝操作の説明（SET の使い方・モード中のヒント・スワイプの案内など）を隠す"><span class="sw"></span><span>解説の文言</span></label>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="master">
           <div class="modal-label">Master</div>
           <div class="master-bar" id="masterBar">
             <div class="master-vu-wrap"><div class="master-vu-bar" id="masterVu"></div></div>
@@ -1710,7 +1736,7 @@ body.nohints .fx-swipe::after{display:none}
           </div>
           <div class="knob lat-row"><label>Latency <span class="v" id="vLat">—</span></label></div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="sound">
           <div class="modal-label">Sound</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle on" id="dacLofiToggle"><span class="sw"></span><span>VINTAGE DAC</span></label>
@@ -1720,7 +1746,7 @@ body.nohints .fx-swipe::after{display:none}
             <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点スナップ</span></label>
           </div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="timing">
           <div class="modal-label">Timing</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle" id="metroToggle"><span class="sw"></span><span>メトロノーム</span></label>
@@ -1730,14 +1756,26 @@ body.nohints .fx-swipe::after{display:none}
           <div class="modal-sublabel">A B C D の切替</div>
           <div class="seg" id="patSwitch"><button data-u="end" class="on">PATTERN</button><button data-u="bar">BAR</button><button data-u="beat">BEAT</button></div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="io">
           <div class="modal-label">I/O</div>
           <div class="modal-btns" style="flex-direction:column;align-items:stretch;gap:10px;">
             <label class="toggle" id="midiToggle"><span class="sw"></span><span>そとの鍵盤で叩く</span></label>
             <label class="toggle" id="multiOutToggle"><span class="sw"></span><span>OUT B — ch3/4</span></label>
           </div>
         </div>
-        <div class="modal-sec">
+        <div class="modal-sec" data-cat="project">
+          <div class="modal-label">Project</div>
+          <!-- SAVE / LOAD の単位（v0.3.162 §156）：ステージ全体 / いまのセット / 編集中のシーケンス -->
+          <div class="seg" id="saveScope" style="margin-bottom:10px;"><button data-u="stage" class="on">STAGE</button><button data-u="set">SET</button><button data-u="seq">SEQ</button></div>
+          <div class="modal-btns">
+            <button class="t" id="saveBtn">Save</button>
+            <button class="t" id="loadProjBtn">Load</button>
+            <button class="t" id="exportWavBtn">WAV ↓</button>
+            <button class="t" id="resetBtn" title="自動保存を消して初期状態から始める">RESET</button>
+            <input type="file" id="projFile" accept=".mics,.micset,.micseq,.json" style="display:none;">
+          </div>
+        </div>
+        <div class="modal-sec" data-cat="project">
           <div class="modal-label">Source</div>
           <div class="modal-btns">
             <details id="dropboxPanel"><summary>Dropbox · ステージ共有</summary>
@@ -1750,18 +1788,6 @@ body.nohints .fx-swipe::after{display:none}
             </details>
 
 
-          </div>
-        </div>
-        <div class="modal-sec">
-          <div class="modal-label">Project</div>
-          <!-- SAVE / LOAD の単位（v0.3.162 §156）：ステージ全体 / いまのセット / 編集中のシーケンス -->
-          <div class="seg" id="saveScope" style="margin-bottom:10px;"><button data-u="stage" class="on">STAGE</button><button data-u="set">SET</button><button data-u="seq">SEQ</button></div>
-          <div class="modal-btns">
-            <button class="t" id="saveBtn">Save</button>
-            <button class="t" id="loadProjBtn">Load</button>
-            <button class="t" id="exportWavBtn">WAV ↓</button>
-            <button class="t" id="resetBtn" title="自動保存を消して初期状態から始める">RESET</button>
-            <input type="file" id="projFile" accept=".mics,.micset,.micseq,.json" style="display:none;">
           </div>
         </div>
       </div>
@@ -5505,10 +5531,25 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
 (function(){
   const modal=document.getElementById("menuModal"), btn=document.getElementById("menuBtn"), closeBtn=document.getElementById("menuClose");
   let lastFocus=null;
+  // ジャンルごとのドリルダウン（v0.3.237 §227）：c＝ジャンル（null＝一覧）。見せるのは一覧か、そのジャンルの .modal-sec だけ
+  const dlg=modal.querySelector(".modal"), cats=document.getElementById("menuCats"), back=document.getElementById("menuBack"), title=document.getElementById("menuTitle");
+  let lastCat=null;
+  function menuPage(c){
+    const b=c ? cats.querySelector('.menu-cat[data-cat="'+c+'"]') : null;
+    if(c && !b) c=null;
+    dlg.dataset.page=c||"top";
+    modal.querySelectorAll(".modal-sec").forEach(s=>{ s.hidden = s.dataset.cat!==c; });
+    cats.hidden=!!c; back.hidden=!c;
+    title.textContent = c ? b.querySelector("b").textContent : "MENU";
+    dlg.scrollTop=0;
+    if(c){ lastCat=c; if(c==="master" && typeof paintLatency==="function") paintLatency(); }
+    if(modal.style.display==="flex"){ const f=c ? back : (cats.querySelector('.menu-cat[data-cat="'+lastCat+'"]')||closeBtn); if(f&&f.focus) f.focus(); }
+  }
   function open(){
     lastFocus=document.activeElement;
     if(typeof paintLatency==="function") paintLatency();
     modal.style.display="flex";
+    lastCat=null; menuPage(null);           // 開くたびに一覧から（どこに居るか迷わない）
     closeBtn.focus();                       // フォーカスをダイアログ内へ
     document.addEventListener("keydown",onKey);
   }
@@ -5518,15 +5559,18 @@ document.getElementById("undoBtn").addEventListener("click", doUndo);
     if(lastFocus&&lastFocus.focus) lastFocus.focus();   // フォーカス復帰
   }
   function onKey(e){
-    if(e.key==="Escape"){ close(); return; }
-    if(e.key==="Tab"){    // 簡易フォーカストラップ
-      const f=modal.querySelectorAll('button,select,input,[tabindex]:not([tabindex="-1"])');
+    if(e.key==="Escape"){ if(dlg.dataset.page!=="top") menuPage(null); else close(); return; }   // ジャンルの中では一覧へ戻る、一覧では閉じる
+    if(e.key==="Tab"){    // 簡易フォーカストラップ（見えているものだけ）
+      const f=[...modal.querySelectorAll('button,select,input,summary,[tabindex]:not([tabindex="-1"])')].filter(el=>el.offsetParent!==null);
       if(!f.length) return;
       const first=f[0], last=f[f.length-1];
       if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
       else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
     }
   }
+  cats.addEventListener("click",e=>{ const b=e.target.closest(".menu-cat"); if(b) menuPage(b.dataset.cat); });
+  back.addEventListener("click",()=>menuPage(null));
+  menuPage(null);
   btn.addEventListener("click",open);
   closeBtn.addEventListener("click",close);
   modal.addEventListener("click",e=>{ if(e.target===modal) close(); });   // 背景クリックで閉じる
@@ -9004,7 +9048,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.236";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.237";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;

@@ -1071,6 +1071,7 @@ async function hintsToggle(){
   await p.evaluate(()=>switchView('viewSet')); await p.waitForTimeout(300);
   const hOn=(await st()).scrH;
   await p.evaluate(()=>{ document.getElementById('menuBtn').click(); }); await p.waitForTimeout(200);
+  await p.click('.menu-cat[data-cat="display"]'); await p.waitForTimeout(120);   // メニューはジャンルごと（v0.3.237 §227）
   await p.click('#hintsToggle'); await p.waitForTimeout(150);
   const b=await st();
   ok_(`${V} OFF で説明が隠れる（SET の使い方・SET 一覧・KEY・スクラッチ）`, b.nohints && !b.on && b.help===false && b.pick===false && b.keyNote===false && b.fader===false, JSON.stringify(b));
@@ -1122,6 +1123,48 @@ async function menuBtnAlign(){
     } else {
       ok_(`${V} 再生まわりの他のボタンと同じ上端・高さ・角`, r.others.every(o=>Math.abs(o.t-r.m.t)<0.6 && Math.abs(o.h-r.m.h)<0.6 && o.rad===r.m.rad), JSON.stringify(r.m));
     }
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
+async function menuDrill(){
+  // v0.3.237 §227「設定はジャンルごとにドリルダウン方式にする」：開くとジャンルの一覧だけ。押す＝そのジャンルの設定だけ。‹ MENU / Escape で一覧へ。
+  // 設定の部品はどれか 1 つのジャンルに必ず入っている（消えていない）
+  const NEED=['saveScope','saveBtn','loadProjBtn','exportWavBtn','resetBtn','dropboxPanel','kMaster','compToggle','kComp','kDrive','vLat',
+    'dacLofiToggle','spFilterToggle','spTuneToggle','fatBassToggle','loopSnapToggle','metroToggle','midiSyncToggle','patSwitch','midiToggle','multiOutToggle','themeSeg','splashAnimToggle','hintsToggle'];
+  for (const [w,h,touch] of [[390,844,true],[1280,800,false]]){
+    const V=`MENUDRILL ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:touch,hasTouch:touch}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    const st=(ids)=>p.evaluate(ids=>{ const vis=e=>!!e && e.offsetParent!==null && e.getBoundingClientRect().height>0;
+      return {open:document.getElementById('menuModal').style.display==='flex', page:document.querySelector('#menuModal .modal').dataset.page, title:document.getElementById('menuTitle').textContent,
+        back:vis(document.getElementById('menuBack')), cats:[...document.querySelectorAll('#menuCats .menu-cat')].filter(vis).map(b=>b.dataset.cat),
+        shown:ids.filter(id=>vis(document.getElementById(id))), minH:Math.min(...[...document.querySelectorAll('#menuCats .menu-cat')].filter(vis).map(b=>b.getBoundingClientRect().height))}; }, ids);
+    await p.click('#menuBtn'); await p.waitForTimeout(200);
+    const top=await st(NEED);
+    ok_(`${V} 開くとジャンルの一覧だけ（6 つ・設定は出ない・44px 以上）`, top.open && top.page==='top' && top.title==='MENU' && !top.back && top.cats.join()==='project,master,sound,timing,io,display' && top.shown.length===0 && top.minH>=44, JSON.stringify(top));
+    const seen={};
+    for (const c of top.cats){
+      await p.click(`.menu-cat[data-cat="${c}"]`); await p.waitForTimeout(120);
+      const s=await st(NEED);
+      ok_(`${V} ${c}：そのジャンルの設定だけ・頭に名前・‹ MENU で戻れる`, s.page===c && s.back && s.cats.length===0 && s.shown.length>0 && s.title!=='MENU', JSON.stringify(s));
+      s.shown.forEach(id=>{ seen[id]=(seen[id]||0)+1; });
+      await p.click('#menuBack'); await p.waitForTimeout(100);
+      ok_(`${V} ${c}：‹ MENU で一覧へ`, (await st(NEED)).page==='top', 'not top');
+    }
+    ok_(`${V} 設定の部品はどれか 1 つのジャンルに入っている（漏れ・重なりなし）`, NEED.every(id=>seen[id]===1), JSON.stringify(NEED.filter(id=>seen[id]!==1)));
+    // Escape：ジャンルの中では一覧へ、一覧では閉じる。開き直すと一覧から
+    await p.click('.menu-cat[data-cat="sound"]'); await p.waitForTimeout(100);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+    const e1=await st(NEED);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+    const e2=await st(NEED);
+    ok_(`${V} Escape：ジャンルの中→一覧、一覧→閉じる`, e1.open && e1.page==='top' && !e2.open, JSON.stringify({e1:e1.page,open1:e1.open,open2:e2.open}));
+    await p.click('#menuBtn'); await p.waitForTimeout(150); await p.click('.menu-cat[data-cat="timing"]'); await p.waitForTimeout(100);
+    await p.click('#menuClose'); await p.waitForTimeout(100); await p.click('#menuBtn'); await p.waitForTimeout(150);
+    ok_(`${V} 開き直すと一覧から`, (await st(NEED)).page==='top', 'not top');
     eq(`${V} 0 errors`, errs, []);
     await ctx.close();
   }
@@ -1725,6 +1768,7 @@ await spEngine();
 await hintsToggle();
 await setWinOnce();
 await menuBtnAlign();
+await menuDrill();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
