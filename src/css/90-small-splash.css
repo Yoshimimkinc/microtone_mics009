@@ -1,6 +1,6 @@
   @media(max-width:400px){
     body{padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left));}
-    .unit{padding:10px 8px 8px;}
+    .unit{--unit-pt:10px;--unit-pr:8px;padding:var(--unit-pt) var(--unit-pr) 8px;}
     .brand .logo{font-size:18px;}
     .modebtn{padding:6px 12px;font-size:12px;letter-spacing:.12em;}
     .msbtn{padding:5px 8px;font-size:11px;}

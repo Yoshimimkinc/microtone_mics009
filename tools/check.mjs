@@ -1099,6 +1099,32 @@ async function setWinOnce(){
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
 }
+async function menuBtnAlign(){
+  // v0.3.235 §225「…メニューのボタンが他と不揃いなので直せ」：スマホの MENU はタブ（PADS / SEQ / SET）と同じ上端・高さ・角・すき間・枠で、名前 MENU が出る。
+  // PC / iPad は再生まわりの他のボタンと同じ高さで、名前 MENU が出る。MIDI のランプ（::before）は残る
+  for (const [w,h,touch] of [[390,844,true],[360,740,true],[430,932,true],[1280,800,false]]){
+    const V=`MENUBTN ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:touch,hasTouch:touch}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    const r=await p.evaluate(()=>{ const g=e=>{ const r=e.getBoundingClientRect(), cs=getComputedStyle(e); return {l:r.left,r:r.right,t:r.top,h:r.height,rad:cs.borderRadius,bg:cs.backgroundColor,bd:cs.borderTopColor,col:cs.color}; };
+      const m=document.getElementById('menuBtn'), tabs=[...document.querySelectorAll('#viewDots .vdot')].filter(e=>e.getBoundingClientRect().height>0).map(g);
+      const others=[...document.querySelectorAll('.transport button.t')].filter(e=>e!==m).map(g);
+      return {m:g(m), tabs, others, label:getComputedStyle(m,'::after').content, lamp:getComputedStyle(m,'::before').width}; });
+    ok_(`${V} 名前 MENU が出る・MIDI のランプは残る`, r.label==='"MENU"' && r.lamp==='5px', JSON.stringify({label:r.label,lamp:r.lamp}));
+    if(touch){
+      const last=r.tabs[r.tabs.length-1], off=r.tabs[1], gap=r.tabs[1].l-r.tabs[0].r;
+      ok_(`${V} MENU はタブと同じ上端・高さ`, Math.abs(r.m.t-last.t)<0.6 && Math.abs(r.m.h-last.h)<0.6, JSON.stringify({m:r.m,last}));
+      ok_(`${V} タブとのすき間はタブ同士と同じ`, Math.abs((r.m.l-last.r)-gap)<1.1, `menu gap ${(r.m.l-last.r).toFixed(1)} tabs gap ${gap.toFixed(1)}`);
+      ok_(`${V} 角・地・枠・文字色がタブ（選んでいない）と同じ`, r.m.rad===off.rad && r.m.bg===off.bg && r.m.bd===off.bd && r.m.col===off.col, JSON.stringify({m:r.m,off}));
+    } else {
+      ok_(`${V} 再生まわりの他のボタンと同じ上端・高さ・角`, r.others.every(o=>Math.abs(o.t-r.m.t)<0.6 && Math.abs(o.h-r.m.h)<0.6 && o.rad===r.m.rad), JSON.stringify(r.m));
+    }
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
   // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
@@ -1697,6 +1723,7 @@ await shortLandscape();
 await spEngine();
 await hintsToggle();
 await setWinOnce();
+await menuBtnAlign();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

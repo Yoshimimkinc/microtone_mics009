@@ -11,7 +11,7 @@
     .unit{flex:1;min-height:0;display:flex;flex-direction:column;}
     html:fullscreen .unit,html:-webkit-full-screen .unit{margin:0;}
     .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:0;}
-    .unit{padding:8px 10px 10px;border-radius:10px;}
+    .unit{--unit-pt:8px;--unit-pr:10px;padding:var(--unit-pt) var(--unit-pr) 10px;border-radius:10px;}   /* 上と右の余白は変数（MENU の位置がこれに合わせる v0.3.235） */
     .brand .logo{font-size:18px;}
     .brand .model{display:none;}
     /* スマホ：ロゴは PADS/SEQ の行へ移す（relocateLogo）。見出し行が1段減る＝約35px をパッドへ。ブランドは画面に残る（v0.3.111） */
@@ -144,7 +144,10 @@
     .transport{order:1;flex:0 0 auto;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
     .transport button.t[data-label]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1;font-size:15px;}
     .transport button.t[data-label]::after{margin:0;font-size:9px;letter-spacing:.08em;}
-    .transport #menuBtn{position:absolute;top:8px;right:10px;width:46px;min-height:44px;flex:none;padding:0;}
+    /* MENU はタブの段の右端。タブと同じ上端・高さ・角・すき間・文字（v0.3.235 §225「メニューのボタンが他と不揃い」：4px 上にずれ、角 6px、名前なしだった） */
+    .transport #menuBtn{position:absolute;top:calc(var(--unit-pt,8px) + 2px);right:var(--unit-pr,10px);width:47px;   /* +2px＝.modebar-row の上の余白。幅で筐体の余白が変わっても（400px 境）タブと同じ位置 */height:44px;min-height:44px;flex:none;padding:0;margin:0;
+      border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--dim);box-shadow:none;gap:1px;font-size:15px;}
+    .transport #menuBtn::after{font-size:11px;letter-spacing:.06em;font-weight:700;}
     .viewdots .vdot{min-height:44px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);font-size:11px;letter-spacing:.06em;gap:4px;padding:4px 2px;color:var(--dim);min-width:0;}
     .viewdots .vdot .vd-dot{display:none;}
     .viewdots .vdot.on{color:var(--ink);border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}

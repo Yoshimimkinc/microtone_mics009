@@ -101,9 +101,10 @@
   .rec-dot{color:var(--red);font-size:18px;animation:blink .6s infinite;}
   /* MIDI着信インジケーター：信号が来たら光る（入力OFFでも光る＝ケーブルが生きているか分かる） */
   #menuBtn{position:relative;}
-  #menuBtn::after{content:"";position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;
+  /* ランプは ::before（v0.3.235 §225：::after を使っていたので、他のボタンと同じ名前 data-label="MENU" が出ていなかった） */
+  #menuBtn::before{content:"";position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;
     background:var(--line);transition:background .08s,box-shadow .08s;}
-  #menuBtn.midi-lit::after{background:var(--teal);box-shadow:0 0 7px var(--teal);}
+  #menuBtn.midi-lit::before{background:var(--teal);box-shadow:0 0 7px var(--teal);}
 
   .transport .t.rec-live{animation:blink .9s ease-in-out infinite;color:var(--red);border-color:var(--red);}   /* 録音中＝●が点滅 */
   @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
