@@ -54,7 +54,8 @@ const CL_PAGES=[
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
      +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>MIX</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
-   b:[{id:"clWave",t:'EDIT'}],   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
+   // EDIT ボタン（#clWave、v0.3.128 §139）は撤去（v0.3.239 §229「EDIT ボタンも重複してる」）：下の段の EDIT（モード）と名前が同じで、
+   // 開く先は下の種類のボタン（SAMPLE＝編集画面・KEY＝ピアノロール・SCRATCH＝スクラッチ）と同じだった
    // 種類の切り替え（v0.3.203 §192「EDIT からさらにモードを選ぶけど 1 発で行ける経路」）：押す＝その種類にして、すぐその画面へ（KEY＝ピアノロール・SCRATCH＝スクラッチ）
    x:'<span class="cl-kinds" role="group" aria-label="パッドの種類"><button class="cl-btn cl-kind" data-kind="SPL">SAMPLE</button><button class="cl-btn cl-kind" data-kind="KEY">KEY</button><button class="cl-btn cl-kind" data-kind="SCR">SCRATCH</button></span>'},
   {id:"fx",   lbl:"FX",     f:["filter","cutoff","reso","delay","reverb"]},   // A B C D ごと（v0.3.150）
@@ -209,8 +210,9 @@ function paintClPage(){
   scr.addEventListener("click",e=>{
     const b=e.target.closest(".cl-btn"); if(!b) return;
     const t=tracks[selected];
-    if(b.id==="clWave"){ if(typeof openPadEdit==="function") openPadEdit(selected); return; }
-    if(b.dataset.kind){ padKindGo(selected,b.dataset.kind).catch(e=>{ sampNameEl.textContent=e.message; }); return; }
+    // 種類のボタン＝その種類にして、その画面を開く。SAMPLE は編集画面（v0.3.239 §229：撤去した EDIT ボタンの役目。KEY / SCRATCH と同じ 1 手）
+    if(b.dataset.kind){ const i=selected, k=b.dataset.kind;
+      padKindGo(i,k).then(()=>{ if(k==="SPL" && padKind(tracks[i])==="SPL" && typeof openPadEdit==="function") openPadEdit(i); }).catch(e=>{ sampNameEl.textContent=e.message; }); return; }
     if(b.id==="clLearn"){
       if(assignTarget===selected){ assignTarget=-1; sampNameEl.textContent="ASSIGN 取消"; }
       else { assignTarget=selected; sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤かキーを押す（もう一度で取消）"; }

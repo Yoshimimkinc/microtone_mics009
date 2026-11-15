@@ -226,11 +226,11 @@ async function run(w,h,mobile){
     { const st=await p.evaluate(()=>{ const s=document.querySelector('#viewPads>.strip'); const pad=document.querySelector('#pads .pad').getBoundingClientRect();
         return {strip:getComputedStyle(s).display, padH:Math.round(pad.height), samp:!!document.getElementById('samp')}; });
       ok_(`${V} スマホは strip を出さない`, st.strip==='none' && st.samp, JSON.stringify(st));
-      // SAMPLE ページのボタンは文字「EDIT」（旧 ✂、v0.3.127→128 §139）：13px 以上・幅 56px 以上・他の欄と同じ 34px 高
+      // v0.3.239 §229「EDIT ボタンも重複してる」：SAMPLE ページに EDIT は 1 つも無い（下の段の EDIT だけ）。編集画面は種類のボタン SAMPLE から
       await page('smpl');
-      const cw=await p.evaluate(()=>{ const b=document.getElementById('clWave'); const r=b.getBoundingClientRect();
-        return {h:Math.round(r.height), w:Math.round(r.width), t:b.textContent.trim(), fs:parseFloat(getComputedStyle(b).fontSize)}; });
-      ok_(`${V} EDIT ボタンは文字「EDIT」・13px・幅 56px 以上・34px 高`, cw.t==='EDIT' && cw.fs>=13 && cw.h>=34 && cw.w>=56, JSON.stringify(cw));   // SAMPLE のまま次（EDIT からモーダル）へ
+      const cw=await p.evaluate(()=>{ const vis=e=>e.getBoundingClientRect().height>0; const edits=[...document.querySelectorAll('button')].filter(b=>vis(b) && /^EDIT$/.test(((b.dataset&&b.dataset.label)||b.textContent).trim()));
+        const k=document.querySelector('#clPage .cl-kind[data-kind="SPL"]'); return {edits:edits.map(b=>b.id), clWave:!!document.getElementById('clWave'), kind:k?Math.round(k.getBoundingClientRect().height):0}; });
+      ok_(`${V} SAMPLE ページに EDIT は無い（EDIT は下の段の 1 つだけ）・種類のボタンは 32px 以上`, !cw.clWave && cw.edits.length===1 && cw.kind>=32, JSON.stringify(cw));
       ok_(`${V} 浮いた高さがパッドへ（390×844 で 100px 以上）`, h<700 || st.padH>=100, `padH=${st.padH}`);
       await p.evaluate(()=>{ selectPad(0); openPadEdit(0); }); await p.waitForTimeout(600);
       await p.click('#peTabs .pe-tab[data-tab="source"]'); await p.waitForTimeout(100);   // LOAD / SAMPLING は SOURCE タブ（v0.3.228 §218）
@@ -258,7 +258,7 @@ async function run(w,h,mobile){
   }
 
   // 7) モーダルは「入り組んだ設定」だけ
-  await p.click('#clWave'); await p.waitForTimeout(600);   // 開いて450msはクリックを飲む（ゴーストクリック対策）
+  await p.click('#clPage .cl-kind[data-kind="SPL"]'); await p.waitForTimeout(600);   // 種類のボタン SAMPLE＝編集画面（v0.3.239 §229、旧 EDIT ボタン）。開いて450msはクリックを飲む（ゴーストクリック対策）
   eq(`${V} モーダル中の波形`, await where(), 'peWaveHome');
   const md=await p.evaluate(()=>{const m=document.getElementById('padEditModal');
     return {disp:getComputedStyle(m).display, ranges:m.querySelectorAll('input[type=range]').length,
@@ -296,9 +296,9 @@ async function run(w,h,mobile){
   // 7c) ★タッチ：EDIT→パッドでモーダルが開いた直後のゴーストクリックが TRIM を誤発動しない（W1・v0.3.98）
   if(mobile){
     const before=await p.evaluate(()=>tracks[3].buffer.length);
-    // スマホに EDIT ボタンは無い（v0.3.106）。モーダルは SAMPLE ページの ✂ から開く＝その直後のゴーストクリックを見る
+    // モーダルは SAMPLE ページの種類のボタン SAMPLE から開く（v0.3.239 §229、旧 EDIT ボタン）＝その直後のゴーストクリックを見る
     await p.evaluate(()=>{ selectPad(3); selectPadHeavy(); });
-    await page('smpl'); await p.tap('#clWave'); await p.waitForTimeout(350);
+    await page('smpl'); await p.tap('#clPage .cl-kind[data-kind="SPL"]'); await p.waitForTimeout(350);
     const g=await p.evaluate(()=>({modal:document.getElementById('padEditModal').style.display, len:tracks[3].buffer.length}));
     ok_(`${V} タッチでEDIT→パッド：モーダルが開いたまま`, g.modal==='flex', g.modal);
     ok_(`${V} タッチでEDIT→パッド：TRIMが誤発動しない`, g.len===before, `${before}→${g.len}`);
