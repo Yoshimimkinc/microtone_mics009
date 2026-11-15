@@ -335,7 +335,6 @@
   /* TRK行は perf（stripが無い）でだけ出す。それ以外は strip の「01 PHRASE 1」と二重 */
   body:not(.perf) .perf-screen .cl-trk{display:none;}
   #sampName.in-window{display:none!important;}
-  body.pe-open #clWave{visibility:hidden;}   /* 窓に収まる時はトーストを出さない */
   .perf-screen .cl-note{height:16px;line-height:1.35;gap:8px;overflow:hidden;flex-wrap:nowrap;}
   .perf-screen .cl-note>*{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .perf-screen .cl-note #clMsg{font-size:11px;opacity:.9;flex:0 1 auto;}
@@ -400,8 +399,6 @@
     :root{--cl-page-h:78px;--cl-wave-h:78px;}
     /* EDIT ボタン（旧 ✂）は「✂」1文字に縮めない（小さ過ぎて NG v0.3.127 §139）。文字「EDIT」を 13px で出す（v0.3.128）。
        高さは他の欄と同じ 34px（窓の寸法を動かさない＝不変性 §94）。指の当たりは ::after で上下 5px ずつ広げて 44px 相当にする */
-    .perf-screen #clWave{position:relative;padding:6px 14px;font-size:13px;letter-spacing:.08em;}
-    .perf-screen #clWave::after{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px;}
     /* 横に並べる幅が無い：1カラムに戻し、概観レーンは畳む。波形は「予約の内数」に収めるので
        SAMPLEに移っても窓の高さは他のページと同じまま。細かい追い込みは TRIM/CHOP のモーダルで */
     .perf-screen.has-wave{display:flex;}
@@ -1647,7 +1644,7 @@ body.nohints .fx-swipe::after{display:none}
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.238</div>
+  <div class="s-ver" id="splashVer">v0.3.239</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -4850,7 +4847,8 @@ const CL_PAGES=[
      +'<span class="cl-par ro" data-p="settime"><i>TIME</i><b class="cl-num" id="clSetTime">0:00</b></span>'
      +'<span class="cl-par ro cl-setnext" data-p="setnext"><i>MIX</i><b id="clSetNext">—</b></span>'},   // FXページは MAIN の2行目へ統合（v0.3.108）：窓の空白44pxを埋め、一番触る5つを1ページに
   {id:"smpl", lbl:"SAMPLE", f:["loop"],   // START/END の数値欄は撤去（v0.3.126 §138）
-   b:[{id:"clWave",t:'EDIT'}],   // 文言は「EDIT」（v0.3.128 §139：✂ や TRIM/CHOP より、開く窓の名前をそのまま）
+   // EDIT ボタン（#clWave、v0.3.128 §139）は撤去（v0.3.239 §229「EDIT ボタンも重複してる」）：下の段の EDIT（モード）と名前が同じで、
+   // 開く先は下の種類のボタン（SAMPLE＝編集画面・KEY＝ピアノロール・SCRATCH＝スクラッチ）と同じだった
    // 種類の切り替え（v0.3.203 §192「EDIT からさらにモードを選ぶけど 1 発で行ける経路」）：押す＝その種類にして、すぐその画面へ（KEY＝ピアノロール・SCRATCH＝スクラッチ）
    x:'<span class="cl-kinds" role="group" aria-label="パッドの種類"><button class="cl-btn cl-kind" data-kind="SPL">SAMPLE</button><button class="cl-btn cl-kind" data-kind="KEY">KEY</button><button class="cl-btn cl-kind" data-kind="SCR">SCRATCH</button></span>'},
   {id:"fx",   lbl:"FX",     f:["filter","cutoff","reso","delay","reverb"]},   // A B C D ごと（v0.3.150）
@@ -5005,8 +5003,9 @@ function paintClPage(){
   scr.addEventListener("click",e=>{
     const b=e.target.closest(".cl-btn"); if(!b) return;
     const t=tracks[selected];
-    if(b.id==="clWave"){ if(typeof openPadEdit==="function") openPadEdit(selected); return; }
-    if(b.dataset.kind){ padKindGo(selected,b.dataset.kind).catch(e=>{ sampNameEl.textContent=e.message; }); return; }
+    // 種類のボタン＝その種類にして、その画面を開く。SAMPLE は編集画面（v0.3.239 §229：撤去した EDIT ボタンの役目。KEY / SCRATCH と同じ 1 手）
+    if(b.dataset.kind){ const i=selected, k=b.dataset.kind;
+      padKindGo(i,k).then(()=>{ if(k==="SPL" && padKind(tracks[i])==="SPL" && typeof openPadEdit==="function") openPadEdit(i); }).catch(e=>{ sampNameEl.textContent=e.message; }); return; }
     if(b.id==="clLearn"){
       if(assignTarget===selected){ assignTarget=-1; sampNameEl.textContent="ASSIGN 取消"; }
       else { assignTarget=selected; sampNameEl.textContent="ASSIGN — 覚えさせたい鍵盤かキーを押す（もう一度で取消）"; }
@@ -9048,7 +9047,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.238";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.239";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
