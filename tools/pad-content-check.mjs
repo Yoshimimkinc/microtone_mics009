@@ -208,12 +208,14 @@ export async function checkPadContents({br,PORT,ready,unlock,eq,ok_}){
     await p.evaluate(()=>{arm('edit',true);}); const pr=await p.evaluate(()=>{const b=document.querySelectorAll('#pads .pad')[5].getBoundingClientRect();return [b.left+b.width/2,b.top+b.height/2];});
     await p.mouse.click(pr[0],pr[1]); await p.waitForTimeout(500);
     const k3=await p.evaluate(()=>({roll:!document.getElementById('keyEditor').hidden,modal:getComputedStyle(document.getElementById('padEditModal')).display}));
-    await p.evaluate(()=>keyEditorClose()); await p.click('#clPage .cl-kind[data-kind="SPL"]'); await p.waitForTimeout(300);
-    const k4=await p.evaluate(()=>({kind:padKind(tracks[5]),tab:document.querySelector('#clKeys .cl-key[data-pg="smpl"]').textContent}));
+    await p.evaluate(()=>keyEditorClose()); await p.click('#clPage .cl-kind[data-kind="SPL"]'); await p.waitForTimeout(600);
+    // v0.3.239 §229：SAMPLE も KEY / SCRATCH と同じく「その種類にして、その画面（編集画面）を開く」（撤去した EDIT ボタンの役目）
+    const k4=await p.evaluate(()=>({kind:padKind(tracks[5]),tab:document.querySelector('#clKeys .cl-key[data-pg="smpl"]').textContent,edit:getComputedStyle(document.getElementById('padEditModal')).display,pe:peTarget}));
+    await p.evaluate(()=>closePadEdit()); await p.waitForTimeout(200);
     ok_(`${label} 窓の KEY＝KEY にしてピアノロールを開く・タブも KEY`, k1.kind==='KEY'&&k1.roll&&k1.tab==='KEY'&&k1.on==='KEY', JSON.stringify(k1));
     ok_(`${label} 窓の SCRATCH＝SCRATCH にしてスクラッチを開く・タブも SCRATCH`, k2.kind==='SCR'&&k2.scr&&k2.tab==='SCRATCH', JSON.stringify(k2));
     ok_(`${label} EDIT＋KEY のパッド＝ピアノロールを直接（EDIT の画面は出ない）`, k3.roll&&k3.modal==='none', JSON.stringify(k3));
-    eq(`${label} 窓の SAMPLE＝サンプルに戻る・タブも SAMPLE`, k4, {kind:'SPL',tab:'SAMPLE'});
+    eq(`${label} 窓の SAMPLE＝サンプルに戻して編集画面を開く・タブも SAMPLE`, k4, {kind:'SPL',tab:'SAMPLE',edit:'flex',pe:5});
     // v0.3.220 §209：音の入った KEY ⇄ 波形は聞かずに往復。SCRATCH へ＝KEY の音（START〜END）が波形に・打ち込みは残る → KEY へ＝打ち込みに戻る → もう一度 SCRATCH へ＝また波形
     await p.click('#clPage .cl-kind[data-kind="KEY"]'); await p.waitForTimeout(400); await p.evaluate(async()=>{keyEditorClose();tracks[5].keyPhrase={bars:1,notes:[{pitch:60,beat:0,length:1,velocity:100},{pitch:64,beat:1,length:1,velocity:90}],range:{start:1,end:null}};await prepareKeyTrack(tracks[5],bpmVal);});
     const keyLen=await p.evaluate(()=>tracks[5].buffer.length);
