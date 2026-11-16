@@ -813,8 +813,6 @@
   .msbtn.mute.armed .d{background:#fff;box-shadow:0 0 8px #fff;}
   .msbtn.solo.armed{background:var(--teal);color:#06201d;border-color:var(--teal);box-shadow:0 0 16px rgba(61,214,196,.5);}
   .msbtn.solo.armed .d{background:#06201d;box-shadow:0 0 6px #06201d;}
-  .msbtn.edit.armed{background:#5b9dff;color:#06183a;border-color:#5b9dff;box-shadow:0 0 16px rgba(91,157,255,.5);}
-  .msbtn.edit.armed .d{background:#06183a;}
   /* スマホ用エフェクト選択子（PCでは perf の P-LOCK 行が担う） */
   .msbtn.fx{display:flex;flex:1 1 0;min-width:0;}
   .msbtn.fx[data-lock="mute"]{color:#3dd6c4;}   .msbtn.fx[data-lock="mute"].on{background:#3dd6c4;color:#06201d;border-color:#3dd6c4;box-shadow:0 0 16px rgba(61,214,196,.5);}
@@ -875,16 +873,12 @@
   body.perf .perf-pats .perf-pat{flex:1 1 0;min-width:72px;max-width:160px;font-size:22px;font-weight:800;letter-spacing:.08em}
 }
 
-/* EDIT is also reachable on phone; the pattern page still shows only A–D. */
-@media(max-width:600px){#viewPads>.msbar[data-fx-page=effects] #holdEdit{display:flex}}
-
 /* v0.3.197 §186 色の意味を整理（参考 UI の「色の意味は 1 つ」）：
    選択・オン・モード中＝--teal ／ 鳴っている・入っている（ステップ・パッドの点灯・鳴っているセット）＝--amber ／ 録音＝--red ／ それ以外は文字色。
    エフェクトごとの色（MUTE ティール・FILTER 紫・DELAY 緑・REVERB 青）と、パッドの種類の色帯（サンプル＝teal・ドラム＝amber・ベース＝red が
    「選択」「鳴っている」「録音」と同じ色で意味が重なっていた）はやめる。種類は右上の SPL / KEY / SCR の文字で示す */
 .msbtn.fx[data-lock],.perf-plkbtn[data-lock]{color:var(--ink);}
-.msbtn.fx[data-lock].on,.perf-plkbtn[data-lock].on,.msbtn.edit.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 14px color-mix(in srgb,var(--teal) 45%,transparent);}
-.msbtn.edit.armed .d{background:var(--hit-ink);}
+.msbtn.fx[data-lock].on,.perf-plkbtn[data-lock].on{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 14px color-mix(in srgb,var(--teal) 45%,transparent);}
 body.perf .perf-plkbtn[data-lock]::after{background:var(--line);}
 body.perf .perf-plkbtn[data-lock].on{box-shadow:0 0 16px -2px color-mix(in srgb,var(--teal) 60%,transparent);}
 button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(--teal);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 45%,transparent);}
@@ -1270,7 +1264,7 @@ button.t.arm.armed{background:var(--teal);color:var(--hit-ink);border-color:var(
     #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin:4px 0 0;
       position:sticky;bottom:0;z-index:5;background:var(--bg);padding-top:4px;}
     /* スマホの下段は [MUTE] [DELAY] [REVERB]。SOLO と EDIT は出さない（TRIM/CHOPは窓の✂、空パッドは＋から） */
-    #viewPads>.msbar #holdSolo,#viewPads>.msbar #holdEdit{display:none;}
+    #viewPads>.msbar #holdSolo{display:none;}
     #viewPads>.msbar .msbtn.fx{display:flex;}
     /* スマホ：下段 [MUTE][PITCH][FILTER][DELAY][REVERB] を1行に均等分割（v0.3.123 §134、LEVEL は v0.3.124 で廃止 §135）。
        5つで 390px なら1つ約71px＝以前の3つ時代の 2/3。高さ44pxは守る（演奏系タップの規則値 §2）。
@@ -1644,7 +1638,7 @@ body.nohints .fx-swipe::after{display:none}
   <!-- 1 ステージ = 16 セット × 16 パッド × 4 シーケンス を見せるアニメーション（ui/splash-anim。メニューで OFF にできる §151） -->
   <div class="s-anim" id="splashAnim" aria-hidden="true"></div>
   <button class="s-update" id="splashUpdate">↻ 最新版に更新</button>
-  <div class="s-ver" id="splashVer">v0.3.239</div>
+  <div class="s-ver" id="splashVer">v0.3.240</div>
   <!-- 入口の合言葉（メンバー限定）。この端末で一度通れば覚える。合言葉はソースに置かずハッシュだけ -->
   <form class="s-pass" id="splashPassForm" autocomplete="off">
     <input id="splashPass" type="password" placeholder="合言葉" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="合言葉">
@@ -1664,7 +1658,8 @@ body.nohints .fx-swipe::after{display:none}
       <button class="t play" id="play" aria-label="Play/Stop" data-label="PLAY">▶</button>
       <button class="t rec" id="rec" aria-label="Rec" data-label="REC">●</button>
       <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す" data-label="UNDO">↩</button>
-      <button class="t arm copy" id="holdCopy" title="押した後パッドで音色コピー">COPY</button>
+      <!-- v0.3.240 §230「COPY と EDIT も統合したい」：COPY（ここ）と EDIT（FX の列）を 1 つの EDIT に。SEQ / SET でも届く再生まわりの段に置く -->
+      <button class="t arm edit" id="holdEdit" title="EDIT：パッド＝タップで編集・ドラッグで入れ替え・長押しでコピー／A B C D・小節・ステップ・セット＝元→先でコピー／FILTER・DELAY・REVERB＝詳細">EDIT</button>
       <button class="t arm solo" id="holdSolo" title="押した後パッドでソロ">SOLO</button>
       <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog" data-label="MENU">⋮</button>
     </div>
@@ -2012,7 +2007,6 @@ body.nohints .fx-swipe::after{display:none}
         <button class="msbtn fx" id="fxFilter" data-lock="filter"><span class="d"></span>FILTER</button>
         <button class="msbtn fx" id="fxDelay"  data-lock="delay"><span class="d"></span>DELAY</button>
         <button class="msbtn fx" id="fxReverb" data-lock="reverb"><span class="d"></span>REVERB</button>
-        <button class="msbtn edit" id="holdEdit"><span class="d"></span>EDIT</button>
       </div>
 
       <!-- 音源ファイル入力：strip の外に置く（スマホは strip を出さない v0.3.125 §136。EDIT モーダルの ⤓ LOAD もこれを叩く） -->
@@ -2104,7 +2098,6 @@ body.nohints .fx-swipe::after{display:none}
         <button class="perf-plkbtn" data-lock="filter">FILTER</button>
         <button class="perf-plkbtn" data-lock="delay">DELAY</button>
         <button class="perf-plkbtn" data-lock="reverb">REVERB</button>
-        <button class="perf-plkbtn perf-mode" data-lock="edit" id="perfEdit">EDIT</button>
       </div>
 
       <!-- hidden legacy vol sync -->
@@ -2175,7 +2168,7 @@ const MELO_KEYS = ["a","s","d","f","g","h","j","k","l",";"];
 
 // --- 選択・モード（一時） ---
 let selected = 0;       // 選択中パッド                                  @writers ui/pads-view
-let armMode = null;     // null | "mute" | "solo" | "chop" | "edit" | "select"（chop＝COPY統合：複製/スライス、select＝選択のみ発音なし）  @writers ui-copy
+let armMode = null;     // null | "mute" | "solo" | "edit" | "select"（edit＝編集・入れ替え・コピー。COPY の "chop" は v0.3.240 §230 で edit に統合、select＝選択のみ発音なし）  @writers ui-copy
 let copyArm = null;     // COPY中の元 {type:"pad"|"pat"|"bar"|"note", idx}（汎用コピー）  @writers ui-copy
 let melodicMode=false;  // 選択中パッドが音階モードか（SEQ盤面の表示を切替）  @writers plock-undo
 let editDrag = null;    // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）  @writers ui/pads-view
@@ -3776,10 +3769,10 @@ new MutationObserver(()=>{
 // @provides PAD_KIND_TAG, _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl,
 //    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
-//    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
-//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, paintSteps,
-//    perfPadDown, perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl,
-//    scratchOpen, selected, swapPads, syncEditor, tracks, trigger
+//    clRetargetLearn, clSyncWave, copyArm, copyClear, copyPadSound, copyPadSource, copyTap, drawPadWave,
+//    editDrag, grid, isMelodic, openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf,
+//    paintStepStrip, paintSteps, perfPadDown, perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode,
+//    renderPerfFills, sampNameEl, scratchOpen, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -3846,7 +3839,6 @@ PADS.forEach((p,i)=>{
       }, 260);
       return;
     }
-    if(armMode==="chop"){ copyTap("pad", i); return; }   // COPY：元→先でパッド(音色+FX)をコピー（発音なし）
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート（ui/performance-view）。
     // v0.3.160：EDIT / COPY / MUTE / SOLO を押しているときはそちらが先（P-LOCK を選んだまま EDIT にすると、ドラッグで入れ替えられずに値が動いていた）
@@ -3884,12 +3876,16 @@ PADS.forEach((p,i)=>{
     if(editDrag.over>=0 && padsEl.children[editDrag.over]) padsEl.children[editDrag.over].classList.remove("droptgt");
     const tgt=editDrag.over, copy=editDrag.copy, moved=editDrag.moved;
     editDrag=null;
-    if(!moved){                                   // 動かさず離した＝タップ：編集モーダル（従来挙動）
+    if(!moved){
+      // v0.3.240 §230（COPY を EDIT に統合）：長押しして動かさず離した＝COPY 元（黄枠）。次に別のパッドをタップ＝そこへコピー、同じパッド＝やめる
+      if(copy){ copyPadSource(i); return; }
+      if(copyArm && copyArm.type==="pad"){ copyTap("pad", i); return; }
+      // 動かさず離した＝タップ：編集モーダル（従来挙動）
       selectPad(i); arm("edit", false); openPadContent(i);   // パッドの種類に合った画面を直接（KEY＝ピアノロール・SCRATCH＝スクラッチ、v0.3.203 §192）
       return;
     }
     if(tgt>=0 && tgt!==i){
-      if(copy){ copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      if(copy){ copyClear(); copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY パッド "+String(i+1).padStart(2,"0")+"→"+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); paintPadStates(); paintSteps(); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       flashPad(tgt);
     }
@@ -4150,7 +4146,7 @@ PADS.forEach((p,i)=>{
   for(let s=0;s<STEPS;s++){
     const st=document.createElement("div");st.className="step";st.dataset.s=s;
     st.addEventListener("click",(e)=>{
-      if(armMode==="chop"){ copyTap("note",{t:i,s}); return; }   // COPY中＝ノート(値+P-LOCK)の元→先
+      if(armMode==="edit"){ copyTap("note",{t:i,s}); return; }   // EDIT中＝ノート(値+P-LOCK)の元→先でコピー（v0.3.240 §230、旧 COPY）
       pushUndo();   // 1手ずつ戻せるよう編集前に記録
       if(melodicMode){
         const pitchIdx=(PADS.length-1)-i;                       // 行→音程
@@ -4534,11 +4530,12 @@ function setRename(k,name){ const nm=(name||"").trim(); if(!nm||!(k>=0&&k<16)) r
 function setName(k){ return (setSlots[k]&&setSlots[k].name)||("SET "+(k+1)); }
 function setElapsed(){ return (performance.now()-_setStart)/1000; }
 // @module ui-copy
-// @provides COPY_LABEL, arm, assignMS, bindHold, copyName, copyTap, doCopy, padAtPoint, paintCopyHL,
-//    refreshAfterCopy
+// @provides COPY_LABEL, arm, assignMS, bindHold, copyClear, copyName, copyPadSource, copyTap, doCopy,
+//    padAtPoint, paintCopyHL, refreshAfterCopy
 // @uses applyWaveSEQ, applyWaveStrip, armMode, clearLockEdit, copyArm, copyBar, copyPadSound, copyPattern,
-//    editBar, editPat, getLockEdit, getPattern, lockKey, padsEl, paintPadStates, paintPatBar, paintPerf,
-//    paintStepStrip, paintSteps, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave, selected, tracks
+//    editBar, editPat, getLockEdit, getPattern, hintsOn, lockKey, padsEl, paintPadStates, paintPatBar,
+//    paintPerf, paintStepStrip, paintSteps, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave,
+//    selected, tracks
 // @depends -
 // ===== 汎用COPY：COPY中に「元→先」でパッド(音色+FX)/パターンA-D/小節1-4 をコピー。DUPの上位互換 =====
 // データ更新（copyPattern / copyBar → data/patterns、copyPadSound / swapPads → data/pads）と
@@ -4579,17 +4576,21 @@ function refreshAfterCopy(type){ if(type==="pad") return;   // pad は doCopy �
   if(typeof paintSteps==="function") paintSteps(); if(typeof paintPatBar==="function") paintPatBar();
   if(typeof paintPerf==="function") paintPerf(); if(typeof applyWaveSEQ==="function") applyWaveSEQ(); if(typeof applyWaveStrip==="function") applyWaveStrip();
 }
-// COPY中の要素タップ。元→先で実行。armModeがchop以外なら false（通常動作へ）。
+// EDIT中の要素タップ（v0.3.240 §230：COPY を EDIT に統合。armMode "chop" は無くなった）。元→先で実行。EDIT 以外なら false（通常動作へ）。
+// パッドは EDIT のタップ＝編集画面なので、ここへは長押しで元を決めたあと（ui/pads-view の endEditDrag）だけ来る
 function copyTap(type,idx){
-  if(armMode!=="chop") return false;
+  if(armMode!=="edit") return false;
   if(!copyArm){ copyArm={type,idx}; sampNameEl.textContent="COPY元 "+COPY_LABEL[type]+" "+copyName(type,idx)+" → コピー先をタップ"; }
   else if(copyArm.type===type && (type==="note" ? (copyArm.idx.t===idx.t&&copyArm.idx.s===idx.s) : copyArm.idx===idx)){ copyArm=null; sampNameEl.textContent="COPY 取消"; }
-  else if(copyArm.type===type){ const s=copyArm.idx; doCopy(type,s,idx); sampNameEl.textContent="COPY "+COPY_LABEL[type]+" "+copyName(type,s)+"→"+copyName(type,idx)+"  ↩で戻せる"; copyArm=null; refreshAfterCopy(type); arm("chop",false); return true; }  /* 元→先 完了でCOPYをトグル消費＝自動オフ */
+  else if(copyArm.type===type){ const s=copyArm.idx; doCopy(type,s,idx); sampNameEl.textContent="COPY "+COPY_LABEL[type]+" "+copyName(type,s)+"→"+copyName(type,idx)+"  ↩で戻せる"; copyArm=null; refreshAfterCopy(type); paintCopyHL(); return true; }  /* EDIT は続ける（入れ替えと同じ。抜けるのは EDIT / Esc。v0.3.240 §230） */
   else { // 種別が違うタップは「無言で元を差し替え」ない＝ノートを移すつもりでパッドを潰す事故を防ぐ
-    sampNameEl.textContent="COPY中は "+COPY_LABEL[copyArm.type]+" どうしを選ぶ — 種類を変えるならCOPYをもう一度押す"; }
+    sampNameEl.textContent="COPY元は "+COPY_LABEL[copyArm.type]+" — 同じ種類を選ぶ（やめるなら元をもう一度押す）"; }
   paintCopyHL();
   return true;
 }
+// EDIT のパッドの長押し（動かさず離した）＝パッドを COPY 元にする（v0.3.240 §230）。copyArm の書き手は ui-copy だけ（app/state の @writers）
+function copyPadSource(i){ if(armMode!=="edit") return; copyArm={type:"pad",idx:i}; sampNameEl.textContent="COPY元 パッド "+String(i+1).padStart(2,"0")+" → コピー先のパッドをタップ"; paintCopyHL(); }
+function copyClear(){ copyArm=null; paintCopyHL(); }
 // 座標下のパッド番号（EDITドラッグのドロップ判定）。pads以外は-1。
 function padAtPoint(x,y){
   const el=document.elementFromPoint(x,y);
@@ -4606,16 +4607,15 @@ function assignMS(i){
 }
 function arm(mode,on){
   armMode = on?mode:null;
-  if(armMode!=="chop"){ copyArm=null; if(typeof paintCopyHL==="function") paintCopyHL(); }   // COPYから離れたら必ず元をリセット（他モードへ切替でも）
+  if(armMode!=="edit"){ copyArm=null; if(typeof paintCopyHL==="function") paintCopyHL(); }   // EDIT から離れたら必ず COPY 元をリセット（他モードへ切替でも）
   document.querySelectorAll('[data-lock="mute"]').forEach(b=>{ b.classList.toggle("armed",armMode==="mute"); b.classList.toggle("on",armMode==="mute"); });
   document.getElementById("holdSolo").classList.toggle("armed",armMode==="solo");
   document.getElementById("holdEdit").classList.toggle("armed",armMode==="edit");
-  const _cpBtn=document.getElementById("holdCopy"); if(_cpBtn) _cpBtn.classList.toggle("armed",armMode==="chop");
   const _selBtn=document.getElementById("holdSelect"); if(_selBtn) _selBtn.classList.toggle("armed",armMode==="select");
   document.body.classList.toggle("edit-arm",armMode==="edit");
   document.body.classList.toggle("select-arm",armMode==="select");
   // EDITの隠れジェスチャを初回だけ案内（タップ=編集 / ドラッグ=入替 / 長押し=コピー）
-  if(armMode==="edit"){ sampNameEl.textContent="EDIT: タップ=ひらく / ドラッグ=いれかえ / 長おし=コピー"; }   // 毎回表示（初回だけだと2回目のakiに無情報）
+  if(armMode==="edit"){ sampNameEl.textContent=(typeof hintsOn!=="function"||hintsOn()) ? "EDIT：パッド タップ=ひらく / ドラッグ=いれかえ / 長おし=コピー ・ A B C D・小節・ステップ・セット＝元→先でコピー" : "EDIT"; }   // 毎回表示（初回だけだと2回目のakiに無情報）
   if(armMode==="select") sampNameEl.textContent="SELECT：パッドを選ぶだけ（発音なし）";
   paintPadStates();
   if(typeof paintPerf==="function") paintPerf();   // 情報窓の解説行(clHint)をモードに追従
@@ -4632,7 +4632,7 @@ function bindHold(btnId,mode){
 bindHold("holdSolo","solo");
 bindHold("holdEdit","edit");
 bindHold("holdSelect","select");
-bindHold("holdCopy","chop");   // COPY＝既存chop armモード（音色コピー）
+// COPY（#holdCopy, armMode "chop"）は v0.3.240 §230 で EDIT に統合（再生まわりの段の EDIT＝#holdEdit）
 // （トグル式のため自動解除は行わない。ESCで全モード解除）
 window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&armMode) arm(armMode,false); });
 
@@ -5404,7 +5404,7 @@ if(stepStripEl){
     const b=e.target.closest(".stepbtn"); if(!b) return;
     e.preventDefault();
     const s=+b.dataset.s;
-    if(armMode==="chop"){ copyTap("note",{t:selected,s}); return; }   // COPY中＝ノート(値+P-LOCK)の元→先
+    if(armMode==="edit"){ copyTap("note",{t:selected,s}); return; }   // EDIT中＝ノート(値+P-LOCK)の元→先でコピー（v0.3.240 §230、旧 COPY）
     toggleStepAt(s, e.shiftKey);
   });
 }
@@ -6740,8 +6740,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     if(am==="select") h="SELECT中：パッドを1つ選ぶと選択（無音）→自動で解除";
     else if(am==="mute") h="MUTE中：パッド=消音トグル";
     else if(am==="solo") h="SOLO中：パッド=ソロトグル";
-    else if(am==="edit") h="EDIT中：パッド=中身編集 / ドラッグ=入替 / 長押し=コピー";
-    else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
+    else if(am==="edit") h="EDIT中：パッド タップ=編集 / ドラッグ=入替 / 長押し=コピー ・ A B C D・小節・ステップ＝元→先でコピー";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右／上下で現在値を調整";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
     _t("clHint", _msg ? "" : h);   // メッセージが出ている間はヒントを引っ込める（1行を共用）
@@ -6762,8 +6761,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   });
   // P-LOCK選択（activeLock）を反映（comp/edit はモードボタンなので除外）
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
-  // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
-  if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
+  // モードボタン：MUTE=armMode（EDIT は v0.3.240 §230 で再生まわりの段へ。#perfEdit は撤去）
   if($("perfMute")) $("perfMute").classList.toggle("on",armMode==="mute");
   if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
 }
@@ -6779,8 +6777,6 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
     fxBtnTap(b.dataset.lock); paintPerf();   // 解除しても値は残る／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
   }));
-  // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
-  if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfMute")) $("perfMute").addEventListener("click",()=>fxBtnTap("mute"));
 })();
 function updatePerf(){
@@ -7632,10 +7628,10 @@ if(typeof IS_IOS!=="undefined" && IS_IOS){ const sp=document.getElementById("sam
 // @provides _clPagePrev, _setIn, _setInfo, _setPickEl, _setPickGrid, _snapPatHas, fmtClock, paintSet,
 //    paintSetLevel, paintSetMap, paintSetPick, setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp,
 //    setPadUpAll, setPickClose, setPickIsOpen, setPickOpen
-// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel,
-//    focusSet, isSetHeld, paintPerf, paintTransport, pickSet, playing, queuedSet, renderClPage, sampNameEl,
-//    setCur, setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel,
-//    setSlots, sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, armMode, bpmVal, clPage, copySetTo, fmtSetLevel, focusSet,
+//    isSetHeld, paintPerf, paintTransport, pickSet, playing, queuedSet, renderClPage, sampNameEl, setCur,
+//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
+//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -7788,7 +7784,7 @@ function setModeEnter(on){
   // 押している入力ごとに h = {k, d, mode, y0, db0, moved}。入力＝指（pointerId）・キー（"key:"+code）・MIDI（"midi:"+note）（v0.3.159）。
   // mode：start＝離すと鳴らす／stop＝鳴っているセット（離すと止まる）。上下に動かした（moved）ら離しても何もしない＝音量だけ
   const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
-  const copyTo=k=>{ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); };
+  const copyTo=k=>{ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); paintSet(); } else say("COPY：いまのセットには写せない"); };
   const down=(k,id,y)=>{
     if(holds.has(id)) return;
     const d=setGridEl.children[k], on=setIsPlaying(k);
@@ -7804,7 +7800,7 @@ function setModeEnter(on){
   const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
     const k=+d.dataset.k;
     try{ d.setPointerCapture(e.pointerId); }catch(_){}
-    if(armMode==="chop"){ copyTo(k); return; }
+    if(armMode==="edit"){ copyTo(k); return; }   // EDIT 中＝いまのセットをここへ写す（v0.3.240 §230、旧 COPY）
     down(k, e.pointerId, e.clientY); };
   const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
     const dy=e.clientY-h.y0;
@@ -7813,7 +7809,7 @@ function setModeEnter(on){
     setSetLevel(h.k, h.db0 - eff/PX_PER_DB); showLv(h); };
   const pressEnd=(e)=>{ up(e.pointerId, e.type==="pointercancel"); };
   // キーボード・MIDI（v0.3.159）：52-chop / 72-midi の入口から。押しているキーの ↑ ↓ ＝音量 ±1 dB（指の上下スワイプの代わり）
-  _setIn.down=(k,src)=>{ if(!setMode || !(k>=0&&k<16)) return false; if(armMode==="chop"){ copyTo(k); return true; } down(k,src,0); return true; };
+  _setIn.down=(k,src)=>{ if(!setMode || !(k>=0&&k<16)) return false; if(armMode==="edit"){ copyTo(k); return true; } down(k,src,0); return true; };
   _setIn.up=(src)=>{ up(src,false); };
   _setIn.upAll=()=>{ [...holds.keys()].filter(id=>typeof id==="string").forEach(id=>up(id,true)); };   // 窓を離れたらキーの押しっぱなしを放す
   _setIn.nudge=(dDb)=>{ const ids=[...holds.keys()].filter(id=>typeof id==="string"); if(!ids.length) return false;
@@ -9047,7 +9043,7 @@ document.addEventListener('visibilitychange', wakeSync);
 })();
 
 // ---------- バージョン確認（スプラッシュで新版があれば「タップで更新」表示） ----------
-const APP_VERSION = "0.3.239";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
+const APP_VERSION = "0.3.240";   // 軽微な修正ごとに +0.0.1（version.jsonと同値で更新）
 (function(){
   const verEl=document.getElementById("splashVer"), upEl=document.getElementById("splashUpdate");
   if(verEl) verEl.textContent="v"+APP_VERSION;
