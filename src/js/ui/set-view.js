@@ -2,10 +2,11 @@
 // @provides _clPagePrev, _setIn, _setInfo, _setPickEl, _setPickGrid, _snapPatHas, fmtClock, paintSet,
 //    paintSetLevel, paintSetMap, paintSetPick, setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp,
 //    setPadUpAll, setPickClose, setPickIsOpen, setPickOpen
-// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, armMode, bpmVal, clPage, copySetTo, fmtSetLevel, focusSet,
-//    isSetHeld, paintPerf, paintTransport, pickSet, playing, queuedSet, renderClPage, sampNameEl, setCur,
-//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
-//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copyArm, copyClear,
+//    copyPadSource, copySet, copyTap, fmtSetLevel, focusSet, isSetHeld, paintPerf, paintTransport, pickSet,
+//    playing, queuedSet, renderClPage, sampNameEl, setCur, setElapsed, setHold, setIsPlaying, setLevels,
+//    setMode, setName, setRename, setSetLevel, setSlots, sideStop, sideTakeCurrent, startTransport,
+//    stopAllVoices, stopTransport, swapSets, switchView, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -158,7 +159,36 @@ function setModeEnter(on){
   // 押している入力ごとに h = {k, d, mode, y0, db0, moved}。入力＝指（pointerId）・キー（"key:"+code）・MIDI（"midi:"+note）（v0.3.159）。
   // mode：start＝離すと鳴らす／stop＝鳴っているセット（離すと止まる）。上下に動かした（moved）ら離しても何もしない＝音量だけ
   const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
-  const copyTo=k=>{ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); paintSet(); } else say("COPY：いまのセットには写せない"); };
+  // v0.3.241 §231「SET 画面で入れ替え操作はどうやれば？」：EDIT 中のセットはパッドと同じ手つき（ui/pads-view の EDIT と同じ）。
+  // タップ＝そのセットを PADS 画面で開く（EDIT は抜ける。鳴っていれば次の小節の頭で切り替わる＝pickSet）／ドラッグ＝入れ替え（swapSets）／
+  // 長押し＝コピー元（そのまま別のセットへドラッグ、または離してから別のセットをタップ＝copySet）。v0.3.240 までの「EDIT＋タップ＝いまのセットを写す」は置き換えた
+  let ed=null;   // {k, d, id, x0, y0, moved, copy, over, timer}
+  const setAt=(x,y)=>{ const el=document.elementFromPoint(x,y), d=el&&el.closest&&el.closest(".setpad"); return d&&d.parentElement===setGridEl ? +d.dataset.k : -1; };
+  const openSetPads=k=>{ const r=pickSet(k); arm("edit",false); if(typeof switchView==="function") switchView("viewPads");
+    say(r==="queued" ? "次の小節の頭で SET "+no(k)+" "+setName(k)+" へ" : "SET "+no(k)+" "+setName(k)); };
+  const edDown=(e,k,d)=>{ ed={k,d,id:e.pointerId,x0:e.clientX,y0:e.clientY,moved:false,copy:false,over:-1,timer:0}; d.classList.add("dragsrc");
+    ed.timer=setTimeout(()=>{ if(ed && ed.k===k && !ed.moved){ ed.copy=true; d.classList.remove("dragsrc"); d.classList.add("copyarm"); } }, 260); };
+  const edMove=e=>{ if(!ed || e.pointerId!==ed.id) return false;
+    if(!ed.moved && Math.hypot(e.clientX-ed.x0, e.clientY-ed.y0)>(e.pointerType==="touch"?16:8)) ed.moved=true;
+    const t=setAt(e.clientX,e.clientY);
+    if(t!==ed.over){ if(ed.over>=0 && setGridEl.children[ed.over]) setGridEl.children[ed.over].classList.remove("droptgt");
+      ed.over=t; if(t>=0 && t!==ed.k && setGridEl.children[t]) setGridEl.children[t].classList.add("droptgt"); }
+    return true; };
+  const edUp=(e,cancel)=>{ if(!ed || e.pointerId!==ed.id) return false;
+    clearTimeout(ed.timer); ed.d.classList.remove("dragsrc","copyarm");
+    if(ed.over>=0 && setGridEl.children[ed.over]) setGridEl.children[ed.over].classList.remove("droptgt");
+    const {k,over,copy,moved}=ed; ed=null;
+    if(cancel) return true;
+    if(!moved){
+      if(copy){ copyPadSource(k,"set"); return true; }                                    // 長押しして離した＝コピー元
+      if(copyArm && copyArm.type==="set"){ copyTap("set",k); paintSet(); return true; }  // コピー元がある＝そこへコピー（同じセット＝やめる）
+      openSetPads(k); return true; }                                                      // タップ＝PADS で開く
+    if(over>=0 && over!==k){
+      if(copy){ copyClear(); const r=copySet(k,over); say(r===true ? "COPY セット "+no(k)+"→"+no(over)+" "+setName(over) : r==="cur" ? "COPY：いまのセットには写せない（別のセットへ）" : "COPY できなかった"); }
+      else { const r=swapSets(k,over); say(r===true ? "MOVE セット "+no(k)+" ⇄ "+no(over)+"（もう一度で戻る）" : r==="playing" ? "鳴っているセットは入れ替えられない（止めてから）" : "入れ替えできなかった"); }
+      paintSet(); if(typeof paintSetPick==="function") paintSetPick();
+    }
+    return true; };
   const down=(k,id,y)=>{
     if(holds.has(id)) return;
     const d=setGridEl.children[k], on=setIsPlaying(k);
@@ -174,16 +204,17 @@ function setModeEnter(on){
   const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
     const k=+d.dataset.k;
     try{ d.setPointerCapture(e.pointerId); }catch(_){}
-    if(armMode==="edit"){ copyTo(k); return; }   // EDIT 中＝いまのセットをここへ写す（v0.3.240 §230、旧 COPY）
+    if(armMode==="edit"){ edDown(e,k,d); return; }   // EDIT 中＝入れ替え・コピー・PADS で開く（v0.3.241 §231）
     down(k, e.pointerId, e.clientY); };
-  const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
+  const pressMove=(e)=>{ if(edMove(e)) return; const h=holds.get(e.pointerId); if(!h) return;
     const dy=e.clientY-h.y0;
     if(!h.moved){ if(Math.abs(dy)<SWIPE_PX) return; h.moved=true; h.d.classList.add("adj"); }
     const eff = dy>0 ? dy-SWIPE_PX : dy+SWIPE_PX;   // 遊びの分を引く＝動き出しで跳ばない
     setSetLevel(h.k, h.db0 - eff/PX_PER_DB); showLv(h); };
-  const pressEnd=(e)=>{ up(e.pointerId, e.type==="pointercancel"); };
+  const pressEnd=(e)=>{ if(edUp(e, e.type==="pointercancel")) return; up(e.pointerId, e.type==="pointercancel"); };
   // キーボード・MIDI（v0.3.159）：52-chop / 72-midi の入口から。押しているキーの ↑ ↓ ＝音量 ±1 dB（指の上下スワイプの代わり）
-  _setIn.down=(k,src)=>{ if(!setMode || !(k>=0&&k<16)) return false; if(armMode==="edit"){ copyTo(k); return true; } down(k,src,0); return true; };
+  // キー・MIDI の EDIT 中：1 回目＝コピー元・2 回目＝コピー先（指の長押しの代わり。v0.3.241 §231）
+  _setIn.down=(k,src)=>{ if(!setMode || !(k>=0&&k<16)) return false; if(armMode==="edit"){ if(copyArm && copyArm.type==="set") copyTap("set",k); else copyPadSource(k,"set"); paintSet(); return true; } down(k,src,0); return true; };
   _setIn.up=(src)=>{ up(src,false); };
   _setIn.upAll=()=>{ [...holds.keys()].filter(id=>typeof id==="string").forEach(id=>up(id,true)); };   // 窓を離れたらキーの押しっぱなしを放す
   _setIn.nudge=(dDb)=>{ const ids=[...holds.keys()].filter(id=>typeof id==="string"); if(!ids.length) return false;

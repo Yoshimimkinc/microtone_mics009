@@ -810,8 +810,11 @@ async function setMode(){
     { const c1=await sp(0); await p.mouse.click(c1[0],c1[1]); await p.waitForTimeout(200); await p.mouse.click(c1[0],c1[1]); await p.waitForTimeout(200); }
     ok_(`${V} 打ち込みは止めても残る（他のセットへ移って戻っても）`, await p.evaluate(()=>setCur===0 && getPattern(3)[7]===1 && !playing), 'reverted');
     ok_(`${V} 止まるとオレンジは消える（SEL のティール枠に戻る）`, await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad.on'); return !d.classList.contains('playing') && d.querySelector('.tag').textContent==='SEL' && !document.querySelector('#setGrid .setpad.playing'); }), 'still lit');
-    // EDIT（旧 COPY、v0.3.240 §230）を押してセットを叩く＝いまのセットを写す。EDIT は続く
-    await p.click('#holdEdit'); await p.click('#setGrid .setpad[data-k="4"]'); await p.waitForTimeout(150);
+    // EDIT（旧 COPY、v0.3.240 §230）でいまのセット（1）を長押し → セット 5 をタップ＝写す（v0.3.241 §231。EDIT＋タップは「PADS で開く」になった）。EDIT は続く
+    await p.click('#holdEdit');
+    { const q=async k=>p.evaluate(k=>{ const r=document.querySelector(`#setGrid .setpad[data-k="${k}"]`).getBoundingClientRect(); return [r.left+r.width/2,r.top+r.height/2]; },k);
+      const a0=await q(0), a4=await q(4); await p.mouse.move(a0[0],a0[1]); await p.mouse.down(); await p.waitForTimeout(400); await p.mouse.up(); await p.waitForTimeout(80);
+      await p.mouse.click(a4[0],a4[1]); await p.waitForTimeout(150); }
     const cp=await p.evaluate(()=>({name:setSlots[4].tracks[0].name, bpm:setSlots[4].bpm, step:setSlots[4].tracks[3].patterns[0][0][7], arm:armMode, cur:setCur, setname:setName(4)}));
     await p.click('#holdEdit');   // EDIT を抜ける
     ok_(`${V} EDIT ＋セット＝いまのセットを写す（名前・BPM・ステップ）・EDIT は続く`, cp.name==='S1' && cp.bpm===60 && cp.step===1 && cp.arm==='edit' && cp.cur===0 && cp.setname==='SET 5', JSON.stringify(cp));
@@ -1210,6 +1213,41 @@ async function editCopyMerged(){
     ok_(`${V} SEQ でも EDIT が出ていて、ステップを元→先でコピーできる`, vis && r3.v===1 && r3.arm==='edit', JSON.stringify({vis,r3}));
     await p.click('#holdEdit'); await p.waitForTimeout(60);
     ok_(`${V} EDIT をもう一度押すと抜ける`, await p.evaluate(()=>armMode===null), 'still armed');
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
+async function setSwap(){
+  // v0.3.241 §231「SET 画面で入れ替え操作はどうやれば？」：EDIT 中のセットはパッドと同じ手つき。
+  // ドラッグ＝入れ替え（名前・中身ごと。いまのセットは中身についていく）／長押し→別のセットをタップ＝コピー／タップ＝そのセットを PADS で開く（EDIT を抜ける）
+  for (const [w,h,touch] of [[390,844,true],[1280,800,false]]){
+    const V=`SETSWAP ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:touch,hasTouch:touch}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    await p.evaluate(()=>{ switchView('viewSet'); setRename(2,'THREE'); setRename(5,'SIX'); setSetLevel(2,-6); paintSet(); });
+    await p.waitForTimeout(250);
+    const c=k=>p.evaluate(k=>{ const r=document.querySelector(`#setGrid .setpad[data-k="${k}"]`).getBoundingClientRect(); return [r.left+r.width/2,r.top+r.height/2]; },k);
+    const drag=async(a,b)=>{ const A=await c(a), B=await c(b); await p.mouse.move(A[0],A[1]); await p.mouse.down(); await p.mouse.move((A[0]+B[0])/2,(A[1]+B[1])/2,{steps:4}); await p.mouse.move(B[0],B[1],{steps:4}); await p.mouse.up(); await p.waitForTimeout(150); };
+    await p.click('#holdEdit'); await p.waitForTimeout(80);
+    await drag(2,5);
+    const r1=await p.evaluate(()=>({n2:setName(2), n5:setName(5), lv5:setLevels[5], lv2:setLevels[2], cur:setCur, arm:armMode}));
+    ok_(`${V} ドラッグ＝入れ替え（名前・ミックス音量ごと）・EDIT は続く`, r1.n2==='SIX' && r1.n5==='THREE' && r1.lv5===-6 && r1.lv2===0 && r1.cur===0 && r1.arm==='edit', JSON.stringify(r1));
+    const t0=await p.evaluate(()=>tracks[0].name);
+    await drag(0,9);
+    const r2=await p.evaluate(()=>({cur:setCur, n9:setName(9), n0:setName(0), t0:tracks[0].name}));
+    ok_(`${V} いまのセットを入れ替えると、いまのセットは中身についていく（既定の名前は行き先の番号に）`, r2.cur===9 && r2.n9==='SET 10' && r2.n0==='SET 1' && r2.t0===t0, JSON.stringify(r2));
+    // 長押し → 別のセットをタップ＝コピー（セット 6 の中身＝THREE を 12 へ）
+    { const A=await c(5), B=await c(11); await p.mouse.move(A[0],A[1]); await p.mouse.down(); await p.waitForTimeout(400); await p.mouse.up(); await p.waitForTimeout(80);
+      const src=await p.evaluate(()=>copyArm&&copyArm.type+':'+copyArm.idx);
+      await p.mouse.click(B[0],B[1]); await p.waitForTimeout(150);
+      const r3=await p.evaluate(()=>({n11:setName(11), lv11:setLevels[11], bpm:setSlots[11]&&setSlots[11].bpm, bpm5:setSlots[5]&&setSlots[5].bpm, src:copyArm, arm:armMode, msg:sampNameEl.textContent}));
+      ok_(`${V} 長押し → 別のセットをタップ＝コピー（音量も）・「↩で戻せる」とは言わない`, src==='set:5' && r3.n11==='SET 12' && r3.lv11===-6 && r3.bpm===r3.bpm5 && r3.src===null && r3.arm==='edit' && !/↩/.test(r3.msg), JSON.stringify({src,r3})); }
+    // タップ＝そのセットを PADS で開く
+    { const A=await c(2); await p.mouse.click(A[0],A[1]); await p.waitForTimeout(400); }
+    const r4=await p.evaluate(()=>({cur:setCur, setmode:document.body.classList.contains('setmode'), arm:armMode}));
+    ok_(`${V} タップ＝そのセットを PADS で開く（EDIT を抜ける）`, r4.cur===2 && !r4.setmode && r4.arm===null, JSON.stringify(r4));
     eq(`${V} 0 errors`, errs, []);
     await ctx.close();
   }
@@ -1815,6 +1853,7 @@ await setWinOnce();
 await menuBtnAlign();
 await menuDrill();
 await editCopyMerged();
+await setSwap();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

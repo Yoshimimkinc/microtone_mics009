@@ -2,22 +2,23 @@
 // @provides COPY_LABEL, arm, assignMS, bindHold, copyClear, copyName, copyPadSource, copyTap, doCopy,
 //    padAtPoint, paintCopyHL, refreshAfterCopy
 // @uses applyWaveSEQ, applyWaveStrip, armMode, clearLockEdit, copyArm, copyBar, copyPadSound, copyPattern,
-//    editBar, editPat, getLockEdit, getPattern, hintsOn, lockKey, padsEl, paintPadStates, paintPatBar,
-//    paintPerf, paintStepStrip, paintSteps, pushUndo, refreshPadDisplay, sampNameEl, scheduleAutosave,
-//    selected, tracks
+//    copySet, editBar, editPat, getLockEdit, getPattern, hintsOn, lockKey, padsEl, paintPadStates,
+//    paintPatBar, paintPerf, paintStepStrip, paintSteps, pushUndo, refreshPadDisplay, sampNameEl,
+//    scheduleAutosave, selected, setMode, tracks
 // @depends -
 // ===== 汎用COPY：COPY中に「元→先」でパッド(音色+FX)/パターンA-D/小節1-4 をコピー。DUPの上位互換 =====
 // データ更新（copyPattern / copyBar → data/patterns、copyPadSound / swapPads → data/pads）と
 // 描画（refreshPadDisplay → ui/pads-view）は v0.3.131（Phase 2 第2段）で外へ出した。ここは COPY の操作と表示だけ。
-const COPY_LABEL={pad:"パッド",pat:"パターン",bar:"小節",note:"ノート"};
+const COPY_LABEL={pad:"パッド",pat:"パターン",bar:"小節",note:"ノート",set:"セット"};
 function copyName(type,idx){
   if(type==="note") return String(idx.t+1).padStart(2,"0")+"·"+(idx.s+1);   // 「トラック·ステップ」
-  return type==="pad"?String(idx+1).padStart(2,"0"):(type==="pat"?"ABCD"[idx]:String(idx+1));
+  return (type==="pad"||type==="set")?String(idx+1).padStart(2,"0"):(type==="pat"?"ABCD"[idx]:String(idx+1));
 }
 function doCopy(type,src,dst){
   if(type==="pad"){ copyPadSound(src,dst); refreshPadDisplay(dst); }   // データ更新（data/pads）→ 描画（ui/pads-view）
   else if(type==="pat") copyPattern(src,dst);
   else if(type==="bar") copyBar(src,dst);
+  else if(type==="set") return copySet(src,dst);   // v0.3.241 §231：任意のセット → セット（data/set）
   else if(type==="note"){   // ノート＝値＋P-LOCK全パラメータを引き継ぐ（別トラックへも可）
     pushUndo();
     getPattern(dst.t)[dst.s]=getPattern(src.t)[src.s];
@@ -33,6 +34,7 @@ function paintCopyHL(){
     b.classList.toggle("copysrc", !!copyArm && copyArm.type===ty && copyArm.idx===+b.dataset[key]));
   hit("#perfPats .perf-pat, .fx-pattern","pat","p"); hit("#perfPats .perf-bar","bar","b");
   hit("#patSeg button","pat","p");
+  hit("#setGrid .setpad","set","k");
   hit("#barSeg button","bar","b");
   const isNote=!!copyArm && copyArm.type==="note";
   document.querySelectorAll("#stepStrip .stepbtn").forEach((b,si)=>
@@ -51,14 +53,15 @@ function copyTap(type,idx){
   if(armMode!=="edit") return false;
   if(!copyArm){ copyArm={type,idx}; sampNameEl.textContent="COPY元 "+COPY_LABEL[type]+" "+copyName(type,idx)+" → コピー先をタップ"; }
   else if(copyArm.type===type && (type==="note" ? (copyArm.idx.t===idx.t&&copyArm.idx.s===idx.s) : copyArm.idx===idx)){ copyArm=null; sampNameEl.textContent="COPY 取消"; }
-  else if(copyArm.type===type){ const s=copyArm.idx; doCopy(type,s,idx); sampNameEl.textContent="COPY "+COPY_LABEL[type]+" "+copyName(type,s)+"→"+copyName(type,idx)+"  ↩で戻せる"; copyArm=null; refreshAfterCopy(type); paintCopyHL(); return true; }  /* EDIT は続ける（入れ替えと同じ。抜けるのは EDIT / Esc。v0.3.240 §230） */
+  else if(copyArm.type===type){ const s=copyArm.idx; const r=doCopy(type,s,idx);
+    if(type==="set" && r!==true){ sampNameEl.textContent = r==="cur" ? "COPY：いまのセットには写せない（別のセットへ）" : "COPY できなかった"; paintCopyHL(); return true; } sampNameEl.textContent="COPY "+COPY_LABEL[type]+" "+copyName(type,s)+"→"+copyName(type,idx)+(type==="set"?"":"  ↩で戻せる"); copyArm=null; refreshAfterCopy(type); paintCopyHL(); return true; }  /* EDIT は続ける（入れ替えと同じ。抜けるのは EDIT / Esc。v0.3.240 §230） */
   else { // 種別が違うタップは「無言で元を差し替え」ない＝ノートを移すつもりでパッドを潰す事故を防ぐ
     sampNameEl.textContent="COPY元は "+COPY_LABEL[copyArm.type]+" — 同じ種類を選ぶ（やめるなら元をもう一度押す）"; }
   paintCopyHL();
   return true;
 }
 // EDIT のパッドの長押し（動かさず離した）＝パッドを COPY 元にする（v0.3.240 §230）。copyArm の書き手は ui-copy だけ（app/state の @writers）
-function copyPadSource(i){ if(armMode!=="edit") return; copyArm={type:"pad",idx:i}; sampNameEl.textContent="COPY元 パッド "+String(i+1).padStart(2,"0")+" → コピー先のパッドをタップ"; paintCopyHL(); }
+function copyPadSource(i,type="pad"){ if(armMode!=="edit") return; copyArm={type,idx:i}; sampNameEl.textContent="COPY元 "+COPY_LABEL[type]+" "+String(i+1).padStart(2,"0")+" → コピー先の"+COPY_LABEL[type]+"をタップ"; paintCopyHL(); }
 function copyClear(){ copyArm=null; paintCopyHL(); }
 // 座標下のパッド番号（EDITドラッグのドロップ判定）。pads以外は-1。
 function padAtPoint(x,y){
@@ -84,7 +87,10 @@ function arm(mode,on){
   document.body.classList.toggle("edit-arm",armMode==="edit");
   document.body.classList.toggle("select-arm",armMode==="select");
   // EDITの隠れジェスチャを初回だけ案内（タップ=編集 / ドラッグ=入替 / 長押し=コピー）
-  if(armMode==="edit"){ sampNameEl.textContent=(typeof hintsOn!=="function"||hintsOn()) ? "EDIT：パッド タップ=ひらく / ドラッグ=いれかえ / 長おし=コピー ・ A B C D・小節・ステップ・セット＝元→先でコピー" : "EDIT"; }   // 毎回表示（初回だけだと2回目のakiに無情報）
+  if(armMode==="edit"){ const sm=(typeof setMode!=="undefined"&&setMode);
+    sampNameEl.textContent=!(typeof hintsOn!=="function"||hintsOn()) ? "EDIT"
+      : sm ? "EDIT：セット タップ=ひらく（PADS）/ ドラッグ=いれかえ / 長おし=コピー"
+      : "EDIT：パッド タップ=ひらく / ドラッグ=いれかえ / 長おし=コピー ・ A B C D・小節・ステップ＝元→先でコピー"; }   // 毎回表示（初回だけだと2回目のakiに無情報）
   if(armMode==="select") sampNameEl.textContent="SELECT：パッドを選ぶだけ（発音なし）";
   paintPadStates();
   if(typeof paintPerf==="function") paintPerf();   // 情報窓の解説行(clHint)をモードに追従
