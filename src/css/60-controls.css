@@ -39,14 +39,14 @@
   /* EDIT mode：対象選択を促すパッドのほのかな点滅枠 */
   body.edit-arm .pads .pad{cursor:pointer;}
   body.edit-arm .pads .pad::after{content:"";position:absolute;inset:0;border:1px dashed rgba(91,157,255,.55);border-radius:9px;pointer-events:none;}
-  .pad.copysrc{box-shadow:0 0 0 2px #ffd24d inset,0 4px 8px rgba(0,0,0,.4);}
+  .pad.copysrc,.setpad.copysrc{box-shadow:0 0 0 2px #ffd24d inset,0 4px 8px rgba(0,0,0,.4);}
   /* COPY元（パターン/小節）＝黄リング（パッドと同じ） */
   .stepbtn.copysrc,.step.copysrc,.seg button.copysrc,
   .perf-pat.copysrc,.perf-bar.copysrc,.patbtn.copysrc{box-shadow:0 0 0 2px #ffd24d inset, 0 0 10px rgba(255,210,77,.5)!important;z-index:3;}
   /* EDIT中のドラッグ並べ替え：掴み元(copyarm=コピー待機)とドロップ先(droptgt) */
-  .pad.dragsrc{box-shadow:0 0 0 2px var(--teal) inset,0 6px 12px rgba(0,0,0,.5);opacity:.85;}
-  .pad.copyarm{box-shadow:0 0 0 2px #ffd24d inset,0 6px 12px rgba(0,0,0,.5);}
-  .pad.droptgt{box-shadow:0 0 0 2px var(--amber) inset,0 0 14px rgba(255,160,40,.5);}
+  .pad.dragsrc,.setpad.dragsrc{box-shadow:0 0 0 2px var(--teal) inset,0 6px 12px rgba(0,0,0,.5);opacity:.85;}
+  .pad.copyarm,.setpad.copyarm{box-shadow:0 0 0 2px #ffd24d inset,0 6px 12px rgba(0,0,0,.5);}
+  .pad.droptgt,.setpad.droptgt{box-shadow:0 0 0 2px var(--amber) inset,0 0 14px rgba(255,160,40,.5);}
   /* pad mute/solo state */
   .pad.muted{opacity:.4;}
   .pad.muted::after{content:"M";position:absolute;top:7px;right:9px;font-size:11px;color:var(--red);font-weight:700;}

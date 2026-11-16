@@ -4,7 +4,7 @@
 //    updatePerf
 // @uses activeLock, armMode, barTapHold, bpmVal, copyTap, displayBar, displayPat, drawAllPadWaves, editBar,
 //    editPat, fxBtnTap, paintClPage, paintFxDots, paintSteps, playStep, playing, plockFillsOn, prerollAudio,
-//    queuedPat, renderPerfFills, sampNameEl, seqModeEnter, setEditBar, setEditPat, setModeEnter,
+//    queuedPat, renderPerfFills, sampNameEl, seqModeEnter, setEditBar, setEditPat, setMode, setModeEnter,
 //    stepTrackName, swingPct, tracks, viewPadsEl
 // @depends -
 // ---------- mode switch ----------
@@ -147,7 +147,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     if(am==="select") h="SELECT中：パッドを1つ選ぶと選択（無音）→自動で解除";
     else if(am==="mute") h="MUTE中：パッド=消音トグル";
     else if(am==="solo") h="SOLO中：パッド=ソロトグル";
-    else if(am==="edit") h="EDIT中：パッド タップ=編集 / ドラッグ=入替 / 長押し=コピー ・ A B C D・小節・ステップ＝元→先でコピー";
+    else if(am==="edit") h=(typeof setMode!=="undefined"&&setMode) ? "EDIT中：セット タップ=PADSで開く / ドラッグ=入替 / 長押し=コピー" : "EDIT中：パッド タップ=編集 / ドラッグ=入替 / 長押し=コピー ・ A B C D・小節・ステップ＝元→先でコピー";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右／上下で現在値を調整";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
     _t("clHint", _msg ? "" : h);   // メッセージが出ている間はヒントを引っ込める（1行を共用）
