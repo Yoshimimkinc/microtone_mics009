@@ -147,8 +147,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
     if(am==="select") h="SELECT中：パッドを1つ選ぶと選択（無音）→自動で解除";
     else if(am==="mute") h="MUTE中：パッド=消音トグル";
     else if(am==="solo") h="SOLO中：パッド=ソロトグル";
-    else if(am==="edit") h="EDIT中：パッド=中身編集 / ドラッグ=入替 / 長押し=コピー";
-    else if(am==="chop") h="COPY中：元→先 でコピー（PAD音色+FX / パターンA-D / 小節1-4）";
+    else if(am==="edit") h="EDIT中：パッド タップ=編集 / ドラッグ=入替 / 長押し=コピー ・ A B C D・小節・ステップ＝元→先でコピー";
     else if(typeof activeLock!=="undefined" && activeLock) h=activeLock.toUpperCase()+"：PAD左右／上下で現在値を調整";
     else h="";   // 平常時は黙る（常時チートシートは出さない）
     _t("clHint", _msg ? "" : h);   // メッセージが出ている間はヒントを引っ込める（1行を共用）
@@ -169,8 +168,7 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   });
   // P-LOCK選択（activeLock）を反映（comp/edit はモードボタンなので除外）
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.classList.toggle("on", b.dataset.lock===activeLock));
-  // モードボタン：COMP=compOn / EDIT=armMode（既存の単一状態を反映）
-  if($("perfEdit")) $("perfEdit").classList.toggle("on", (typeof armMode!=="undefined") && armMode==="edit");
+  // モードボタン：MUTE=armMode（EDIT は v0.3.240 §230 で再生まわりの段へ。#perfEdit は撤去）
   if($("perfMute")) $("perfMute").classList.toggle("on",armMode==="mute");
   if(typeof paintFxDots==="function") paintFxDots();   // エフェクトのボタンのポッチ（設定あり）
 }
@@ -186,8 +184,6 @@ function paintPerf(){   // 情報窓は全レイアウト共通（MPC式：常�
   document.querySelectorAll("#perfPlk .perf-plkbtn:not(.perf-mode)").forEach(b=>b.addEventListener("click",()=>{
     fxBtnTap(b.dataset.lock); paintPerf();   // 解除しても値は残る／ダブルタップでリセット／EDIT 中はモーダル（v0.3.168）
   }));
-  // EDIT：EDITモード（EDIT+PAD で中身編集）。既存 #holdEdit を proxy（armモード共有）
-  if($("perfEdit")) $("perfEdit").addEventListener("click",()=>{ $("holdEdit") && $("holdEdit").click(); paintPerf(); });
   if($("perfMute")) $("perfMute").addEventListener("click",()=>fxBtnTap("mute"));
 })();
 function updatePerf(){

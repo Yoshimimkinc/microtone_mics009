@@ -15,7 +15,7 @@
 
 // --- 選択・モード（一時） ---
 let selected = 0;       // 選択中パッド                                  @writers ui/pads-view
-let armMode = null;     // null | "mute" | "solo" | "chop" | "edit" | "select"（chop＝COPY統合：複製/スライス、select＝選択のみ発音なし）  @writers ui-copy
+let armMode = null;     // null | "mute" | "solo" | "edit" | "select"（edit＝編集・入れ替え・コピー。COPY の "chop" は v0.3.240 §230 で edit に統合、select＝選択のみ発音なし）  @writers ui-copy
 let copyArm = null;     // COPY中の元 {type:"pad"|"pat"|"bar"|"note", idx}（汎用コピー）  @writers ui-copy
 let melodicMode=false;  // 選択中パッドが音階モードか（SEQ盤面の表示を切替）  @writers plock-undo
 let editDrag = null;    // EDIT中のパッド間ドラッグ並べ替え状態（移動/コピー）  @writers ui/pads-view

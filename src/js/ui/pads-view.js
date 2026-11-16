@@ -2,10 +2,10 @@
 // @provides PAD_KIND_TAG, _selHeavyRAF, applyPadCategory, flashPad, padCategory, padKeyLabel, padsEl,
 //    paintPadName, paintPadStates, refreshPadDisplay, selectPad, selectPadHeavy, viewPadsEl
 // @uses AC, KEYMAP, PADS, applyWaveSEQ, applyWaveStrip, arm, armMode, assignMS, bpmVal, buildTrackWave,
-//    clRetargetLearn, clSyncWave, copyArm, copyPadSound, copyTap, drawPadWave, editDrag, grid, isMelodic,
-//    openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf, paintStepStrip, paintSteps,
-//    perfPadDown, perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode, renderPerfFills, sampNameEl,
-//    scratchOpen, selected, swapPads, syncEditor, tracks, trigger
+//    clRetargetLearn, clSyncWave, copyArm, copyClear, copyPadSound, copyPadSource, copyTap, drawPadWave,
+//    editDrag, grid, isMelodic, openPadContent, openPadEdit, padAtPoint, paintMixer, paintPerf,
+//    paintStepStrip, paintSteps, perfPadDown, perfPadEnd, perfPadMove, prepareKeyTrack, refreshSeqMode,
+//    renderPerfFills, sampNameEl, scratchOpen, selected, swapPads, syncEditor, tracks, trigger
 // @depends boot, app/state
 // ---------- パッド画面（PADS）：パッドの DOM・選択・状態表示・EDIT中の並べ替え ----------
 // 30-ui-pads.js を責務で分割（v0.3.130 Phase 2、docs/modularization-log.md）。
@@ -72,7 +72,6 @@ PADS.forEach((p,i)=>{
       }, 260);
       return;
     }
-    if(armMode==="chop"){ copyTap("pad", i); return; }   // COPY：元→先でパッド(音色+FX)をコピー（発音なし）
     if(armMode){ assignMS(i); return; }   // MUTE/SOLOホールド中は割当
     // Performance：P-LOCK選択中はドラッグ＝ライブ・モジュレート（ui/performance-view）。
     // v0.3.160：EDIT / COPY / MUTE / SOLO を押しているときはそちらが先（P-LOCK を選んだまま EDIT にすると、ドラッグで入れ替えられずに値が動いていた）
@@ -110,12 +109,16 @@ PADS.forEach((p,i)=>{
     if(editDrag.over>=0 && padsEl.children[editDrag.over]) padsEl.children[editDrag.over].classList.remove("droptgt");
     const tgt=editDrag.over, copy=editDrag.copy, moved=editDrag.moved;
     editDrag=null;
-    if(!moved){                                   // 動かさず離した＝タップ：編集モーダル（従来挙動）
+    if(!moved){
+      // v0.3.240 §230（COPY を EDIT に統合）：長押しして動かさず離した＝COPY 元（黄枠）。次に別のパッドをタップ＝そこへコピー、同じパッド＝やめる
+      if(copy){ copyPadSource(i); return; }
+      if(copyArm && copyArm.type==="pad"){ copyTap("pad", i); return; }
+      // 動かさず離した＝タップ：編集モーダル（従来挙動）
       selectPad(i); arm("edit", false); openPadContent(i);   // パッドの種類に合った画面を直接（KEY＝ピアノロール・SCRATCH＝スクラッチ、v0.3.203 §192）
       return;
     }
     if(tgt>=0 && tgt!==i){
-      if(copy){ copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY → "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
+      if(copy){ copyClear(); copyPadSound(i,tgt); refreshPadDisplay(tgt); sampNameEl.textContent="COPY パッド "+String(i+1).padStart(2,"0")+"→"+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       else    { swapPads(i,tgt); refreshPadDisplay(i); refreshPadDisplay(tgt); paintPadStates(); paintSteps(); sampNameEl.textContent="MOVE "+String(i+1).padStart(2,"0")+" ⇄ "+String(tgt+1).padStart(2,"0")+"  ↩で戻せる"; }
       flashPad(tgt);
     }

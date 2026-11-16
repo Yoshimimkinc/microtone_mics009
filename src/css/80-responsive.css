@@ -76,7 +76,7 @@
     #viewPads>.msbar{order:3;flex-wrap:wrap;flex:0 0 auto;margin:4px 0 0;
       position:sticky;bottom:0;z-index:5;background:var(--bg);padding-top:4px;}
     /* スマホの下段は [MUTE] [DELAY] [REVERB]。SOLO と EDIT は出さない（TRIM/CHOPは窓の✂、空パッドは＋から） */
-    #viewPads>.msbar #holdSolo,#viewPads>.msbar #holdEdit{display:none;}
+    #viewPads>.msbar #holdSolo{display:none;}
     #viewPads>.msbar .msbtn.fx{display:flex;}
     /* スマホ：下段 [MUTE][PITCH][FILTER][DELAY][REVERB] を1行に均等分割（v0.3.123 §134、LEVEL は v0.3.124 で廃止 §135）。
        5つで 390px なら1つ約71px＝以前の3つ時代の 2/3。高さ44pxは守る（演奏系タップの規則値 §2）。

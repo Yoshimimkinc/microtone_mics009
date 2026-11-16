@@ -43,8 +43,10 @@ const fingerprint=()=>p.evaluate(()=>{
     typeof bpmVal!=='undefined'?bpmVal:'', typeof swingPct!=='undefined'?swingPct:'',
     typeof activeLock!=='undefined'?activeLock:'', typeof copyArm!=='undefined'?JSON.stringify(copyArm):''].join('|');
   // クラス構成＋表示状態＋テキストの粗いハッシュ
+  // 全部の文字で数える（v0.3.240 §230）。7 文字おきだと、ボタンを 1 つ減らしただけで見る文字がずれ、メニューが閉じた（display の none ⇄ flex）
+  // といった小さな変化を見逃して「無反応」と出た（§218 の BPM も同じ弱さ）
   let h=0; const s=document.querySelector('.unit').outerHTML;
-  for(let i=0;i<s.length;i+=7){ h=(h*31 + s.charCodeAt(i))|0; }
+  for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i))|0; }
   return st+'#'+h+'#'+document.body.className;
 });
 

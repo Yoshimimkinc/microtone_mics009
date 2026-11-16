@@ -2,10 +2,10 @@
 // @provides _clPagePrev, _setIn, _setInfo, _setPickEl, _setPickGrid, _snapPatHas, fmtClock, paintSet,
 //    paintSetLevel, paintSetMap, paintSetPick, setGridEl, setModeEnter, setPadDown, setPadNudge, setPadUp,
 //    setPadUpAll, setPickClose, setPickIsOpen, setPickOpen
-// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, arm, armMode, bpmVal, clPage, copySetTo, fmtSetLevel,
-//    focusSet, isSetHeld, paintPerf, paintTransport, pickSet, playing, queuedSet, renderClPage, sampNameEl,
-//    setCur, setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel,
-//    setSlots, sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
+// @uses AC, PRESET_BUFS, SET_LV_MAX, SET_LV_MIN, armMode, bpmVal, clPage, copySetTo, fmtSetLevel, focusSet,
+//    isSetHeld, paintPerf, paintTransport, pickSet, playing, queuedSet, renderClPage, sampNameEl, setCur,
+//    setElapsed, setHold, setIsPlaying, setLevels, setMode, setName, setRename, setSetLevel, setSlots,
+//    sideStop, sideTakeCurrent, startTransport, stopAllVoices, stopTransport, tracks
 // @depends -
 // ---------- SET モードの表示と配線：16 のセット（#setGrid＝ポン出し）と情報窓の SET ページ ----------
 // v0.3.144 §145。SET モードではパッドが「セットのポン出し」＝叩くとそのセットのシーケンスがループ再生され、PADS / SEQ の対象もそのセットになる。
@@ -158,7 +158,7 @@ function setModeEnter(on){
   // 押している入力ごとに h = {k, d, mode, y0, db0, moved}。入力＝指（pointerId）・キー（"key:"+code）・MIDI（"midi:"+note）（v0.3.159）。
   // mode：start＝離すと鳴らす／stop＝鳴っているセット（離すと止まる）。上下に動かした（moved）ら離しても何もしない＝音量だけ
   const SWIPE_PX=8, PX_PER_DB=5;   // 8px 動くまではタップ扱い。そこから上へ 5px で +1 dB
-  const copyTo=k=>{ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); arm("chop",false); paintSet(); } else say("COPY：いまのセットには写せない"); };
+  const copyTo=k=>{ if(copySetTo(k)){ say("COPY ▸ SET "+no(k)+" にいまのセットを写した"); paintSet(); } else say("COPY：いまのセットには写せない"); };
   const down=(k,id,y)=>{
     if(holds.has(id)) return;
     const d=setGridEl.children[k], on=setIsPlaying(k);
@@ -174,7 +174,7 @@ function setModeEnter(on){
   const pressStart=(e)=>{ const d=e.target.closest(".setpad"); if(!d) return; e.preventDefault();
     const k=+d.dataset.k;
     try{ d.setPointerCapture(e.pointerId); }catch(_){}
-    if(armMode==="chop"){ copyTo(k); return; }
+    if(armMode==="edit"){ copyTo(k); return; }   // EDIT 中＝いまのセットをここへ写す（v0.3.240 §230、旧 COPY）
     down(k, e.pointerId, e.clientY); };
   const pressMove=(e)=>{ const h=holds.get(e.pointerId); if(!h) return;
     const dy=e.clientY-h.y0;
@@ -183,7 +183,7 @@ function setModeEnter(on){
     setSetLevel(h.k, h.db0 - eff/PX_PER_DB); showLv(h); };
   const pressEnd=(e)=>{ up(e.pointerId, e.type==="pointercancel"); };
   // キーボード・MIDI（v0.3.159）：52-chop / 72-midi の入口から。押しているキーの ↑ ↓ ＝音量 ±1 dB（指の上下スワイプの代わり）
-  _setIn.down=(k,src)=>{ if(!setMode || !(k>=0&&k<16)) return false; if(armMode==="chop"){ copyTo(k); return true; } down(k,src,0); return true; };
+  _setIn.down=(k,src)=>{ if(!setMode || !(k>=0&&k<16)) return false; if(armMode==="edit"){ copyTo(k); return true; } down(k,src,0); return true; };
   _setIn.up=(src)=>{ up(src,false); };
   _setIn.upAll=()=>{ [...holds.keys()].filter(id=>typeof id==="string").forEach(id=>up(id,true)); };   // 窓を離れたらキーの押しっぱなしを放す
   _setIn.nudge=(dDb)=>{ const ids=[...holds.keys()].filter(id=>typeof id==="string"); if(!ids.length) return false;
