@@ -126,3 +126,6 @@ document.getElementById('scratchClose') [click]
 # v0.3.220 §209 KEY ⇄ 波形は聞かずに往復（音の入った KEY から移る＝必ず波形にする）。§195 の確認ダイアログとその処理を撤去
 document.getElementById('keyLeaveAsk') [click]
 _keyLeaveDone
+# v0.3.240 §230 COPY と EDIT を 1 つの EDIT に統合：演奏画面の段の EDIT（#perfEdit、#holdEdit への中継）と COPY ボタン（#holdCopy の armed 表示）を撤去。EDIT は再生まわりの段の #holdEdit 1 つ
+$("perfEdit") [click]
+_cpBtn

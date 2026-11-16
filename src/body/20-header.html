@@ -9,7 +9,8 @@
       <button class="t play" id="play" aria-label="Play/Stop" data-label="PLAY">▶</button>
       <button class="t rec" id="rec" aria-label="Rec" data-label="REC">●</button>
       <button class="t" id="undoBtn" aria-label="Undo" title="元に戻す" data-label="UNDO">↩</button>
-      <button class="t arm copy" id="holdCopy" title="押した後パッドで音色コピー">COPY</button>
+      <!-- v0.3.240 §230「COPY と EDIT も統合したい」：COPY（ここ）と EDIT（FX の列）を 1 つの EDIT に。SEQ / SET でも届く再生まわりの段に置く -->
+      <button class="t arm edit" id="holdEdit" title="EDIT：パッド＝タップで編集・ドラッグで入れ替え・長押しでコピー／A B C D・小節・ステップ・セット＝元→先でコピー／FILTER・DELAY・REVERB＝詳細">EDIT</button>
       <button class="t arm solo" id="holdSolo" title="押した後パッドでソロ">SOLO</button>
       <button class="t kebab" id="menuBtn" aria-label="Menu" aria-haspopup="dialog" data-label="MENU">⋮</button>
     </div>

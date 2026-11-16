@@ -42,7 +42,7 @@ PADS.forEach((p,i)=>{
   for(let s=0;s<STEPS;s++){
     const st=document.createElement("div");st.className="step";st.dataset.s=s;
     st.addEventListener("click",(e)=>{
-      if(armMode==="chop"){ copyTap("note",{t:i,s}); return; }   // COPY中＝ノート(値+P-LOCK)の元→先
+      if(armMode==="edit"){ copyTap("note",{t:i,s}); return; }   // EDIT中＝ノート(値+P-LOCK)の元→先でコピー（v0.3.240 §230、旧 COPY）
       pushUndo();   // 1手ずつ戻せるよう編集前に記録
       if(melodicMode){
         const pitchIdx=(PADS.length-1)-i;                       // 行→音程

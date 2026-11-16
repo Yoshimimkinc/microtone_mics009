@@ -40,7 +40,7 @@ if(stepStripEl){
     const b=e.target.closest(".stepbtn"); if(!b) return;
     e.preventDefault();
     const s=+b.dataset.s;
-    if(armMode==="chop"){ copyTap("note",{t:selected,s}); return; }   // COPY中＝ノート(値+P-LOCK)の元→先
+    if(armMode==="edit"){ copyTap("note",{t:selected,s}); return; }   // EDIT中＝ノート(値+P-LOCK)の元→先でコピー（v0.3.240 §230、旧 COPY）
     toggleStepAt(s, e.shiftKey);
   });
 }

@@ -242,7 +242,7 @@ async function run(w,h,mobile){
     // 6つが1行に収まり、幅44px以上・文字が溢れない（幅を2/3以下に詰めた分の検査）
     const row=await p.evaluate(()=>{ const bs=[...document.querySelectorAll('#viewPads>.msbar button')].filter(b=>getComputedStyle(b).display!=='none');
       return {n:bs.length, rows:new Set(bs.map(b=>Math.round(b.getBoundingClientRect().top))).size, minW:Math.min(...bs.map(b=>b.getBoundingClientRect().width)), over:bs.filter(b=>b.scrollWidth>b.clientWidth).map(b=>b.textContent.trim())}; });
-    ok_(`${V} 下段5つ（MUTE FILTER DELAY REVERB EDIT）が1行・幅44px以上・溢れなし`, row.n===5 && row.rows===1 && row.minW>=44 && row.over.length===0, JSON.stringify(row));
+    ok_(`${V} 下段4つ（MUTE FILTER DELAY REVERB。EDIT は再生まわりの段 v0.3.240 §230）が1行・幅44px以上・溢れなし`, row.n===4 && row.rows===1 && row.minW>=44 && row.over.length===0, JSON.stringify(row));
     // Normal FX is a live value selection; only EDIT+FX opens parameters.
     for(const fx of ['filter','delay','reverb']){
       const button='#fx'+fx[0].toUpperCase()+fx.slice(1);
@@ -577,7 +577,7 @@ async function plockKeeps(){
     await p.click(sel);
     eq(`FX ${w} 通常タップは選択`,await p.evaluate(()=>[activeLock,fxmParam]),['delay',null]);
     await p.click(sel);
-    await p.click(mobile?'#holdEdit':'#perfEdit');await p.click(sel);
+    await p.click('#holdEdit');await p.click(sel);   // EDIT は再生まわりの段の 1 つ（v0.3.240 §230、#perfEdit は撤去）
     eq(`FX ${w} EDIT時だけ直接編集`,await p.$eval('#fxModal',e=>e.style.display),'flex');
     await p.evaluate(()=>{const el=document.querySelector('#fxmList input[data-i="0"]');el.value=0.7;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));});
     await p.click('#fxmClose');
@@ -810,10 +810,11 @@ async function setMode(){
     { const c1=await sp(0); await p.mouse.click(c1[0],c1[1]); await p.waitForTimeout(200); await p.mouse.click(c1[0],c1[1]); await p.waitForTimeout(200); }
     ok_(`${V} 打ち込みは止めても残る（他のセットへ移って戻っても）`, await p.evaluate(()=>setCur===0 && getPattern(3)[7]===1 && !playing), 'reverted');
     ok_(`${V} 止まるとオレンジは消える（SEL のティール枠に戻る）`, await p.evaluate(()=>{ const d=document.querySelector('#setGrid .setpad.on'); return !d.classList.contains('playing') && d.querySelector('.tag').textContent==='SEL' && !document.querySelector('#setGrid .setpad.playing'); }), 'still lit');
-    // COPY：COPY を押してセットを叩く＝いまのセットを写す
-    await p.evaluate(()=>arm('chop',true)); await p.click('#setGrid .setpad[data-k="4"]'); await p.waitForTimeout(150);
+    // EDIT（旧 COPY、v0.3.240 §230）を押してセットを叩く＝いまのセットを写す。EDIT は続く
+    await p.click('#holdEdit'); await p.click('#setGrid .setpad[data-k="4"]'); await p.waitForTimeout(150);
     const cp=await p.evaluate(()=>({name:setSlots[4].tracks[0].name, bpm:setSlots[4].bpm, step:setSlots[4].tracks[3].patterns[0][0][7], arm:armMode, cur:setCur, setname:setName(4)}));
-    ok_(`${V} COPY ＋セット＝いまのセットを写す（名前・BPM・ステップ）`, cp.name==='S1' && cp.bpm===60 && cp.step===1 && cp.arm===null && cp.cur===0 && cp.setname==='SET 5', JSON.stringify(cp));
+    await p.click('#holdEdit');   // EDIT を抜ける
+    ok_(`${V} EDIT ＋セット＝いまのセットを写す（名前・BPM・ステップ）・EDIT は続く`, cp.name==='S1' && cp.bpm===60 && cp.step===1 && cp.arm==='edit' && cp.cur===0 && cp.setname==='SET 5', JSON.stringify(cp));
     // v3 の保存 → 読込（16 セットが戻る。触っていないプリセットは音を同梱しない）
     const rt=await p.evaluate(async()=>{ const f=buildProject(); const txt=JSON.stringify(f); const size=txt.length;
       const presetAudio=f.sets[1].tracks[8].audio; await applyProject(JSON.parse(txt));
@@ -1169,6 +1170,50 @@ async function menuDrill(){
     await ctx.close();
   }
 }
+async function editCopyMerged(){
+  // v0.3.240 §230「COPY と EDIT も統合したいね」：EDIT は再生まわりの段の 1 つだけ（COPY ボタンは無い）。
+  // EDIT 中：パッド＝タップで編集・ドラッグで入れ替え・長押し（動かさず離す）→ 別のパッドをタップでコピー／A B C D・小節・ステップ＝元→先でコピー。コピーしても EDIT は続く
+  for (const [w,h,touch] of [[390,844,true],[1280,800,false]]){
+    const V=`EDITCOPY ${w}x${h}`;
+    const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:touch,hasTouch:touch}); await unlock(ctx);
+    const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+    await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(p);
+    const u=await p.evaluate(()=>{ const vis=e=>!!e && e.getBoundingClientRect().height>0;
+      const edits=[...document.querySelectorAll('button')].filter(b=>vis(b) && /^EDIT$/.test(b.textContent.trim()));
+      return {copy:!!document.getElementById('holdCopy'), perfEdit:!!document.getElementById('perfEdit'), edits:edits.map(b=>b.id), inTransport:!!document.querySelector('.transport #holdEdit')}; });
+    ok_(`${V} EDIT は再生まわりの段の 1 つだけ（COPY・FX の列の EDIT は無い）`, !u.copy && !u.perfEdit && u.edits.join()==='holdEdit' && u.inTransport, JSON.stringify(u));
+    // パッド：長押し（動かさず離す）→ 別のパッドをタップ＝コピー
+    await p.evaluate(()=>{ tracks[2].name='DST'; refreshPadDisplay(2); });
+    const src=await p.evaluate(()=>tracks[0].name);
+    await p.click('#holdEdit'); await p.waitForTimeout(80);
+    const pc=async i=>p.evaluate(i=>{ const b=document.querySelectorAll('#pads .pad')[i].getBoundingClientRect(); return [b.left+b.width/2,b.top+b.height/2]; }, i);
+    const a=await pc(0), c=await pc(2);
+    await p.mouse.move(a[0],a[1]); await p.mouse.down(); await p.waitForTimeout(450); await p.mouse.up(); await p.waitForTimeout(80);
+    const armed=await p.evaluate(()=>({src:copyArm&&copyArm.type+':'+copyArm.idx, edit:document.getElementById('padEditModal').style.display}));
+    await p.mouse.click(c[0],c[1]); await p.waitForTimeout(150);
+    const r1=await p.evaluate(()=>({name:tracks[2].name, arm:armMode, src:copyArm, modal:document.getElementById('padEditModal').style.display}));
+    ok_(`${V} パッド：長押しで COPY 元（編集画面は開かない）→ 別のパッドをタップでコピー・EDIT は続く`, armed.src==='pad:0' && armed.edit!=='flex' && r1.name===src && r1.arm==='edit' && r1.src===null && r1.modal!=='flex', JSON.stringify({armed,r1,src}));
+    // パターン：A → C でコピー（EDIT は続く）
+    const pat=await p.evaluate(()=>{ for(let t=0;t<16;t++) for(let b=0;b<4;b++){ tracks[t].patterns[2][b].fill(0); } tracks[9].patterns[0][0][5]=1; paintPerf(); return true; });
+    const sel=(k)=> touch ? `.fx-pattern[data-p="${k}"]` : `#perfPats .perf-pat[data-p="${k}"]`;
+    if(touch) await p.evaluate(()=>{ if(typeof setFxPage==='function') setFxPage('patterns'); else document.querySelector('#viewPads>.msbar').dataset.fxPage='patterns'; document.querySelectorAll('.fx-pattern').forEach(b=>b.hidden=false); });
+    await p.evaluate(s=>document.querySelector(s).click(), sel(0)); await p.evaluate(s=>document.querySelector(s).click(), sel(2)); await p.waitForTimeout(100);
+    const r2=await p.evaluate(()=>({c:tracks[9].patterns[2][0][5], arm:armMode}));
+    ok_(`${V} A B C D：A → C でパターンをコピー・EDIT は続く`, r2.c===1 && r2.arm==='edit', JSON.stringify(r2));
+    // SEQ：ステップ（ノート）を元→先でコピー
+    await p.evaluate(()=>{ switchView('viewSeq'); setEditPat(0); setEditBar(0); tracks[4].patterns[0][0][1]=1; tracks[4].patterns[0][0][9]=0; paintSteps(); });
+    await p.waitForTimeout(250);
+    const vis=await p.evaluate(()=>{ const b=document.getElementById('holdEdit').getBoundingClientRect(); return b.height>0; });
+    await p.evaluate(()=>{ const r=document.querySelectorAll('#grid .row')[4]; r.querySelectorAll('.step')[1].click(); r.querySelectorAll('.step')[9].click(); });
+    const r3=await p.evaluate(()=>({v:tracks[4].patterns[0][0][9], arm:armMode}));
+    ok_(`${V} SEQ でも EDIT が出ていて、ステップを元→先でコピーできる`, vis && r3.v===1 && r3.arm==='edit', JSON.stringify({vis,r3}));
+    await p.click('#holdEdit'); await p.waitForTimeout(60);
+    ok_(`${V} EDIT をもう一度押すと抜ける`, await p.evaluate(()=>armMode===null), 'still armed');
+    eq(`${V} 0 errors`, errs, []);
+    await ctx.close();
+  }
+}
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
   // 音のあるパッドは TRIM、空のパッドは SOURCE で開く。CHOP を開いている間だけ切れ目が出る（離れると消える）。分ける数は覚える
@@ -1412,7 +1457,7 @@ async function fxKeep(){
   const dot=await p.evaluate(b=>getComputedStyle(document.querySelector(b),'::before').content, btn);
   ok_(`${V} 掛けたボタンにポッチ`, dot!=='none' && dot!=='normal', dot);
   // EDIT 中にエフェクトのボタン＝モーダル（パッドごとの量・RESET）。ボタンは点かない
-  await p.evaluate(()=>{ document.getElementById('perfEdit').click(); });
+  await p.evaluate(()=>{ document.getElementById('holdEdit').click(); });   // EDIT は再生まわりの段（v0.3.240 §230）
   await p.click(btn); await p.waitForTimeout(100);
   const m=await p.evaluate(()=>{ const md=document.getElementById('fxModal'); const rows=[...document.querySelectorAll('#fxmList .fxm-row')];
     return {open:getComputedStyle(md).display, title:document.getElementById('fxmTitle').textContent, rows:rows.length, v3:rows[3].querySelector('.fxm-v').textContent, set3:rows[3].classList.contains('set'), lock:activeLock}; });
@@ -1769,6 +1814,7 @@ await hintsToggle();
 await setWinOnce();
 await menuBtnAlign();
 await menuDrill();
+await editCopyMerged();
 await renameFlow();
 await plockKeeps();
 await iosLoad();
