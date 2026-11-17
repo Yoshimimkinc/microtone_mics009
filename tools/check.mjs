@@ -1278,6 +1278,22 @@ async function bgAudio(){
   await p.evaluate(()=>setBgAudio(false));
   eq(`${V} 0 errors`, errs, []);
   await ctx.close();
+  // v0.3.243 §233「アプリを裏にしたら音は止まった」：iPhone では ON のとき、パッドに触れた時に MediaStream の <audio> を用意し、
+  // 裏に回る瞬間だけ音の出口をそこへ付け替える（表に戻ればスピーカーへ）
+  { const V2='BGAUDIO iPhone';
+    const c2=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'}); await unlock(c2);
+    const q=await c2.newPage(); const e2=[]; q.on('pageerror',e=>e2.push(String(e)));
+    await q.addInitScript(()=>{ try{ localStorage.setItem('mics-bg-audio','1'); }catch(_){}
+      let h=false; Object.defineProperty(document,'hidden',{configurable:true,get:()=>h}); Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>h?'hidden':'visible'});
+      window.__setHidden=v=>{ h=v; document.dispatchEvent(new Event('visibilitychange')); }; });
+    await q.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+    await ready(q);
+    await q.tap('#pads .pad:nth-child(9)'); await q.waitForTimeout(150);   // 操作の中で <audio> を用意
+    const r=await q.evaluate(async()=>{ const prep=!!_bgEl && !!_bgDest && _bgEl.srcObject===_bgDest.stream; startTransport(); await new Promise(r=>setTimeout(r,150));
+      __setHidden(true); const hid={routed:_bgRouted, timer:!!schedTimer}; __setHidden(false); const back=_bgRouted; stopTransport(); return {prep, hid, back}; });
+    ok_(`${V2} ON：<audio> を用意・裏に回ると出口を <audio> へ・戻るとスピーカーへ`, r.prep && r.hid.routed && r.hid.timer && r.back===false, JSON.stringify(r));
+    eq(`${V2} 0 errors`, e2, []);
+    await c2.close(); }
 }
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
