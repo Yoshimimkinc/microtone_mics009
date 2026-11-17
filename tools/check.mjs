@@ -1135,7 +1135,7 @@ async function menuDrill(){
   // v0.3.237 §227「設定はジャンルごとにドリルダウン方式にする」：開くとジャンルの一覧だけ。押す＝そのジャンルの設定だけ。‹ MENU / Escape で一覧へ。
   // 設定の部品はどれか 1 つのジャンルに必ず入っている（消えていない）
   const NEED=['saveScope','saveBtn','loadProjBtn','exportWavBtn','resetBtn','dropboxPanel','kMaster','compToggle','kComp','kDrive','vLat',
-    'dacLofiToggle','spFilterToggle','spTuneToggle','fatBassToggle','loopSnapToggle','metroToggle','midiSyncToggle','patSwitch','midiToggle','multiOutToggle','themeSeg','splashAnimToggle','hintsToggle'];
+    'dacLofiToggle','spFilterToggle','spTuneToggle','fatBassToggle','loopSnapToggle','bgAudioToggle','metroToggle','midiSyncToggle','patSwitch','midiToggle','multiOutToggle','themeSeg','splashAnimToggle','hintsToggle'];
   for (const [w,h,touch] of [[390,844,true],[1280,800,false]]){
     const V=`MENUDRILL ${w}x${h}`;
     const ctx=await br.newContext({viewport:{width:w,height:h},isMobile:touch,hasTouch:touch}); await unlock(ctx);
@@ -1251,6 +1251,33 @@ async function setSwap(){
     eq(`${V} 0 errors`, errs, []);
     await ctx.close();
   }
+}
+async function bgAudio(){
+  // v0.3.242 §232「スマホで立ち上げたとき、着信 OFF だと音が鳴らない」「バックグラウンドでも鳴るようにしたい（設定で）」
+  const V='BGAUDIO';
+  const ctx=await br.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}); await unlock(ctx);
+  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+  await p.addInitScript(()=>{ navigator.audioSession={type:'auto'};   // iOS 17 の Audio Session API の代わり
+    let h=false; Object.defineProperty(document,'hidden',{configurable:true,get:()=>h}); Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>h?'hidden':'visible'});
+    window.__setHidden=v=>{ h=v; document.dispatchEvent(new Event('visibilitychange')); }; });
+  await p.goto(`http://localhost:${PORT}/mics-609bc14b.html`,{waitUntil:'load'});
+  await ready(p);
+  ok_(`${V} 着信スイッチ：音の種類を「再生」にする（Audio Session API）`, await p.evaluate(()=>navigator.audioSession.type)==='playback', await p.evaluate(()=>navigator.audioSession.type));
+  // 既定 OFF：隠れたら止める（今まで通り）
+  const off=await p.evaluate(async()=>{ const on0=bgAudioOn(); startTransport(); await new Promise(r=>setTimeout(r,200)); __setHidden(true); const t=schedTimer; __setHidden(false); await new Promise(r=>setTimeout(r,200)); const back=!!schedTimer; stopTransport(); return {on0, timerHidden:t, back}; });
+  ok_(`${V} 既定は OFF：隠れたら予約を止める・戻ると再開`, off.on0===false && off.timerHidden===null && off.back, JSON.stringify(off));
+  // メニュー SOUND の「バックグラウンドでも鳴らす」を ON
+  await p.click('#menuBtn'); await p.waitForTimeout(150); await p.click('.menu-cat[data-cat="sound"]'); await p.waitForTimeout(120);
+  await p.click('#bgAudioToggle'); await p.waitForTimeout(80); await p.click('#menuClose'); await p.waitForTimeout(80);
+  const on=await p.evaluate(async()=>{ const on1=bgAudioOn(); startTransport(); await new Promise(r=>setTimeout(r,200)); __setHidden(true); await new Promise(r=>setTimeout(r,300));
+    const r={on1, timer:!!schedTimer, ahead:schedAhead, playing, dq:drawQueue.length, step:stepIdx};
+    __setHidden(false); await new Promise(r=>setTimeout(r,100)); r.aheadBack=schedAhead; r.timerBack=!!schedTimer; stopTransport(); return r; });
+  ok_(`${V} ON：隠れても鳴らし続ける（予約は止めない・先読み 1.5 秒・点灯の予定は溜めない）・戻ると先読み 0.1 秒`, on.on1 && on.timer && on.playing && on.ahead===1.5 && on.dq===0 && on.aheadBack===0.1 && on.timerBack, JSON.stringify(on));
+  await p.reload({waitUntil:'load'}); await ready(p);
+  ok_(`${V} ON は端末に覚える（読み込み直しても ON）`, await p.evaluate(()=>bgAudioOn() && document.getElementById('bgAudioToggle').classList.contains('on')), 'not kept');
+  await p.evaluate(()=>setBgAudio(false));
+  eq(`${V} 0 errors`, errs, []);
+  await ctx.close();
 }
 async function editTabs(){
   // v0.3.228 §218「Koala のようにスッキリ」：EDIT は波形 1 つ＋タブ TRIM / CHOP / SOURCE。見えるのは 1 つのタブだけ。
@@ -1854,6 +1881,7 @@ await menuBtnAlign();
 await menuDrill();
 await editCopyMerged();
 await setSwap();
+await bgAudio();
 await renameFlow();
 await plockKeeps();
 await iosLoad();

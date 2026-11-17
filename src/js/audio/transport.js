@@ -1,8 +1,8 @@
 // @module audio/transport
-// @provides INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo, drawQueue,
-//    driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock, prerollAudio,
-//    resumeTransportClock, schedAhead, schedTimer, scheduleClick, scheduleStep, scheduler, staggerSec,
-//    startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
+// @provides BG_AHEAD, INTERVAL, LOOKAHEAD, PPQ, TICKS_PER_16TH, _clickBuf, barStartTime, clickHi, clickLo,
+//    drawQueue, driftSec, effectiveSwing, grooveFactor, laidbackSec, metroOn, pauseTransportClock,
+//    prerollAudio, resumeTransportClock, schedAhead, schedTimer, scheduleClick, scheduleStep, scheduler,
+//    setBackgroundAhead, staggerSec, startTransport, stepTimeClean, stopTransport, swingDelayTicks, tickDur
 // @uses AC, PADS, STEPS, anySolo, bpmVal, displayBar, displayPat, editPat, firstPlayBar, getPlayPattern,
 //    isMelodic, mainOut, nextPlayBar, patLength, patLoad, patSlot, patSwitchMode, playBar, playPat,
 //    playStep, playVoice, playing, queuedPat, queuedSet, scaleSemi, sideCount, sideTick, stepIdx,
@@ -40,6 +40,9 @@ function staggerSec(sw=swingPct){  return 0.0015 + 0.003*grooveFactor(sw); } // 
 
 const LOOKAHEAD = 0.1;      // sec, how far ahead we schedule（25ms→100ms：メインスレッドが詰まっても発音が遅れないように）
 let schedAhead = LOOKAHEAD; // いまの先読み。重い画面の処理の直前だけ prerollAudio が一時的に延ばす（v0.3.226 §216）
+// バックグラウンドで鳴らす間の先読み（v0.3.242 §232）：隠れたページのタイマーはブラウザが 1 秒おき程度に間引くので、それより長く先に予約しておく
+const BG_AHEAD = 1.5;
+function setBackgroundAhead(on){ schedAhead = on ? BG_AHEAD : LOOKAHEAD; }
 // 重い処理（モードの切替・セットの切替の塗り・自動保存）の直前に呼ぶ：音を sec 先まで先に予約しておく＝その間メインスレッドが詰まっても音が遅れない。
 // 先読みを延ばすのはこの 1 回だけ（ミュートなどの反応はいつもの 0.1 秒のまま）
 function prerollAudio(sec){
@@ -154,6 +157,7 @@ function scheduler(){
     }
     if(++guard > STEPS) break;   // 1tickで最大1小節分まで（暴走防止）
   }
+  if(document.hidden) drawQueue.length=0;   // 隠れている間（バックグラウンドで鳴らしている間）は点灯の予定を溜めない＝戻った時に一気に描かない（v0.3.242 §232）
 }
 
 // アプリが非表示の間にタイマーを回さず、次のステップを復帰時刻へ付け直す。
