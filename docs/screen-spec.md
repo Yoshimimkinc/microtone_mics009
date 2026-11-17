@@ -2892,3 +2892,14 @@ SCRの割当PCキー／MIDIノートを押すとレコード画面を開き、�
 - 実機で確かめること：iPhone（iOS 17 以降と 16）で着信 OFF のまま音が出るか／ON にして画面を消す・ホームに戻る・ほかのアプリへ移ったときに鳴り続けるか。iOS は版によってバックグラウンドの Web Audio を止めることがある。
 検査：`check.mjs` の BGAUDIO（Audio Session の種類が playback／既定 OFF で隠れたら止める／メニューで ON → 隠れても鳴る・先読み 1.5 秒・戻ると 0.1 秒／ON を覚える）。MENUDRILL に `bgAudioToggle`。
 
+## 233. iPhone で裏に回しても鳴らす（v0.3.243）
+§232 の実機の結果：「消音モードでは鳴った。アプリを裏にしたら音は止まった」。
+- 考えられる理由：(1) 設定「バックグラウンドでも鳴らす」が OFF（既定）＝わざと止める作り。(2) ON でも、iPhone は裏に回ったページの Web Audio（AudioContext）を止める。一方で `<audio>` の再生（音楽サイトと同じ）は裏でも続ける。
+- いま（(2) への手当て、audio/lifecycle）：
+  - ON のとき、パッドやキーに触れた瞬間（ユーザー操作の中）に、MediaStream を流す `<audio>` を 1 本用意して再生しておく（`bgStreamPrepare`：`AC.createMediaStreamDestination()` → `srcObject`）。表では何も流れない（無音）。これが OS への「再生中」の印も兼ねる。
+  - 裏に回る瞬間に音の出口（`mainOut` → スピーカー）をその `<audio>` へ付け替える（`bgRoute(true)`。つないでから外す＝途切れない）。表に戻ったらスピーカーへ戻す＝表で弾くときの遅れは今まで通り（`<audio>` を通すと遅れが増えるので、裏の間だけ）。
+  - 裏で OS に AudioContext を止められたら `AC.resume()` を試す。戻れば裏でも再開（`audioRecover` は設定 ON なら隠れていても動く）。
+  - OUT B（4ch 出力）を使っているときは付け替えない。iPhone 以外は今まで通り（PC のブラウザは裏のタブでも Web Audio を止めない）。
+- 実機で確かめること：設定を ON にして ▶ → ホームに戻る／画面を消す。鳴り続けるか。止まるなら iOS の版。
+検査：`check.mjs` の BGAUDIO に iPhone の UA で「触れると `<audio>` を用意・裏で出口を付け替え・戻すと戻る」。
+
