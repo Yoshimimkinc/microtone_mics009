@@ -6,7 +6,7 @@
         <div class="menu-cats" id="menuCats" role="group" aria-label="設定のジャンル">
           <button class="menu-cat" data-cat="project"><b>PROJECT</b><span class="menu-cat-sub">保存 · 読み込み · WAV · Dropbox</span><em aria-hidden="true">›</em></button>
           <button class="menu-cat" data-cat="master"><b>MASTER</b><span class="menu-cat-sub">音量 · COMP · Latency</span><em aria-hidden="true">›</em></button>
-          <button class="menu-cat" data-cat="sound"><b>SOUND</b><span class="menu-cat-sub">VINTAGE DAC · SP の音 · FAT BASS</span><em aria-hidden="true">›</em></button>
+          <button class="menu-cat" data-cat="sound"><b>SOUND</b><span class="menu-cat-sub">VINTAGE DAC · SP の音 · FAT BASS · バックグラウンド</span><em aria-hidden="true">›</em></button>
           <button class="menu-cat" data-cat="timing"><b>TIMING</b><span class="menu-cat-sub">メトロノーム · MIDI SYNC · A B C D の切替</span><em aria-hidden="true">›</em></button>
           <button class="menu-cat" data-cat="io"><b>I/O</b><span class="menu-cat-sub">そとの鍵盤 · OUT B</span><em aria-hidden="true">›</em></button>
           <button class="menu-cat" data-cat="display"><b>DISPLAY</b><span class="menu-cat-sub">Skin · 起動アニメーション · 解説の文言</span><em aria-hidden="true">›</em></button>
@@ -70,6 +70,7 @@
             <label class="toggle on" id="spTuneToggle" title="PITCH を下げたときの音程を SP-1200 の実測値に（平均律から最大 13 セントずれる）"><span class="sw"></span><span>SP TUNING</span></label>
             <label class="toggle on" id="fatBassToggle"><span class="sw"></span><span>FAT BASS</span></label>
             <label class="toggle on" id="loopSnapToggle"><span class="sw"></span><span>ループ点スナップ</span></label>
+            <label class="toggle" id="bgAudioToggle" title="ON＝別のアプリに切り替えても・画面を消しても再生を続ける（端末が止めた時は止まる）"><span class="sw"></span><span>バックグラウンドでも鳴らす</span></label>
           </div>
         </div>
         <div class="modal-sec" data-cat="timing">
